@@ -12,7 +12,6 @@ function rot_double_gyre2(t,x,dx)
   dyΨF = 2π*sin.(π*x[1]).*cos.(2π*x[2])
   dx[1] = - ((1-st)dyΨP + st*dyΨF)
   dx[2] = (1-st)dxΨP + st*dxΨF
-  return dx
 end
 
 
@@ -38,7 +37,6 @@ close!(dh)
 
 include("tensorComputations.jl")
 function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField)
-    j = 0
     K = create_sparsity_pattern(dh)
     a_K = start_assemble(K)
     M = create_sparsity_pattern(dh)
@@ -56,20 +54,18 @@ function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField
     	    for j in 1:n
         		q_coords +=cell.coords[j] * cv.M[j,q]
     	    end
-    	    A = avDiffTensor(q_coords,[0.0,1.0], 1.e-6,velocityField)
-                dΩ = getdetJdV(cv,q)
+    	    const A = avDiffTensor(q_coords,[0.0,1.0], 1.e-9,velocityField)
+                const dΩ = getdetJdV(cv,q)
                 for i in 1:n
-                    φ = shape_value(cv,q,i)
-                    ∇φ = shape_gradient(cv,q,i)
+                    const φ = shape_value(cv,q,i)
+                    const ∇φ = shape_gradient(cv,q,i)
                     for j in 1:(i-1)
-                        ψ = shape_value(cv,q,j)
-                        ∇ψ = shape_gradient(cv,q,j)
-            		    Kvalue = -1.0*(∇φ ⋅ (A⋅∇ψ)) * dΩ
-                        Ke[i,j] += Kvalue
-                        Ke[j,i] += Kvalue
-                        Mvalue = (φ ⋅ ψ) * dΩ
-                        Me[i,j] += Mvalue
-                        Me[j,i] += Mvalue
+                        const ψ = shape_value(cv,q,j)
+                        const ∇ψ = shape_gradient(cv,q,j)
+            		    Ke[i,j] += -1.0*(∇φ ⋅ (A⋅∇ψ)) * dΩ
+            		    Ke[j,i] += -1.0*(∇φ ⋅ (A⋅∇ψ)) * dΩ
+                        Me[i,j] += (φ ⋅ ψ) * dΩ
+                        Me[j,i] += (φ ⋅ ψ) * dΩ
                     end
                      Ke[i,i] += -1*(∇φ ⋅ (A⋅∇φ)) * dΩ
                      Me[i,i] += (φ⋅φ) * dΩ

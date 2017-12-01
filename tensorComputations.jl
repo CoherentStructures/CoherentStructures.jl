@@ -27,37 +27,51 @@ function avCGTensor(initval::Vector{Float64},tspan::Vector{Float64},
     return mean(DF)
 end
 
-function arraymap(t,x,result)
-    howmanytimes=4
-    basesize=2
-    for i in 1:howmanytimes
-        result[1+(i-1)*basesize: i*basesize] =  rot_double_gyre2(t,x[ 1 + (i-1)*basesize:  i*basesize],result[1 + (i - 1)*basesize: i*basesize])
+#The following function is like `map', but operates on 1d-datastructures.
+#@param t::Float64 is just some number
+#@param x::Float64 must have howmanytimes*basesize elements
+#@param myfun is a function that takes arguments (t, x, result)
+#     where t::Float64, x is an Array{Float64} of size basesize,
+#       and result::Array{Float64} is of size basesize
+#       myfun is assumed to return the result into the result array passed to it
+#This function applies myfun consecutively to slices of x, and stores
+#the result in the relevant slice of result.
+#This is so that a "diagonalized" ODE with several starting values can
+#be solved without having to call the ODE multiple times.
+@inline function arraymap(myfun,howmanytimes::Int64,basesize::Int64,t::Float64,x::Array{Float64},result::Array{Float64})
+    @inbounds for i in 1:howmanytimes
+        @views @inbounds  myfun(t,x[ 1 + (i-1)*basesize:  i*basesize],result[1 + (i - 1)*basesize: i*basesize])
     end
-    return result
 end
 
-function set1(a)
-    a[1] = 1.0
-end
-
-Id = SymmetricTensor{2,2}(eye(2,2))
-function avDiffTensor(x::Vec{2,Float64},tspan,
-    δ::Float64,myfun)
+#Returns the average (inverse) CG-Tensor at a point along a set of times
+#Derivatives are computed with finite differences
+#@param x::Vec{2,Float64} the initial point
+#@param tspan::Array{Float64} is the times
+#@param δ is the stencil width for the finite differences
+#@param ode_fun is a function that takes arguments (x,t,result)
+#   ode_fun needs to store its result in result
+#   ode_fun evaluates the rhs of the ODE being integrated at (x,t)
+function avDiffTensor(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_fun)
     dx = [δ,0]; dy = [0,δ];
-    stencil = zeros(1,8)
+    #In order to solve only one ODE, write all the initial values
+    #one after the other in one big vector
+    stencil = zeros(8)
     stencil[1:2] = x+dx
     stencil[3:4] = x+dy
     stencil[5:6] = x-dx
     stencil[7:8] = x-dy
-    prob = DE.ODEProblem(arraymap,stencil,(tspan[1],tspan[end]))
+    prob = DE.ODEProblem((t,x,result) -> arraymap(ode_fun, 4,2,t,x,result),stencil,(tspan[1],tspan[end]))
     sol = DE.solve(prob,DE.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=1.e-3,abstol=1.e-3).u
-    DF = zeros(Tensor{2,2},length(tspan))
-    for i in 1:length(tspan)
-        sol[i][1:2] -= sol[i][5:6]
-        sol[i][3:4] -= sol[i][7:8]
-        DF[i] = transpose(Tensor{2,2}(sol[i][1:4])/2δ) #TODO: Figure out why the transpose is neccessary...
+    const num_tsteps = length(tspan)
+    result = zeros(Tensor{2,2},num_tsteps)
+    @inbounds for i in 1:num_tsteps
+        #The ordering of the stencil vector was chosen so
+        #that  a:= stencil[1:4] - stencil[5:8] is a vector
+        #so that Tensor{2,2}(a) approximates the Jacobi-Matrix
+        @inbounds result[i] = Tensor{2,2}(sol[i][1:4] - sol[i][5:8])
     end
-    return mean([SymmetricTensor{2,2}(A'⋅A) for A in inv.(DF)])
+    return mean(dott.(inv.(result))) * 4δ*δ
 end
 
 function evolCGTensor(x::Vector{Float64},tspan::Vector{Float64},
