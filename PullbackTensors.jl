@@ -37,8 +37,8 @@ end
     G = inv(D)
     iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
     DFinv = inv.(DF)
-    DF .= [symmetric(transpose(df)⋅(G⋅df)) for df in DF]
-    DFinv .= [symmetric(df⋅(D⋅transpose(df))) for df in DFinv]
+    DF = [symmetric(transpose(df)⋅(G⋅df)) for df in DF]
+    DFinv = [symmetric(df⋅(D⋅transpose(df))) for df in DFinv]
     return DF, DFinv # DF is pullback metric tensor, DFinv is pullback diffusion tensor
 end
 
@@ -53,6 +53,6 @@ end
     δ::Float64,D::Tensors.SymmetricTensor{2,2,Float64,3})
 
     iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
-    DF .= inv.(DF)
+    DF = inv.(DF)
     return [symmetric(df⋅(D⋅transpose(df))) for df in DF]
 end
