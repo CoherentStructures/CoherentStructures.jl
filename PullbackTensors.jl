@@ -42,40 +42,11 @@ end
     return DF, DFinv # DF is pullback metric tensor, DFinv is pullback diffusion tensor
 end
 
-@everywhere function PullBackTensorsGeo(odefun,x₀::Vector{Float64},tspan::Vector{Float64},
-    δ::Float64,D::Tensors.SymmetricTensor{2,2,Float64,3})
-
-    G = inv(D)
-    GgeoInit = diagm(Tensor{2,2}, [cos(deg2rad(x₀[2])), 1.0])
-    DgeoInit = diagm(Tensor{2,2}, [1/cos(deg2rad(x₀[2])), 1.0])
-    prob = ODEProblem(odefun,x₀,(tspan[1],tspan[end]))
-    sol = solve(prob,DP5(),saveat=tspan,save_everystep=false,dense=false,reltol=1e-5,abstol=1e-5).u
-    GgeoFinal = [diagm(Tensor{2,2}, [1/cos(deg2rad(s[2])), 1.0]) for s in sol]
-    DgeoFinal = [diagm(Tensor{2,2}, [cos(deg2rad(s[2])), 1.0]) for s in sol]
-    iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
-    PBG = [GgeoFinal[i]⋅(DF[i]⋅GgeoInit) for i in eachindex(DF)]
-    DF .= inv.(DF)
-    PBD = [DgeoInit⋅DF[i]⋅DgeoFinal[i] for i in eachindex(DF,DgeoFinal)]
-    return [symmetric(transpose(PBG[i])⋅(G⋅PBG[i])) for i in eachindex(PBG)], [symmetric(PBD[i]⋅(D⋅transpose(PBD[i]))) for i in eachindex(PBD)] # DF is pullback metric tensor, DFinv is pullback diffusion tensor
-end
-
 @everywhere function PullBackMetricTensor(odefun,x₀::Vector{Float64},tspan::Vector{Float64},
     δ::Float64,G::Tensors.SymmetricTensor{2,2,Float64,3})
 
     iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
     return [symmetric(transpose(df)⋅(G⋅df)) for df in DF]
-end
-
-@everywhere function PullBackMetricTensorGeo(odefun,x₀::Vector{Float64},tspan::Vector{Float64},
-    δ::Float64,G::Tensors.SymmetricTensor{2,2,Float64,3})
-
-    QgeoInit = diagm(Tensor{2,2}, [cos(deg2rad(x₀[2])), 1.0])
-    prob = ODEProblem(odefun,x₀,(tspan[1],tspan[end]))
-    sol = solve(prob,DP5(),saveat=tspan,save_everystep=false,dense=false,reltol=1e-5,abstol=1e-5).u
-    QGeoFinal = [diagm(Tensor{2,2}, [1/cos(deg2rad(s[2])), 1.0]) for s in sol]
-    iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
-    PB = [QGeoFinal[i]⋅(DF[i]⋅QgeoInit) for i in eachindex(DF)]
-    return [symmetric(transpose(PB[i])⋅(G⋅PB[i])) for i in eachindex(PB)]
 end
 
 @everywhere function PullBackDiffTensor(odefun,x₀::Vector{Float64},tspan::Vector{Float64},
@@ -84,17 +55,4 @@ end
     iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
     DF .= inv.(DF)
     return [symmetric(df⋅(D⋅transpose(df))) for df in DF]
-end
-
-@everywhere function PullBackDiffTensorGeo(odefun,x₀::Vector{Float64},tspan::Vector{Float64},
-    δ::Float64,D::Tensors.SymmetricTensor{2,2,Float64,3})
-
-    QgeoInit = diagm(Tensor{2,2}, [1/cos(deg2rad(x₀[2])), 1.0])
-    prob = ODEProblem(odefun,x₀,(tspan[1],tspan[end]))
-    sol = solve(prob,DP5(),saveat=tspan,save_everystep=false,dense=false,reltol=1e-5,abstol=1e-5).u
-    QGeoFinal = [diagm(Tensor{2,2}, [cos(deg2rad(s[2])), 1.0]) for s in sol]
-    iszero(δ) ? DF = LinearizedFlowMap(odefun,x₀,tspan) : DF = LinearizedFlowMap(odefun,x₀,tspan,δ)
-    DF .= inv.(DF)
-    PB = [QgeoInit⋅DF[i]⋅QGeoFinal[i] for i in eachindex(DF,QGeoFinal)]
-    return [symmetric(PB[i]⋅(D⋅transpose(PB[i]))) for i in eachindex(PB)]
 end
