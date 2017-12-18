@@ -37,7 +37,7 @@ close!(dh)
 
 
 Id = one(Tensor{2,2})
-include("tensorComputations.jl")
+include("PullbackTensors.jl")
 function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField)
     K = create_sparsity_pattern(dh)
     a_K = start_assemble(K)
@@ -56,7 +56,7 @@ function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField
     	    for j in 1:n
         		q_coords +=cell.coords[j] * cv.M[j,q]
     	    end
-    	    const A = avDiffTensor(q_coords,[0.0,1.0], 1.e-8,velocityField,1.e-4)
+    	    const A = invCGTensor(q_coords,[0.0,1.0], 1.e-8,velocityField,1.e-4)
                 const dΩ = getdetJdV(cv,q)
                 for i in 1:n
                     const φ = shape_value(cv,q,i)
@@ -85,9 +85,8 @@ end
 @time λ, v = eigs(K,M,which=:SM)
 
 
-u = v[:,index]
-index = sortperm(real.(λ))[end-4]
+index = sortperm(real.(λ))[end-1]
 plot_u(grid,loc,real(fixU(dh,v[:,index])),ip,100,100)
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-GR.contourf(reshape(real(fixU(dh,v[:,index])),m,m),colormap=GR.COLORMAP_JET)
+#GR.contourf(reshape(real(fixU(dh,v[:,index])),m,m),colormap=GR.COLORMAP_JET)
 #savefig("output.png")

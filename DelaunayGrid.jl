@@ -102,7 +102,7 @@ function plot_u(grid::JuAFEM.Grid,loc::cellLocator, u::Vector{Float64},ip::JuAFE
     GR.contourf(x1,x2,values,colormap=GR.COLORMAP_JET)
 end
 
-using Plots#TODO: Get rid of this...
+#using Plots#TODO: Get rid of this...
 function plot_tesselation(loc::delaunayCellLocator)
     x, y = VD.getplotxy(VD.delaunayedges(loc.tess))
     Plots.plot((x - VD.min_coord)/loc.scale_x,(y - VD.min_coord)/loc.scale_y)
