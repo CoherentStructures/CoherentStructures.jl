@@ -1,24 +1,21 @@
 #Based on static_Laplace_eigvs.jl
 import GR
 include("velocityFields.jl")
+include("DelaunayGrid.jl")
+include("util.jl")
 using JuAFEM
 
-#The function below is taken from main_rot_gyre.jl
-function rot_double_gyre2(t,x,dx)
-  st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
-  dxΨP = 2π*cos.(2π*x[1]).*sin.(π*x[2])
-  dyΨP = π*sin.(2π*x[1]).*cos.(π*x[2])
-  dxΨF = π*cos.(π*x[1]).*sin.(2π*x[2])
-  dyΨF = 2π*sin.(π*x[1]).*cos.(2π*x[2])
-  dx[1] = - ((1-st)dyΨP + st*dyΨF)
-  dx[2] = (1-st)dxΨP + st*dxΨF
+node_list = Vec{2,Float64}[]
+m = 20 # number of cell in one direction
+for x1 in linspace(0,1,m)
+    for x0 in linspace(0,1,m)
+        push!(node_list,Vec{2}([x0,x1]))
+    end
 end
 
-
 print("Loaded necessary modules")
-m = 25 # number of cell in one direction
-grid = generate_grid(Triangle, (m,m),Vec{2}((0.0,0.0)),Vec{2}((1.0,1.0)))
-#addnodeset!(grid, "boundary", x -> abs(x[1]) ≈ 1 ||  abs(x[2]) ≈ 1)
+#grid = JuAFEM.generate_grid(Triangle, (m-1,m-1),Vec{2}((0.0,0.0)),Vec{2}((1.0,1.0)))
+grid,loc = generate_grid(Triangle,node_list)
 
 dim = 2
 ip = Lagrange{dim, RefTetrahedron, 1}()
@@ -29,12 +26,17 @@ dh = DofHandler(grid)
 push!(dh, :T, 1)
 close!(dh)
 
+#addnodeset!(grid, "boundary", x -> x[1] ≈ 0.0 ||  abs(x[2]) ≈ 1)
 #dbc = DirichletBoundaryConditions(dh)
 #add!(dbc, :T, getnodeset(grid, "boundary"), (x,t) -> 0.0)
 #close!(dbc)
 #update!(dbc, 0.0)
+#show(dbc)
+
+  #fixU(dh,u)
 
 
+Id = one(Tensor{2,2})
 include("tensorComputations.jl")
 function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField)
     K = create_sparsity_pattern(dh)
@@ -45,7 +47,7 @@ function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField
     n = getnbasefunctions(cv)         # number of basis functions
     Ke = zeros(n,n)
     Me = zeros(n,n)   # Local stiffness and mass matrix
-    @inbounds for (cellcounto, cell) in enumerate(CellIterator(dh))
+    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         fill!(Ke,0)
         fill!(Me,0)
         JuAFEM.reinit!(cv,cell)
@@ -54,7 +56,7 @@ function doassemble{dim}(cv::CellScalarValues{dim}, dh::DofHandler,velocityField
     	    for j in 1:n
         		q_coords +=cell.coords[j] * cv.M[j,q]
     	    end
-    	    const A = avDiffTensor(q_coords,[0.0,1.0], 1.e-9,velocityField)
+    	    const A = avDiffTensor(q_coords,[0.0,1.0], 1.e-8,velocityField,1.e-4)
                 const dΩ = getdetJdV(cv,q)
                 for i in 1:n
                     const φ = shape_value(cv,q,i)
@@ -82,7 +84,10 @@ end
 #apply!(M, dbc)
 @time λ, v = eigs(K,M,which=:SM)
 
-index = sortperm(real.(λ))[end-1]
+
+u = v[:,index]
+index = sortperm(real.(λ))[end-4]
+plot_u(grid,loc,real(fixU(dh,v[:,index])),ip,100,100)
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-GR.contourf(reshape(real(v[:,index]),m+1,m+1),colormap=GR.COLORMAP_JET)
+GR.contourf(reshape(real(fixU(dh,v[:,index])),m,m),colormap=GR.COLORMAP_JET)
 #savefig("output.png")

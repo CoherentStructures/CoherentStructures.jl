@@ -52,7 +52,7 @@ end
 #@param ode_fun is a function that takes arguments (x,t,result)
 #   ode_fun needs to store its result in result
 #   ode_fun evaluates the rhs of the ODE being integrated at (x,t)
-function avDiffTensor(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_fun)
+function avDiffTensor(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_fun,tolerance=1.e-3)
     dx = [δ,0]; dy = [0,δ];
     #In order to solve only one ODE, write all the initial values
     #one after the other in one big vector
@@ -62,7 +62,7 @@ function avDiffTensor(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_f
     stencil[5:6] = x-dx
     stencil[7:8] = x-dy
     prob = DE.ODEProblem((t,x,result) -> arraymap(ode_fun, 4,2,t,x,result),stencil,(tspan[1],tspan[end]))
-    sol = DE.solve(prob,DE.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=1.e-3,abstol=1.e-3).u
+    sol = DE.solve(prob,DE.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
     const num_tsteps = length(tspan)
     result = zeros(Tensor{2,2},num_tsteps)
     @inbounds for i in 1:num_tsteps
