@@ -19,6 +19,7 @@
 end
 
 #Based on JuAFEM's WriteVTK.vtk_point_data
+using JuAFEM
 function fixU(dh::DofHandler, u::Vector)
     res = fill(0.0,getnnodes(dh.grid))
     for cell in CellIterator(dh)
