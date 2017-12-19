@@ -1,6 +1,10 @@
 using JuAFEM
 
 function assembleStiff{dim}(cv::CellScalarValues{dim}, dh::DofHandler, Ditp)
+    return assembleStiffnessMatrix{dim}(cv,dh, x->Ditp[x...])
+end
+
+function assembleStiffnessMatrix{dim}(cv::CellScalarValues{dim}, dh::DofHandler, A)
     K = create_sparsity_pattern(dh)
     a_K = start_assemble(K)
     dofs = zeros(Int, ndofs_per_cell(dh))
@@ -11,22 +15,21 @@ function assembleStiff{dim}(cv::CellScalarValues{dim}, dh::DofHandler, Ditp)
         fill!(Ke,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
-            q_coords = zero(Vec{dim})
+    	    q_coords::Vec{dim} = zero(Vec{dim})
             for j in 1:n
                 q_coords +=cell.coords[j] * cv.M[j,q]
             end
-            const D̅ = Ditp[q_coords...] #SymmetricTensor{2,2}(eye(2,2))
-            # D̅ = mean(PullBackDiffTensor(Ditp,Array(q_coords),collect(linspace(0,3456000,401)),1.e-6,SymmetricTensor{2,2}([2., 0., 1/2]))) #SymmetricTensor{2,2}(eye(2,2))
-            const dΩ = getdetJdV(cv,q)
+
+            const Aqcoords::Tensor{2,2} = A(q_coords)
+            const dΩ::Float64 = getdetJdV(cv,q)
             for i in 1:n
-                const ∇φ = shape_gradient(cv,q,i)
+                const ∇φ::Vec{2} = shape_gradient(cv,q,i)
                 for j in 1:(i-1)
-                    const ∇ψ = shape_gradient(cv,q,j)
-                    const gradprod = -1.0*(∇φ ⋅ (D̅⋅∇ψ)) * dΩ
-                    Ke[i,j] += gradprod
-                    Ke[j,i] += gradprod
+                    const ∇ψ::Vec{2} = shape_gradient(cv,q,j)
+                    Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
+                    Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                 end
-                Ke[i,i] += -1.0*(∇φ ⋅ (D̅⋅∇φ)) * dΩ
+                Ke[i,i] += -1.0*(∇φ ⋅ (Aqcoords⋅∇φ)) * dΩ
             end
         end
         celldofs!(dofs, cell)
@@ -63,3 +66,5 @@ function assembleMass{dim}(cv::CellScalarValues{dim}, dh::DofHandler)
     end
     return M
 end
+
+assembleMassMatrix = assembleMass

@@ -1,7 +1,7 @@
 #velocityFields.jl from Daniel Karrasch
 
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
-@inbounds function rot_double_gyre2(t::Float64,x::AbstractArray{Float64},dx::AbstractArray{Float64})
+@inbounds @inline function rot_double_gyre2(t::Float64,x::AbstractArray{Float64},dx::AbstractArray{Float64})
 #function rot_double_gyre2(t::Float64,x,dx)
   st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
   dxΨP = 2π*cos.(2π*x[1]).*sin.(π*x[2])

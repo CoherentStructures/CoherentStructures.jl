@@ -1,12 +1,10 @@
 @everywhere using Tensors, DiffEqBase, OrdinaryDiffEq#, ForwardDiff
-include("util.jl")
+@everywhere include("util.jl")
 
-# this function is intended for potential flow map linearization by automatic differentiation
-# @everywhere function flow(g,u0,tspan)
-#   Tspan = (tspan[1], tspan[end])
-#   prob = ODEProblem(g,u0,eltype(u0).(Tspan))
-#   sol = solve(prob,saveat=tspan,save_everystep=false,dense=false,reltol=1e-7,abstol=1e-7).u[end]
-# end
+ @everywhere function flow2D(g::Function,u0::Vec{2},tspan::Vector{Float64})
+   prob = OrdinaryDiffEq.ODEProblem(g,[u0[1],u0[2]],(tspan[1],tspan[end]))
+   return Vec{2}(OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=1e-3,abstol=1e-3).u[end])
+ end
 
 
 #Returns the average (inverse) CG-Tensor at a point along a set of times
@@ -18,7 +16,7 @@ include("util.jl")
 #   ode_fun needs to store its result in result
 #   ode_fun evaluates the rhs of the ODE being integrated at (x,t)
 #TODO: Use LinearizedFlowMap() to avoid code duplication
-function invCGTensor(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_fun,tolerance=1.e-3)
+@inline function invCGTensor(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_fun,tolerance=1.e-3)
     dx = [δ,0]; dy = [0,δ];
     #In order to solve only one ODE, write all the initial values
     #one after the other in one big vector

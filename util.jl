@@ -18,9 +18,12 @@
     end
 end
 
+
 #Based on JuAFEM's WriteVTK.vtk_point_data
-using JuAFEM
-function fixU(dh::DofHandler, u::Vector)
+#Reorders an array of values corresponding to dofs from a DofHandler
+#To the order which the nodes of the grid would be
+@everywhere using JuAFEM
+@everywhere function fixU(dh::DofHandler, u::Vector)
     res = fill(0.0,getnnodes(dh.grid))
     for cell in CellIterator(dh)
         _celldofs = celldofs(cell)
@@ -33,3 +36,13 @@ function fixU(dh::DofHandler, u::Vector)
       end
       return res
   end
+
+#Unit Vectors in R^2
+e1 = basevec(Vec{2},1)
+e2 = basevec(Vec{2},2)
+
+
+using GR
+function plot_spectrum(λ)
+    GR.plot(real.(λ),imag.(λ),"x")
+end

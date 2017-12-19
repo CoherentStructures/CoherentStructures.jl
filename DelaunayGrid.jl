@@ -1,4 +1,3 @@
-
 using Tensors
 using JuAFEM
 import JuAFEM.generate_grid
@@ -9,7 +8,9 @@ GP = GeometricalPredicates
 import GR
 
 
-#Helper struct for keeping track of point numbers
+
+
+#Helper type for keeping track of point numbers
 struct NumberedPoint2D <: VD.AbstractPoint2D
     x::Float64
     y::Float64
@@ -19,7 +20,6 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
     NumberedPoint2D(p::VD.Point2D) = new(p.x, p.y, 0)
     NumberedPoint2D(p::Vec{2,Float64}) = new(p[1], p[2], 0)
  end
-
  GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
  GP.Point2D(p::NumberedPoint2D) = Point2D(p.x,p.y)
  GP.gety(p::NumberedPoint2D) = p.y
@@ -43,8 +43,19 @@ function delaunay(x::Vector{Vec{2,Float64}})
     return tess,m,scale_x,scale_y
 end
 
+#JuAFEM does not (to my knowledge) contain functions for determining
+#which cell a point is in
+#Subtypes of cellLocator are used for finding the cell a point is in
+#cellLocator subtypes should have a corresponding locatePoint function
+#TODO: Find out the existence of such a function can be enforced by julia
+#The locatePoint function returns a tuple (coords, [nodes])
+#where coords gives the coordinates within the reference shape (e.g. standard simplex)
+#And [nodes] is the list of corresponding node ids, ordered in the order of the
+#corresponding shape functions from JuAFEM's interpolation.jl file
 abstract type cellLocator end
 
+#For delaunay triangulations, we can use the tesselation
+#object and the locate() function
 struct delaunayCellLocator <: cellLocator
     m::Int64
     scale_x::Float64
@@ -52,11 +63,11 @@ struct delaunayCellLocator <: cellLocator
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
 end
 
-e1 = basevec(Vec{2},1)
-e2 = basevec(Vec{2},2)
-
 function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
     point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x,VD.min_coord+x[2]*loc.scale_y,1)
+    if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
+        throw(DomainError())
+    end
     t = VD.locate(loc.tess, point_inbounds)
     if VD.isexternal(t)
         throw(DomainError())
@@ -65,7 +76,24 @@ function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
     v2 = grid.nodes[t._c.id].x - grid.nodes[t._a.id].x
     J = v1 ⊗ e1  + v2 ⊗ e2
     return (inv(J) ⋅ (x - grid.nodes[t._a.id].x)), [t._b.id, t._c.id, t._a.id]
+end
 
+#Here N gives the number of nodes and M gives the number of faces
+struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
+    n_x::Int
+    n_y::Int
+    left::Vec{2}
+    right::Vec{2}
+end
+
+function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::Vec{2})
+    #TODO: Implement this
+    return
+end
+
+function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x::Vec{2})
+    #TODO: Implement this
+    return
 end
 
 #TODO: Make this also work for P2-Lagrange
@@ -86,13 +114,13 @@ function evaluate_function(grid::JuAFEM.Grid,loc::cellLocator,x::Vec{2},u::Vecto
 end
 
 #TODO: Make this also work for P2-Lagrange
-#TODO: Make this much, much more efficient
+#TODO: Make this much more efficient
 function plot_u(grid::JuAFEM.Grid,loc::cellLocator, u::Vector{Float64},ip::JuAFEM.Interpolation{2,RefTetrahedron,1},nx=20,ny=20)
     x1 = Float64[]
     x2 = Float64[]
     values = Float64[]
-    for x in linspace(0.0,1.0,nx)
-        for y in linspace(0.0,1.0,ny)
+    for x in linspace(1.e-6,1.0-1.e-6,nx)
+        for y in linspace(1e-6,1-1.e-6,ny)
             push!(x1,x)
             push!(x2,y)
             current_point = Vec{2}([x,y])
