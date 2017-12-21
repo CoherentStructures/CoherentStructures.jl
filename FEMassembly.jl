@@ -1,11 +1,17 @@
 using JuAFEM
 include("GridFunctions.jl")
 
-function assembleStiff{dim}(cv::CellScalarValues,dh::DofHandler,Ditp)
-    return assembleStiffnessMatrix2{dim}(cv,dh, x->Ditp[x...])
+function assembleStiff(cv::CellScalarValues,dh::DofHandler,Ditp)
+    return assembleStiffnessMatrix2(cv,dh, x->Ditp[x...])
 end
 
-function assembleStiffnessMatrix{dim}(ctx::gridContext{dim}, A::Function)
+
+Id = one(Tensor{2,2})
+function myIdentity(x::Vec{2})
+    return Id
+end
+
+function assembleStiffnessMatrix{dim}(ctx::gridContext{dim}, A::Function=myIdentity)
     cv = CellScalarValues(ctx.qr, ctx.ip)
     return assembleStiffnessMatrix2(cv,ctx.dh,A)
 end
@@ -26,7 +32,7 @@ function assembleStiffnessMatrix2{dim}(cv::CellScalarValues{dim},dh::DofHandler,
                 q_coords +=cell.coords[j] * cv.M[j,q]
             end
 
-            const Aqcoords::Tensor{2,2} = A(q_coords)
+            const Aqcoords::Tensor{2,2} = A(q_coords)#TODO: Use SymmetricTensor type here, as we assume A is symmetric below anyways...
             const dΩ::Float64 = getdetJdV(cv,q)
             for i in 1:n
                 const ∇φ::Vec{2} = shape_gradient(cv,q,i)

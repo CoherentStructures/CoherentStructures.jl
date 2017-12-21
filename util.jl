@@ -22,14 +22,13 @@ abstract type abstractGridContext{dim} end
     end
 end
 
-#Based on JuAFEM's WriteVTK.vtk_point_data
 #Reorders an array of values corresponding to dofs from a DofHandler
 #To the order which the nodes of the grid would be
 function dof2U(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
    n = ctx.n
    res = fill(0.0,getnnodes(ctx.grid))
    for node in 1:n
-           res[node] = u[ctx.dhtable[node]]
+           res[node] = u[ctx.node_to_dof[node]]
       end
   return res
 end

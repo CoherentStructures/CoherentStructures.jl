@@ -13,13 +13,10 @@ ctx = regularDelaunayGrid((50,50))
 Id = one(Tensor{2,2})
 cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
 
-function myIdentity(x::Vec{2})
-    return Id
-end
 
 #With CG-Method
 begin
-    @time S = assembleStiffnessMatrix(ctx,myIdentity)
+    @time S = assembleStiffnessMatrix(ctx)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx)
     @time λ, v = eigs(S+K,M,which=:SM)
@@ -27,16 +24,25 @@ end
 
 #With non-adaptive TO-method:
 begin
-    @time S = assembleStiffnessMatrix(ctx,myIdentity)
+    @time S = assembleStiffnessMatrix(ctx)
+    @time M = assembleMassMatrix(ctx)
     @time ALPHA = getAlphaMatrix(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]))
     @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM)
 end
 
-#@time apply!(K, dbc)
-
+#With adaptive TO method. Note that this gives very non-smooth results, so there is
+#Probably a mistake in the code somewhere....
+#Alternatively, it seems like the FEM paper uses more timesteps than just 2
+#TODO: See if adding more timesteps fixes things
+begin
+    @time S = assembleStiffnessMatrix(ctx)
+    @time M = assembleMassMatrix(ctx)
+    @time S2= adaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,1.0]))
+    @time λ, v = eigs(S + S2,M,which=:SM,nev=20)
+end
+#Plotting
 index = sortperm(real.(λ))[end-1]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]),25,25)
+plot_u(ctx,real.(v[:,index]),50,50)
 plot_spectrum(λ)
-#GR.contourf(reshape(real(dof2U(dh,v[:,index])),m,m),colormap=GR.COLORMAP_JET)
 #savefig("output.png")

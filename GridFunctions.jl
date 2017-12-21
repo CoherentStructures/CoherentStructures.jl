@@ -1,3 +1,9 @@
+#(c) 2017 Nathanael Schilling
+#This file implements methods for working with JuAFEM grids
+#This includes methods for making grids from Delaunay Triangulations based
+#on the code in FEMDL.jl
+#There are also functions for evaluating functions on the grid
+
 using Tensors, JuAFEM
 
 import GeometricalPredicates
@@ -7,15 +13,12 @@ VD = VoronoiDelaunay
 
 include("util.jl")
 
-#JuAFEM does not (to my knowledge) contain functions for determining
-#which cell a point is in
-#Subtypes of cellLocator are used for finding the cell a point is in
-#cellLocator subtypes should have a corresponding locatePoint function
+#JuAFEM has no functions for determining which cell a point is in.
+
+#The cellLocator provides an abstract basis class for classes for locating points on grids.
+#A cellLocator should implement a locatePoint function (see below)
 #TODO: Find out the existence of such a function can be enforced by julia
-#The locatePoint function returns a tuple (coords, [nodes])
-#where coords gives the coordinates within the reference shape (e.g. standard simplex)
-#And [nodes] is the list of corresponding node ids, ordered in the order of the
-#corresponding shape functions from JuAFEM's interpolation.jl file
+
 abstract type cellLocator end
 
 const default_quadrature_order=5
@@ -33,18 +36,23 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
     dh::JuAFEM.DofHandler
     qr::JuAFEM.QuadratureRule
     loc::cellLocator
-    dhtable::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
+    node_to_dof::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
+    dof_to_node::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
     n::Int #The number of nodes
     m::Int #The number of cells
     function gridContext{dim}(grid::JuAFEM.Grid,ip::JuAFEM.Interpolation,dh::JuAFEM.DofHandler,qr::JuAFEM.QuadratureRule,loc::cellLocator) where {dim}
         x =new{dim}(grid,ip,dh,qr,loc)
         x.n = JuAFEM.getnnodes(dh.grid)
         x.m = JuAFEM.getncells(dh.grid)
-        x.dhtable = nodeToDHTable(x)
+
+        #TODO: Measure if the sorting below is expensive
+        x.node_to_dof = nodeToDHTable(x)
+        x.dof_to_node = sortperm(x.node_to_dof)
         return x
     end
 end
 
+#Based on JuAFEM's WriteVTK.vtk_point_data
 function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
     dh::DofHandler = ctx.dh
     const n = ctx.n
@@ -85,7 +93,12 @@ function regularDelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}(
     return gridContext{2}(Triangle,node_list, quadrature_order)
 end
 
-#Call the specialized locatePoint function for this kind of grid
+
+#The locatePoint function returns a tuple (coords, [nodes])
+#where coords gives the coordinates within the reference shape (e.g. standard simplex)
+#And [nodes] is the list of corresponding node ids, ordered in the order of the
+#corresponding shape functions from JuAFEM's interpolation.jl file
+#Here we call the specialized locatePoint function for this kind of grid
 function locatePoint(ctx::gridContext{dim}, x::Vec{dim}) where dim
     return locatePoint(ctx.loc,ctx.grid,x)
 end
@@ -122,7 +135,7 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
  GP.gety(p::NumberedPoint2D) = p.y
  GP.getx(p::NumberedPoint2D) = p.x
 
-#More or less matlab's delaunay function, based on code from FEMDL.jl
+#More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
 function delaunay2(x::Vector{Vec{2,Float64}})
     width = VD.max_coord - VD.min_coord
     max_x = maximum(map(v->v[1],x))
@@ -132,12 +145,20 @@ function delaunay2(x::Vector{Vec{2,Float64}})
     scale_x = 0.9*width/(max_x - min_x)
     scale_y = 0.9*width/(max_y - min_y)
     n = length(x)
-    a = [NumberedPoint2D(VD.min_coord+x[i][1]*scale_x,VD.min_coord+x[i][2]*scale_y,i) for i in 1:n]
+    a = [NumberedPoint2D(VD.min_coord+x[i][1]*scale_x - min_x,VD.min_coord+x[i][2]*scale_y-min_y,i) for i in 1:n]
+    #TODO: Replace below with an assert, or with nothing (as it should never happen)
+    for i in 1:n
+        if GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord
+            ax = GP.getx(a[i])
+            ay = GP.gety(a[i])
+            print("a = [$ax,$ay]\n")
+        end
+    end
     tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
     push!(tess,a)
     m = 0
     for tri in tess; m += 1; end  # count number of triangles --
-    return tess,m,scale_x,scale_y
+    return tess,m,scale_x,scale_y,min_x,min_y
 end
 
 #For delaunay triangulations, we can use the tesselation
@@ -146,11 +167,13 @@ struct delaunayCellLocator <: cellLocator
     m::Int64
     scale_x::Float64
     scale_y::Float64
+    min_x::Float64
+    min_y::Float64
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
 end
 
 function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
-    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x,VD.min_coord+x[2]*loc.scale_y,1)
+    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x-loc.min_x,VD.min_coord+x[2]*loc.scale_y-loc.min_y,1)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
     end
@@ -184,7 +207,7 @@ end
 
 
 function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Vec{2,Float64}})
-    tess,m,scale_x,scale_y = delaunay2(nodes_in)
+    tess,m,scale_x,scale_y,min_x,min_y = delaunay2(nodes_in)
     nodes = Node{2,Float64}[]
     for node_coords in  nodes_in
         push!(nodes,Node(node_coords))
@@ -206,7 +229,7 @@ function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Vec{2,Float64}}
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = delaunayCellLocator(m,scale_x,scale_y,tess)
+    locator = delaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
     return grid, locator
 
 end
