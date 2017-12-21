@@ -136,7 +136,7 @@ function delaunay2(x::Vector{Vec{2,Float64}})
     tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
     push!(tess,a)
     m = 0
-    for tri in tess; m += 1; end  # count number of triangles -- TODO
+    for tri in tess; m += 1; end  # count number of triangles --
     return tess,m,scale_x,scale_y
 end
 

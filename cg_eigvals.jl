@@ -1,11 +1,11 @@
 #Based on static_Laplace_eigvs.jl
 import GR
-include("velocityFields.jl")
-include("TO.jl")
-include("GridFunctions.jl")
-include("plotting.jl")
-include("PullbackTensors.jl")
-include("FEMassembly.jl")
+include("velocityFields.jl") #For rot_double_gyre2
+include("TO.jl") #For getAlphaMatrix
+include("GridFunctions.jl") #For regularyDelaunayGrid
+include("plotting.jl")#For plot_u
+include("PullbackTensors.jl")#For invCGTensor
+include("FEMassembly.jl")#For assembleMassMatrix & co
 
 ctx = regularDelaunayGrid((50,50))
 
