@@ -29,7 +29,7 @@ function assembleStiffnessMatrix{dim}(cv::CellScalarValues{dim}, dh::DofHandler,
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                 end
-                Ke[i,i] += -1.0*(∇φ ⋅ (Aqcoords⋅∇φ)) * dΩ
+                Ke[i,i] -= (∇φ ⋅ (Aqcoords⋅∇φ)) * dΩ
             end
         end
         celldofs!(dofs, cell)

@@ -37,6 +37,21 @@ end
       return res
   end
 
+  function nodeToDHTable(dh::DofHandler)
+    res = fill(0,getnnodes(dh.grid))
+    for cell in CellIterator(dh)
+        _celldofs = celldofs(cell)
+        counter = 1
+        offset = JuAFEM.field_offset(dh, dh.field_names[1])
+       for node in getnodes(cell)
+               res[node] = _celldofs[counter + offset]
+               counter += 1
+          end
+      end
+      return res
+  end
+
+
 #Unit Vectors in R^2
 e1 = basevec(Vec{2},1)
 e2 = basevec(Vec{2},2)

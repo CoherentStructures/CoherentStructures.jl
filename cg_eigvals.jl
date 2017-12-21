@@ -40,22 +40,25 @@ end
 
 
 include("PullbackTensors.jl")
+include("FEMassembly.jl")
 @time K,M = doassemble(cv,dh,rot_double_gyre2)
 
 Id = one(Tensor{2,2})
 cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
 @time K = assembleStiffnessMatrix(cv, dh,cgfun)
 @time M = assembleMassMatrix(cv,dh)
-@time S = assembleStiffnessMatrix(cv, dh,x->Id)
 
-@time ALPHA = getAlphaMatrix(grid,loc,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]),ip)
-@time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM)
+dht = nodeToDHTable(dh)
+@time S = assembleStiffnessMatrix(cv, dh,x->Id)
+@time M = assembleMassMatrix(cv,dh)
+@time ALPHA = getAlphaMatrix(grid,loc,dht,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]),ip)
+@time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM,nev=30)
 
 #@time apply!(K, dbc)
 #apply!(M, dbc)
-@time λ, v = eigs(K,M,which=:SM)
+@time λ, v = eigs(S+K,M,which=:SM)
 
-index = sortperm(real.(λ))[end-1]
+index = sortperm(real.(λ))[end-9]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(grid,loc,real(fixU(dh,v[:,index])),ip,100,100)
 plot_spectrum(λ)
