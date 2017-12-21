@@ -4,8 +4,6 @@ include("velocityFields.jl")
 include("TO.jl")
 include("GridFunctions.jl")
 include("plotting.jl")
-
-
 include("PullbackTensors.jl")
 include("FEMassembly.jl")
 
@@ -21,6 +19,7 @@ end
 
 #With CG-Method
 begin
+    @time S = assembleStiffnessMatrix(ctx,myIdentity)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx)
     @time λ, v = eigs(S+K,M,which=:SM)

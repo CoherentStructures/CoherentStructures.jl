@@ -1,12 +1,16 @@
 using JuAFEM
 include("GridFunctions.jl")
 
-function assembleStiff{dim}(ctx::gridContext, Ditp)
-    return assembleStiffnessMatrix{dim}(ctx, x->Ditp[x...])
+function assembleStiff{dim}(cv::CellScalarValues,dh::DofHandler,Ditp)
+    return assembleStiffnessMatrix2{dim}(cv,dh, x->Ditp[x...])
 end
 
 function assembleStiffnessMatrix{dim}(ctx::gridContext{dim}, A::Function)
     cv = CellScalarValues(ctx.qr, ctx.ip)
+    return assembleStiffnessMatrix2(cv,ctx.dh,A)
+end
+
+function assembleStiffnessMatrix2{dim}(cv::CellScalarValues{dim},dh::DofHandler,A::Function)
     K = create_sparsity_pattern(ctx.dh)
     a_K = start_assemble(K)
     dofs = zeros(Int, ndofs_per_cell(ctx.dh))
@@ -40,9 +44,12 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim}, A::Function)
     return K
 end
 
-
-function assembleMass{dim}(ctx::gridContext{dim})
+function assembleMassMatrix{dim}(ctx::gridContext{dim})
     cv = CellScalarValues(ctx.qr, ctx.ip)
+    return assembleMass(cv,ctx.dh)
+end
+
+function assembleMass{dim}(cv::CellScalarValues{dim},dh::DofHandler)
     M = create_sparsity_pattern(ctx.dh)
     a_M = start_assemble(M)
     dofs = zeros(Int, ndofs_per_cell(ctx.dh))
@@ -70,5 +77,3 @@ function assembleMass{dim}(ctx::gridContext{dim})
     end
     return M
 end
-
-const assembleMassMatrix = assembleMass
