@@ -1,6 +1,10 @@
 #(c) 2017 Nathanael Schilling
 #Various utility functions
 
+using JuAFEM
+
+abstract type abstractGridContext{dim} end
+
 #The following function is like `map', but operates on 1d-datastructures.
 #@param t::Float64 is just some number
 #@param x::Float64 must have howmanytimes*basesize elements
@@ -18,38 +22,17 @@
     end
 end
 
-
 #Based on JuAFEM's WriteVTK.vtk_point_data
 #Reorders an array of values corresponding to dofs from a DofHandler
 #To the order which the nodes of the grid would be
-@everywhere using JuAFEM
-@everywhere function fixU(dh::DofHandler, u::Vector)
-    res = fill(0.0,getnnodes(dh.grid))
-    for cell in CellIterator(dh)
-        _celldofs = celldofs(cell)
-        counter = 1
-        offset = JuAFEM.field_offset(dh, dh.field_names[1])
-       for node in getnodes(cell)
-               res[node] = u[_celldofs[counter + offset]]
-               counter += 1
-          end
+function dof2U(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
+   n = ctx.n
+   res = fill(0.0,getnnodes(ctx.grid))
+   for node in 1:n
+           res[node] = u[ctx.dhtable[node]]
       end
-      return res
-  end
-
-  function nodeToDHTable(dh::DofHandler)
-    res = fill(0,getnnodes(dh.grid))
-    for cell in CellIterator(dh)
-        _celldofs = celldofs(cell)
-        counter = 1
-        offset = JuAFEM.field_offset(dh, dh.field_names[1])
-       for node in getnodes(cell)
-               res[node] = _celldofs[counter + offset]
-               counter += 1
-          end
-      end
-      return res
-  end
+  return res
+end
 
 
 #Unit Vectors in R^2

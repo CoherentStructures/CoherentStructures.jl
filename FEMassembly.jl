@@ -1,17 +1,19 @@
 using JuAFEM
+include("GridFunctions.jl")
 
-function assembleStiff{dim}(cv::CellScalarValues{dim}, dh::DofHandler, Ditp)
-    return assembleStiffnessMatrix{dim}(cv,dh, x->Ditp[x...])
+function assembleStiff{dim}(ctx::gridContext, Ditp)
+    return assembleStiffnessMatrix{dim}(ctx, x->Ditp[x...])
 end
 
-function assembleStiffnessMatrix{dim}(cv::CellScalarValues{dim}, dh::DofHandler, A)
-    K = create_sparsity_pattern(dh)
+function assembleStiffnessMatrix{dim}(ctx::gridContext{dim}, A::Function)
+    cv = CellScalarValues(ctx.qr, ctx.ip)
+    K = create_sparsity_pattern(ctx.dh)
     a_K = start_assemble(K)
-    dofs = zeros(Int, ndofs_per_cell(dh))
+    dofs = zeros(Int, ndofs_per_cell(ctx.dh))
     n = getnbasefunctions(cv)         # number of basis functions
     Ke = zeros(n,n)
 
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
+    @inbounds for (cellcount, cell) in enumerate(CellIterator(ctx.dh))
         fill!(Ke,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
@@ -38,14 +40,16 @@ function assembleStiffnessMatrix{dim}(cv::CellScalarValues{dim}, dh::DofHandler,
     return K
 end
 
-function assembleMass{dim}(cv::CellScalarValues{dim}, dh::DofHandler)
-    M = create_sparsity_pattern(dh)
+
+function assembleMass{dim}(ctx::gridContext{dim})
+    cv = CellScalarValues(ctx.qr, ctx.ip)
+    M = create_sparsity_pattern(ctx.dh)
     a_M = start_assemble(M)
-    dofs = zeros(Int, ndofs_per_cell(dh))
+    dofs = zeros(Int, ndofs_per_cell(ctx.dh))
     n = getnbasefunctions(cv)         # number of basis functions
     Me = zeros(n,n)   # Local stiffness and mass matrix
 
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
+    @inbounds for (cellcount, cell) in enumerate(CellIterator(ctx.dh))
         fill!(Me,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
@@ -67,4 +71,4 @@ function assembleMass{dim}(cv::CellScalarValues{dim}, dh::DofHandler)
     return M
 end
 
-assembleMassMatrix = assembleMass
+const assembleMassMatrix = assembleMass
