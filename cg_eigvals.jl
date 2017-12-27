@@ -10,7 +10,7 @@ begin #begin/end block to evaluate all at once in atom
 end
 
 #ctx = regularTriangularGrid((25,25))
-ctx = regularDelaunayGrid()
+ctx = regularQuadrilateralGrid()
 
 
 cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
@@ -45,14 +45,15 @@ end
 #Plotting
 index = sortperm(real.(λ))[end-1]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]),50,50)
+plot_u(ctx,real.(v[:,index]),30,30)
 
-ctx = regularTriangularGrid((5,3))
+#ctx2 = regularQuadrilateralGrid((5,3))
+ctx2 = regularQuadrilateralGrid((5,3))
 a = zeros(15)
-a[3] = 1.0
-#locatePoint(ctx,Vec{2}([0.52,0.0]))
-dof2U(ctx,a)
-plot_u(ctx,a,100,100)
+a[4] = 1.0
+#locatePoint(ctx2,Vec{2}([1.e-8,1.e-8]))
+#dof2U(ctx2,a)
+plot_u(ctx2,a,50,50)
 GR.contourf([0.0,1.0,0.0,1.0,0.5],[0.0,0.0,1.0,1.0,0.5],[0.0,1.0,0.0,0.0,0.0])
 #plot_spectrum(λ)
 #savefig("output.png")
