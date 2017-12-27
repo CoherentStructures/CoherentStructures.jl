@@ -1,16 +1,18 @@
 #Based on static_Laplace_eigvs.jl
-import GR
-include("velocityFields.jl") #For rot_double_gyre2
-include("TO.jl") #For getAlphaMatrix
-include("GridFunctions.jl") #For regularyDelaunayGrid
-include("plotting.jl")#For plot_u
-include("PullbackTensors.jl")#For invCGTensor
-include("FEMassembly.jl")#For assembleMassMatrix & co
+begin #begin/end block to evaluate all at once in atom
+    import GR
+    include("velocityFields.jl") #For rot_double_gyre2
+    include("TO.jl") #For getAlphaMatrix
+    include("GridFunctions.jl") #For regularyDelaunayGrid
+    include("plotting.jl")#For plot_u
+    include("PullbackTensors.jl")#For invCGTensor
+    include("FEMassembly.jl")#For assembleMassMatrix & co
+end
 
-ctx = regularDelaunayGrid((50,50))
+#ctx = regularTriangularGrid((25,25))
+ctx = regularDelaunayGrid()
 
 
-Id = one(Tensor{2,2})
 cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
 
 
@@ -37,12 +39,20 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time S2= adaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,1.0]))
+    @time S2= adaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]))
     @time λ, v = eigs(S + S2,M,which=:SM,nev=20)
 end
 #Plotting
 index = sortperm(real.(λ))[end-1]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),50,50)
-plot_spectrum(λ)
+
+ctx = regularTriangularGrid((5,3))
+a = zeros(15)
+a[3] = 1.0
+#locatePoint(ctx,Vec{2}([0.52,0.0]))
+dof2U(ctx,a)
+plot_u(ctx,a,100,100)
+GR.contourf([0.0,1.0,0.0,1.0,0.5],[0.0,0.0,1.0,1.0,0.5],[0.0,1.0,0.0,0.0,0.0])
+#plot_spectrum(λ)
 #savefig("output.png")

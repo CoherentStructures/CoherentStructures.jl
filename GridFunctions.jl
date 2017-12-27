@@ -40,6 +40,9 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
     dof_to_node::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
     n::Int #The number of nodes
     m::Int #The number of cells
+    #The following two fields are only well-defined for regular rectangular grid
+    spatialBounds::Vector{Vec{dim}} #In 2D, this is {LL,UR} for regular grids
+    numberOfPointsInEachDirection::Vector{Int}
     function gridContext{dim}(grid::JuAFEM.Grid,ip::JuAFEM.Interpolation,dh::JuAFEM.DofHandler,qr::JuAFEM.QuadratureRule,loc::cellLocator) where {dim}
         x =new{dim}(grid,ip,dh,qr,loc)
         x.n = JuAFEM.getnnodes(dh.grid)
@@ -81,16 +84,38 @@ end
         return gridContext{2}(grid,ip,dh,qr,loc)
 end
 
-#Creates a regular uniform grid on a square
+#Creates a regular uniform grid on a square with delaunay triangulation
 function regularDelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
-    m = 50 # number of cell in one direction
     node_list = Vec{2,Float64}[]
     for x1 in linspace(LL[1],UR[1],numnodes[1])
         for x0 in linspace(LL[2],UR[2],numnodes[2])
             push!(node_list,Vec{2}([x0,x1]))
         end
     end
-    return gridContext{2}(Triangle,node_list, quadrature_order)
+    result = gridContext{2}(Triangle,node_list, quadrature_order)
+    result.spatialBounds = [LL,UR]
+    result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+    return result
+end
+
+#Constructor for regular 2D triangular grids (without delaunay)
+(::Type{gridContext{2}})(::Type{Triangle},
+                         numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),
+                         quadrature_order::Int=default_quadrature_order) = begin
+        #The -1 below is needed because JuAFEM internally then goes on to increment it
+        grid = generate_grid(Triangle,(numnodes[1]-1,numnodes[2]-1),LL, UR )
+        loc = regularGridLocator{Triangle}(numnodes[1],numnodes[2],LL,UR)
+        ip = Lagrange{2, RefTetrahedron, 1}()
+        dh = DofHandler(grid)
+        qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
+        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+        close!(dh)
+        return gridContext{2}(grid,ip,dh,qr,loc)
+end
+
+#Creates a regular uniform grid on a square without delaunay Triangulation
+function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
+    return gridContext{2}(Triangle,numnodes, LL,UR)
 end
 
 
@@ -191,12 +216,42 @@ end
 struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     n_x::Int
     n_y::Int
-    left::Vec{2}
-    right::Vec{2}
+    LL::Vec{2}
+    UR::Vec{2}
 end
 
 function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::Vec{2})
-    #TODO: Implement this
+    #Get integer and fractional part of coordinates
+    #This is the upper left corner
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.n_x-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.n_y-1),1)
+    n1 = Int(n1f)
+    n2 = Int(n2f)
+    if n1 == (loc.n_x-1) #If we hit the right hand edge
+        n1 = loc.n_x-2
+        loc1 = 1.0
+    end
+    if n2 == (loc.n_y-1) #If we hit the top edge
+        n2 = loc.n_y-2
+        loc2 = 1.0
+    end
+    #Get the four node numbers of quadrilateral the point is in:
+    ll = n1 + n2*loc.n_x
+    lr = ll + 1
+    ul = n1 + (n2+1)*loc.n_x
+    ur = ul + 1
+    if ur > (loc.n_x * loc.n_y)
+        throw(DomainError())
+    end
+    if loc1 + loc2 <= 1.0 # ◺
+        return Vec{2}([loc1,loc2]), [lr+1, ul+1,ll+1]
+    else # ◹
+        #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
+        #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
+        #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
+        const tM = Tensor{2,2}([1,-1,1,0])
+        return tM⋅Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1]
+    end
     return
 end
 
