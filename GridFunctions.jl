@@ -62,11 +62,11 @@ function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
     res = fill(0,n)
     for cell in CellIterator(dh)
         _celldofs = celldofs(cell)
-        counter = 1
+        ctr = 1
         offset = JuAFEM.field_offset(dh, dh.field_names[1])
         for node in getnodes(cell)
-               res[node] = _celldofs[counter + offset]
-           counter += 1
+               res[node] = _celldofs[ctr + offset]
+               ctr += 1
         end
     end
     return res
@@ -98,6 +98,31 @@ function regularDelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}(
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
     return result
 end
+
+(::Type{gridContext{2}})(::Type{QuadraticTriangle},node_list::Vector{Vec{2,Float64}},quadrature_order::Int=default_quadrature_order) = begin
+        grid,loc = generate_grid(QuadraticTriangle,node_list)
+        ip = Lagrange{2, RefTetrahedron, 2}()
+        dh = DofHandler(grid)
+        qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
+        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+        close!(dh)
+        return gridContext{2}(grid,ip,dh,qr,loc)
+end
+
+function regularP2DelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
+    node_list = Vec{2,Float64}[]
+    for x1 in linspace(LL[1],UR[1],numnodes[1])
+        for x0 in linspace(LL[2],UR[2],numnodes[2])
+            push!(node_list,Vec{2}([x0,x1]))
+        end
+    end
+    result = gridContext{2}(QuadraticTriangle,node_list, quadrature_order)
+    #TODO: Think about what values would be sensible for the two variables below
+    result.spatialBounds = [LL,UR]
+    result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+    return result
+end
+
 
 #Constructor for regular 2D triangular grids (without delaunay)
 (::Type{gridContext{2}})(::Type{Triangle},
@@ -204,7 +229,9 @@ function delaunay2(x::Vector{Vec{2,Float64}})
     tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
     push!(tess,a)
     m = 0
-    for tri in tess; m += 1; end  # count number of triangles --
+    for i in tess
+        m += 1
+    end
     return tess,m,scale_x,scale_y,min_x,min_y
 end
 
@@ -220,7 +247,7 @@ struct delaunayCellLocator <: cellLocator
 end
 
 function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
-    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x-loc.min_x,VD.min_coord+x[2]*loc.scale_y-loc.min_y,1)
+    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x-loc.min_x,VD.min_coord+x[2]*loc.scale_y-loc.min_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
     end
@@ -234,6 +261,51 @@ function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
     return (inv(J) ⋅ (x - grid.nodes[t._a.id].x)), [t._b.id, t._c.id, t._a.id]
 end
 
+
+#For delaunay triangulations with P2-Lagrange Elements
+struct p2DelaunayCellLocator <: cellLocator
+    m::Int64
+    scale_x::Float64
+    scale_y::Float64
+    min_x::Float64
+    min_y::Float64
+    tess::VD.DelaunayTessellation2D{NumberedPoint2D}
+    internal_triangles::Vector{Int}
+    inv_internal_triangles::Vector{Int}
+    function p2DelaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
+        itr = start(tess)
+        internal_triangles = []
+        inv_internal_triangles = zeros(length(tess._trigs))
+        while !done(tess,itr)
+            push!(internal_triangles, itr.ix)
+            next(tess,itr)
+        end
+        for (i,j) in enumerate(internal_triangles)
+            inv_internal_triangles[j] = i
+        end
+        res = new(m,scale_x,scale_y,min_x,min_y,tess,internal_triangles,inv_internal_triangles)
+        return res
+    end
+end
+
+#TODO: Finish this
+function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
+    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x-loc.min_x,VD.min_coord+x[2]*loc.scale_y-loc.min_y)
+    if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
+        throw(DomainError())
+    end
+    t = VD.findindex(loc.tess, point_inbounds)
+    if VD.isexternal(loc.tess._trigs[t])
+        throw(DomainError())
+    end
+    const qTriangle = grid.cells[loc.inv_internal_triangles[t]]
+    v1::Vec{2} = grid.nodes[qTriangle.nodes[2]].x - grid.nodes[qTriangle.nodes[1]].x
+    v2::Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
+    J::Tensor{2,2} = v1 ⊗ e1  + v2 ⊗ e2
+    #TODO: Maybe store the permutation as a constant globally
+    return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
+end
+
 #Here N gives the number of nodes and M gives the number of faces
 struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     n_x::Int
@@ -241,7 +313,6 @@ struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     LL::Vec{2}
     UR::Vec{2}
 end
-
 function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::Vec{2})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
@@ -332,6 +403,66 @@ function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Vec{2,Float64}}
     #TODO: Fix below if this doesn't work
     grid = Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
     locator = delaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
+    return grid, locator
+
+end
+
+function JuAFEM.generate_grid(::Type{QuadraticTriangle}, nodes_in::Vector{Vec{2,Float64}})
+    tess,m,scale_x,scale_y,min_x,min_y = delaunay2(nodes_in)
+    locator = p2DelaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
+    nodes = Node{2,Float64}[]
+    #TODO: replace below with map
+    for node_coords in  nodes_in
+        push!(nodes,Node(node_coords))
+    end
+    n = length(nodes)
+    ctr = n #As we add nodes (for edge vertices), increment the ctr...
+
+    centerNodes = spzeros(n,n)
+    cells = QuadraticTriangle[]
+    for tri_id in 1:m
+        tri = tess._trigs[locator.internal_triangles[tri_id]]
+
+        #Create non-vertex nodes
+        ab = centerNodes[tri._a.id, tri._b.id]
+        if ab == 0
+            ctr+=1
+            ab = centerNodes[tri._a.id,tri._b.id] = centerNodes[tri._b.id,tri._a.id] =  ctr
+            center = Node(0.5*(nodes[tri._b.id].x + nodes[tri._a.id].x))
+            push!(nodes,center)
+        end
+        ac = centerNodes[tri._a.id, tri._c.id]
+        if ac == 0
+            ctr+=1
+            ac = centerNodes[tri._a.id,tri._c.id] = centerNodes[tri._c.id,tri._a.id] = ctr
+            center = Node(0.5*(nodes[tri._c.id].x + nodes[tri._a.id].x))
+            push!(nodes,center)
+        end
+
+        bc = centerNodes[tri._c.id, tri._b.id]
+        if bc == 0
+            ctr+=1
+            bc = centerNodes[tri._b.id,tri._c.id] = centerNodes[tri._c.id,tri._b.id] = ctr
+            center = Node(0.5*(nodes[tri._c.id].x + nodes[tri._b.id].x))
+            push!(nodes,center)
+        end
+
+        J = (nodes_in[tri._b.id] - nodes_in[tri._a.id]) ⊗ e1
+        J +=  (nodes_in[tri._c.id] - nodes_in[tri._a.id]) ⊗ e2
+        detJ = det(J)
+
+        @assert det(J) != 0
+        if detJ > 0
+            new_tri  = QuadraticTriangle((tri._a.id,tri._b.id,tri._c.id,ab,bc,ac))
+        else
+            new_tri  = QuadraticTriangle((tri._a.id,tri._c.id,tri._b.id,ac,bc,ab))
+        end
+        push!(cells, new_tri)
+    end
+    #facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
+    #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
+    #TODO: Fix below if this doesn't work
+    grid = Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
     return grid, locator
 
 end

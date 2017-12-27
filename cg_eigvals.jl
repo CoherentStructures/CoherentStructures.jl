@@ -9,8 +9,10 @@ begin #begin/end block to evaluate all at once in atom
     include("FEMassembly.jl")#For assembleMassMatrix & co
 end
 
+ctx = regularP2DelaunayGrid()
+#ctx = regularDelaunayGrid()
 #ctx = regularTriangularGrid((25,25))
-ctx = regularQuadrilateralGrid()
+#ctx = regularQuadrilateralGrid()
 
 
 cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
@@ -48,12 +50,24 @@ GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),30,30)
 
 #ctx2 = regularQuadrilateralGrid((5,3))
-ctx2 = regularQuadrilateralGrid((5,3))
-a = zeros(15)
-a[4] = 1.0
-#locatePoint(ctx2,Vec{2}([1.e-8,1.e-8]))
+ctx2 = regularP2DelaunayGrid((5,3))
+locatePoint(ctx2,Vec{2}([0.1,0.1]))
 #dof2U(ctx2,a)
-plot_u(ctx2,a,50,50)
+for i in 1:ctx2.n
+    a = zeros(ctx2.n); a[i] = 1.0
+    plot_u(ctx2,a,100,100)
+    sleep(0.01)
+end
 GR.contourf([0.0,1.0,0.0,1.0,0.5],[0.0,0.0,1.0,1.0,0.5],[0.0,1.0,0.0,0.0,0.0])
 #plot_spectrum(λ)
 #savefig("output.png")
+
+m = 0
+for cell in CellIterator(ctx2.dh)
+    m += 1
+end
+m
+for j in ctx2.loc.tess
+    m += 1
+end
+m
