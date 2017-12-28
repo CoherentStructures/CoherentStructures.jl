@@ -9,7 +9,7 @@ begin #begin/end block to evaluate all at once in atom
     include("FEMassembly.jl")#For assembleMassMatrix & co
 end
 
-ctx = regularP2TriangularGrid()
+ctx = regularP2QuadrilateralGrid()
 #ctx = regularDelaunayGrid()
 #ctx = regularTriangularGrid((25,25))
 #ctx = regularQuadrilateralGrid()
@@ -47,13 +47,14 @@ begin
     @time λ, v = eigs(S + S2,M,which=:SM,nev=20)
 end
 #Plotting
-index = sortperm(real.(λ))[end-1]
+index = sortperm(real.(λ))[end-2]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),30,30)
 
 #ctx2 = regularQuadrilateralGrid((5,3))
 #ctx2 = regularP2DelaunayGrid((5,3))
-ctx2 = regularP2TriangularGrid((5,3))
+#ctx2 = regularP2TriangularGrid((5,3))
+ctx2 = regularP2QuadrilateralGrid((5,3))
 #locatePoint(ctx2,Vec{2}([0.9,0.9]))
 #dof2U(ctx2,a)
 i = 3

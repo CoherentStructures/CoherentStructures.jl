@@ -164,6 +164,25 @@ function regularP2TriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec
     return gridContext{2}(QuadraticTriangle,numnodes, LL,UR)
 end
 
+#Constructor for regular P2-Lagrange 2D quadrilateral grids
+(::Type{gridContext{2}})(::Type{QuadraticQuadrilateral},
+                         numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),
+                         quadrature_order::Int=default_quadrature_order) = begin
+        #The -1 below is needed because JuAFEM internally then goes on to increment it
+        grid = generate_grid(QuadraticQuadrilateral,(numnodes[1]-1,numnodes[2]-1),LL, UR )
+        loc = regularGridLocator{QuadraticQuadrilateral}(numnodes[1],numnodes[2],LL,UR)
+        ip = Lagrange{2, RefCube, 2}()
+        dh = DofHandler(grid)
+        qr = QuadratureRule{2, RefCube}(quadrature_order)
+        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+        close!(dh)
+        return gridContext{2}(grid,ip,dh,qr,loc)
+end
+
+function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
+    return gridContext{2}(QuadraticQuadrilateral,numnodes, LL,UR)
+end
+
 
 #Constructor for regular 2D quadrilateral grids
 (::Type{gridContext{2}})(::Type{Quadrilateral},
@@ -437,6 +456,39 @@ function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Gri
         return tM⋅Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3]
     end
     return
+end
+
+
+function locatePoint(loc::regularGridLocator{QuadraticQuadrilateral},grid::JuAFEM.Grid, x::Vec{2})
+    if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
+        throw(DomainError())
+    end
+    #Get integer and fractional part of coordinates
+    #This is the lower left corner
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.n_x-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.n_y-1),1)
+    n1 = Int(n1f)
+    n2 = Int(n2f)
+    if n1 == (loc.n_x-1) #If we hit the right hand edge
+        n1 = loc.n_x-2
+        loc1 = 1.0
+    end
+    if n2 == (loc.n_y-1) #If we hit the top edge
+        n2 = loc.n_y-2
+        loc2 = 1.0
+    end
+    #Get the four node numbers of quadrilateral the point is in
+    #Zero-indexing of the array here, so we need to +1 for everything being returned
+    num_x_with_edge_nodes::Int = loc.n_x  + loc.n_x - 1
+    num_y_with_edge_nodes::Int = loc.n_y + loc.n_y -1
+    ll = 2*n1 + 2*n2*num_x_with_edge_nodes
+    lr = ll + 2
+    ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
+    ur = ul + 2
+    middle_left =  2*n1 + (2*n2+1)*num_x_with_edge_nodes
+    assert(ur < (num_x_with_edge_nodes*num_y_with_edge_nodes)) #Sanity check
+    #permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
+    return Vec{2}([2*loc1-1,2*loc2-1]), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2]
 end
 
 
