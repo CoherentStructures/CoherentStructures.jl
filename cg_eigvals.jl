@@ -9,8 +9,8 @@ begin #begin/end block to evaluate all at once in atom
     include("FEMassembly.jl")#For assembleMassMatrix & co
 end
 
-ctx = regularP2QuadrilateralGrid((10,30))
-#ctx = regularDelaunayGrid()
+#ctx = regularP2QuadrilateralGrid((10,30))
+ctx = regularDelaunayGrid()
 #ctx = regularTriangularGrid((25,25))
 #ctx = regularQuadrilateralGrid((10,10))
 

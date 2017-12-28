@@ -88,8 +88,8 @@ end
 #Creates a regular grid on a square with delaunay triangulation
 function regularDelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
     node_list = Vec{2,Float64}[]
-    for x1 in linspace(LL[1],UR[1],numnodes[1])
-        for x0 in linspace(LL[2],UR[2],numnodes[2])
+    for x0 in linspace(LL[1],UR[1],numnodes[1])
+        for x1 in linspace(LL[2],UR[2],numnodes[2])
             push!(node_list,Vec{2}([x0,x1]))
         end
     end
@@ -111,8 +111,8 @@ end
 
 function regularP2DelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
     node_list = Vec{2,Float64}[]
-    for x1 in linspace(LL[1],UR[1],numnodes[1])
-        for x0 in linspace(LL[2],UR[2],numnodes[2])
+    for x0 in linspace(LL[1],UR[1],numnodes[1])
+        for x1 in linspace(LL[2],UR[2],numnodes[2])
             push!(node_list,Vec{2}([x0,x1]))
         end
     end
@@ -247,6 +247,7 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
  GP.getx(p::NumberedPoint2D) = p.x
 
 #More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
+
 function delaunay2(x::Vector{Vec{2,Float64}})
     width = VD.max_coord - VD.min_coord
     max_x = maximum(map(v->v[1],x))
@@ -256,14 +257,9 @@ function delaunay2(x::Vector{Vec{2,Float64}})
     scale_x = 0.9*width/(max_x - min_x)
     scale_y = 0.9*width/(max_y - min_y)
     n = length(x)
-    a = [NumberedPoint2D(VD.min_coord+x[i][1]*scale_x - min_x,VD.min_coord+x[i][2]*scale_y-min_y,i) for i in 1:n]
-    #TODO: Replace below with an assert, or with nothing (as it should never happen)
+    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - min_x)*scale_x,VD.min_coord+(x[i][2]-min_y)*scale_y,i) for i in 1:n]
     for i in 1:n
-        if GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord
-            ax = GP.getx(a[i])
-            ay = GP.gety(a[i])
-            print("a = [$ax,$ay]\n")
-        end
+        assert(!(GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord))
     end
     tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
     push!(tess,a)
@@ -286,7 +282,7 @@ struct delaunayCellLocator <: cellLocator
 end
 
 function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
-    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x-loc.min_x,VD.min_coord+x[2]*loc.scale_y-loc.min_y)
+    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
     end
@@ -329,7 +325,7 @@ end
 
 #TODO: Finish this
 function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
-    point_inbounds = NumberedPoint2D(VD.min_coord+x[1]*loc.scale_x-loc.min_x,VD.min_coord+x[2]*loc.scale_y-loc.min_y)
+    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
     end

@@ -25,7 +25,7 @@ t_final = maximum(time)
 #Pick a smaller time_interval
 t_final = t_initial + 90
 
-ctx = regularTriangularGrid((250,150),LL,UR)
+ctx = regularP2DelaunayGrid((25,30),LL,UR)
 #cgfun = (x -> invCGTensor(x,collect(linspace(t_initial,t_final,4))], 1.e-8,ocean_flow_map,1.e-3))
 cgfun = (x -> invCGTensor(x,[t_initial,t_final], 1.e-8,ocean_flow_map,1.e-3))
 
@@ -37,6 +37,7 @@ begin
 end
 
 
-index = sortperm(real.(λ))[end-1]
+plot_spectrum(λ)
+index = sortperm(real.(λ))[end-5]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]),30,30,LL,UR)
+plot_u(ctx,real.(v[:,index]),25,25,LL,UR)
