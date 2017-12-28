@@ -1,5 +1,8 @@
 #velocityFields.jl from Daniel Karrasch
 
+@everywhere using Interpolations
+@everywhere using DiffEqBase, OrdinaryDiffEq, ParameterizedFunctions
+
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
 @inbounds function rot_double_gyre2(t::Float64,x::AbstractArray{Float64},dx::AbstractArray{Float64})
 #function rot_double_gyre2(t::Float64,x,dx)
@@ -12,7 +15,6 @@
   dx[2] = (1-st)dxΨP + st*dxΨF
 end
 
-@everywhere using DiffEqBase, OrdinaryDiffEq, ParameterizedFunctions
 
 @everywhere transientGyres = @ode_def tGyres begin
 # @everywhere function transient_gyres(t,u,du)
@@ -66,7 +68,8 @@ end
   dy = -(ϵ₁*k₁*U*L*sin(k₁*(x-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(x-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(x-c₃*t)))*sech(y/L)^2
 end U=62.66e-6 L=1770e-3 c₂=1.28453e-5 c₃=2.888626e-5 ϵ₁=0.0075 ϵ₂=0.15 ϵ₃=0.3 k₁=0.31392246115209543 k₂=0.6278449223041909 k₃=0.9417673834562862 c₁=9.058543015644972e-6
 
-@everywhere function bickleyJetEqVari(t::Float64,u::AbstractArray,du::AbstractArray)
+@everywhere @everywhere using Interpolations
+function bickleyJetEqVari(t::Float64,u::AbstractArray,du::AbstractArray)
  # velo = bickleyJet(t,[u[1],u[2]])
  # du[1] = velo[1]
  # du[2] = velo[2]
@@ -95,7 +98,25 @@ end U=62.66e-6 L=1770e-3 c₂=1.28453e-5 c₃=2.888626e-5 ϵ₁=0.0075 ϵ₂=0.1
  du[6] = df2*u[5]+df4*u[6]
 end # r₀=6371e-3
 
-@everywhere function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1})
+
+#TODO: Give variables a sensible type here
+function interpolateOceanFlow(Lon,Lat,UT, time,VT)
+    # convert arrays into linspace-form for interpolation
+    const lon = linspace(minimum(Lon),maximum(Lon),length(Lon))
+    const lat = linspace(minimum(Lat),maximum(Lat),length(Lat))
+    const Time = linspace(minimum(time),maximum(time),length(time))
+
+    UI = Interpolations.interpolate(permutedims(UT,[2,1,3]),BSpline(Cubic(Free())),OnGrid())
+    UI = Interpolations.scale(UI,lon,lat,Time)
+    # UE = extrapolate(UI,(Linear(),Linear(),Flat()))
+    VI = Interpolations.interpolate(permutedims(VT,[2,1,3]),BSpline(Cubic(Free())),OnGrid())
+    VI = Interpolations.scale(VI,lon,lat,Time)
+    # VE = extrapolate(VI,(Linear(),Linear(),Flat()))
+    return UI,VI
+end
+
+#TODO: Specify the types of UI and VI
+@everywhere function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1},UI,VI)
     du[1] = UI[u[1], u[2], t]
     du[2] = VI[u[1], u[2], t]
 end

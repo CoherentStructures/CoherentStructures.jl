@@ -9,10 +9,10 @@ begin #begin/end block to evaluate all at once in atom
     include("FEMassembly.jl")#For assembleMassMatrix & co
 end
 
-ctx = regularP2QuadrilateralGrid()
+ctx = regularP2QuadrilateralGrid((10,30))
 #ctx = regularDelaunayGrid()
 #ctx = regularTriangularGrid((25,25))
-#ctx = regularQuadrilateralGrid()
+#ctx = regularQuadrilateralGrid((10,10))
 
 
 cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
@@ -23,7 +23,7 @@ begin
     @time S = assembleStiffnessMatrix(ctx)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx)
-    @time λ, v = eigs(S+K,M,which=:SM)
+    @time λ, v = eigs(K,M,which=:SM)
 end
 
 #With non-adaptive TO-method:
@@ -47,20 +47,25 @@ begin
     @time λ, v = eigs(S + S2,M,which=:SM,nev=20)
 end
 #Plotting
-index = sortperm(real.(λ))[end-2]
+index = sortperm(real.(λ))[end-1]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),30,30)
 
+plot_spectrum(λ)
+
+
+
+##Functions below were used for testing Grids, please ignore
 #ctx2 = regularQuadrilateralGrid((5,3))
 #ctx2 = regularP2DelaunayGrid((5,3))
 #ctx2 = regularP2TriangularGrid((5,3))
-ctx2 = regularP2QuadrilateralGrid((5,3))
+ctx2 = regularP2QuadrilateralGrid((5,3),Vec{2}([1.,1.]),Vec{2}([3.,3.]))
 #locatePoint(ctx2,Vec{2}([0.9,0.9]))
 #dof2U(ctx2,a)
 i = 3
 for i in 1:ctx2.n
     a = zeros(ctx2.n); a[i] = 1.0
-    plot_u(ctx2,a,100,100)
+    plot_u(ctx2,a,100,100,Vec{2}([1.,1.]),Vec{2}([3.,3.]))
     sleep(0.001)
 end
 GR.contourf([0.0,1.0,0.0,1.0,0.5],[0.0,0.0,1.0,1.0,0.5],[0.0,1.0,0.0,0.0,0.0])

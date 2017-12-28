@@ -16,9 +16,9 @@ function getAlphaMatrix(ctx::gridContext{2},inverse_flow_map::Function,LL=zero2D
         jdof = (ctx.node_to_dof)[j]
         try
             #TODO: Is using the Vec{2} type here slower than using Arrays?
-            pointPushforward = Vec{2}(min.((1-1e-6)*UR, max.(1e-6*LL, inverse_flow_map(current_point))))
+            pointPullback = Vec{2}(min.((1-1e-6)*UR, max.(1e-6*LL, inverse_flow_map(current_point))))
             #TODO: Don't doo this pointwise, but pass whole vector to locatePoint
-            local_coords, nodelist = locatePoint(ctx,pointPushforward)
+            local_coords, nodelist = locatePoint(ctx,pointPullback)
             for  (i,nodeid) in enumerate(nodelist)
                 result[jdof,ctx.node_to_dof[nodeid]] = JuAFEM.value(ctx.ip,i,local_coords)
             end
@@ -47,6 +47,7 @@ function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=defa
     l = length(I)
     result = spzeros(n,n)
     for i in 1:l
+        #The node-ordering of the grid in new_ctx is the dof-ordering of the grid in ctx
         result[new_ctx.dof_to_node[I[i]],new_ctx.dof_to_node[J[i]]] = V[i]
     end
     return result
