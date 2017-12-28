@@ -2,7 +2,7 @@
 begin #begin/end block to evaluate all at once in atom
     import GR
     include("velocityFields.jl") #For rot_double_gyre2
-    include("TO.jl") #For getAlphaMatrix
+    include("TO.jl") #For nonAdaptiveTO
     include("GridFunctions.jl") #For regularyDelaunayGrid
     include("plotting.jl")#For plot_u
     include("PullbackTensors.jl")#For invCGTensor
@@ -10,16 +10,17 @@ begin #begin/end block to evaluate all at once in atom
 end
 
 #ctx = regularP2QuadrilateralGrid((10,30))
-ctx = regularDelaunayGrid()
+#ctx = regularDelaunayGrid((30,30))
 #ctx = regularTriangularGrid((25,25))
 #ctx = regularQuadrilateralGrid((10,10))
+ctx = regularP2TriangularGrid((30,30))
 
 
-cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
 
 
 #With CG-Method
 begin
+    cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
     @time S = assembleStiffnessMatrix(ctx)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx)
@@ -30,7 +31,7 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time ALPHA = getAlphaMatrix(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]))
+    @time ALPHA = nonAdaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]))
     @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM)
 end
 
@@ -46,10 +47,24 @@ begin
     @time S2= adaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]))
     @time λ, v = eigs(S + S2,M,which=:SM,nev=20)
 end
+
+#With L2-Galerkin calculation of ALPHA
+begin
+    @time S = assembleStiffnessMatrix(ctx)
+    @time M = assembleMassMatrix(ctx)
+    DinvMap = u0 -> finDiffDFlowMap(u0,[0.0,-1.0],1.e-8,rot_double_gyre2)
+    flowMap = u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0],1.e-4)
+    @time preALPHAS= L2GalerkinTO(ctx,flowMap,DinvMap)
+    Minv = inv(full(M))
+    print(typeof(Minv))
+    ALPHA = Minv*preALPHAS
+    @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM,nev=20)
+end
+
 #Plotting
-index = sortperm(real.(λ))[end-1]
+index = sortperm(real.(λ))[end-19]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]),30,30)
+plot_u(ctx,real.(v[:,index]),50,50)
 
 plot_spectrum(λ)
 

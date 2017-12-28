@@ -1,5 +1,6 @@
 #(c) 2017 Nathanael Schilling
 #Implementation of TO methods from Froyland & Junge's FEM paper
+#And L2-Galerkin approximation of TO
 
 using JuAFEM
 include("GridFunctions.jl")
@@ -8,7 +9,7 @@ zero2D = zero(Vec{2})
 one2D = e1 + e2
 
 #Currently only works on a rectangular grid that must be specified in advance
-function getAlphaMatrix(ctx::gridContext{2},inverse_flow_map::Function,LL=zero2D, UR=one2D )
+function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function,LL=zero2D, UR=one2D )
     n = ctx.n
     result = spzeros(n,n)
     for j in 1:n
@@ -51,4 +52,45 @@ function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=defa
         result[new_ctx.dof_to_node[I[i]],new_ctx.dof_to_node[J[i]]] = V[i]
     end
     return result
+end
+
+
+#L2-Galerkin approximation of Transfer Operator
+#TODO: Can this be written without any dependence on the dimension?
+function L2GalerkinTO(ctx::gridContext{2},inverse_flow_map::Function,Dinverse_flow_map::Function)
+    DL2 = spzeros(ctx.n,ctx.n)
+    #Iterate over all cells.
+    cv = CellScalarValues(ctx.qr, ctx.ip)
+    nshapefuncs = getnbasefunctions(cv)         # number of basis functions
+    dofs::Vector{Int} = zeros(nshapefuncs)
+    @inbounds for (cellnumber, cell) in enumerate(CellIterator(ctx.dh))
+        JuAFEM.reinit!(cv,cell)
+        #Iterate over all quadrature points in the cell
+        for q in 1:getnquadpoints(cv) # loop over quadrature points
+            const dΩ::Float64 = getdetJdV(cv,q)
+    	    q_coords::Vec{2} = zero(Vec{2})
+            for j in 1:nshapefuncs
+                q_coords +=cell.coords[j] * cv.M[j,q]
+            end
+            invQ = inverse_flow_map(q_coords)
+            invDQ = abs(det(Dinverse_flow_map(q_coords)))
+            #TODO: allow for using a different ctx here, e.g. like in the adaptiveTO settings
+            try
+                local_coords, nodes = locatePoint(ctx,invQ)
+                for (shape_fun_num,i) in enumerate(nodes)
+                    celldofs!(dofs,ctx.dh,cellnumber)
+                    for j in 1:nshapefuncs
+                        φ::Float64 = shape_value(cv,q,j)
+                        DL2[dofs[j],ctx.node_to_dof[i]] += JuAFEM.value(ctx.ip,shape_fun_num,local_coords)*dΩ*invDQ*φ
+                    end
+                end
+            catch y
+                if !isa(y,DomainError)
+                    throw(y)
+                end
+                print("Inverse flow map gave result $invQ outside of domain!")
+            end
+        end
+    end
+    return DL2
 end
