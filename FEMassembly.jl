@@ -50,12 +50,12 @@ function assembleStiffnessMatrix2{dim}(cv::CellScalarValues{dim},dh::DofHandler,
     return K
 end
 
-function assembleMassMatrix{dim}(ctx::gridContext{dim})
+function assembleMassMatrix{dim}(ctx::gridContext{dim};kwargs...)
     cv = CellScalarValues(ctx.qr, ctx.ip)
-    return assembleMass(cv,ctx.dh)
+    return assembleMass(cv,ctx.dh;kwargs...)
 end
 
-function assembleMass{dim}(cv::CellScalarValues{dim},dh::DofHandler)
+function assembleMass{dim}(cv::CellScalarValues{dim},dh::DofHandler;lumped=false)
     M = create_sparsity_pattern(ctx.dh)
     a_M = start_assemble(M)
     dofs = zeros(Int, ndofs_per_cell(ctx.dh))
@@ -81,5 +81,14 @@ function assembleMass{dim}(cv::CellScalarValues{dim},dh::DofHandler)
         celldofs!(dofs, cell)
         assemble!(a_M, dofs, Me)
     end
-    return M
+    if !lumped
+        return M
+    else
+        Mlumped = speye(size(M)[1])
+        for j = 1:n
+            Mlumped[j,j] = sum(M[:,j])
+        end
+
+        return Mlumped
+    end
 end
