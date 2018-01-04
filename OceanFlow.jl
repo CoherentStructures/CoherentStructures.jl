@@ -1,11 +1,13 @@
 #OceanFlow.jl - based on code from Daniel Karrasch
-import JLD
-include("velocityFields.jl")
-include("GridFunctions.jl")
-include("plotting.jl")
-include("FEMassembly.jl")
-include("PullbackTensors.jl")
-include("TO.jl")
+begin
+    import JLD
+    include("velocityFields.jl")
+    include("GridFunctions.jl")
+    include("plotting.jl")
+    include("FEMassembly.jl")
+    include("PullbackTensors.jl")
+    include("TO.jl")
+end
 
 vars = JLD.load("Ocean_geostrophic_velocity.jld")
 Lon = vars["Lon"]
@@ -29,11 +31,14 @@ t_final = t_initial + 90
 
 ctx = regularP2DelaunayGrid((50,50),LL,UR)
 #cgfun = (x -> invCGTensor(x,collect(linspace(t_initial,t_final,4))], 1.e-8,ocean_flow_map,1.e-3))
-cgfun = (x -> invCGTensor(x,[t_initial,t_final], 1.e-8,ocen_vector_field,1.e-3))
+cgfun = (x -> invCGTensor(x,[t_initial,t_final], 1.e-8,ocean_vector_field,1.e-3))
 
-ocean_flow_map = u0 -> flow2D(ocean_vector_field,u0, [t_initial,t_final],1.e-4)
-@time ocean_flow_map(UR)
-
+ocean_flow_map = u0 -> flow2D(ocean_vector_field,u0, [t_initial,t_final],1.e-5)
+t = t_initial + 1
+du = [0.0,0.0]
+u = [LL[1],LL[2]]
+@time UI[-5.0,-35.0,t_initial]
+@time ocean_flow_map(LL)
 
 #With CG-Method
 begin

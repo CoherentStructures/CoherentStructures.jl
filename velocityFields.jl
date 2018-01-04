@@ -116,9 +116,9 @@ function interpolateOceanFlow(Lon,Lat,UT, time,VT)
 end
 
 #TODO: Specify the types of UI and VI
-@everywhere function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1},UI,VI)
-    du[1] = UI[u[1], u[2], t]
-    du[2] = VI[u[1], u[2], t]
+@everywhere function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1},UI::Interpolations.ScaledInterpolation,VI::Interpolations.ScaledInterpolation)
+    @inbounds du[1] = UI[u[1], u[2], t]
+    @inbounds du[2] = VI[u[1], u[2], t]
 end
 
 # @everywhere function oceanVFEqVari(t::Number,u::Vector,du::Vector)

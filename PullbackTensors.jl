@@ -1,10 +1,26 @@
 @everywhere using Tensors, DiffEqBase, OrdinaryDiffEq#, ForwardDiff
 @everywhere include("util.jl")
 
- @everywhere function flow2D(g::Function,u0::Vec{2},tspan::Vector{Float64})
+ @everywhere function flow2D(g::Function,u0::Vec{2},tspan::Vector{Float64},tol=1.e-3)
    prob = OrdinaryDiffEq.ODEProblem(g,[u0[1],u0[2]],(tspan[1],tspan[end]))
-   return Vec{2}(OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=1e-3,abstol=1e-3).u[end])
+   return Vec{2}(OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=tol,abstol=tol).u[end])
  end
+
+#Calculate derivative of flow map by finite differences.
+ @inline function finDiffDFlowMap(x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,ode_fun,tolerance=1.e-3)
+    dx = [δ,0]; dy = [0,δ];
+    #In order to solve only one ODE, write all the initial values
+    #one after the other in one big vector
+    stencil = zeros(8)
+    stencil[1:2] = x+dx
+    stencil[3:4] = x+dy
+    stencil[5:6] = x-dx
+    stencil[7:8] = x-dy
+    prob = OrdinaryDiffEq.ODEProblem((t,x,result) -> arraymap(ode_fun, 4,2,t,x,result),stencil,(tspan[1],tspan[end]))
+    sol = OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+    return Tensor{2,2}(sol[end][1:4] - sol[end][5:8])/(2δ)
+end
+
 
 
 #Returns the average (inverse) CG-Tensor at a point along a set of times
