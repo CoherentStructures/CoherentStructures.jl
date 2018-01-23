@@ -126,7 +126,7 @@ function accuracyTest(tC::testCase,reference::experimentResult)
     gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay Grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
     for (gCindex,gC) in enumerate(gridConstructors)
         #TODO: replace this with something more sensible...
-        for width in collect(20:10:50)
+        for width in collect(20:10:90)
             ctx = gC((width,width),tC.LL,tC.UR)
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
@@ -139,10 +139,10 @@ function accuracyTest(tC::testCase,reference::experimentResult)
     return experimentResults
 end
 
-function buildStatistics(experimentResults::Vector{experimentResult}, referenceIndex::Int64)
+function buildStatistics!(experimentResults::Vector{experimentResult}, referenceIndex::Int64)
     #TODO Move all of this into a buildStatistics() function where it belongs
     reference = experimentResults[referenceIndex]
-    for (eRindex,eR) in enumerate(experimentResults)
+    for (eRindex, eR) in enumerate(experimentResults)
         if eRindex == referenceIndex
             continue
         end
@@ -153,17 +153,15 @@ function buildStatistics(experimentResults::Vector{experimentResult}, referenceI
             push!(linftyerrors, getnorm(u_upsampled - reference.V[:,i], reference.ctx,"L∞"))
             push!(λerrors, abs(eR.λ[i] - reference.λ[i]))
         end
-        eR.statistics["λ-errors"] = λerrors
-        eR.statistics["L∞-errors"]  = linftyerrors
+        experimentResults[eRindex].statistics["λ-errors"] = λerrors
+        experimentResults[eRindex].statistics["L∞-errors"]  = linftyerrors
     end
 end
 
 function testDoubleGyre()
-    referenceCtx = regularP2QuadrilateralGrid( (60,60), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
+    referenceCtx = regularP2QuadrilateralGrid( (100,100), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
-    buildStatistics(result,1)
+    buildStatistics!(result,1)
     return result
 end
-
-results = testDoubleGyre()

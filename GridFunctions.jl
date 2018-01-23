@@ -40,9 +40,13 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
     dof_to_node::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
     n::Int #The number of nodes
     m::Int #The number of cells
-    #The following two fields are only well-defined for regular rectangular grid
+
+    #The following two fields are only well-defined for regular rectangular grids
     spatialBounds::Vector{Vec{dim}} #In 2D, this is {LL,UR} for regular grids
     numberOfPointsInEachDirection::Vector{Int}
+
+    gridType::String
+
     function gridContext{dim}(grid::JuAFEM.Grid,ip::JuAFEM.Interpolation,dh::JuAFEM.DofHandler,qr::JuAFEM.QuadratureRule,loc::cellLocator) where {dim}
         x =new{dim}(grid,ip,dh,qr,loc)
         x.n = JuAFEM.getnnodes(dh.grid)
@@ -81,7 +85,9 @@ end
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
         push!(dh, :T, 1) #The :T is just a generic name for the scalar field
         close!(dh)
-        return gridContext{2}(grid,ip,dh,qr,loc)
+        result =  gridContext{2}(grid,ip,dh,qr,loc)
+        result.gridType="irregular Delaunay grid" #This can be ovewritten by other constructors
+        return result
 end
 
 
@@ -96,6 +102,7 @@ function regularDelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}(
     result = gridContext{2}(Triangle,node_list, quadrature_order)
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+    result.gridType = "regular Delaunay grid"
     return result
 end
 
@@ -106,7 +113,9 @@ end
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
         push!(dh, :T, 1) #The :T is just a generic name for the scalar field
         close!(dh)
-        return gridContext{2}(grid,ip,dh,qr,loc)
+        result =  gridContext{2}(grid,ip,dh,qr,loc)
+        result.gridType = "irregular P2 Delaunay grid"
+        return result
 end
 
 function regularP2DelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
@@ -120,6 +129,7 @@ function regularP2DelaunayGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2
     #TODO: Think about what values would be sensible for the two variables below
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+    result.gridType = "regular P2 Delaunay grid"
     return result
 end
 
@@ -136,7 +146,11 @@ end
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
         push!(dh, :T, 1) #The :T is just a generic name for the scalar field
         close!(dh)
-        return gridContext{2}(grid,ip,dh,qr,loc)
+        result =  gridContext{2}(grid,ip,dh,qr,loc)
+        result.spatialBounds = [LL,UR]
+        result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+        result.gridType = "regular triangular grid"
+        return result
 end
 
 #Creates a regular grid on a rectangle with Triangles but without delaunay Triangulation
@@ -157,7 +171,11 @@ end
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
         push!(dh, :T, 1) #The :T is just a generic name for the scalar field
         close!(dh)
-        return gridContext{2}(grid,ip,dh,qr,loc)
+        result =  gridContext{2}(grid,ip,dh,qr,loc)
+        result.spatialBounds = [LL,UR]
+        result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+        result.gridType = "regular P2 triangular grid"
+        return result
 end
 
 function regularP2TriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
@@ -176,7 +194,11 @@ end
         qr = QuadratureRule{2, RefCube}(quadrature_order)
         push!(dh, :T, 1) #The :T is just a generic name for the scalar field
         close!(dh)
-        return gridContext{2}(grid,ip,dh,qr,loc)
+        result =  gridContext{2}(grid,ip,dh,qr,loc)
+        result.spatialBounds = [LL,UR]
+        result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+        result.gridType = "regular P2 quadrilateral grid"
+        return result
 end
 
 function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
@@ -196,7 +218,11 @@ end
         qr = QuadratureRule{2, RefCube}(quadrature_order)
         push!(dh, :T, 1) #The :T is just a generic name for the scalar field
         close!(dh)
-        return gridContext{2}(grid,ip,dh,qr,loc)
+        result =  gridContext{2}(grid,ip,dh,qr,loc)
+        result.spatialBounds = [LL,UR]
+        result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
+        result.gridType = "regular quadrilateral grid"
+        return result
 end
 
 #Creates a regular grid on a rectangle with Quadrilateral Elements
@@ -293,6 +319,9 @@ function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
     v1::Vec{2} = grid.nodes[t._b.id].x - grid.nodes[t._a.id].x
     v2::Vec{2} = grid.nodes[t._c.id].x - grid.nodes[t._a.id].x
     J::Tensor{2,2} = v1 ⊗ e1  + v2 ⊗ e2
+    #TODO: rewrite this so that we actually find the cell in question and get the ids
+    #From there (instead of from the tesselation). Then get rid of the permutation that
+    #is implicit below (See also comment below in p2DelaunayCellLocator locatePoint())
     return (inv(J) ⋅ (x - grid.nodes[t._a.id].x)), [t._b.id, t._c.id, t._a.id]
 end
 
@@ -323,7 +352,6 @@ struct p2DelaunayCellLocator <: cellLocator
     end
 end
 
-#TODO: Finish this
 function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
@@ -337,7 +365,7 @@ function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
     v1::Vec{2} = grid.nodes[qTriangle.nodes[2]].x - grid.nodes[qTriangle.nodes[1]].x
     v2::Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
     J::Tensor{2,2} = v1 ⊗ e1  + v2 ⊗ e2
-    #TODO: Maybe store the permutation as a constant globally
+    #TODO: Think about whether doing it like this (with the permutation) is sensible
     return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
 end
 
@@ -441,7 +469,6 @@ function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Gri
     middle_left =  2*n1 + (2*n2+1)*num_x_with_edge_nodes
     assert(ur < (num_x_with_edge_nodes*num_y_with_edge_nodes)) #Sanity check
     if loc1 + loc2 <= 1.0 # ◺
-        #permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
         return Vec{2}([loc1,loc2]), [lr+1,ul+1,ll+1, middle_left+2, middle_left+1, ll+2]
     else # ◹
 
