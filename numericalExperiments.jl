@@ -74,7 +74,7 @@ function sampleTo(u::Vector{Float64}, ctx_old::gridContext, ctx_new::gridContext
     return u_new
 end
 
-function norm(u::Vector{Float64},ctx::gridContext,which="L∞")
+function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
     if which == "L∞"
         return maximum(abs.(u))
     else
@@ -150,7 +150,7 @@ function buildStatistics(experimentResults::Vector{experimentResult}, referenceI
         λerrors = Vector{Float64}(0)
         for i in 1:6
             u_upsampled = sampleTo(eR.V[:,i],eR.ctx, reference.ctx )
-            push!(linftyerrors, norm(u_upsampled - reference.V[:,i], reference.ctx,"L∞"))
+            push!(linftyerrors, getnorm(u_upsampled - reference.V[:,i], reference.ctx,"L∞"))
             push!(λerrors, abs(eR.λ[i] - reference.λ[i]))
         end
         eR.statistics["λ-errors"] = λerrors
