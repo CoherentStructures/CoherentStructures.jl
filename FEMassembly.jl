@@ -17,13 +17,13 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim}, A::Function=myIdent
 end
 
 function assembleStiffnessMatrix2{dim}(cv::CellScalarValues{dim},dh::DofHandler,A::Function)
-    K = create_sparsity_pattern(ctx.dh)
+    K = create_sparsity_pattern(dh)
     a_K = start_assemble(K)
-    dofs = zeros(Int, ndofs_per_cell(ctx.dh))
+    dofs = zeros(Int, ndofs_per_cell(dh))
     n = getnbasefunctions(cv)         # number of basis functions
     Ke = zeros(n,n)
 
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(ctx.dh))
+    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         fill!(Ke,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
@@ -56,13 +56,13 @@ function assembleMassMatrix{dim}(ctx::gridContext{dim};kwargs...)
 end
 
 function assembleMass{dim}(cv::CellScalarValues{dim},dh::DofHandler;lumped=false)
-    M = create_sparsity_pattern(ctx.dh)
+    M = create_sparsity_pattern(dh)
     a_M = start_assemble(M)
-    dofs = zeros(Int, ndofs_per_cell(ctx.dh))
+    dofs = zeros(Int, ndofs_per_cell(dh))
     n = getnbasefunctions(cv)         # number of basis functions
     Me = zeros(n,n)   # Local stiffness and mass matrix
 
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(ctx.dh))
+    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         fill!(Me,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
