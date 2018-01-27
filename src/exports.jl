@@ -8,8 +8,9 @@ export
 	rot_double_gyre2,
 	transientGyresEqVari,
 	bickleyJetEqVari,
-	interpolateOceanFlow,
+	interpolateVF,
 	oceanVF,
+	interp_rhs,
 
 	#GridFunctions.jl
 	regularTriangularGrid,
@@ -31,5 +32,3 @@ export
 	nonAdaptiveTO,
 	adaptiveTO,
 	L2GalerkinTO
-
-

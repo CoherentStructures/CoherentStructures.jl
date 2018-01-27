@@ -100,7 +100,7 @@ end # r₀=6371e-3
 
 
 #TODO: Give variables a sensible type here
-function interpolateOceanFlow(Lon,Lat,UT, time,VT)
+function interpolateVF(Lon,Lat,UT, time,VT)
     # convert arrays into linspace-form for interpolation
     const lon = linspace(minimum(Lon),maximum(Lon),length(Lon))
     const lat = linspace(minimum(Lat),maximum(Lat),length(Lat))
@@ -115,11 +115,15 @@ function interpolateOceanFlow(Lon,Lat,UT, time,VT)
     return UI,VI
 end
 
-#TODO: Specify the types of UI and VI
-function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1},UI::Interpolations.ScaledInterpolation,VI::Interpolations.ScaledInterpolation)
-    @inbounds du[1] = UI[u[1], u[2], t]
-    @inbounds du[2] = VI[u[1], u[2], t]
+#The rhs for an ODE on interpolated vector fields
+#The interpolant is passed via the p argument
+
+#TODO: think of adding @inbounds here
+function interp_rhs(du::AbstractArray{Float64},u::AbstractArray{Float64},p,t::Float64)
+    du[1] = p[1][u[1],u[2],t]
+    du[2] = p[2][u[1],u[2],t]
 end
+
 
 # @everywhere function oceanVFEqVari(t::Number,u::Vector,du::Vector)
 #

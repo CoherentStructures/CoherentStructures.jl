@@ -1,13 +1,13 @@
 
 #include("util.jl")
 
-function flow2D(g::Function,u0::Vec{2},tspan::Vector{Float64},tol=1.e-3)
-   prob = OrdinaryDiffEq.ODEProblem(g,[u0[1],u0[2]],(tspan[1],tspan[end]))
+function flow2D(g::Function,u0::Vec{2},tspan::Vector{Float64},tol=1.e-3,p=nothing)
+   prob = OrdinaryDiffEq.ODEProblem(g,[u0[1],u0[2]],(tspan[1],tspan[end]),p)
    return Vec{2}(OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=tol,abstol=tol).u[end])
 end
 
 #Calculate derivative of flow map by finite differences.
-@inline function LinearizedFlowMap(odefun,x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,tolerance=1.e-3)
+@inline function LinearizedFlowMap(odefun,x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,tolerance=1.e-3,p=nothing)
     const dx = [δ,0];
     const dy = [0,δ];
     #In order to solve only one ODE, write all the initial values
@@ -20,7 +20,7 @@ end
 
     const num_tsteps = length(tspan)
     #TODO: Make p do something here
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),stencil,(tspan[1],tspan[end]))
+    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),stencil,(tspan[1],tspan[end]),p)
     sol = OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
     result = zeros(Tensor{2,2},num_tsteps)
     @inbounds for i in 1:num_tsteps
@@ -50,8 +50,8 @@ end
 #@param odefun is a function that takes arguments (x,t,result)
 #   odefun needs to store its result in result
 #   odefun evaluates the rhs of the ODE being integrated at (x,t)
-@inline function invCGTensor(odefun,x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,tolerance=1.e-3)
-    return mean(dott.(inv.(LinearizedFlowMap(odefun,x,tspan,δ,tolerance))))
+@inline function invCGTensor(odefun,x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,tolerance=1.e-3,p=nothing)
+    return mean(dott.(inv.(LinearizedFlowMap(odefun,x,tspan,δ,tolerance,p))))
 end
 
 

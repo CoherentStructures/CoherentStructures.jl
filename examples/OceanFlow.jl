@@ -15,12 +15,12 @@ t_final = t_initial + 90
 
 LL = Vec{2}([-4.0,-34.0])
 UR = Vec{2}([6.0,-28.0])
+UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
+p = (UI,VI)
 #ctx = regularP2QuadrilateralGrid((50,50),LL,UR)
 ctx = regularP2DelaunayGrid((50,50),LL,UR)
-cgfun = (x -> invCGTensor(ocean_vector_field, x,[t_initial,t_final], 1.e-8,1.e-3))
-UI, VI = interpolateOceanFlow(Lon,Lat,UT,time,VT)
-ocean_vector_field = ( (t,u,du) ->  oceanVF(t,u,du,UI,VI))
-ocean_flow_map = u0 -> flow2D(ocean_vector_field,u0, [t_initial,t_final],1.e-5)
+cgfun = (x -> invCGTensor(interp_rhs, x,[t_initial,t_final], 1.e-8,1.e-3,p))
+ocean_flow_map = u0 -> flow2D(ocean_vector_field,u0, [t_initial,t_final],1.e-5,p)
 
 #With CG-Method
 begin
@@ -32,7 +32,7 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time S2= adaptiveTO(ctx,u0->flow2D(ocean_vector_field,u0,[t_initial,t_final]))
+    @time S2= adaptiveTO(ctx,u0->flow2D(interp_rhs,u0,[t_initial,t_final],1.e-3,p))
     @time λ, v = eigs(S + S2,M,which=:SM)
 end
 
