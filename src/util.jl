@@ -13,7 +13,7 @@
 #the result in the relevant slice of result.
 #This is so that a "diagonalized" ODE with several starting values can
 #be solved without having to call the ODE multiple times.
-@everywhere @inline function arraymap(myfun,howmanytimes::Int64,basesize::Int64,t::Float64,x::Array{Float64},result::Array{Float64})
+@inline function arraymap(myfun,howmanytimes::Int64,basesize::Int64,t::Float64,x::Array{Float64},result::Array{Float64})
     @inbounds for i in 1:howmanytimes
         @views @inbounds  myfun(t,x[ 1 + (i-1)*basesize:  i*basesize],result[1 + (i - 1)*basesize: i*basesize])
     end

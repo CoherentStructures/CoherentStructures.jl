@@ -1,12 +1,6 @@
 #(c) 2018 Nathanael Schilling
 #This file contains code for running numerical experiments with juFEMDL
 
-include("GridFunctions.jl")
-include("velocityFields.jl")
-include("PullbackTensors.jl")
-include("FEMassembly.jl")
-
-import JLD
 
 #TODO: Replace Float64 with a more general type
 #TODO: Generalize to dim != 2
@@ -116,7 +110,8 @@ function makeDoubleGyreTestCase()
     return result
 end
 
-oceanFlowTestCase = makeOceanFlowTestCase()
+#TODO: Think about moving this to somewhere else...
+#oceanFlowTestCase = makeOceanFlowTestCase()
 doubleGyreTestCase = makeDoubleGyreTestCase()
 
 
@@ -144,7 +139,6 @@ function accuracyTest(tC::testCase,reference::experimentResult)
 end
 
 function buildStatistics!(experimentResults::Vector{experimentResult}, referenceIndex::Int64)
-    #TODO Move all of this into a buildStatistics() function where it belongs
     reference = experimentResults[referenceIndex]
     for (eRindex, eR) in enumerate(experimentResults)
         if eRindex == referenceIndex

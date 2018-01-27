@@ -1,5 +1,4 @@
 export
-	
 	#PullbackTensors.jl
 	flow2D,
 	LinearizedFlowMap,
@@ -12,8 +11,25 @@ export
 	interpolateOceanFlow,
 	oceanVF,
 
+	#GridFunctions.jl
+	regularTriangularGrid,
+	regularDelaunayGrid,
+	regularP2TriangularGrid,
+	regularP2DelaunayGrid,
+	regularQuadrilateralGrid,
+	regularP2QuadrilateralGrid,
+
 	#plotting.jl
 	plot_u,
-	plot_spectrum
+	plot_spectrum,
+
+	#FEMassembly.jl
+	assembleStiffnessMatrix,
+	assembleMassMatrix,
+
+	#TO.jl
+	nonAdaptiveTO,
+	adaptiveTO,
+	L2GalerkinTO
 
 

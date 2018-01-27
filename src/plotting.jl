@@ -1,11 +1,5 @@
-using GR
-using Tensors
 
-include("util.jl")
-
-
-#TODO: Make this also work for P2-Lagrange
-#TODO: Make this much more efficient
+#TODO: Can this be made more efficient?
 function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50,LL=Vec{2}([0.0,0.0]),UR=Vec{2}([1.0,1.0]))
     x1 = Float64[]
     x2 = Float64[]

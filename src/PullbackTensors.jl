@@ -13,11 +13,10 @@ end
     #In order to solve only one ODE, write all the initial values
     #one after the other in one big vector
     stencil = zeros(8)
-    #TODO: test whether .= (and .+ .-) below makes any speed differences
-    stencil[1:2] = x+dx
-    stencil[3:4] = x+dy
-    stencil[5:6] = x-dx
-    stencil[7:8] = x-dy
+    @inbounds stencil[1:2] .= x.+dx
+    @inbounds stencil[3:4] .= x.+dy
+    @inbounds stencil[5:6] .= x.-dx
+    @inbounds stencil[7:8] .= x.-dy
 
     const num_tsteps = length(tspan)
     prob = OrdinaryDiffEq.ODEProblem((t,x,result) -> arraymap(odefun, 4,2,t,x,result),stencil,(tspan[1],tspan[end]))
@@ -51,7 +50,7 @@ end
 #   odefun needs to store its result in result
 #   odefun evaluates the rhs of the ODE being integrated at (x,t)
 @inline function invCGTensor(odefun,x::Vec{2,Float64},tspan::Array{Float64}, δ::Float64,tolerance=1.e-3)
-    return mean(dott.(inv.(LinearizedFlowMap(odefun,x,t_span,δ,tolerance))))
+    return mean(dott.(inv.(LinearizedFlowMap(odefun,x,tspan,δ,tolerance))))
 end
 
 
