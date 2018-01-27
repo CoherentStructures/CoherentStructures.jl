@@ -1,7 +1,6 @@
-#Based on static_Laplace_eigvs.jl
 import GR
-push!(LOAD_PATH, "/home/nathanael/dev/")
 using juFEMDL
+
 
 #ctx = regularP2QuadrilateralGrid((25,25))
 ctx = regularDelaunayGrid((25,25))

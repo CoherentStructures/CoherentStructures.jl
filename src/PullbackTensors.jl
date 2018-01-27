@@ -19,7 +19,8 @@ end
     @inbounds stencil[7:8] .= x.-dy
 
     const num_tsteps = length(tspan)
-    prob = OrdinaryDiffEq.ODEProblem((t,x,result) -> arraymap(odefun, 4,2,t,x,result),stencil,(tspan[1],tspan[end]))
+    #TODO: Make p do something here
+    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),stencil,(tspan[1],tspan[end]))
     sol = OrdinaryDiffEq.solve(prob,OrdinaryDiffEq.BS5(),saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
     result = zeros(Tensor{2,2},num_tsteps)
     @inbounds for i in 1:num_tsteps

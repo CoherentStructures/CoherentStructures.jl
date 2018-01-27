@@ -3,7 +3,7 @@
 #TODO: Uncomment everything with @ode_def and figure out why it causes an error
 
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
-function rot_double_gyre2(t::Float64,x::AbstractArray{Float64},dx::AbstractArray{Float64})
+function rot_double_gyre2(dx::AbstractArray{Float64},x::AbstractArray{Float64}, p,t::Float64)
 #function rot_double_gyre2(t::Float64,x,dx)
   st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
   dxΨP = 2π*cos.(2π*x[1]).*sin.(π*x[2])
@@ -21,7 +21,7 @@ end
 # dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
 #end
 
-function transientGyresEqVari(t,u,du)
+function transientGyresEqVari(du,u,p,t)
     st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>1)*1
 
     # Psi_P = sin(2*pi*x)*sin(pi*y)
@@ -69,7 +69,7 @@ end
 #end U=62.66e-6 L=1770e-3 c₂=1.28453e-5 c₃=2.888626e-5 ϵ₁=0.0075 ϵ₂=0.15 ϵ₃=0.3 k₁=0.31392246115209543 k₂=0.6278449223041909 k₃=0.9417673834562862 c₁=9.058543015644972e-6
 
 
-function bickleyJetEqVari(t::Float64,u::AbstractArray,du::AbstractArray)
+function bickleyJetEqVari(du::AbstractArray, u::AbstractArray, p, t::Float64)
  # velo = bickleyJet(t,[u[1],u[2]])
  # du[1] = velo[1]
  # du[2] = velo[2]
