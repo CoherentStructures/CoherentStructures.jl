@@ -4,28 +4,12 @@
 #on the code in FEMDL.jl
 #There are also functions for evaluating functions on the grid
 
-using Tensors, JuAFEM
-
-import GeometricalPredicates
 GP = GeometricalPredicates
-import VoronoiDelaunay
 VD = VoronoiDelaunay
-
-include("util.jl")
 
 #JuAFEM has no functions for determining which cell a point is in.
 
-#The cellLocator provides an abstract basis class for classes for locating points on grids.
-#A cellLocator should implement a locatePoint function (see below)
-#TODO: Find out the existence of such a function can be enforced by julia
-
-abstract type cellLocator end
-
 const default_quadrature_order=5
-
-#The following type is used in files on which this file depends (as a forward declaration there).
-#Redeclaring here for readability
-abstract type abstractGridContext{dim} end
 
 #This type is used for storing everything needed as context to work on a grid
 #when doing FEM on scalar fields. Currently implemented only for 2D

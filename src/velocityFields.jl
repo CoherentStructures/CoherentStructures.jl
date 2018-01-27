@@ -1,10 +1,9 @@
 #velocityFields.jl from Daniel Karrasch
 
-@everywhere using Interpolations
-@everywhere using DiffEqBase, OrdinaryDiffEq, ParameterizedFunctions
+#TODO: Uncomment everything with @ode_def and figure out why it causes an error
 
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
-@inbounds function rot_double_gyre2(t::Float64,x::AbstractArray{Float64},dx::AbstractArray{Float64})
+function rot_double_gyre2(t::Float64,x::AbstractArray{Float64},dx::AbstractArray{Float64})
 #function rot_double_gyre2(t::Float64,x,dx)
   st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
   dxΨP = 2π*cos.(2π*x[1]).*sin.(π*x[2])
@@ -16,13 +15,13 @@
 end
 
 
-@everywhere transientGyres = @ode_def tGyres begin
+#@everywhere transientGyres = @ode_def tGyres begin
 # @everywhere function transient_gyres(t,u,du)
- dx = -((1-t^2*(3-2*t))*π*sin(2π*x)*cos(π*y) + t^2*(3-2*t)*2π*sin(π*x)*cos(2π*y))
- dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
-end
+# dx = -((1-t^2*(3-2*t))*π*sin(2π*x)*cos(π*y) + t^2*(3-2*t)*2π*sin(π*x)*cos(2π*y))
+# dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
+#end
 
-@everywhere function transientGyresEqVari(t,u,du)
+function transientGyresEqVari(t,u,du)
     st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>1)*1
 
     # Psi_P = sin(2*pi*x)*sin(pi*y)
@@ -63,12 +62,13 @@ end
     du[6] = df2*u[5]+df4*u[6]
 end
 
-@everywhere bickleyJet = @ode_def bJet begin
-  dx = U*sech(y/L)^2+(2*ϵ₁*U*cos(k₁*(x-c₁*t))+2*ϵ₂*U*cos(k₂*(x-c₂*t))+2*ϵ₃*U*cos(k₃*(x-c₃*t)))*tanh(y/L)*sech(y/L)^2
-  dy = -(ϵ₁*k₁*U*L*sin(k₁*(x-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(x-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(x-c₃*t)))*sech(y/L)^2
-end U=62.66e-6 L=1770e-3 c₂=1.28453e-5 c₃=2.888626e-5 ϵ₁=0.0075 ϵ₂=0.15 ϵ₃=0.3 k₁=0.31392246115209543 k₂=0.6278449223041909 k₃=0.9417673834562862 c₁=9.058543015644972e-6
 
-@everywhere @everywhere using Interpolations
+#@everywhere bickleyJet = @ode_def bJet begin
+#  dx = U*sech(y/L)^2+(2*ϵ₁*U*cos(k₁*(x-c₁*t))+2*ϵ₂*U*cos(k₂*(x-c₂*t))+2*ϵ₃*U*cos(k₃*(x-c₃*t)))*tanh(y/L)*sech(y/L)^2
+#  dy = -(ϵ₁*k₁*U*L*sin(k₁*(x-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(x-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(x-c₃*t)))*sech(y/L)^2
+#end U=62.66e-6 L=1770e-3 c₂=1.28453e-5 c₃=2.888626e-5 ϵ₁=0.0075 ϵ₂=0.15 ϵ₃=0.3 k₁=0.31392246115209543 k₂=0.6278449223041909 k₃=0.9417673834562862 c₁=9.058543015644972e-6
+
+
 function bickleyJetEqVari(t::Float64,u::AbstractArray,du::AbstractArray)
  # velo = bickleyJet(t,[u[1],u[2]])
  # du[1] = velo[1]
@@ -116,7 +116,7 @@ function interpolateOceanFlow(Lon,Lat,UT, time,VT)
 end
 
 #TODO: Specify the types of UI and VI
-@everywhere function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1},UI::Interpolations.ScaledInterpolation,VI::Interpolations.ScaledInterpolation)
+function oceanVF(t::Float64,u::AbstractArray{Float64,1},du::AbstractArray{Float64,1},UI::Interpolations.ScaledInterpolation,VI::Interpolations.ScaledInterpolation)
     @inbounds du[1] = UI[u[1], u[2], t]
     @inbounds du[2] = VI[u[1], u[2], t]
 end

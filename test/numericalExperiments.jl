@@ -77,6 +77,10 @@ end
 function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
     if which == "L∞"
         return maximum(abs.(u))
+    elseif which == "L2"
+        M = assembleMassMatrix(ctx)
+        Mu = M*u
+        return Mu ⋅ u
     else
         assert("Not yet implemented")
     end
@@ -126,7 +130,7 @@ function accuracyTest(tC::testCase,reference::experimentResult)
     gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay Grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
     for (gCindex,gC) in enumerate(gridConstructors)
         #TODO: replace this with something more sensible...
-        for width in collect(20:10:90)
+        for width in collect(20:20:200)
             ctx = gC((width,width),tC.LL,tC.UR)
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
@@ -147,19 +151,26 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
             continue
         end
         linftyerrors = Vector{Float64}(0)
+        l2errors = Vector{Float64}(0)
         λerrors = Vector{Float64}(0)
+        errors = Array{Array{Float64}}(0)
         for i in 1:6
-            u_upsampled = sampleTo(eR.V[:,i],eR.ctx, reference.ctx )
-            push!(linftyerrors, getnorm(u_upsampled - reference.V[:,i], reference.ctx,"L∞"))
-            push!(λerrors, abs(eR.λ[i] - reference.λ[i]))
+            index = sortperm(real.(eR.λ))[end- (i - 1)]
+            error = sampleTo(eR.V[:,index],eR.ctx, reference.ctx ) - reference.V[:,index]
+            push!(errors,error)
+            push!(linftyerrors, getnorm(error, reference.ctx,"L∞"))
+            push!(l2errors, getnorm(error, reference.ctx,"L2"))
+            push!(λerrors, abs(eR.λ[index] - reference.λ[index]))
         end
         experimentResults[eRindex].statistics["λ-errors"] = λerrors
         experimentResults[eRindex].statistics["L∞-errors"]  = linftyerrors
+        experimentResults[eRindex].statistics["L2-errors"]  = l2errors
+        experimentResults[eRindex].statistics["errors"]  = errors
     end
 end
 
 function testDoubleGyre()
-    referenceCtx = regularP2QuadrilateralGrid( (100,100), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
+    referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
     buildStatistics!(result,1)

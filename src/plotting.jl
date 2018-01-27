@@ -19,5 +19,11 @@ function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50,LL=Vec{
             push!(values, evaluate_function(ctx, Vec{2}(current_point),u_values))
         end
     end
+    #Plots.plot(x1,x2,values;t=:contourf)#,colormap=GR.COLORMAP_JET)
     GR.contourf(x1,x2,values,colormap=GR.COLORMAP_JET)
+end
+
+
+function plot_spectrum(λ)
+    GR.plot(real.(λ),imag.(λ),"x")
 end

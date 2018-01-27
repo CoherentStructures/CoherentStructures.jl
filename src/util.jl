@@ -1,9 +1,6 @@
 #(c) 2017 Nathanael Schilling
 #Various utility functions
 
-using JuAFEM
-
-abstract type abstractGridContext{dim} end
 
 #The following function is like `map', but operates on 1d-datastructures.
 #@param t::Float64 is just some number
@@ -39,7 +36,3 @@ e1 = basevec(Vec{2},1)
 e2 = basevec(Vec{2},2)
 
 
-using GR
-function plot_spectrum(λ)
-    GR.plot(real.(λ),imag.(λ),"x")
-end
