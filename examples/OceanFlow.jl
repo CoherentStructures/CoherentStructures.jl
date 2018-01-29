@@ -44,6 +44,6 @@ GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),100,100,LL,UR)
 
 plot_spectrum(λ2)
-index = sortperm(real.(λ2))[end-1]
+index = sortperm(real.(λ2))[end-3]
 GR.title("Eigenvector with eigenvalue $(λ2[index])")
 plot_u(ctx,real.(v2[:,index]),100,100,LL,UR)
