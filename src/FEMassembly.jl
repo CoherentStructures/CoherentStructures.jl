@@ -1,5 +1,4 @@
 using JuAFEM
-include("GridFunctions.jl")
 
 function assembleStiff(cv::CellScalarValues,dh::DofHandler,Ditp)
     return assembleStiffnessMatrix2(cv,dh, x->Ditp[x...])

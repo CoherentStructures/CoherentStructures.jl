@@ -1,12 +1,6 @@
 #(c) 2018 Nathanael Schilling
 #This file contains code for running numerical experiments with juFEMDL
 
-include("GridFunctions.jl")
-include("velocityFields.jl")
-include("PullbackTensors.jl")
-include("FEMassembly.jl")
-
-import JLD
 
 #TODO: Replace Float64 with a more general type
 #TODO: Generalize to dim != 2
@@ -77,6 +71,10 @@ end
 function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
     if which == "L∞"
         return maximum(abs.(u))
+    elseif which == "L2"
+        M = assembleMassMatrix(ctx)
+        Mu = M*u
+        return Mu ⋅ u
     else
         assert("Not yet implemented")
     end
@@ -112,7 +110,8 @@ function makeDoubleGyreTestCase()
     return result
 end
 
-oceanFlowTestCase = makeOceanFlowTestCase()
+#TODO: Think about moving this to somewhere else...
+#oceanFlowTestCase = makeOceanFlowTestCase()
 doubleGyreTestCase = makeDoubleGyreTestCase()
 
 
@@ -126,7 +125,7 @@ function accuracyTest(tC::testCase,reference::experimentResult)
     gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay Grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
     for (gCindex,gC) in enumerate(gridConstructors)
         #TODO: replace this with something more sensible...
-        for width in collect(20:10:90)
+        for width in collect(20:20:200)
             ctx = gC((width,width),tC.LL,tC.UR)
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
@@ -140,26 +139,32 @@ function accuracyTest(tC::testCase,reference::experimentResult)
 end
 
 function buildStatistics!(experimentResults::Vector{experimentResult}, referenceIndex::Int64)
-    #TODO Move all of this into a buildStatistics() function where it belongs
     reference = experimentResults[referenceIndex]
     for (eRindex, eR) in enumerate(experimentResults)
         if eRindex == referenceIndex
             continue
         end
         linftyerrors = Vector{Float64}(0)
+        l2errors = Vector{Float64}(0)
         λerrors = Vector{Float64}(0)
+        errors = Array{Array{Float64}}(0)
         for i in 1:6
-            u_upsampled = sampleTo(eR.V[:,i],eR.ctx, reference.ctx )
-            push!(linftyerrors, getnorm(u_upsampled - reference.V[:,i], reference.ctx,"L∞"))
-            push!(λerrors, abs(eR.λ[i] - reference.λ[i]))
+            index = sortperm(real.(eR.λ))[end- (i - 1)]
+            error = sampleTo(eR.V[:,index],eR.ctx, reference.ctx ) - reference.V[:,index]
+            push!(errors,error)
+            push!(linftyerrors, getnorm(error, reference.ctx,"L∞"))
+            push!(l2errors, getnorm(error, reference.ctx,"L2"))
+            push!(λerrors, abs(eR.λ[index] - reference.λ[index]))
         end
         experimentResults[eRindex].statistics["λ-errors"] = λerrors
         experimentResults[eRindex].statistics["L∞-errors"]  = linftyerrors
+        experimentResults[eRindex].statistics["L2-errors"]  = l2errors
+        experimentResults[eRindex].statistics["errors"]  = errors
     end
 end
 
 function testDoubleGyre()
-    referenceCtx = regularP2QuadrilateralGrid( (100,100), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
+    referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
     buildStatistics!(result,1)

@@ -3,8 +3,6 @@
 #And L2-Galerkin approximation of TO
 
 using JuAFEM
-include("GridFunctions.jl")
-include("util.jl")
 zero2D = zero(Vec{2})
 one2D = e1 + e2
 
@@ -61,6 +59,8 @@ end
 
 #L2-Galerkin approximation of Transfer Operator
 #TODO: Can this be written without any dependence on the dimension?
+#TODO: Implement this for multiple timesteps
+#TODO: Implement this for missing data
 function L2GalerkinTO(ctx::gridContext{2},inverse_flow_map::Function,Dinverse_flow_map::Function)
     DL2 = spzeros(ctx.n,ctx.n)
     #Iterate over all cells.
@@ -83,6 +83,7 @@ function L2GalerkinTO(ctx::gridContext{2},inverse_flow_map::Function,Dinverse_fl
                 local_coords, nodes = locatePoint(ctx,invQ)
                 for (shape_fun_num,i) in enumerate(nodes)
                     celldofs!(dofs,ctx.dh,cellnumber)
+
                     for j in 1:nshapefuncs
                         φ::Float64 = shape_value(cv,q,j)
                         DL2[dofs[j],ctx.node_to_dof[i]] += JuAFEM.value(ctx.ip,shape_fun_num,local_coords)*dΩ*invDQ*φ
