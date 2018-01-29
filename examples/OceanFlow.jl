@@ -18,9 +18,9 @@ UR = Vec{2}([6.0,-28.0])
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
 p = (UI,VI)
 #ctx = regularP2QuadrilateralGrid((50,50),LL,UR)
-ctx = regularP2DelaunayGrid((50,50),LL,UR)
-cgfun = (x -> invCGTensor(interp_rhs, x,[t_initial,t_final], 1.e-8,1.e-3,p))
-ocean_flow_map = u0 -> flow2D(ocean_vector_field,u0, [t_initial,t_final],1.e-5,p)
+ctx = regularP2DelaunayGrid((25,25),LL,UR)
+cgfun = (x -> invCGTensor(interp_rhs, x,[t_initial,t_final], 1.e-8,tolerance=1.e-3,p=p))
+ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=p)[end]
 
 #With CG-Method
 begin
@@ -29,10 +29,11 @@ begin
     @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
 end
 
+#With adaptive TO method
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time S2= adaptiveTO(ctx,u0->flow2D(interp_rhs,u0,[t_initial,t_final],1.e-3,p))
+    @time S2= adaptiveTO(ctx,ocean_flow_map)
     @time λ, v = eigs(S + S2,M,which=:SM)
 end
 
@@ -43,6 +44,6 @@ GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),100,100,LL,UR)
 
 plot_spectrum(λ2)
-index = sortperm(real.(λ2))[end]
+index = sortperm(real.(λ2))[end-1]
 GR.title("Eigenvector with eigenvalue $(λ2[index])")
 plot_u(ctx,real.(v2[:,index]),100,100,LL,UR)

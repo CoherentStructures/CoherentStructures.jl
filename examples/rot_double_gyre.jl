@@ -10,7 +10,7 @@ ctx = regularDelaunayGrid((25,25))
 
 #With CG-Method
 begin
-    cgfun = (x -> invCGTensor(rot_double_gyre2,x,[0.0,1.0], 1.e-8,1.e-3))
+    cgfun = (x -> invCGTensor(rot_double_gyre2,x,[0.0,1.0], 1.e-8,tolerance=1.e-3))
     @time S = assembleStiffnessMatrix(ctx)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx,lumped=false)
@@ -21,7 +21,7 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time ALPHA = nonAdaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0]))
+    @time ALPHA = nonAdaptiveTO(ctx,u0->flow(rot_double_gyre2,u0,[0.0,-1.0])[end])
     @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM)
 end
 

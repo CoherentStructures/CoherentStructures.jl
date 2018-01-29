@@ -1,8 +1,11 @@
 export
 	#PullbackTensors.jl
-	flow2D,
-	LinearizedFlowMap,
+	flow,
+	linearized_flow,
 	invCGTensor,
+	pullback_tensors,
+	pullback_metric_tensor,
+	pullback_diffusion_tensor,
 
 	#velocityFields.jl
 	rot_double_gyre2,
