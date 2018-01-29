@@ -18,7 +18,7 @@ function expr_diff(expr::Expr, var::Symbol)
     expr_sym = SymEngine.Basic(expr)
     d_expr_sym = SymEngine.diff(expr_sym, var)
 
-    d_expr = parse(SymEngine.toString.(d_expr_sym)))
+    d_expr = parse(SymEngine.toString.(d_expr_sym))
 
     # clean up derivatives that SymEngine didn't differentiate
     d_expr = clumsy_cleaner(d_expr)

@@ -27,6 +27,30 @@ begin
     @time λ, v = eigs(K,M,which=:SM)
 end
 
+#With CG-Method
+include("field_from_hamiltonian.jl")
+begin
+    @makefields fields from H begin
+        f(a,b) = a
+        Psi = sin(π * f(x,t)) * sin(π * y)
+        ## uncomment for a small strong
+
+         bump(r) = (1 - r^2*(3-2r)) * heavyside(r) * heavyside(1-r)
+         center_x = 2/3
+         center_y = 0.5
+         radius = 1/3
+         strength = 5*sin(3*pi*t)
+         r_sqr = (center_x - 2*x)^2 + (center_y - y)^2
+         H =  Psi  + bump(sqrt(r_sqr / (radius^2))) * strength
+    end
+    field = fields[:(t,u,du)]
+    cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
+    @time S = assembleStiffnessMatrix(ctx)
+    @time K = assembleStiffnessMatrix(ctx,cgfun)
+    @time M = assembleMassMatrix(ctx)
+    @time λ, v = eigs(K,M,which=:SM, nev= 20)
+end
+
 #With non-adaptive TO-method:
 begin
     @time S = assembleStiffnessMatrix(ctx)
@@ -62,7 +86,7 @@ begin
 end
 
 #Plotting
-index = sortperm(real.(λ))[end-19]
+index = sortperm(real.(λ))[end-15]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),50,50)
 
