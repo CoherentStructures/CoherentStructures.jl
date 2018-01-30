@@ -60,11 +60,27 @@ end
 
 replace all occurences of `sym` in `expr` by `s_expr`
 """
-sym_subst(expr::Expr, sym, s_expr) = begin
-    Expr(expr.head, sym_subst.(expr.args, [sym], [s_expr])...)
-end
-sym_subst(expr::Symbol, sym, s_expr) = expr==sym ? s_expr: expr
-sym_subst(expr, sym, s_expr) = expr
+sym_subst(expr,         sym::Symbol, s_expr::Union{Symbol, Expr}) = expr
+sym_subst(expr::Symbol, sym::Symbol, s_expr::Union{Symbol, Expr}) =
+    begin
+        expr == sym ? s_expr: expr
+    end
+
+sym_subst(expr::Expr,   sym::Symbol, s_expr::Union{Symbol, Expr}) =
+    begin
+        Expr(expr.head, sym_subst.(expr.args, [sym], [s_expr])...)
+    end
+
+sym_subst(expr::Union{Symbol, Expr}, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
+    begin
+        @assert length(symbols) == length(bodies) "lists have different lengths"
+        for (symb, s_expr) in zip(symbols, bodies)
+            expr = sym_subst(expr, symb, s_expr)
+        end
+        expr
+    end
+
+
 
 """ does <ex> contain a symbol that is not bound by <bound_vars>?
 """
