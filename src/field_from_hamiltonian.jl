@@ -17,7 +17,7 @@ The macro returns a dictionary with different versions of the field as elements.
 fields  = @makefields from H begin
     some_fun(r) = sin(r^2+1)
     r_sq = x^2+y^2
-    H = sin(r_sq)
+    H = sin(some_fun(r_sq))
 end
 # get equation of variation
 f = fields[:(dU, U, p, t)]
