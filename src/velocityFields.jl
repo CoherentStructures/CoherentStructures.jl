@@ -62,11 +62,21 @@ function transientGyresEqVari(du,u,p,t)
     du[6] = df2*u[5]+df4*u[6]
 end
 
-
-#@everywhere bickleyJet = @ode_def bJet begin
-#  dx = U*sech(y/L)^2+(2*ϵ₁*U*cos(k₁*(x-c₁*t))+2*ϵ₂*U*cos(k₂*(x-c₂*t))+2*ϵ₃*U*cos(k₃*(x-c₃*t)))*tanh(y/L)*sech(y/L)^2
-#  dy = -(ϵ₁*k₁*U*L*sin(k₁*(x-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(x-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(x-c₃*t)))*sech(y/L)^2
-#end U=62.66e-6 L=1770e-3 c₂=1.28453e-5 c₃=2.888626e-5 ϵ₁=0.0075 ϵ₂=0.15 ϵ₃=0.3 k₁=0.31392246115209543 k₂=0.6278449223041909 k₃=0.9417673834562862 c₁=9.058543015644972e-6
+bickleyJet = @ode_def bJet begin
+  U=62.66e-6
+  L=1770e-3
+  c₂=1.28453e-5
+  c₃=2.888626e-5
+  ϵ₁=0.0075
+  ϵ₂=0.15
+  ϵ₃=0.3
+  k₁=0.31392246115209543
+  k₂=0.6278449223041909
+  k₃=0.9417673834562862
+  c₁=9.058543015644972e-6
+  dx = U*sech(y/L)^2+(2*ϵ₁*U*cos(k₁*(x-c₁*t))+2*ϵ₂*U*cos(k₂*(x-c₂*t))+2*ϵ₃*U*cos(k₃*(x-c₃*t)))*tanh(y/L)*sech(y/L)^2
+  dy = -(ϵ₁*k₁*U*L*sin(k₁*(x-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(x-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(x-c₃*t)))*sech(y/L)^2
+end
 
 
 function bickleyJetEqVari(du::AbstractArray, u::AbstractArray, p, t::Float64)
