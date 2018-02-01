@@ -39,12 +39,10 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
                ∇²H[2,2]        ∇²H[1,2] ]
 
    # substitute occurences of :x and :y by access of array elements.
-   # We use the expressions for F only when u is a 2x1-Vector.
-   # DF is only used in eq_var, where u has additional
-   # columns indicating the current differential DΦ of the
-   # flow map.
-     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
-    DF = sym_subst.(DF, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
+   # we have to insert u[k] in one place and U[k,1] in the other
+   # (we use F and DF in different functions)
+    F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
+    DF = sym_subst.(DF, [[:x,:y]], [[:(U[1,1]), :(U[2,1])]])
 
 
 
@@ -60,17 +58,18 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
         end
 
         # save f ∈ R^2x1 and Df ∈ R^2x2 in a 2x3-matrix
-        function eq_var(du, u, p, t)
+        function eq_var(dU, U, p, t)
             # write field into first column
-            field!(du[:,1], u[:,1], p, t)
+            @views field!(dU[:,1], U[:,1], p, t)
 
             # store DF in a Tensor here to (hopefully) make it a bit faster
+            # is this really worth it?
             dF = Tensor{2,2}(($(DF[1,1]), $(DF[2,1]),
                               $(DF[1,2]), $(DF[2,2])))
 
             # store the matrix part of the Equation of Variation
-            du[:,2:3] = dF ⋅ Tensor{2,2}(u[:,2:3])
-            du
+            dU[:,2:3] = dF ⋅ Tensor{2,2}(@view U[:,2:3])
+            dU
         end
 
         # define functions with different signatures
