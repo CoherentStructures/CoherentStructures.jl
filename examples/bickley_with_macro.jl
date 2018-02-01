@@ -2,7 +2,7 @@ include("../src/field_from_hamiltonian.jl")
 
 # after this, bickley will reference a Dictionary of functions
 # access it via the desired signature. e.g. F = bickley[:(dU, U, p, t)]
-# for the right side of the equation of variation. 
+# for the right side of the equation of variation.
 
 bickley = @makefields from stream begin
     stream = psi₀ + psi₁
