@@ -51,4 +51,7 @@ module juFEMDL
 
    #Plotting
    include("plotting.jl")
+
+   #Vector field from Hamiltonian generation
+   include("field_from_hamiltonian.jl")
 end

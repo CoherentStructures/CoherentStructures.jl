@@ -91,6 +91,3 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
         output
     end
 end
-
-
-f = fields[:(dU, U, p, t)]
