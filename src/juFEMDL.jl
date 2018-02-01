@@ -26,6 +26,7 @@ module juFEMDL
     include("PullbackTensors.jl")
 
     ##Definitions of velocity fields
+    using ParameterizedFunctions
     include("velocityFields.jl")
 
     ##Extensions to JuAFEM dealing with non-curved grids
