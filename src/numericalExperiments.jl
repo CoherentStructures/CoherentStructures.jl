@@ -14,6 +14,7 @@ struct testCase
     t_final::Float64
     #Things that may be needed for this experiment
     ode_fun::Function
+    p #Parameters to pass to ode_fun
 end
 
 mutable struct experimentResult
@@ -81,17 +82,15 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
 end
 
 function makeOceanFlowTestCase()
-    JLD.load("Ocean_geostrophic_velocity.jld")
-
-    vars = JLD.load("Ocean_geostrophic_velocity.jld")
+    vars = JLD.load("examples/Ocean_geostrophic_velocity.jld")
     Lon = vars["Lon"]
     Lat = vars["Lat"]
     UT = vars["UT"]
     time = vars["time"]
     VT = vars["VT"]
 
-    UI, VI = interpolateOceanFlow(Lon,Lat,UT,time,VT)
-    ocean_vector_field = ( (t,u,du) ->  oceanVF(t,u,du,UI,VI))
+    UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
+    p = (UI,VI)
 
     #The computational domain
     LL = Vec{2}([-4.0,-34.0])
@@ -99,19 +98,19 @@ function makeOceanFlowTestCase()
 
     t_initial = minimum(time)
     t_final = t_initial + 90
-    result = testCase("Ocean Flow", LL,UR,t_initial,t_final, ocean_vector_field)
+    result = testCase("Ocean Flow", LL,UR,t_initial,t_final, interp_rhs,p)
     return result
 end
 
 function makeDoubleGyreTestCase()
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.0,1.0])
-    result = testCase("Rotating Double Gyre",LL,UR,0.0,1.0, rot_double_gyre2)
+    result = testCase("Rotating Double Gyre",LL,UR,0.0,1.0, rot_double_gyre2,nothing)
     return result
 end
 
 #TODO: Think about moving this to somewhere else...
-#oceanFlowTestCase = makeOceanFlowTestCase()
+oceanFlowTestCase = makeOceanFlowTestCase()
 doubleGyreTestCase = makeDoubleGyreTestCase()
 
 
