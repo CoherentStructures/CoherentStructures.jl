@@ -15,6 +15,7 @@ export
 	oceanVF,
 	interp_rhs,
 	bickleyJet,
+	transientGyres,
 
 	#GridFunctions.jl
 	regularTriangularGrid,

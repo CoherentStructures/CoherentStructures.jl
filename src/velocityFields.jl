@@ -15,11 +15,10 @@ function rot_double_gyre2(dx::AbstractArray{Float64},x::AbstractArray{Float64}, 
 end
 
 
-#@everywhere transientGyres = @ode_def tGyres begin
-# @everywhere function transient_gyres(t,u,du)
-# dx = -((1-t^2*(3-2*t))*π*sin(2π*x)*cos(π*y) + t^2*(3-2*t)*2π*sin(π*x)*cos(2π*y))
-# dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
-#end
+transientGyres = @ode_def tGyres begin
+    dx = -((1-t^2*(3-2*t))*π*sin(2π*x)*cos(π*y) + t^2*(3-2*t)*2π*sin(π*x)*cos(2π*y))
+    dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
+end
 
 function transientGyresEqVari(du,u,p,t)
     st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>1)*1
