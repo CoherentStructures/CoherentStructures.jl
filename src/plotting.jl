@@ -1,8 +1,10 @@
 
 #TODO: Can this be made more efficient?
-function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50,LL=Vec{2}([0.0,0.0]),UR=Vec{2}([1.0,1.0]))
+function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50)
     x1 = Float64[]
     x2 = Float64[]
+    LL = ctx.spatialBounds[1]
+    UR = ctx.spatialBounds[2]
     values = Float64[]
     const u_values =  dof2U(ctx,dof_values)
     for y in linspace(LL[2] + 1e-8, UR[2] -1.e-8,ny)
