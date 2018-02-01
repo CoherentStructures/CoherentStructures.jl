@@ -34,4 +34,7 @@ export
 	#TO.jl
 	nonAdaptiveTO,
 	adaptiveTO,
-	L2GalerkinTO
+	L2GalerkinTO,
+
+	#field_from_hamiltonian.jl
+	@makefields

@@ -1,20 +1,16 @@
 # Based on static_Laplace_eigvs.jl
-begin #begin/end block to evaluate all at once in atom
-    import GR
-    include("velocityFields.jl") #For rot_double_gyre2
-    include("TO.jl") #For nonAdaptiveTO
-    include("GridFunctions.jl") #For regularyDelaunayGrid
-    include("plotting.jl")#For plot_u
-    include("PullbackTensors.jl")#For invCGTensor
-    include("FEMassembly.jl")#For assembleMassMatrix & co
-    include("field_from_hamiltonian.jl")
-end
+import GR
+using juFEMDL
+using Tensors
 
-ctx = regularP2TriangularGrid((30,30))
+LL=Vec{2}([0.0,0.0])
+UR=Vec{2}([2.0,1.0])
+
+ctx = regularP2TriangularGrid((50,50),LL,UR)
 
 # define a field using its streamfunction
 begin
-    @makefields fields from H begin
+    fields = @makefields from H begin
         f(a,b) = a
         Psi = sin(π * f(x,t)) * sin(π * y)
          bump(r) = (1 - r^2*(3-2r)) * heavyside(r) * heavyside(1-r)
@@ -25,17 +21,19 @@ begin
          r_sqr = (center_x - 2*x)^2 + (center_y - y)^2
          H =  Psi  + bump(sqrt(r_sqr / (radius^2))) * strength
     end
-    field = fields[:(t,u,du)]
-    cgfun = (x -> invCGTensor(x,[0.0,1.0], 1.e-8,rot_double_gyre2,1.e-3))
-    @time S = assembleStiffnessMatrix(ctx)
+    field = fields[:(du,u,p,t)]
+    cgfun = (x -> invCGTensor(field, x,[0.0,1.0], 1.e-8,tolerance=1.e-3))
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx)
     @time λ, v = eigs(K,M,which=:SM, nev= 20)
 end
 
 #Plotting
-index = sortperm(real.(λ))[end-15]
+index = sortperm(real.(λ))[end-2]
 GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]),50,50)
+for i in 1:20
+    plot_u(ctx,real.(v[:,i]),50,50,LL,UR)
+    sleep(1)
+end
 
 plot_spectrum(λ)
