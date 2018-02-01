@@ -24,6 +24,7 @@ f = fields[:(dU, U, p, t)]
 """
 macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
     @assert keyword == :from "unknow word \"$keyword\", should be \"from\""
+    Base.remove_linenums!(code)
 
     # collect all the info in <code> to get expression for the Hamiltonian
     H = symbolic_substitutions(code, Hamiltonian, [:x,:y,:t, keys(diff_dict)...])
@@ -44,7 +45,9 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
     DF = sym_subst.(DF, [[:x,:y]], [[:(U[1,1]), :(U[2,1])]])
 
-
+    field_info = "Vector field and equation of variation corresponding to the "*
+                 "hamiltonian (streamfunction):\n"*
+                 "H(x,y,t) = $H"
 
     # final code: define a Dictionary that contains the field in different
     # formats. Accessible by function "signatures"
@@ -78,14 +81,13 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
         field_at_t(t)       = (x,y) -> field(x, y, t)
 
         # populate the output dictionary
+        output[:info]       = $field_info
         output[:(u,t)]      = field
         output[:(du,u,p,t)] = field!
         output[:(dU,U,p,t)] = eq_var
 
         output[:(t)]        = field_at_t
         output[:(x,y,t)]    = field2
-
-
         # bind the dictionary to the name that was passed to the macro
         output
     end
