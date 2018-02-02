@@ -6,10 +6,10 @@
 function rot_double_gyre2!(dx::AbstractArray{Float64},x::AbstractArray{Float64}, p,t::Float64)
 #function rot_double_gyre2(t::Float64,x,dx)
   st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
-  dxΨP = 2π*cos.(2π*x[1]).*sin.(π*x[2])
-  dyΨP = π*sin.(2π*x[1]).*cos.(π*x[2])
-  dxΨF = π*cos.(π*x[1]).*sin.(2π*x[2])
-  dyΨF = 2π*sin.(π*x[1]).*cos.(2π*x[2])
+  dxΨP = 2π*cos(2π*x[1])*sin(π*x[2])
+  dyΨP = π*sin(2π*x[1])*cos(π*x[2])
+  dxΨF = π*cos(π*x[1])*sin(2π*x[2])
+  dyΨF = 2π*sin(π*x[1])*cos(2π*x[2])
   dx[1] = - ((1-st)dyΨP + st*dyΨF)
   dx[2] = (1-st)dxΨP + st*dxΨF
 end
