@@ -109,10 +109,6 @@ function makeDoubleGyreTestCase()
     return result
 end
 
-#TODO: Think about moving this to somewhere else...
-oceanFlowTestCase = makeOceanFlowTestCase()
-doubleGyreTestCase = makeDoubleGyreTestCase()
-
 
 function accuracyTest(tC::testCase,reference::experimentResult)
     print("Running reference experiment")
