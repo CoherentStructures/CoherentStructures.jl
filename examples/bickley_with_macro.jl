@@ -39,5 +39,6 @@ cgfun = (x -> invCGTensor(field, x,[0.0,3465000], 1.e-8,tolerance=1.e-3))
 plot_u(ctx,v[:,2])
 
 for i in 1:20
+    GR.title("Eigenvector with eigenvalue $(λ[i])")
     plot_u(ctx,v[:,i])
 end

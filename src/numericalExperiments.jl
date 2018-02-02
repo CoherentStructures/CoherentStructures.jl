@@ -105,7 +105,7 @@ end
 function makeDoubleGyreTestCase()
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.0,1.0])
-    result = testCase("Rotating Double Gyre",LL,UR,0.0,1.0, rot_double_gyre2,nothing)
+    result = testCase("Rotating Double Gyre",LL,UR,0.0,1.0, rot_double_gyre2!,nothing)
     return result
 end
 

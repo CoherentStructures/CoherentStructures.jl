@@ -3,7 +3,7 @@
 #TODO: Uncomment everything with @ode_def and figure out why it causes an error
 
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
-function rot_double_gyre2(dx::AbstractArray{Float64},x::AbstractArray{Float64}, p,t::Float64)
+function rot_double_gyre2!(dx::AbstractArray{Float64},x::AbstractArray{Float64}, p,t::Float64)
 #function rot_double_gyre2(t::Float64,x,dx)
   st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
   dxΨP = 2π*cos.(2π*x[1]).*sin.(π*x[2])
