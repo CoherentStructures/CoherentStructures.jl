@@ -1,17 +1,16 @@
 import SymEngine
 include("expr_diff.jl")
 
-"""makefields(name, :from, name_of_H, def_of_H)
+"""makefields(:from, name_of_H, def_of_H)
 
 Define a time dependent vector field from stream function. As a definition of
-H, provide a begin ... end - block that contains one line `name_of_H = <some_term>`.
-`makefields` tries to substitute all occurences of variables in  <some_term> that
-are not equal to :x,:y or :t with substitution rules that are defined in the block.
+H, provide a  code block that contains one line `name_of_H = <some_term>`.
+`makefields` tries apply all substitution rules in the code block to name_of_H.
 The final expression for the hamiltonian is read as a time dependent scalar field
 on `R^2` i.e. x is interpreted as ``x_1``, y as ``x_2`` and `t` as the time.
 
 The macro returns a dictionary with different versions of the field as elements.
-``
+
 #Example
 fields  = @makefields from H begin
     some_fun(r) = sin(r^2+1)
