@@ -31,7 +31,7 @@ function assembleStiffnessMatrix2{dim}(cv::CellScalarValues{dim},dh::DofHandler,
                 q_coords +=cell.coords[j] * cv.M[j,q]
             end
 
-            const Aqcoords::Tensor{2,2} = A(q_coords)#TODO: Use SymmetricTensor type here, as we assume A is symmetric below anyways...
+            const Aqcoords::SymmetricTensor{2,2} = A(q_coords)
             const dΩ::Float64 = getdetJdV(cv,q)
             for i in 1:n
                 const ∇φ::Vec{2} = shape_gradient(cv,q,i)

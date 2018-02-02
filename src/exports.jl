@@ -8,7 +8,7 @@ export
 	pullback_diffusion_tensor,
 
 	#velocityFields.jl
-	rot_double_gyre2,
+	rot_double_gyre2!,
 	transientGyresEqVari,
 	bickleyJetEqVari,
 	interpolateVF,

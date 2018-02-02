@@ -13,14 +13,12 @@ VT = vars["VT"]
 t_initial = minimum(time)
 t_final = t_initial + 90
 
-LL = Vec{2}([-4.0,-34.0])
-UR = Vec{2}([6.0,-28.0])
+LL = [-4.0,-34.0]
+UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
-p = (UI,VI)
-#ctx = regularP2QuadrilateralGrid((50,50),LL,UR)
 ctx = regularP2DelaunayGrid((25,25),LL,UR)
 cgfun = (x -> invCGTensor(interp_rhs, x,[t_initial,t_final], 1.e-8,tolerance=1.e-3,p=p))
-ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=p)[end]
+ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
 
 #With CG-Method
 begin
@@ -44,6 +42,6 @@ GR.title("Eigenvector with eigenvalue $(λ[index])")
 plot_u(ctx,real.(v[:,index]),100,100,LL,UR)
 
 plot_spectrum(λ2)
-index = sortperm(real.(λ2))[end-3]
+index = sortperm(real.(λ2))[end-5]
 GR.title("Eigenvector with eigenvalue $(λ2[index])")
 plot_u(ctx,real.(v2[:,index]),100,100,LL,UR)
