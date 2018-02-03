@@ -53,7 +53,7 @@ function runExperiment!(eR::experimentResult)
         eR.λ = λ
         eR.V = v
     else
-        assert("Not yet implemented")
+        error("Not yet implemented")
     end
     eR.done = true
     return eR
@@ -77,7 +77,7 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
         Mu = M*u
         return Mu ⋅ u
     else
-        assert("Not yet implemented")
+        error("Not yet implemented")
     end
 end
 
