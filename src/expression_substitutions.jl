@@ -71,7 +71,7 @@ sym_subst(expr::Expr,   sym::Symbol, s_expr::Union{Symbol, Expr}) =
         Expr(expr.head, sym_subst.(expr.args, [sym], [s_expr])...)
     end
 
-sym_subst(expr::Union{Symbol, Expr}, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
+sym_subst(expr, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
     begin
         @assert length(symbols) == length(bodies) "lists have different lengths"
         for (symb, s_expr) in zip(symbols, bodies)
