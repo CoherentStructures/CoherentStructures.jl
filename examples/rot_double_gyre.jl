@@ -20,7 +20,8 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time ALPHA = nonAdaptiveTO(ctx,u0->flow(rot_double_gyre2,u0,[0.0,-1.0])[end])
+    inverse_flow = u0 -> flow(rot_double_gyre2!,u0,[0.0,-1.0])[end]
+    @time ALPHA = nonAdaptiveTO(ctx,inverse_flow)
     @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM)
 end
 
@@ -28,7 +29,8 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    @time S2= adaptiveTO(ctx,u0->flow2D(rot_double_gyre2,u0,[0.0,1.0]))
+    forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0])[end]
+    @time S2= adaptiveTO(ctx,forwards_flow)
     @time λ, v = eigs(S + S2,M,which=:SM)
 end
 
