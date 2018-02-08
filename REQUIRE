@@ -1,10 +1,10 @@
 julia 0.6
 JuAFEM
 Tensors
-GR
 DiffEqBase
 OrdinaryDiffEq
 GeometricalPredicates
 VoronoiDelaunay
 JLD
+Plots
 ParametrizedFunctions

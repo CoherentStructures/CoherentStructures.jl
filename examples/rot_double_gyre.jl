@@ -1,9 +1,7 @@
-import GR
 using juFEMDL
 
-
 #ctx = regularP2QuadrilateralGrid((25,25))
-ctx = regularDelaunayGrid((25,25))
+ctx = regularDelaunayGrid((50,50))
 #ctx = regularTriangularGrid((25,25))
 #ctx = regularQuadrilateralGrid((10,10))
 #ctx = regularP2TriangularGrid((30,30))
@@ -13,7 +11,7 @@ begin
     cgfun = x -> invCGTensor(rot_double_gyre2!,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx,lumped=false)
-    @time λ, v = eigs(K,M,which=:SM)
+    @time λ, v = eigs(-1*K,M,which=:SM)
 end
 
 #With non-adaptive TO-method:
@@ -22,7 +20,7 @@ begin
     @time M = assembleMassMatrix(ctx)
     inverse_flow = u0 -> flow(rot_double_gyre2!,u0,[0.0,-1.0])[end]
     @time ALPHA = nonAdaptiveTO(ctx,inverse_flow)
-    @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM)
+    @time λ, v = eigs(-1*(S + ALPHA'*S*ALPHA),M,which=:SM)
 end
 
 #With adaptive TO method
@@ -31,22 +29,22 @@ begin
     @time M = assembleMassMatrix(ctx)
     forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0])[end]
     @time S2= adaptiveTO(ctx,forwards_flow)
-    @time λ, v = eigs(S + S2,M,which=:SM)
+    @time λ, v = eigs(-1*(S + S2),M,which=:SM)
 end
 
 #With L2-Galerkin calculation of ALPHA
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    DinvMap = u0 -> LinearizedFlowMap(rot_double_gyre2,u0,[0.0,-1.0],1.e-8)[end]
-    flowMap = u0->flow2D(rot_double_gyre2,u0,[0.0,-1.0],1.e-4)
+    DinvMap= u0 -> linearized_flow(rot_double_gyre2!,u0,[0.0,-1.0],1.e-8)[end]
+    flowMap = u0->flow(rot_double_gyre2!,u0,[0.0,-1.0],tolerance=1.e-4)[end]
     @time preALPHAS= L2GalerkinTO(ctx,flowMap,DinvMap)
     Minv = inv(full(M))
     ALPHA = Minv*preALPHAS
-    @time λ, v = eigs(S + ALPHA'*S*ALPHA,M,which=:SM,nev=20)
+    @time λ, v = eigs(-1*(S + ALPHA'*S*ALPHA),M,which=:SM,nev=6)
 end
 
 #Plotting
-index = sortperm(real.(λ))[end-1]
-GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]),100,100)
+index=2
+title = "\\\lambda = $(λ[index])"
+plot_u(ctx,real.(v[:,index]),50,50,color=:rainbow,title=title)
