@@ -4,6 +4,7 @@ Tensors
 DiffEqBase
 OrdinaryDiffEq
 GeometricalPredicates
+ParameterizedFunctions
 VoronoiDelaunay
 JLD
 Plots
