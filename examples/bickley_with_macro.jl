@@ -1,13 +1,9 @@
-push!(LOAD_PATH, "/home/alvaro/Documents/Code/juFEMDL/src")
-
-
 #include("../src/field_from_hamiltonian.jl")
 using juFEMDL
 
-# after this, bickley will reference a Dictionary of functions
+# after this, 'bickley' will reference a Dictionary of functions
 # access it via the desired signature. e.g. F = bickley[:(dU, U, p, t)]
 # for the right side of the equation of variation.
-
 bickley = @makefields from stream begin
     stream = psi₀ + psi₁
     psi₀   = - U₀ * L₀ * tanh(y / L₀)
@@ -30,11 +26,11 @@ bickley = @makefields from stream begin
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
 
-using Plots; pyplot()
-quiv = bickley[:(x,y,t)]
-quiv(0.0,0.0,1.0)
+#using Plots; pyplot()
+using ServerPlots
+quiv = let f = bickley[:(x,y,t)]; (x,y)-> 10e2*f(x,y,0.0) end 
 xs = linspace(0,1,20)
-quiver(xs, xs', quiver = (x,y)->quiv(x,y,0.0))
+quiver(xs, xs', quiver = quiv)
 
 
 
