@@ -26,8 +26,8 @@ bickley = @makefields from stream begin
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
 
-#using Plots; pyplot()
-using ServerPlots
+using Plots; pyplot()
+#using ServerPlots
 quiv = let f = bickley[:(x,y,t)]; (x,y)-> 10e2*f(x,y,0.0) end 
 xs = linspace(0,1,20)
 quiver(xs, xs', quiver = quiv)
