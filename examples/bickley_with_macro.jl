@@ -1,3 +1,6 @@
+push!(LOAD_PATH, "/home/alvaro/Documents/Code/juFEMDL/src")
+
+
 #include("../src/field_from_hamiltonian.jl")
 using juFEMDL
 
@@ -16,16 +19,22 @@ bickley = @makefields from stream begin
     Σ₂  =  ε₂ * cos(k₂*x - K₂*c₂*t)
     Σ₃  =  ε₃ * cos(k₃*x - K₃*c₃*t)
 
-    k₁ = 2/r₀     ; k₂ = 4/r₀    ; k₃ = 6/r₀
+    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀
 
     lx  = 6.371e6π ; ly = 1.777e6
 
-    K₁ = 2π / lx  ; K₂ = 4π / lx ; K₃ = 6π / lx
-    ε₁ = 0.0075  ; ε₂ = 0.15    ; ε₃ = 0.3
-    c₁ = 0.1446U₀ ; c₂ = 0.205U₀ ; c₃ = 0.461U₀
+    K₁ = 2π / lx   ; K₂ = 4π / lx ; K₃ = 6π / lx
+    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3
+    c₁ = 0.1446U₀  ; c₂ = 0.205U₀ ; c₃ = 0.461U₀
 
-    U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
+    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
+
+using Plots; pyplot()
+quiv = bickley[:(x,y,t)]
+quiv(0.0,0.0,1.0)
+xs = linspace(0,1,20)
+quiver(xs, xs', quiver = (x,y)->quiv(x,y,0.0))
 
 
 

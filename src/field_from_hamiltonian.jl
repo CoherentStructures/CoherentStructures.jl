@@ -75,7 +75,7 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
 
         # define functions with different signatures
         field(u, p, t) = field!(zeros(T,2), [x, y], p, t)
-        field2(x::T,y::T,t::T) where T = field([x,y], nothing, t)
+        field2(x, y, t) = field([x,y], nothing, t)
         field_at_t(t)       = (x,y) -> field(x, y, t)
 
         # populate the output dictionary
