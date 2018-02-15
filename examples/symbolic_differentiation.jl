@@ -1,5 +1,4 @@
 # Based on static_Laplace_eigvs.jl
-import GR
 using juFEMDL
 using Tensors
 
@@ -30,7 +29,7 @@ end
 
 #Plotting
 for i in 1:20
-    GR.title("Eigenvector with eigenvalue $(λ[i])")
-    plot_u(ctx,real.(v[:,i]),50,50)
+    title = "Eigenvector with eigenvalue $(λ[i])"
+    plot_u(ctx,real.(v[:,i]),50,50,title=title)
     sleep(1)
 end

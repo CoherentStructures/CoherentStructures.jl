@@ -1,19 +1,12 @@
 #(c) 2018 Nathanael Schilling
 
-#This file contains plotting routines for plotting convergence plots
-#It is not in plotting.jl so as to avoid having to load Plots.jl in plotting.jl
-#This is because loading Plots.jl is slow, and GR is fast.
-#Plots.jl is used here because GR is poorly documented and I couldn't figure out how
-#to use it
+t = makeDoubleGyreTestCase()
+t = makeOceanFlowTestCase()
+l = experimentResult(t,"regular triangular grid",(25,25), :CG)
+runExperiment!(l)
+l.experiment.ode_fun
 
-import Plots
-include("numericalExperiments.jl")
-
-function plotNumericalExperiment(x,y,bins)
-
-end
-
-
+plotExperiment(l,right_margin=0Plots.px,left_margin=0Plots.px,border=0Plots.px)
 
 results = testDoubleGyre()
 buildStatistics!(results,1)

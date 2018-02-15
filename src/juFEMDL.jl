@@ -11,7 +11,6 @@ module juFEMDL
 
     using JuAFEM
 
-    using GR
 
     #Contains a list of functions being exported
     include("exports.jl")
@@ -51,6 +50,7 @@ module juFEMDL
    include("numericalExperiments.jl")
 
    #Plotting
+   using Plots
    include("plotting.jl")
 
    #Vector field from Hamiltonian generation

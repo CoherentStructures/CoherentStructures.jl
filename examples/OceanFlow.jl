@@ -39,11 +39,11 @@ end
 
 
 plot_spectrum(λ)
-index = sortperm(real.(λ))[end-1]
-GR.title("Eigenvector with eigenvalue $(λ[index])")
-plot_u(ctx,real.(v[:,index]))
+index = sortperm(real.(λ))[end-5]
+title = "Eigenvector with eigenvalue $(λ[index])"
+plot_u(ctx,real.(v[:,index]),title=title)
 
 plot_spectrum(λ2)
 index = sortperm(real.(λ2))[end-5]
-GR.title("Eigenvector with eigenvalue $(λ2[index])")
-plot_u(ctx,real.(v2[:,index]))
+title = "Eigenvector with eigenvalue $(λ2[index])"
+plot_u(ctx,real.(v2[:,index]),title=title)

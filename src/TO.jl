@@ -83,10 +83,10 @@ function L2GalerkinTO(ctx::gridContext{2},inverse_flow_map::Function,Dinverse_fl
                 local_coords, nodes = locatePoint(ctx,invQ)
                 for (shape_fun_num,i) in enumerate(nodes)
                     celldofs!(dofs,ctx.dh,cellnumber)
-
+                    ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
                     for j in 1:nshapefuncs
                         φ::Float64 = shape_value(cv,q,j)
-                        DL2[dofs[j],ctx.node_to_dof[i]] += JuAFEM.value(ctx.ip,shape_fun_num,local_coords)*dΩ*invDQ*φ
+                        DL2[dofs[j],ctx.node_to_dof[i]] += dΩ*invDQ*φ*ψ
                     end
                 end
             catch y

@@ -24,6 +24,7 @@ export
 	regularP2DelaunayGrid,
 	regularQuadrilateralGrid,
 	regularP2QuadrilateralGrid,
+	regularGrid,
 
 	#plotting.jl
 	plot_u,
@@ -37,6 +38,13 @@ export
 	nonAdaptiveTO,
 	adaptiveTO,
 	L2GalerkinTO,
+
+	#numericalExperimens.jl
+	makeOceanFlowTestCase,
+	makeDoubleGyreTestCase,
+	experimentResult,
+	runExperiment!,
+	plotExperiment,
 
 	#field_from_hamiltonian.jl
 	@makefields
