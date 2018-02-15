@@ -29,7 +29,7 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
     spatialBounds::Vector{AbstractVector} #In 2D, this is {LL,UR} for regular grids
     numberOfPointsInEachDirection::Vector{Int}
 
-    gridType::String
+    gridType::String #See also makeRegularGrid() function
 
     function gridContext{dim}(grid::JuAFEM.Grid,ip::JuAFEM.Interpolation,dh::JuAFEM.DofHandler,qr::JuAFEM.QuadratureRule,loc::cellLocator) where {dim}
         x =new{dim}(grid,ip,dh,qr,loc)
@@ -40,6 +40,26 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
         x.node_to_dof = nodeToDHTable(x)
         x.dof_to_node = sortperm(x.node_to_dof)
         return x
+    end
+end
+
+#TODO: is it better for gridType to be of type ::Symbol?
+regularGridTypes = ["regular triangular grid", "regular P2 triangular grid", "regular Delaunay grid", "regular P2 Delaunay grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
+function regularGrid(gridType::String, numnodes::Tuple{Int,Int}, LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
+    if gridType == "regular triangular grid"
+        return regularTriangularGrid(numnodes, LL,UR,quadrature_order)
+    elseif gridType == "regular Delaunay grid"
+        return regularDelaunayGrid(numnodes, LL,UR,quadrature_order)
+    elseif gridType == "regular P2 triangular grid"
+        return regularTriangularGrid(numnodes, LL,UR,quadrature_order)
+    elseif gridType == "regular P2 Delaunay grid"
+        return regularP2DelaunayGrid(numnodes, LL,UR,quadrature_order)
+    elseif gridType == "regular quadrilateral grid"
+        return regularQuadrilateralGrid(numnodes, LL,UR,quadrature_order)
+    elseif gridType == "regular P2 quadrilateral grid"
+        return regularP2QuadrilateralGrid(numnodes, LL,UR,quadrature_order)
+    else
+        fail("Unsupported grid type '$gridType'")
     end
 end
 

@@ -26,9 +26,16 @@ mutable struct experimentResult
     λ::Vector{Float64}
     V::Array{Float64,2}
     statistics::Dict{String, Any} #Things we can calculate about this solution
+
+    #Constructor from general gridContext object
     function experimentResult(experiment,ctx,mode)
         result = new(experiment,ctx,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}())
         return result
+    end
+    #For regular Grids:
+    function experimentResult(experiment, gridType::String, howmany , mode)
+        ctx = regularGrid(gridType,howmany, experiment.LL, experiment.UR)
+        return experimentResult(experiment,ctx,mode)
     end
 
 end
@@ -42,7 +49,7 @@ function runExperiment!(eR::experimentResult)
         times::Vector{Float64} = [eR.experiment.t_initial,eR.experiment.t_final]
         ode_fun = eR.experiment.ode_fun
         #TODO: Think about varying the parameters below.
-        cgfun = (x -> invCGTensor(x,times, 1.e-8,ode_fun,1.e-3))
+        cgfun = (x -> invCGTensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.p))
         eR.runtime = 0.0
         assembleStiffnessMatrix(eR.ctx)
         eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
@@ -58,6 +65,21 @@ function runExperiment!(eR::experimentResult)
     eR.done = true
     return eR
 end
+
+function plotExperiment(eR::experimentResult; kwargs...)
+    if !eR.done
+        print("Experiment not yet run")
+        return
+    end
+    #TODO: Can we get rid of the error in any other way
+    Plots.clibrary(:misc)
+    allplots = []
+    for (i,lam) in enumerate(eR.λ)
+        push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),title=(@sprintf("%.2f",lam)),plotit=false,color=:rainbow;kwargs...))
+    end
+    Plots.plot(allplots...)
+end
+
 
 
 #TODO: Think of moving helper functions like these to GridFunctions.jl
@@ -81,8 +103,8 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
     end
 end
 
-function makeOceanFlowTestCase()
-    vars = JLD.load("examples/Ocean_geostrophic_velocity.jld")
+function makeOceanFlowTestCase(location="examples/Ocean_geostrophic_velocity.jld")
+    vars = JLD.load(location)
     Lon = vars["Lon"]
     Lat = vars["Lat"]
     UT = vars["UT"]

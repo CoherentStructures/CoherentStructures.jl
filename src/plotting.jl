@@ -1,6 +1,6 @@
 
 #TODO: Can this be made more efficient?
-function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;color=:viridis,title="Plot")
+function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;plotit=true,kwargs...)
     x1 = Float64[]
     x2 = Float64[]
     LL = ctx.spatialBounds[1]
@@ -11,8 +11,11 @@ function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;color=:
     x2 =  linspace(LL[1] + 1.e-8,UR[1]-1.e-8,nx)
     myf(x,y) =  evaluate_function(ctx, Vec{2}([x,y]),u_values)
     #Plots.plot(x1,x2,values;t=:contourf)#,colormap=GR.COLORMAP_JET)
-    p1 = Plots.contour(x1,x2,myf,fill=true,color=color,title=title)#,colormap=GR.COLORMAP_JET)
-    Plots.plot(p1)
+    result =  Plots.contour(x1,x2,myf,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
+    if plotit
+        Plots.plot(p1)
+    end
+    return result
 end
 
 
