@@ -44,12 +44,11 @@ function runExperiment!(eR::experimentResult)
     if eR.done
         print("Experiment was already run, not running again...")
     end
-
     if eR.mode == :CG
         times::Vector{Float64} = [eR.experiment.t_initial,eR.experiment.t_final]
         ode_fun = eR.experiment.ode_fun
         #TODO: Think about varying the parameters below.
-        cgfun = (x -> invCGTensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.p))
+        cgfun = (x -> invCGTensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
         eR.runtime = 0.0
         assembleStiffnessMatrix(eR.ctx)
         eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
@@ -66,7 +65,7 @@ function runExperiment!(eR::experimentResult)
     return eR
 end
 
-function plotExperiment(eR::experimentResult; kwargs...)
+function plotExperiment(eR::experimentResult,howmany=-1; kwargs...)
     if !eR.done
         print("Experiment not yet run")
         return
@@ -75,6 +74,9 @@ function plotExperiment(eR::experimentResult; kwargs...)
     Plots.clibrary(:misc)
     allplots = []
     for (i,lam) in enumerate(eR.λ)
+        if howmany != -1 && i > howmany
+            break
+        end
         push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),title=(@sprintf("%.2f",lam)),plotit=false,color=:rainbow;kwargs...))
     end
     Plots.plot(allplots...)
