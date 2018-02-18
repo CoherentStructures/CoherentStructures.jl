@@ -7,18 +7,20 @@ function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;plotit=
     UR = ctx.spatialBounds[2]
     values = Float64[]
     const u_values =  dof2U(ctx,dof_values)
-    x1 =  linspace(LL[2] + 1e-8, UR[2] -1.e-8,ny)
-    x2 =  linspace(LL[1] + 1.e-8,UR[1]-1.e-8,nx)
+    x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,ny)
+    x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,nx)
     myf(x,y) =  evaluate_function(ctx, Vec{2}([x,y]),u_values)
-    #Plots.plot(x1,x2,values;t=:contourf)#,colormap=GR.COLORMAP_JET)
+
+
+    Plots.plot(x1,x2,values;t=:contourf)#,colormap=GR.COLORMAP_JET)
     result =  Plots.contour(x1,x2,myf,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
-        Plots.plot(p1)
+        Plots.plot(result)
     end
     return result
 end
 
 
 function plot_spectrum(λ)
-    Plots.plot(real.(λ),imag.(λ),"x")
+    Plots.scatter(real.(λ),imag.(λ))
 end
