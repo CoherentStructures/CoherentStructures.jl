@@ -50,16 +50,16 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
     # final code: define a Dictionary that contains the field in different
     # formats. Accessible by function "signatures"
     quote
-        output = Dict()
-
-        function field!(du, u, p, t)
+    output = Dict()
+    let # protect variables from being global 
+        field! = (du, u, p, t) -> begin
             du[1] = $(F[1])
             du[2] = $(F[2])
             du
         end
 
-        # save f ∈ R^2x1 and Df ∈ R^2x2 in a 2x3-matrix
-        function eq_var(dU, U, p, t)
+        # save f ∈ R^2x1 and Df ∈ R^2x2 together in a 2x3-matrix
+        eq_var =  (dU, U, p, t) -> begin
             # write field into first column
             @views field!(dU[:,1], U[:,1], p, t)
 
@@ -74,8 +74,8 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
         end
 
         # define functions with different signatures
-        field(u, p, t) = field!(zeros(T,2), [x, y], p, t)
-        field2(x::T,y::T,t::T) where T = field([x,y], nothing, t)
+        field  = (u, p, t) -> field!(zeros(u), u, p, t)
+        field2 = (x, y, t) -> field([x,y], nothing, t)
         field_at_t(t)       = (x,y) -> field(x, y, t)
 
         # populate the output dictionary
@@ -88,5 +88,6 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
         output[:(x,y,t)]    = field2
         # bind the dictionary to the name that was passed to the macro
         output
-    end
+    end # let-block
+    end # quote-block
 end
