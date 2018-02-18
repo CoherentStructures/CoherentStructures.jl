@@ -18,7 +18,7 @@ UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
 
 
-ctx = regularDelaunayGrid((100,100),LL,UR)
+ctx = regularP2DelaunayGrid((50,50),LL,UR)
 
 #With CG-Method
 begin
@@ -44,6 +44,6 @@ title = "Eigenvector with eigenvalue $(λ[index])"
 plot_u(ctx,real.(v[:,index]),title=title)
 
 plot_spectrum(λ2)
-index = sortperm(real.(λ2))[end-5]
+index = sortperm(real.(λ2))[end-1]
 title = "Eigenvector with eigenvalue $(λ2[index])"
 plot_u(ctx,real.(v2[:,index]),title=title)
