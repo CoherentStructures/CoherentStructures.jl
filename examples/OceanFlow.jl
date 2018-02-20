@@ -56,8 +56,8 @@ end
 plot_u(ctx,u,color=:rainbow,200,200,aspect_ratio=1.0)
 using Plots
 anim = @animate for (tindex,t) in enumerate(times)
-        q = [mean_As, tindex]
-        K2= assembleStiffnessMatrix(ctx,myMeanAFun,q)
+        q = [As, tindex]
+        K2= assembleStiffnessMatrix(ctx,myAfun,q)
         u = (M2 - ϵ*dt*K2)\(M2*u)
         plot_u(ctx,u,200,200,title="t = $t",color=:rainbow,aspect_ratio=1)
         gc()
