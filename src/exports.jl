@@ -25,6 +25,8 @@ export
 	regularQuadrilateralGrid,
 	regularP2QuadrilateralGrid,
 	regularGrid,
+	evaluate_function,
+	locatePoint,
 
 	#plotting.jl
 	plot_u,
@@ -45,6 +47,9 @@ export
 	experimentResult,
 	runExperiment!,
 	plotExperiment,
+
+	#util.jl
+	dof2U,
 
 	#field_from_hamiltonian.jl
 	@makefields

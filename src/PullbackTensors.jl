@@ -73,7 +73,7 @@ function pullback_tensors(odefun::Function,u::Vec{dim,T},tspan::AbstractVector{F
 end
 
 function pullback_metric_tensor(odefun,u::Vec{dim, T},tspan::AbstractVector{Float64},
-    δ::Float64,G::Tensors.SymmetricTensor{2,dim,T,3},p=nothing,tolerance=1.e-3,solver=OrdinaryDiffEq.BS5()) where {T <: Real,dim}
+    δ::Float64,G::Tensors.SymmetricTensor{2,dim,T,3};p=nothing,tolerance=1.e-3,solver=OrdinaryDiffEq.BS5()) where {T <: Real,dim}
 
     iszero(δ) ? DF = linearized_flow(odefun,u,tspan,p=p,tolerance=tolerance,solver=solver) : DF = linearized_flow(odefun,u,tspan,δ,p=p,tolerance=tolerance,solver=solver)
 
