@@ -7,8 +7,8 @@ vars = JLD.load("examples/Ocean_geostrophic_velocity.jld")
 Lon = vars["Lon"]
 Lat = vars["Lat"]
 UT = vars["UT"]
-time = vars["time"]
 VT = vars["VT"]
+time = vars["time"]
 
 t_initial = minimum(time)
 t_final = t_initial + 90
@@ -16,6 +16,7 @@ t_final = t_initial + 90
 LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
+<<<<<<< HEAD
 p=(UI,VI)
 
 
@@ -52,6 +53,28 @@ unode = [f(n.x - (LL + UR)/2.0) for n in ctx.grid.nodes]
 u = zeros(unode)
 for i in 1:length(u)
         u[i] = unode[ctx.dof_to_node[i]]
+=======
+p = (UI,VI)
+
+ctx = regularP2QuadrilateralGrid((500,500),LL,UR)
+
+
+f(x) = (norm(x - (LL + UR)/2) <= 1.0) ? 1.0 : 0.0
+u0 = nodal_interpolation(ctx,f)
+LL_big = LL - [8,8]
+UR_big = UR + [8,8]
+inverse_flow_map = u0 -> flow(interp_rhs,u0, [t_final,t_initial],p=(UI,VI))[end]
+
+
+
+
+#With CG-Method
+begin
+    cgfun = (x -> invCGTensor(interp_rhs, x,[t_initial,t_final], 1.e-8,tolerance=1.e-5,p=p))
+    @time K2 = assembleStiffnessMatrix(ctx,cgfun)
+    @time M2 = assembleMassMatrix(ctx)
+    @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
+>>>>>>> master
 end
 plot_u(ctx,u,color=:rainbow,200,200,aspect_ratio=1.0)
 using Plots
@@ -68,6 +91,14 @@ gc()
 mp4(anim,"/tmp/out_mean.mp4")
 @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
 
+plot_u(ctx,v2[:,6])
+plot_u_eulerian(ctx,v2[:,6],LL_big,UR_big,inverse_flow_map,5000,5000,color=:rainbow)
+lamreal = real(λ2[6])
+#Plots.title!("\\lambda=$lamreal")
+using LaTeXStrings
+Plots.title!("\\lambda=$lamreal")
+Plots.pdf("/tmp/outputhuge.pdf")
+
 #With adaptive TO method
 begin
     ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
@@ -81,7 +112,7 @@ end
 plot_spectrum(λ)
 index = sortperm(real.(λ))[end-5]
 title = "Eigenvector with eigenvalue $(λ[index])"
-plot_u(ctx,real.(v[:,index]),title=title)
+plot_u(ctx,real.(v[:,index]),title=title,color=:rainbow)
 
 plot_spectrum(λ2)
 index = sortperm(real.(λ2))[end-2]
