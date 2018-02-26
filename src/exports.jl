@@ -29,6 +29,7 @@ export
 	#plotting.jl
 	plot_u,
 	plot_spectrum,
+	plot_u_eulerian,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,
