@@ -25,6 +25,7 @@ export
 	regularQuadrilateralGrid,
 	regularP2QuadrilateralGrid,
 	regularGrid,
+	nodal_interpolation,
 
 	#plotting.jl
 	plot_u,

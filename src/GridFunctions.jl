@@ -55,9 +55,9 @@ function regularGrid(gridType::String, numnodes::Tuple{Int,Int}, LL::AbstractVec
     elseif gridType == "regular P2 Delaunay grid"
         return regularP2DelaunayGrid(numnodes, LL,UR; kwargs...)
     elseif gridType == "regular quadrilateral grid"
-        return regularQuadrilateralGrid(numnodes, LL,UR,quadrature_order)
+        return regularQuadrilateralGrid(numnodes, LL,UR; kwargs...)
     elseif gridType == "regular P2 quadrilateral grid"
-        return regularP2QuadrilateralGrid(numnodes, LL,UR,quadrature_order)
+        return regularP2QuadrilateralGrid(numnodes, LL,UR; kwargs...)
     else
         fail("Unsupported grid type '$gridType'")
     end
@@ -205,8 +205,8 @@ end
         return result
 end
 
-function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),LL::Vec{2}=Vec{2}([0.0,0.0]),UR::Vec{2}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
-    return gridContext{2}(QuadraticQuadrilateral,numnodes, LL,UR)
+function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector{Float64}=Vec{2}([0.0,0.0]),UR::AbstractVector{Float64}=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
+    return gridContext{2}(QuadraticQuadrilateral,numnodes, Vec{2}(LL),Vec{2}(UR))
 end
 
 
@@ -605,4 +605,8 @@ function JuAFEM.generate_grid(::Type{QuadraticTriangle}, nodes_in::Vector{Vec{2,
     grid = Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
     return grid, locator
 
+end
+
+function nodal_interpolation(ctx::gridContext, f::Function)
+    nodal_values = [f(ctx.grid.nodes[ctx.dof_to_node[j]].x) for j in 1:ctx.n]
 end

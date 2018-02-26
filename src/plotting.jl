@@ -28,11 +28,16 @@ function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::Abstra
     const u_values =  dof2U(ctx,dof_values)
     x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,ny)
     x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,nx)
-    myf(x,y) =  evaluate_function(ctx, inverse_flow_map(Vec{2}([x,y])),u_values)
-
-
-    Plots.plot(x1,x2,values;t=:contourf)#,colormap=GR.COLORMAP_JET)
-    result =  Plots.contour(x1,x2,myf,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
+    function myf(x,y)
+        try
+            lagrangian_point = inverse_flow_map(Vec{2}([x,y]))
+            return evaluate_function(ctx,lagrangian_point ,u_values,NaN)
+        catch y
+            return NaN
+        end
+        return
+    end
+    result =  Plots.heatmap(x1,x2,myf,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
     end
