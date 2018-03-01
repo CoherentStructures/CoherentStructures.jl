@@ -256,6 +256,7 @@ function evaluate_function(ctx::gridContext,x::Vec{2},u::Vector{Float64},outside
         if isa(y,DomainError)
             return outside_value
         end
+        print("Unexpected error for $x")
         throw(y)
     end
     result = 0.0

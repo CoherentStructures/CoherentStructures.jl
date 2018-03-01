@@ -7,8 +7,9 @@ ctx = regularTriangularGrid((25,25))
 #ctx = regularP2TriangularGrid((30,30))
 
 #With CG-Method
+isempty(methods(cgfun,(Any,)))
 begin
-    cgfun = (x,index,p) -> invCGTensor(rot_double_gyre2!,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
+    cgfun = x -> invCGTensor(rot_double_gyre2!,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx,lumped=false)
     @time λ, v = eigs(-1*K,M,which=:SM)
@@ -45,6 +46,6 @@ begin
 end
 
 #Plotting
-index=6
+index=1
 title = "\\\lambda = $(λ[index])"
 plot_u(ctx,real.(v[:,index]),50,50,color=:rainbow,title=title)

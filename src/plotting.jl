@@ -21,23 +21,39 @@ function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;plotit=
 end
 
 
-function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::AbstractVector{Float64}, UR::AbstractVector{Float64},inverse_flow_map::Function,nx=50,ny=60;plotit=true,kwargs...)
+function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::AbstractVector{Float64}, UR::AbstractVector{Float64},inverse_flow_map::Function,nx=50,ny=60;plotit=true,euler_to_lagrange_points=nothing,only_get_lagrange_points=false,kwargs...)
     x1 = Float64[]
     x2 = Float64[]
     values = Float64[]
     const u_values =  dof2U(ctx,dof_values)
-    x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,ny)
-    x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,nx)
-    function myf(x,y)
-        try
-            lagrangian_point = inverse_flow_map(Vec{2}([x,y]))
-            return evaluate_function(ctx,lagrangian_point ,u_values,NaN)
-        catch y
-            return NaN
+    x1 =  linspace(LL[1] , UR[1] ,ny)
+    x2 =  linspace(LL[2] ,UR[2] ,nx)
+    if euler_to_lagrange_points == nothing
+        euler_to_lagrange_points = [zero(Vec{2}) for x in x1, y in x2]
+        for i in 1:ny
+            for j in 1:nx
+                try
+                    euler_to_lagrange_points[i,j] = inverse_flow_map(Vec{2}([x1[i],x2[j]]))
+                catch e
+                    euler_to_lagrange_points[i,j] = Vec{2}([NaN,NaN])
+                end
+            end
         end
-        return
     end
-    result =  Plots.heatmap(x1,x2,myf,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
+    if only_get_lagrange_points
+        return euler_to_lagrange_points
+    end
+    z = zeros(nx,ny)
+    for i in 1:ny
+        for j in 1:nx
+            if isnan((euler_to_lagrange_points[i,j])[1])
+                z[j,i] = NaN
+            else
+                z[j,i] = evaluate_function(ctx,euler_to_lagrange_points[i,j],u_values,NaN)
+            end
+        end
+    end
+    result =  Plots.heatmap(x1,x2,z,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
     end

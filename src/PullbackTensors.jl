@@ -6,10 +6,10 @@
 #Solve the ODE with right hand side given by @param rhs and initial value given by @param u0
 #dim is the dimension of the ODE
 #p is a parameter passed as the third argument to rhs
-function flow(rhs::Function,u0::AbstractArray{T,1},tspan::AbstractVector{Float64};tolerance=1.e-3,p=nothing,solver=OrdinaryDiffEq.BS5()) where {T<:Real}
+function flow(rhs::Function,u0::AbstractArray{T,1},tspan::AbstractVector{Float64};tolerance=1.e-3,p=nothing,solver=OrdinaryDiffEq.BS5(),kwargs...) where {T<:Real}
    prob = OrdinaryDiffEq.ODEProblem(rhs,Array{T}(u0),(tspan[1],tspan[end]),p)
    #TODO: can we use point notation here, or something from the DifferentialEquations package?
-   return map( Vec{2},OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u)
+   return map( Vec{2},OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance;kwargs...).u)
 end
 
 #Calculate derivative of flow map by finite differences.

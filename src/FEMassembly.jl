@@ -1,6 +1,6 @@
 using JuAFEM
 
-Id = one(Tensor{2,2})
+Id = one(SymmetricTensor{2,2})
 function tensorIdentity(x::Vec{2},i::Int,p)
     return Id
 end
@@ -8,19 +8,36 @@ end
 function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function,p=nothing)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
-    K = create_sparsity_pattern(dh)
-    a_K = start_assemble(K)
-    dofs = zeros(Int, ndofs_per_cell(dh))
-    n = getnbasefunctions(cv)         # number of basis functions
-    Ke = zeros(n,n)
+    K::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
+    a_K::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = start_assemble(K)
+    dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
+    n::Int64 = getnbasefunctions(cv)         # number of basis functions
+    Ke::Array{Float64,2} = zeros(n,n)
     index::Int = 1 #Counter to know the number of the current quadrature point
+    A_type::Int = 0 #What type of function A is.
+    if !isempty(methods(A,(Vec{dim},)))
+        A_type = 0
+    elseif !isempty(methods(A,(Vec{dim},Int,Any)))
+        A_type = 1
+    elseif !isempty(methods(A,(Vector{Float64})))
+        A_type = 2
+    else
+        fail("Function parameter A does not accept types supported by assembleStiffnessMatrix")
+    end
 
+    #Note: the Float64,3 part below is important! otherwise the method becomes 30x slower
+    Aqcoords::SymmetricTensor{2,2,Float64,3} = zero(SymmetricTensor{2,2})
     @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         fill!(Ke,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
-
-            const Aqcoords::SymmetricTensor{2,2} = A(ctx.quadrature_points[index],index,p)
+            if A_type == 0
+                Aqcoords = A(ctx.quadrature_points[index])
+            elseif A_type == 1
+                Aqcoords = A(ctx.quadrature_points[index],index,p)
+            elseif A_type == 2
+                Aqcoords = A(Vector{Float64}(ctx.quadrature_points[index]))
+            end
             const dΩ::Float64 = getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
                 const ∇φ::Vec{2} = shape_gradient(cv,q,i)
@@ -28,8 +45,9 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function,p=nothin
                     const ∇ψ::Vec{2} = shape_gradient(cv,q,j)
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
+
                 end
-                Ke[i,i] -= (∇φ ⋅ (Aqcoords⋅∇φ)) * dΩ
+                Ke[i,i] -= (∇φ ⋅(Aqcoords ⋅ ∇φ)) * dΩ
             end
             index += 1
         end
@@ -82,12 +100,17 @@ function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=true)
 end
 
 function getQuadPoints{dim}(ctx::gridContext{dim})
-    dh = ctx.dh
-    cv = CellScalarValues(ctx.qr, ctx.ip)
+    cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
+    dh::DofHandler{dim} = ctx.dh
+
+
+
+    dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
+
     dofs = zeros(Int, ndofs_per_cell(dh))
     result = Vec{dim,Float64}[]
 
-    n = getnbasefunctions(cv)         # number of basis functions
+    const n::Int = getnbasefunctions(cv)         # number of basis functions
     @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
