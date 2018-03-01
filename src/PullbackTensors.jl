@@ -6,15 +6,29 @@
 #Solve the ODE with right hand side given by @param rhs and initial value given by @param u0
 #dim is the dimension of the ODE
 #p is a parameter passed as the third argument to rhs
-function flow(rhs::Function,u0::AbstractArray{T,1},tspan::AbstractVector{Float64};tolerance=1.e-3,p=nothing,solver=OrdinaryDiffEq.BS5()) where {T<:Real}
-   prob = OrdinaryDiffEq.ODEProblem(rhs,Array{T}(u0),(tspan[1],tspan[end]),p)
+function flow(rhs::Function, 
+              u0::AbstractArray{T,1}, 
+              tspan::AbstractVector{Float64}; 
+              tolerance = 1.e-3,
+              p = nothing, 
+              solver = OrdinaryDiffEq.BS5()) where {T<:Real}
+
+   prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0), (tspan[1],tspan[end]), p)
+   sol =OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                             save_everystep=false, dense=false,
+                             reltol=tolerance, abstol=tolerance)
+ 
    #TODO: can we use point notation here, or something from the DifferentialEquations package?
-   return map( Vec{2},OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u)
+   return map(Vec{2}, sol.u)
 end
 
 #Calculate derivative of flow map by finite differences.
 #TODO: implement this for dim==3, currently it only works if dim==2
-@inline function linearized_flow(odefun::Function,x::Vec{dim,T},tspan::AbstractVector{Float64}, δ::Float64;tolerance::Float64=1.e-3,p=nothing,solver=OrdinaryDiffEq.BS5()) where {T <: Real,dim}
+@inline function linearized_flow(odefun::Function,
+                                 x::Vec{dim,T},
+                                 tspan::AbstractVector{Float64},  
+                                 δ::Float64;tolerance::Float64 = 1.e-3,
+                                 p=nothing,solver = OrdinaryDiffEq.BS5()) where {T <: Real,dim}
     const dx = [δ,zero(δ)];
     const dy = [zero(δ),δ];
     #In order to solve only one ODE, write all the initial values
@@ -26,9 +40,13 @@ end
     @inbounds stencil[7:8] .= x.-dy
 
     const num_tsteps = length(tspan)
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),stencil,(tspan[1],tspan[end]),p)
-    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-    result = zeros(Tensor{2,2},num_tsteps)
+    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),
+                                     stencil, (tspan[1],tspan[end]), p)
+
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat = tspan, save_everystep = false,
+                               dense = false, reltol = tolerance, abstol = tolerance).u
+
+    result = zeros(Tensor{2,2}, num_tsteps)
     @inbounds for i in 1:num_tsteps
         #The ordering of the stencil vector was chosen so
         #that  a:= stencil[1:4] - stencil[5:8] is a vector
