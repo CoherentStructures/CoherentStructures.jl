@@ -1,12 +1,15 @@
 #(c) 2018 Nathanael Schilling
 
-t = makeDoubleGyreTestCase()
-t = makeOceanFlowTestCase()
-l = experimentResult(t,"regular triangular grid",(25,25), :CG)
-runExperiment!(l)
-l.experiment.ode_fun
+using juFEMDL
+import Plots
 
-plotExperiment(l,right_margin=0Plots.px,left_margin=0Plots.px,border=0Plots.px)
+t = makeOceanFlowTestCase()
+t = makeDoubleGyreTestCase()
+
+l = experimentResult(t,"regular P2 triangular grid",(200,200), :aTO)
+runExperiment!(l,12)
+
+plotExperiment(l,axis=false,colorbar=false,margin=0.0Plots.px)
 
 results = testDoubleGyre()
 buildStatistics!(results,1)

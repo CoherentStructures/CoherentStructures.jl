@@ -6,6 +6,7 @@
 #Solve the ODE with right hand side given by @param rhs and initial value given by @param u0
 #dim is the dimension of the ODE
 #p is a parameter passed as the third argument to rhs
+<<<<<<< HEAD
 function flow(rhs::Function, 
               u0::AbstractArray{T,1}, 
               tspan::AbstractVector{Float64}; 
@@ -91,7 +92,7 @@ function pullback_tensors(odefun::Function,u::Vec{dim,T},tspan::AbstractVector{F
 end
 
 function pullback_metric_tensor(odefun,u::Vec{dim, T},tspan::AbstractVector{Float64},
-    δ::Float64,G::Tensors.SymmetricTensor{2,dim,T,3},p=nothing,tolerance=1.e-3,solver=OrdinaryDiffEq.BS5()) where {T <: Real,dim}
+    δ::Float64,G::Tensors.SymmetricTensor{2,dim,T,3};p=nothing,tolerance=1.e-3,solver=OrdinaryDiffEq.BS5()) where {T <: Real,dim}
 
     iszero(δ) ? DF = linearized_flow(odefun,u,tspan,p=p,tolerance=tolerance,solver=solver) : DF = linearized_flow(odefun,u,tspan,δ,p=p,tolerance=tolerance,solver=solver)
 

@@ -20,10 +20,12 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
     dh::JuAFEM.DofHandler
     qr::JuAFEM.QuadratureRule
     loc::cellLocator
-    node_to_dof::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
-    dof_to_node::Vector{Int} #dhtable[nodeid] contains the index of the corresponding dof
+    node_to_dof::Vector{Int} #node_to_dof[nodeid] contains the index of the corresponding dof
+    dof_to_node::Vector{Int} #dof_to_node[dofid] contains the index of the corresponding node
     n::Int #The number of nodes
     m::Int #The number of cells
+    quadrature_points::Vector{Vec{dim,Float64}} #All quadrature points, ordered by how they are accessed in assemble routines
+    mass_weights::Vector{Float64}
 
     #The following two fields are only well-defined for regular rectangular grids
     spatialBounds::Vector{AbstractVector} #In 2D, this is {LL,UR} for regular grids
@@ -39,6 +41,8 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
         #TODO: Measure if the sorting below is expensive
         x.node_to_dof = nodeToDHTable(x)
         x.dof_to_node = sortperm(x.node_to_dof)
+        x.quadrature_points = getQuadPoints(x)
+        x.mass_weights = ones(length(x.quadrature_points))
         return x
     end
 end
@@ -252,6 +256,7 @@ function evaluate_function(ctx::gridContext,x::Vec{2},u::Vector{Float64},outside
         if isa(y,DomainError)
             return outside_value
         end
+        print("Unexpected error for $x")
         throw(y)
     end
     result = 0.0

@@ -40,22 +40,33 @@ mutable struct experimentResult
 
 end
 
-function runExperiment!(eR::experimentResult)
+function runExperiment!(eR::experimentResult,nev=6)
     if eR.done
         print("Experiment was already run, not running again...")
+        return
     end
+    eR.runtime = 0.0
     if eR.mode == :CG
-        times::Vector{Float64} = [eR.experiment.t_initial,eR.experiment.t_final]
+        times = [eR.experiment.t_initial,eR.experiment.t_final]
         ode_fun = eR.experiment.ode_fun
         #TODO: Think about varying the parameters below.
         cgfun = (x -> invCGTensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
-        eR.runtime = 0.0
         assembleStiffnessMatrix(eR.ctx)
         eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
         eR.runtime += (@elapsed K = assembleStiffnessMatrix(eR.ctx,cgfun))
         #TODO:Vary whether or not we lump the mass matrices or not
         eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,lumped=false))
-        eR.runtime +=  (@elapsed λ, v = eigs(K,M,which=:SM))
+        eR.runtime +=  (@elapsed λ, v = eigs(K,M,which=:SM,nev=nev))
+        eR.λ = λ
+        eR.V = v
+    elseif eR.mode == :aTO
+        times = [eR.experiment.t_initial,eR.experiment.t_final]
+        ode_fun = eR.experiment.ode_fun
+        forwards_flow = u0->flow(ode_fun, u0,times,p=eR.experiment.p)[end]
+        eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
+        eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx))
+        eR.runtime += (@elapsed S2= adaptiveTO(eR.ctx,forwards_flow))
+        eR.runtime += (@elapsed λ, v = eigs(-1*(S + S2),M,which=:SM,nev=nev))
         eR.λ = λ
         eR.V = v
     else
@@ -65,7 +76,7 @@ function runExperiment!(eR::experimentResult)
     return eR
 end
 
-function plotExperiment(eR::experimentResult,howmany=-1; kwargs...)
+function plotExperiment(eR::experimentResult,nev=-1; kwargs...)
     if !eR.done
         print("Experiment not yet run")
         return
@@ -74,7 +85,7 @@ function plotExperiment(eR::experimentResult,howmany=-1; kwargs...)
     Plots.clibrary(:misc)
     allplots = []
     for (i,lam) in enumerate(eR.λ)
-        if howmany != -1 && i > howmany
+        if nev != -1 && i > nev
             break
         end
         push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),title=(@sprintf("%.2f",lam)),plotit=false,color=:rainbow;kwargs...))
