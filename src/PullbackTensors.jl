@@ -6,7 +6,7 @@
 #Solve the ODE with right hand side given by @param rhs and initial value given by @param u0
 #dim is the dimension of the ODE
 #p is a parameter passed as the third argument to rhs
-<<<<<<< HEAD
+
 function flow(rhs::Function, 
               u0::AbstractArray{T,1}, 
               tspan::AbstractVector{Float64}; 
