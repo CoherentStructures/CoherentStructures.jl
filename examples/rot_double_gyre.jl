@@ -7,7 +7,6 @@ ctx = regularTriangularGrid((25,25))
 #ctx = regularP2TriangularGrid((30,30))
 
 #With CG-Method
-isempty(methods(cgfun,(Any,)))
 begin
     cgfun = x -> invCGTensor(rot_double_gyre2!,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
     @time K = assembleStiffnessMatrix(ctx,cgfun)

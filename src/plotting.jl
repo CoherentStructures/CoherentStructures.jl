@@ -21,7 +21,7 @@ function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;plotit=
 end
 
 
-function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::AbstractVector{Float64}, UR::AbstractVector{Float64},inverse_flow_map::Function,nx=50,ny=60;plotit=true,euler_to_lagrange_points=nothing,only_get_lagrange_points=false,kwargs...)
+function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::AbstractVector{Float64}, UR::AbstractVector{Float64},inverse_flow_map::Function,nx=50,ny=60;plotit=true,euler_to_lagrange_points=nothing,only_get_lagrange_points=false,postprocessor=nothing,kwargs...)
     x1 = Float64[]
     x2 = Float64[]
     values = Float64[]
@@ -53,6 +53,10 @@ function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::Abstra
             end
         end
     end
+    if postprocessor != nothing
+        postprocessor(z)
+    end
+
     result =  Plots.heatmap(x1,x2,z,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)

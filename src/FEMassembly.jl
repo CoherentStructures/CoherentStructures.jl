@@ -5,7 +5,7 @@ function tensorIdentity(x::Vec{2},i::Int,p)
     return Id
 end
 
-function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function,p=nothing)
+function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=nothing,p=nothing)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     K::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
@@ -15,7 +15,9 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function,p=nothin
     Ke::Array{Float64,2} = zeros(n,n)
     index::Int = 1 #Counter to know the number of the current quadrature point
     A_type::Int = 0 #What type of function A is.
-    if !isempty(methods(A,(Vec{dim},)))
+    if A == nothing
+        A_type = 3
+    elseif !isempty(methods(A,(Vec{dim},)))
         A_type = 0
     elseif !isempty(methods(A,(Vec{dim},Int,Any)))
         A_type = 1
@@ -37,6 +39,8 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function,p=nothin
                 Aqcoords = A(ctx.quadrature_points[index],index,p)
             elseif A_type == 2
                 Aqcoords = A(Vector{Float64}(ctx.quadrature_points[index]))
+            elseif A_type == 3
+                Aqcoords = Id
             end
             const dΩ::Float64 = getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
