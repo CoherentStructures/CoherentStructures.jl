@@ -5,7 +5,7 @@ function tensorIdentity(x::Vec{2},i::Int,p)
     return Id
 end
 
-function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=nothing,p=nothing)
+function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorIdentity,p=nothing)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     K::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
@@ -15,7 +15,7 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=nothing,
     Ke::Array{Float64,2} = zeros(n,n)
     index::Int = 1 #Counter to know the number of the current quadrature point
     A_type::Int = 0 #What type of function A is.
-    if A == nothing
+    if A == tensorIdentity
         A_type = 3
     elseif !isempty(methods(A,(Vec{dim},)))
         A_type = 0
