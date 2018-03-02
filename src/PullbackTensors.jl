@@ -1,11 +1,12 @@
 #Functions for pulling back Tensors 
 
 
+"""function flow(rhs,  u0, tspan; tolerance, p, solver)
 
-#Solve the ODE with right hand side given by @param rhs and initial value given by @param u0
-#dim is the dimension of the ODE
-#p is a parameter passed as the third argument to rhs
-
+Solve the ODE with right hand side given by `@param rhs` and initial value given by `@param u0`.
+`dim` is the dimension of the ODE.
+`p` is a parameter passed as the third argument to `rhs`
+"""
 function flow(rhs::Function, 
               u0::AbstractArray{T,1}, 
               tspan::AbstractVector{Float64}; 
@@ -70,14 +71,19 @@ function linearized_flow(odefun::Function,
     return df
 end
 
-#Returns the average (inverse) CG-Tensor at a point along a set of times
-#Derivatives are computed with finite differences
-#@param x::Vec{2,Float64} the initial point
-#@param tspan::Array{Float64} is the times
-#@param δ is the stencil width for the finite differences
-#@param odefun is a function that takes arguments (x,t,result)
-#   odefun needs to store its result in result
-#   odefun evaluates the rhs of the ODE being integrated at (x,t)
+"""`invCGTensor(odefun, x, tspan,  ::Float64; tolerance, p)`
+  
+Returns the average (inverse) CG-Tensor at a point along a set of times
+Derivatives are computed with finite differences
+
+  -`x::Vec{2,Float64}` the initial point
+  -`tspan::Array{Float64}` is the times
+  -`` is the stencil width for the finite differences
+  -`odefun` is a function that takes arguments `(x,t,result)`
+
+`odefun` needs to store its result in `result`.
+`odefun` evaluates the rhs of the ODE being integrated at `(x,t)`
+"""
 @inline function invCGTensor(odefun, 
                              x::Vec{dim,T},
                              tspan::AbstractVector{Float64},
@@ -99,7 +105,7 @@ function pullback_tensors(odefun::Function,
 
     G = inv(D)
 
-    # incomplete
+    # incomplete ?
     iszero(δ) ? 
       DF = linearized_flow(odefun, u, tspan,  p=p, tolerance=tolerance, solver=solver) : 
       DF = linearized_flow(odefun, u, tspan,δ,p=p, tolerance=tolerance, solver=solver)
@@ -120,7 +126,7 @@ function pullback_metric_tensor(odefun,
                                 tolerance = 1.e-3, 
                                 solver = OrdinaryDiffEq.BS5()) where {T <: Real,dim}
 
-    # incomplete 
+    # incomplete ?
     iszero(δ) ? 
       DF = linearized_flow(odefun, u, tspan,  p=p, tolerance=tolerance, solver=solver) : 
       DF = linearized_flow(odefun, u, tspan,δ,p=p, tolerance=tolerance, solver=solver)
