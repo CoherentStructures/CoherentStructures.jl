@@ -53,5 +53,8 @@ export
 	#util.jl
 	dof2U,
 
+	#advection_diffusion.jl
+	ADimplicitEulerStep,
+
 	#field_from_hamiltonian.jl
 	@makefields

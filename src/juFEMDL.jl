@@ -53,6 +53,9 @@ module juFEMDL
    using Plots
    include("plotting.jl")
 
+   #Solving Advection/Diffusion Equation
+   include("advection_diffusion.jl")
+
    #Vector field from Hamiltonian generation
    include("field_from_hamiltonian.jl")
 end

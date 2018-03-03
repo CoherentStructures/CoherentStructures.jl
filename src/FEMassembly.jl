@@ -21,7 +21,7 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorId
         A_type = 0
     elseif !isempty(methods(A,(Vec{dim},Int,Any)))
         A_type = 1
-    elseif !isempty(methods(A,(Vector{Float64})))
+    elseif !isempty(methods(A,(Vector{Float64},)))
         A_type = 2
     else
         fail("Function parameter A does not accept types supported by assembleStiffnessMatrix")
