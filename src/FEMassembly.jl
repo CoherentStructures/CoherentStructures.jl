@@ -5,7 +5,7 @@ function tensorIdentity(x::Vec{2},i::Int,p)
     return Id
 end
 
-function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorIdentity,p=nothing)
+function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorIdentity,p=nothing;dirichlet_boundary=false)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     K::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
@@ -58,10 +58,40 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorId
         celldofs!(dofs, cell)
         assemble!(a_K, dofs, Ke)
     end
-    return K
+    #TODO: Make this more efficient
+    if dirichlet_boundary
+        return applyHomDBCS(ctx,K)
+    else
+        return K
+    end
 end
 
-function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=true)
+#TODO: Make the following more efficient
+function applyHomDBCS{dim}(ctx::gridContext{dim},K)
+        dbcs = getHomDBCS(ctx)
+        k = length(dbcs.values)
+        n = ctx.n
+        col_offset = 0
+        Kres = spzeros(n-k,n-k)
+        dbc_cur_col = 1
+        for j in 1:n
+                if j == dbcs.prescribed_dofs[dbc_cur_col]
+                        dbc_cur_col += 1
+                        continue
+                end
+                dbc_cur_row = 1
+                for i in 1:n
+                        if i == dbcs.prescribed_dofs[dbc_cur_row]
+                                dbc_cur_row += 1
+                                continue
+                        end
+                        Kres[i - dbc_cur_row + 1,j - dbc_cur_col+1] = K[i,j]
+                end
+        end
+        return Kres
+end
+
+function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=true,dirichlet_boundary=false)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
@@ -91,6 +121,11 @@ function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=true)
         celldofs!(dofs, cell)
         assemble!(a_M, dofs, Me)
     end
+
+    if dirichlet_boundary
+        M = applyHomDBCS(ctx,M)
+    end
+
     if !lumped
         return M
     else
@@ -106,11 +141,7 @@ end
 function getQuadPoints{dim}(ctx::gridContext{dim})
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
-
-
-
     dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
-
     dofs = zeros(Int, ndofs_per_cell(dh))
     result = Vec{dim,Float64}[]
 
@@ -118,7 +149,7 @@ function getQuadPoints{dim}(ctx::gridContext{dim})
     @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
-    	    q_coords::Vec{dim} = zero(Vec{dim})
+    	    q_coords = zero(Vec{dim})
             for j in 1:n
                 q_coords +=cell.coords[j] * cv.M[j,q]
             end

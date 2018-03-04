@@ -55,16 +55,16 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
 end
 
 #TODO: is it better for gridType to be of type ::Symbol?
-regularGridTypes = ["regular triangular grid", 
-                    "regular P2 triangular grid", 
-                    "regular Delaunay grid", 
-                    "regular P2 Delaunay grid", 
-                    "regular quadrilateral grid", 
+regularGridTypes = ["regular triangular grid",
+                    "regular P2 triangular grid",
+                    "regular Delaunay grid",
+                    "regular P2 Delaunay grid",
+                    "regular quadrilateral grid",
                     "regular P2 quadrilateral grid"]
 
 function regularGrid(
-            gridType::String, 
-            numnodes::Tuple{Int,Int}, 
+            gridType::String,
+            numnodes::Tuple{Int,Int},
             LL::AbstractVector=Vec{2}([0.0,0.0]),
             UR::AbstractVector=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
@@ -109,7 +109,7 @@ end
 (::Type{gridContext{2}})(
             ::Type{Triangle},
             node_list::Vector{Vec{2,Float64}},
-            quadrature_order::Int=default_quadrature_order) = 
+            quadrature_order::Int=default_quadrature_order) =
 begin
         grid,loc = generate_grid(Triangle,node_list)
         ip = Lagrange{2, RefTetrahedron, 1}()
@@ -677,4 +677,33 @@ end
 
 function nodal_interpolation(ctx::gridContext, f::Function)
     nodal_values = [f(ctx.grid.nodes[ctx.dof_to_node[j]].x) for j in 1:ctx.n]
+end
+
+
+function getHomDBCS{dim}(ctx::gridContext{dim})
+    dbcs = DirichletBoundaryConditions(ctx.dh)
+    #TODO: See if newer version of JuAFEM export a "boundary" nodeset
+    dbc = JuAFEM.DirichletBoundaryCondition(:T,
+            union(getfaceset(ctx.grid, "left"),
+             getfaceset(ctx.grid, "right"),
+              getfaceset(ctx.grid, "top"),
+               getfaceset(ctx.grid, "bottom")), (x,t)->0)
+    add!(dbcs, dbc)
+    close!(dbcs)
+    update!(dbcs, 0.0)
+    return dbcs
+end
+
+
+function upsample2DBCS(ctx, u,dbcs)
+        ures = zeros(ctx.n)
+        offset = 0
+        for i in 1:ctx.n
+                if i == dbcs.prescribed_dofs[offset + 1]
+                        offset += 1
+                        continue
+                end
+                ures[i] = u[i - offset]
+        end
+        return ures
 end

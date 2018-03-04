@@ -30,6 +30,18 @@ function dof2U(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
   return res
 end
 
+function kmeansresult2LCS(kmeansresult)
+    n = length(kmeansresult.assignments)
+    numclusters = size(kmeansresult.centers)[2]
+    u = zeros(n,numclusters)
+    for j in 1:n
+        for i in 1:numclusters
+            u[j,i] = kmeansresult.assignments[j] == i ? 1.0 : 0.0
+        end
+    end
+    return u
+end
+
 
 #Unit Vectors in R^2
 e1 = basevec(Vec{2},1)

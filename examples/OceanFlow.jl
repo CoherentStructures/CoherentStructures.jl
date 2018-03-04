@@ -2,6 +2,7 @@
 import JLD
 using juFEMDL
 using Tensors
+using Clustering #For kmeans function
 
 vars = JLD.load("examples/Ocean_geostrophic_velocity.jld")
 Lon = vars["Lon"]
@@ -17,28 +18,33 @@ LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
 p=(UI,VI)
-ctx = regularTriangularGrid((200,200),LL,UR)
+ctx = regularTriangularGrid((100,100),LL,UR)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
 Id = one(SymmetricTensor{2,2})
 times = linspace(t_initial,t_final,450)
 As = [
-        invCGTensor(interp_rhs, x,[t_initial,t_final], 1.e-8,tolerance=1.e-3,p=p)
+        invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-3,p=p)
         #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
         for x in ctx.quadrature_points
         ]
 #mean_As = mean.(As)
 mean_As = As
-function mean_Afun(xindex,p)
+function mean_Afun(x,index,p)
         return p[1][index]
 end
 
 #With CG-Method
 begin
-    @time K2 = assembleStiffnessMatrix(ctx,mean_Afun)
-    @time M2 = assembleMassMatrix(ctx)
-    @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
+        q = [mean_As]
+        @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,dirichlet_boundary=true)
+        @time M2 = assembleMassMatrix(ctx,dirichlet_boundary=true)
+        @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
+        numclusters = 4
+        res = kmeans(v2[:,2:numclusters+1]',numclusters)
+        u = kmeansresult2LCS(res)
 end
 
+plot_u(ctx,u[:,4],200,200,color=:rainbow)
 #With adaptive TO method
 begin
     ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]

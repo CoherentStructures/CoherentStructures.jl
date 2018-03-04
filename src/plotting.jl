@@ -1,6 +1,16 @@
 
 #TODO: Can this be made more efficient?
-function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;plotit=true,kwargs...)
+function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=true,kwargs...)
+    if (ctx.n != length(dof_vals))
+        dbcs = getHomDBCS(ctx)
+        if length(dbcs.prescribed_dofs) + length(dof_vals) != ctx.n
+            error("Input u has wrong length")
+        end
+        dof_values = upsample2DBCS(ctx,dof_vals,dbcs)
+    else
+        dof_values = dof_vals
+    end
+
     x1 = Float64[]
     x2 = Float64[]
     LL = ctx.spatialBounds[1]
@@ -13,7 +23,7 @@ function plot_u(ctx::gridContext,dof_values::Vector{Float64},nx=50,ny=50;plotit=
 
 
     Plots.plot(x1,x2,values;t=:contourf)#,colormap=GR.COLORMAP_JET)
-    result =  Plots.contour(x1,x2,myf,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
+    result =  Plots.contour(x1,x2,myf,fill=true,aspect_ratio=1;kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
     end
@@ -57,7 +67,7 @@ function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::Abstra
         postprocessor(z)
     end
 
-    result =  Plots.heatmap(x1,x2,z,fill=true;kwargs...)#,colormap=GR.COLORMAP_JET)
+    result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1;kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
     end
@@ -66,4 +76,8 @@ end
 
 function plot_spectrum(λ)
     Plots.scatter(real.(λ),imag.(λ))
+end
+
+function plot_real_spectrum(λ)
+    Plots.scatter(1:length(λ),real.(λ))
 end

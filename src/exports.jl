@@ -28,10 +28,12 @@ export
 	evaluate_function,
 	locatePoint,
 	nodal_interpolation,
+	upsample2DBCS,
 
 	#plotting.jl
 	plot_u,
 	plot_spectrum,
+	plot_real_spectrum,
 	plot_u_eulerian,
 
 	#FEMassembly.jl
@@ -52,6 +54,7 @@ export
 
 	#util.jl
 	dof2U,
+	kmeansresult2LCS,
 
 	#advection_diffusion.jl
 	ADimplicitEulerStep,
