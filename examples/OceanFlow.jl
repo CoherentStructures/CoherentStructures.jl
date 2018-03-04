@@ -28,7 +28,7 @@ As = [
         ]
 #mean_As = mean.(As)
 mean_As = As
-function mean_Afun(x,index,p)
+function mean_Afun(xindex,p)
         return p[1][index]
 end
 
@@ -58,15 +58,3 @@ plot_spectrum(λ2)
 index = sortperm(real.(λ2))[end-2]
 title = "Eigenvector with eigenvalue $(λ2[index])"
 plot_u(ctx,real.(v2[:,index]),title=title,color=:rainbow)
-
-
-
-#Solving advection/diffusion equation with implicit Euler method
-anim = @animate for (tindex,t) in enumerate(times)
-        q = [As, tindex]
-        u = ADimplicitEulerStep(ctx,u,ϵ*dt,mean_Afun,q) #TODO: Fix this...
-        plot_u(ctx,u,200,200,title="t = $t",color=:rainbow,aspect_ratio=1)
-        print("Timestep $tindex")
-        gc()
-end every 10
-mp4(anim,"/tmp/out_mean.mp4")
