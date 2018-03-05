@@ -67,7 +67,7 @@ function regularGrid(
             numnodes::Tuple{Int,Int},
             LL::AbstractVector=Vec{2}([0.0,0.0]),
             UR::AbstractVector=Vec{2}([1.0,1.0]);
-            quadrature_order::Int=default_quadrature_order
+            kwargs...
         )
 
     if gridType == "regular triangular grid"
@@ -75,7 +75,7 @@ function regularGrid(
     elseif gridType == "regular Delaunay grid"
         return regularDelaunayGrid(numnodes, LL,UR; kwargs...)
     elseif gridType == "regular P2 triangular grid"
-        return regularTriangularGrid(numnodes, LL,UR; kwargs...)
+        return regularP2TriangularGrid(numnodes, LL,UR; kwargs...)
     elseif gridType == "regular P2 Delaunay grid"
         return regularP2DelaunayGrid(numnodes, LL,UR; kwargs...)
     elseif gridType == "regular quadrilateral grid"
@@ -127,7 +127,7 @@ end
 function regularDelaunayGrid(
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=Vec{2}([0.0,0.0]),
-            UR::AbstractVector=Vec{2}([1.0,1.0]),
+            UR::AbstractVector=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
 
@@ -137,7 +137,7 @@ function regularDelaunayGrid(
             push!(node_list,Vec{2}([x0,x1]))
         end
     end
-    result = gridContext{2}(Triangle,node_list, quadrature_order)
+    result = gridContext{2}(Triangle,node_list, quadrature_order=quadrature_order)
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
     result.gridType = "regular Delaunay grid"
@@ -146,7 +146,7 @@ end
 
 (::Type{gridContext{2}})(
             ::Type{QuadraticTriangle},
-            node_list::Vector{Vec{2,Float64}},
+            node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order) =
 begin
         grid,loc = generate_grid(QuadraticTriangle,node_list)
@@ -163,7 +163,7 @@ end
 function regularP2DelaunayGrid(
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=Vec{2}([0.0,0.0]),
-            UR::AbstractVector=Vec{2}([1.0,1.0]),
+            UR::AbstractVector=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
 
@@ -173,7 +173,7 @@ function regularP2DelaunayGrid(
             push!(node_list,Vec{2}([x0,x1]))
         end
     end
-    result = gridContext{2}(QuadraticTriangle,node_list, quadrature_order)
+    result = gridContext{2}(QuadraticTriangle,node_list, quadrature_order=quadrature_order)
     #TODO: Think about what values would be sensible for the two variables below
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
@@ -184,7 +184,7 @@ end
 
 #Constructor for regular 2D triangular grids (without delaunay)
 ( ::Type{gridContext{2}})(::Type{Triangle},
-                         numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]),
+                         numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]);
                          quadrature_order::Int=default_quadrature_order) = begin
         #The -1 below is needed because JuAFEM internally then goes on to increment it
         grid = generate_grid(Triangle,(numnodes[1]-1,numnodes[2]-1),Vec{2}(LL),Vec{2}(UR) )
@@ -202,14 +202,14 @@ end
 end
 
 #Creates a regular grid on a rectangle with Triangles but without delaunay Triangulation
-function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]),quadrature_order::Int=default_quadrature_order)
-    return gridContext{2}(Triangle,numnodes, LL,UR)
+function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]);quadrature_order::Int=default_quadrature_order)
+    return gridContext{2}(Triangle,numnodes, LL,UR,quadrature_order=quadrature_order)
 end
 
 
 #Constructor for regular P2-Lagrange 2D triangular grids (without delaunay)
 (::Type{gridContext{2}})(::Type{QuadraticTriangle},
-                         numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]),
+                         numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Vec{2}([0.0,0.0]),UR::AbstractVector=Vec{2}([1.0,1.0]);
                          quadrature_order::Int=default_quadrature_order) = begin
         #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = generate_grid(QuadraticTriangle,(numnodes[1]-1,numnodes[2]-1),Vec{2}(LL), Vec{2}(UR ))
@@ -229,10 +229,10 @@ end
 function regularP2TriangularGrid(
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=Vec{2}([0.0,0.0]),
-            UR::AbstractVector=Vec{2}([1.0,1.0]),
+            UR::AbstractVector=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
-    return gridContext{2}(QuadraticTriangle,numnodes, LL,UR)
+    return gridContext{2}(QuadraticTriangle,numnodes, LL,UR,quadrature_order=quadrature_order)
 end
 
 #Constructor for regular P2-Lagrange 2D quadrilateral grids
@@ -261,10 +261,10 @@ end
 function regularP2QuadrilateralGrid(
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector{Float64}=Vec{2}([0.0,0.0]),
-            UR::AbstractVector{Float64}=Vec{2}([1.0,1.0]),
+            UR::AbstractVector{Float64}=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
-    return gridContext{2}(QuadraticQuadrilateral,numnodes, Vec{2}(LL),Vec{2}(UR))
+    return gridContext{2}(QuadraticQuadrilateral,numnodes, Vec{2}(LL),Vec{2}(UR),quadrature_order=quadrature_order)
 end
 
 
@@ -273,7 +273,7 @@ end
             ::Type{Quadrilateral},
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=Vec{2}([0.0,0.0]),
-            UR::AbstractVector=Vec{2}([1.0,1.0]),
+            UR::AbstractVector=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order) =
 begin
     #The -1 below is needed because JuAFEM internally then goes on to increment it
@@ -295,10 +295,10 @@ end
 function regularQuadrilateralGrid(
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=Vec{2}([0.0,0.0]),
-            UR::AbstractVector=Vec{2}([1.0,1.0]),
+            UR::AbstractVector=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
-    return gridContext{2}(Quadrilateral,numnodes, LL,UR)
+    return gridContext{2}(Quadrilateral,numnodes, LL,UR,quadrature_order=quadrature_order)
 end
 
 
