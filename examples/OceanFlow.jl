@@ -18,12 +18,12 @@ LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
 p=(UI,VI)
-ctx = regularTriangularGrid((100,100),LL,UR)
+ctx = regularTriangularGrid((250,150),LL,UR,quadrature_order=1)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
 Id = one(SymmetricTensor{2,2})
-times = linspace(t_initial,t_final,450)
+times = [t_initial,t_final]
 As = [
-        invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-3,p=p)
+        invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
         #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
         for x in ctx.quadrature_points
         ]
@@ -39,12 +39,22 @@ begin
         @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,dirichlet_boundary=true)
         @time M2 = assembleMassMatrix(ctx,dirichlet_boundary=true)
         @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
-        numclusters = 4
+end
+plot_real_spectrum(λ2)
+using Clustering
+begin
+        numclusters = 6
         res = kmeans(v2[:,2:numclusters+1]',numclusters)
         u = kmeansresult2LCS(res)
 end
 
-plot_u(ctx,u[:,4],200,200,color=:rainbow)
+plot_u(ctx,u[:,3],200,200,color=:viridis)
+LL_big = [-10,-40.0]
+UR_big = [6,-25.0]
+inverse_flow_map = u0 -> flow(interp_rhs,u0, [t_final,t_initial],p=(UI,VI),tolerance=1e-4)[end]
+plot_u_eulerian(ctx,u[:,4],
+        LL_big,UR_big,inverse_flow_map,
+        100,100)
 #With adaptive TO method
 begin
     ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
