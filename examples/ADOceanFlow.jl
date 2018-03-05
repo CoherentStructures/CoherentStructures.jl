@@ -33,3 +33,6 @@ anim = @animate for (tindex,t) in enumerate(times)
         gc()
 end every 10
 mp4(anim,"/tmp/out_mean.mp4")
+
+#Fokker-Planck in Lagrangian coordinates in one fell swoop
+using juFEMDL
