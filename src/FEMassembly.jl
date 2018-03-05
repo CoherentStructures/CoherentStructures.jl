@@ -66,31 +66,6 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorId
     end
 end
 
-#TODO: Make the following more efficient
-function applyHomDBCS{dim}(ctx::gridContext{dim},K)
-        dbcs = getHomDBCS(ctx)
-        k = length(dbcs.values)
-        n = ctx.n
-        col_offset = 0
-        Kres = spzeros(n-k,n-k)
-        dbc_cur_col = 1
-        for j in 1:n
-                if j == dbcs.prescribed_dofs[dbc_cur_col]
-                        dbc_cur_col += 1
-                        continue
-                end
-                dbc_cur_row = 1
-                for i in 1:n
-                        if i == dbcs.prescribed_dofs[dbc_cur_row]
-                                dbc_cur_row += 1
-                                continue
-                        end
-                        Kres[i - dbc_cur_row + 1,j - dbc_cur_col+1] = K[i,j]
-                end
-        end
-        return Kres
-end
-
 function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=true,dirichlet_boundary=false)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
@@ -158,4 +133,37 @@ function getQuadPoints{dim}(ctx::gridContext{dim})
         celldofs!(dofs, cell)
     end
     return result
+end
+
+
+#TODO: Make the following more efficient
+function applyHomDBCS{dim}(ctx::gridContext{dim},K)
+        dbcs = getHomDBCS(ctx)
+        k = length(dbcs.values)
+        n = ctx.n
+        col_offset = 0
+        Kres = spzeros(n-k,n-k)
+        dbc_cur_col = 1
+        vals = nonzeros(K)
+        rows = rowvals(K)
+        for j in 1:n
+                if j == dbcs.prescribed_dofs[dbc_cur_col]
+                        dbc_cur_col += 1
+                        continue
+                end
+                dbc_cur_row = 1
+                for i in nzrange(K,j)
+                        row = rows[i]
+                        found = false
+                        while row >= dbcs.prescribed_dofs[dbc_cur_row]
+                                found  = true
+                                dbc_cur_row += 1
+                        end
+                        if found
+                            continue
+                        end
+                        Kres[row - dbc_cur_row + 1,j - dbc_cur_col + 1] = vals[i]
+                end
+        end
+        return Kres
 end
