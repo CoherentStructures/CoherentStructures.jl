@@ -58,7 +58,6 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorId
         celldofs!(dofs, cell)
         assemble!(a_K, dofs, Ke)
     end
-    #TODO: Make this more efficient
     if dirichlet_boundary
         return applyHomDBCS(ctx,K)
     else
@@ -138,32 +137,33 @@ end
 
 #TODO: Make the following more efficient
 function applyHomDBCS{dim}(ctx::gridContext{dim},K)
-        dbcs = getHomDBCS(ctx)
-        k = length(dbcs.values)
-        n = ctx.n
-        col_offset = 0
-        Kres = spzeros(n-k,n-k)
-        dbc_cur_col = 1
-        vals = nonzeros(K)
-        rows = rowvals(K)
-        for j in 1:n
-                if j == dbcs.prescribed_dofs[dbc_cur_col]
-                        dbc_cur_col += 1
-                        continue
-                end
-                dbc_cur_row = 1
-                for i in nzrange(K,j)
-                        row = rows[i]
-                        found = false
-                        while row >= dbcs.prescribed_dofs[dbc_cur_row]
-                                found  = true
-                                dbc_cur_row += 1
-                        end
-                        if found
+    dbcs = getHomDBCS(ctx)
+    if !issorted(dbcs.prescribed_dofs)
+        error("DBCS are not sorted")
+    end
+    k = length(dbcs.values)
+    n = ctx.n
+    Kres = spzeros(n-k,n-k)
+    skip_cols = 0
+    vals = nonzeros(K)
+    rows = rowvals(K)
+    for j = 1:n
+            if j == dbcs.prescribed_dofs[skip_cols+1]
+                    skip_cols += 1
+                    continue
+            end
+            skip_rows = 1
+            for i in nzrange(K,j)
+                    row = rows[i]
+                    while dbcs.prescribed_dofs[skip_rows+1] < row
+                            skip_rows += 1
+                    end
+                    if dbcs.prescribed_dofs[skip_rows+1] == row
+                            skip_rows += 1
                             continue
-                        end
-                        Kres[row - dbc_cur_row + 1,j - dbc_cur_col + 1] = vals[i]
-                end
-        end
-        return Kres
+                    end
+                    Kres[row - skip_rows ,j - skip_cols] = vals[i]
+            end
+    end
+    return Kres
 end
