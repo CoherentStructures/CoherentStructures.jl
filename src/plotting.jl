@@ -31,12 +31,13 @@ function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=tr
 end
 
 function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(), kwargs...)
-    x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,ny)
-    x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,nx)
+    x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx)
+    x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny)
     DF = [linearized_flow(odefun,Vec{2}([x,y]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end] for x in x1, y in x2]
-    FTLE = 1./(2*(tspan[2]-tspan[1]))*log.(maximum.(abs.(eigvals.(eigfact.(dott.(DF))))))
-    trDF = log.(abs.(trace.(DF)))
-    return Plots.heatmap(x1,x2,trDF; kwargs...)
+    arrayabs(x) = abs.(x)
+    FTLE = 1./(2*(tspan[2]-tspan[1]))*log.(maximum.(arrayabs.(eigvals.(eigfact.(dott.(DF))))))
+    #trDF = log.(abs.(trace.(DF)))
+    return Plots.heatmap(x1,x2,FTLE; kwargs...)
 end
 
 
@@ -65,12 +66,12 @@ function plot_u_eulerian(
     x2 = Float64[]
     values = Float64[]
     const u_values =  dof2U(ctx,dof_values)
-    x1 =  linspace(LL[1] , UR[1] ,ny)
-    x2 =  linspace(LL[2] ,UR[2] ,nx)
+    x1 =  linspace(LL[1] , UR[1] ,nx)
+    x2 =  linspace(LL[2] ,UR[2] ,ny)
     if euler_to_lagrange_points == nothing
         euler_to_lagrange_points = [zero(Vec{2}) for x in x1, y in x2]
-        for i in 1:ny
-            for j in 1:nx
+        for i in 1:nx
+            for j in 1:ny
                 try
                     euler_to_lagrange_points[i,j] = inverse_flow_map(Vec{2}([x1[i],x2[j]]))
                 catch e
@@ -83,8 +84,8 @@ function plot_u_eulerian(
         return euler_to_lagrange_points
     end
     z = zeros(nx,ny)
-    for i in 1:ny
-        for j in 1:nx
+    for i in 1:nx
+        for j in 1:ny
             if isnan((euler_to_lagrange_points[i,j])[1])
                 z[j,i] = NaN
             else
