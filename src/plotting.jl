@@ -48,9 +48,9 @@ function plot_u_eulerian(
         for i in 1:nx
             for j in 1:ny
                 try
-                    euler_to_lagrange_points[i,j] = inverse_flow_map(Vec{2}([x1[i],x2[j]]))
+                    euler_to_lagrange_points[j,i] = inverse_flow_map(Vec{2}([x1[i],x2[j]]))
                 catch e
-                    euler_to_lagrange_points[i,j] = Vec{2}([NaN,NaN])
+                    euler_to_lagrange_points[j,i] = Vec{2}([NaN,NaN])
                 end
             end
         end
@@ -61,10 +61,10 @@ function plot_u_eulerian(
     z = zeros(nx,ny)
     for i in 1:nx
         for j in 1:ny
-            if isnan((euler_to_lagrange_points[i,j])[1])
-                z[i,j] = NaN
+            if isnan((euler_to_lagrange_points[j,i])[1])
+                z[j,i] = NaN
             else
-                z[i,j] = evaluate_function(ctx,euler_to_lagrange_points[i,j],u_values,NaN)
+                z[j,i] = evaluate_function(ctx,euler_to_lagrange_points[j,i],u_values,NaN)
             end
         end
     end
