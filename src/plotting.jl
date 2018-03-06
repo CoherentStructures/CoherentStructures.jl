@@ -30,8 +30,37 @@ function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=tr
     return result
 end
 
+function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(), kwargs...)
+    x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,ny)
+    x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,nx)
+    DF = [linearized_flow(odefun,Vec{2}([x,y]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end] for x in x1, y in x2]
+    FTLE = 1./(2*(tspan[2]-tspan[1]))*log.(maximum.(abs.(eigvals.(eigfact.(dott.(DF))))))
+    trDF = log.(abs.(trace.(DF)))
+    return Plots.heatmap(x1,x2,trDF; kwargs...)
+end
 
-function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::AbstractVector{Float64}, UR::AbstractVector{Float64},inverse_flow_map::Function,nx=50,ny=60;plotit=true,euler_to_lagrange_points=nothing,only_get_lagrange_points=false,postprocessor=nothing,kwargs...)
+
+function plot_u_eulerian(
+                    ctx::gridContext,
+                    dof_vals::Vector{Float64},
+                    LL::AbstractVector{Float64},
+                    UR::AbstractVector{Float64},
+                    inverse_flow_map::Function,
+                    nx=50,
+                    ny=60;
+                    plotit=true,euler_to_lagrange_points=nothing,
+                    only_get_lagrange_points=false,postprocessor=nothing,
+                    kwargs...)
+
+    if (ctx.n != length(dof_vals))
+        dbcs = getHomDBCS(ctx)
+        if length(dbcs.prescribed_dofs) + length(dof_vals) != ctx.n
+            error("Input u has wrong length")
+        end
+        dof_values = upsample2DBCS(ctx,dof_vals,dbcs)
+    else
+        dof_values = dof_vals
+    end
     x1 = Float64[]
     x2 = Float64[]
     values = Float64[]
@@ -64,7 +93,7 @@ function plot_u_eulerian(ctx::gridContext,dof_values::Vector{Float64},LL::Abstra
         end
     end
     if postprocessor != nothing
-        postprocessor(z)
+       z =  postprocessor(z)
     end
 
     result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1;kwargs...)#,colormap=GR.COLORMAP_JET)
