@@ -65,7 +65,7 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorId
     end
 end
 
-function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=true,dirichlet_boundary=false)
+function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=false,dirichlet_boundary=false)
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
