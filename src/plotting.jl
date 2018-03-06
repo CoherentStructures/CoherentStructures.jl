@@ -2,7 +2,7 @@
 #TODO: Can this be made more efficient?
 function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=true,kwargs...)
     id = x -> x
-    plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,plotit=plotit,kwargs...)
+    plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,plotit=plotit;kwargs...)
 end
 
 function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(), kwargs...)
