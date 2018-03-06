@@ -108,7 +108,7 @@ end
 #It has to be defined like this as otherwise julia complains that 2 is not a type
 (::Type{gridContext{2}})(
             ::Type{Triangle},
-            node_list::Vector{Vec{2,Float64}},
+            node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order) =
 begin
         grid,loc = generate_grid(Triangle,node_list)
