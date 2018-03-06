@@ -240,7 +240,7 @@ end
             ::Type{QuadraticQuadrilateral},
             numnodes::Tuple{Int,Int}=(25,25),
             LL::Vec{2}=Vec{2}([0.0,0.0]),
-            UR::Vec{2}=Vec{2}([1.0,1.0]),
+            UR::Vec{2}=Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order) =
 begin
     #The -1 below is needed because JuAFEM internally then goes on to increment it
