@@ -33,7 +33,7 @@ end
 function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(), kwargs...)
     x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx)
     x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny)
-    DF = [linearized_flow(odefun,Vec{2}([x,y]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end] for x in x1, y in x2]
+    DF = [linearized_flow(odefun,Vec{2}([x,y]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end] for y in x2, x in x1]
     arrayabs(x) = abs.(x)
     FTLE = 1./(2*(tspan[2]-tspan[1]))*log.(maximum.(arrayabs.(eigvals.(eigfact.(dott.(DF))))))
     #trDF = log.(abs.(trace.(DF)))

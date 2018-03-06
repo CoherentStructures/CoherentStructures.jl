@@ -152,7 +152,7 @@ function applyHomDBCS{dim}(ctx::gridContext{dim},K)
                     skip_cols += 1
                     continue
             end
-            skip_rows = 1
+            skip_rows = 0
             for i in nzrange(K,j)
                     row = rows[i]
                     while dbcs.prescribed_dofs[skip_rows+1] < row
@@ -161,6 +161,9 @@ function applyHomDBCS{dim}(ctx::gridContext{dim},K)
                     if dbcs.prescribed_dofs[skip_rows+1] == row
                             skip_rows += 1
                             continue
+                    end
+                    if row <= skip_rows
+                        print("row is $row skip_rows is $skip_rows j is $j")
                     end
                     Kres[row - skip_rows ,j - skip_cols] = vals[i]
             end
