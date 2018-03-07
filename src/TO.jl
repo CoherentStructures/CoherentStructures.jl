@@ -61,7 +61,7 @@ end
 #TODO: Can this be written without any dependence on the dimension?
 #TODO: Implement this for multiple timesteps
 #TODO: Implement this for missing data
-function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
+function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function)
     DL2 = spzeros(ctx.n,ctx.n)
     cv::CellScalarValues{2} = CellScalarValues(ctx.qr, ctx.ip)
     nshapefuncs = getnbasefunctions(cv)         # number of basis functions
@@ -83,6 +83,42 @@ function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
                         φ::Float64 = shape_value(cv,q,i)
                         ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
                         DL2[dofs[i],ctx.node_to_dof[j]] += dΩ*φ*ψ
+                    end
+                end
+            catch y
+                if !isa(y,DomainError)
+                    throw(y)
+                end
+                print("Flow map gave result $TQ outside of domain!")
+            end
+            index += 1
+        end
+    end
+    return DL2
+end
+
+function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
+    DL2 = spzeros(ctx.n,ctx.n)
+    cv::CellScalarValues{2} = CellScalarValues(ctx.qr, ctx.ip)
+    nshapefuncs = getnbasefunctions(cv)         # number of basis functions
+    dofs::Vector{Int} = zeros(nshapefuncs)
+    index::Int = 1 #Counter to know the number of the current quadrature point
+
+    #TODO: allow for using a different ctx here, e.g. like in the adaptiveTO settings
+    @inbounds for (cellnumber, cell) in enumerate(CellIterator(ctx.dh))
+        JuAFEM.reinit!(cv,cell)
+        celldofs!(dofs,ctx.dh,cellnumber)
+        #Iterate over all quadrature points in the cell
+        for q in 1:getnquadpoints(cv) # loop over quadrature points
+            const dΩ::Float64 = getdetJdV(cv,q)
+            TQ::Vec{2,Float64} = flow_map(ctx.quadrature_points[index])
+            try
+                local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
+                for (shape_fun_num,i) in enumerate(nodes)
+                    for j in 1:nshapefuncs
+                        φ::Float64 = shape_value(cv,q,j)
+                        ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
+                        DL2[ctx.node_to_dof[i],dofs[j]] += dΩ*φ*ψ
                     end
                 end
             catch y
