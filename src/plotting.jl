@@ -34,9 +34,12 @@ function plot_u_eulerian(
             error("Input u has wrong length")
         end
         dof_values = upsample2DBCS(ctx,dof_vals,dbcs)
-    else
+    elseif (bdata != nothing)
         dof_values = undoBCS(ctx,dof_vals,bdata)
+    else
+        dof_values = dof_vals
     end
+
     x1 = Float64[]
     x2 = Float64[]
     values = Float64[]

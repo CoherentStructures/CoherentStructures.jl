@@ -683,7 +683,7 @@ mutable struct boundaryData
     dbc_dofs::Vector{Int}
     periodic_dofs_from::Vector{Int}
     periodic_dofs_to::Vector{Int}
-    function boundaryData(dbc_dofs::Vector{Int},periodic_dofs_from::Vector{Int}=Vector{Int}(), periodic_dofs_to::Vector{Int}=Vector{Int}())
+    function boundaryData(dbc_dofs::Vector{Int}=Vector{Int}(),periodic_dofs_from::Vector{Int}=Vector{Int}(), periodic_dofs_to::Vector{Int}=Vector{Int}())
         assert( length(periodic_dofs_from) == length(periodic_dofs_to))
         assert(issorted(dbc_dofs))
         assert(issorted(periodic_dofs_from))
