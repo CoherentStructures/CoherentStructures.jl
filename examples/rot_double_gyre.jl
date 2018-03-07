@@ -1,7 +1,7 @@
 using juFEMDL
 
 #ctx = regularP2QuadrilateralGrid((25,25))
-ctx = regularDelaunayGrid((30,30))
+ctx = regularTriangularGrid((30,30))
 #ctx = regularTriangularGrid((25,25))
 #ctx = regularQuadrilateralGrid((10,10))
 #ctx = regularP2TriangularGrid((30,30))
@@ -38,10 +38,12 @@ begin
     @time M = assembleMassMatrix(ctx,lumped=false)
 
     flowMap = u0->flow(rot_double_gyre2!,u0,[1.0,0.0],tolerance=1.e-4)[end]
-    @time preALPHAS= L2GalerkinTO(ctx,flowMap)
+    @time preALPHAS= juFEMDL.L2GalerkinTOFromInverse(ctx,flowMap)
     Minv = inv(full(M))
     ALPHA = Minv*preALPHAS
-    @time λ, v = eigs(-1*(S + ALPHA'*S*ALPHA),M,which=:SM,nev=6)
+    R = -1*(S+ALPHA'*S*ALPHA)
+    R = 0.5(R + R')
+    @time λ, v = eigs(R,M,which=:SM,nev=6)
 end
 index= 2
 title = "\\\lambda = $(λ[index])"
