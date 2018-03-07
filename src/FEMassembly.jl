@@ -5,7 +5,12 @@ function tensorIdentity(x::Vec{2},i::Int,p)
     return Id
 end
 
-function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorIdentity,p=nothing;dirichlet_boundary=false)
+function assembleStiffnessMatrix{dim}(
+        ctx::gridContext{dim},
+        A::Function=tensorIdentity,
+        p=nothing;
+        bdata=boundaryData() #Default to natural BCs
+        )
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     K::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
@@ -58,14 +63,14 @@ function assembleStiffnessMatrix{dim}(ctx::gridContext{dim},A::Function=tensorId
         celldofs!(dofs, cell)
         assemble!(a_K, dofs, Ke)
     end
-    if dirichlet_boundary
-        return applyHomDBCS(ctx,K)
-    else
-        return K
-    end
+    return applyBCS(ctx,K,bdata)
 end
 
-function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=false,dirichlet_boundary=false)
+function assembleMassMatrix{dim}(
+        ctx::gridContext{dim};
+        bdata=boundaryData(),
+        lumped=false,
+        )
     cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
     dh::DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
@@ -96,9 +101,8 @@ function assembleMassMatrix{dim}(ctx::gridContext{dim};lumped=false,dirichlet_bo
         assemble!(a_M, dofs, Me)
     end
 
-    if dirichlet_boundary
-        M = applyHomDBCS(ctx,M)
-    end
+
+    M = applyBCS(ctx,M,bdata)
 
     if !lumped
         return M
@@ -132,41 +136,4 @@ function getQuadPoints{dim}(ctx::gridContext{dim})
         celldofs!(dofs, cell)
     end
     return result
-end
-
-
-#TODO: Make the following more efficient
-function applyHomDBCS{dim}(ctx::gridContext{dim},K)
-    dbcs = getHomDBCS(ctx)
-    if !issorted(dbcs.prescribed_dofs)
-        error("DBCS are not sorted")
-    end
-    k = length(dbcs.values)
-    n = ctx.n
-    Kres = spzeros(n-k,n-k)
-    skip_cols = 0
-    vals = nonzeros(K)
-    rows = rowvals(K)
-    for j = 1:n
-            if j == dbcs.prescribed_dofs[skip_cols+1]
-                    skip_cols += 1
-                    continue
-            end
-            skip_rows = 0
-            for i in nzrange(K,j)
-                    row = rows[i]
-                    while dbcs.prescribed_dofs[skip_rows+1] < row
-                            skip_rows += 1
-                    end
-                    if dbcs.prescribed_dofs[skip_rows+1] == row
-                            skip_rows += 1
-                            continue
-                    end
-                    if row <= skip_rows
-                        print("row is $row skip_rows is $skip_rows j is $j")
-                    end
-                    Kres[row - skip_rows ,j - skip_cols] = vals[i]
-            end
-    end
-    return Kres
 end

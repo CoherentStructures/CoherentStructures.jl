@@ -26,24 +26,28 @@ bickley = @makefields from stream begin
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
 
-using Plots; pyplot()
 #using ServerPlots
-quiv = let f = bickley[:(x,y,t)]; (x,y)-> 10e2*f(x,y,0.0) end 
-xs = linspace(0,1,20)
-quiver(xs, xs', quiver = quiv)
+#using Plots;pyplot()
+#quiv = let f = bickley[:(x,y,t)]; (x,y)-> 10e2*f(x,y,0.0) end
+#xs = linspace(0,1,20)
+#quiver(xs, xs', quiver = quiv)
 
 
-
-xmin = 0.0; xmax = 6.371π; ymin = -3.; ymax = 3.0
-ctx = regularDelaunayGrid((50,50),[xmin,ymin],[xmax,ymax])
+xmin = 0.0; xmax = 20; ymin = -3.; ymax = 3.0
+ctx = regularTriangularGrid((100,30),[xmin,ymin],[xmax,ymax],quadrature_order=1)
 field = bickley[:(du,u,p,t)]
-cgfun = (x -> invCGTensor(field, x,[0.0,3465000], 1.e-8,tolerance=1.e-3))
-@time K = assembleStiffnessMatrix(ctx,cgfun)
-@time M = assembleMassMatrix(ctx)
-@time λ, v = eigs(K,M,which=:SM, nev= 20)
-plot_u(ctx,v[:,2])
+function periodicField(du,u,p,t)
+    return field(du,Vec{2}([u[1] % 20,u[2]]),p,t)
+end
+cgfun = (x -> invCGTensor(periodicField, x,[0.0,40*3600*24], 1.e-8,tolerance=1.e-4))
+predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%20) < 1e-10)
+bdata = juFEMDL.boundaryData(ctx,predicate,[])
+@time K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
+@time M = assembleMassMatrix(ctx,bdata=bdata)
+@time λ, v = eigs(K,M,which=:SM, nev= 10)
+plot_u(ctx,v[:,1],bdata=bdata)
 
-for i in 1:20
+for i in 1:10
     title = "Eigenvector with eigenvalue $(λ[i])"
-    plot_u(ctx,v[:,i],title=title)
+    Plots.display(plot_u(ctx,v[:,i],title=title,bdata=bdata))
 end

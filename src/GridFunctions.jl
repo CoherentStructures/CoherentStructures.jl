@@ -679,31 +679,147 @@ function nodal_interpolation(ctx::gridContext, f::Function)
     nodal_values = [f(ctx.grid.nodes[ctx.dof_to_node[j]].x) for j in 1:ctx.n]
 end
 
-
-function getHomDBCS{dim}(ctx::gridContext{dim})
-    dbcs = DirichletBoundaryConditions(ctx.dh)
-    #TODO: See if newer version of JuAFEM export a "boundary" nodeset
-    dbc = JuAFEM.DirichletBoundaryCondition(:T,
-            union(getfaceset(ctx.grid, "left"),
-             getfaceset(ctx.grid, "right"),
-              getfaceset(ctx.grid, "top"),
-               getfaceset(ctx.grid, "bottom")), (x,t)->0)
-    add!(dbcs, dbc)
-    close!(dbcs)
-    update!(dbcs, 0.0)
-    return dbcs
+mutable struct boundaryData
+    dbc_dofs::Vector{Int}
+    periodic_dofs_from::Vector{Int}
+    periodic_dofs_to::Vector{Int}
+    function boundaryData(dbc_dofs::Vector{Int},periodic_dofs_from::Vector{Int}=Vector{Int}(), periodic_dofs_to::Vector{Int}=Vector{Int}())
+        assert( length(periodic_dofs_from) == length(periodic_dofs_to))
+        assert(issorted(dbc_dofs))
+        assert(issorted(periodic_dofs_from))
+        return new(dbc_dofs, periodic_dofs_from,periodic_dofs_to)
+    end
+    function boundaryData{dim}(ctx::gridContext{dim},predicate::Function,which_dbc="all")
+        dbcs = getHomDBCS(ctx,which_dbc).dbc_dofs
+        from, to = identifyPoints(ctx,predicate)
+        return boundaryData(dbcs,from,to)
+    end
 end
 
 
-function upsample2DBCS(ctx, u,dbcs)
-        ures = zeros(ctx.n)
-        offset = 0
-        for i in 1:ctx.n
-                if i == dbcs.prescribed_dofs[offset + 1]
-                        offset += 1
-                        continue
-                end
-                ures[i] = u[i - offset]
+function getHomDBCS{dim}(ctx::gridContext{dim},which="all")
+    dbcs = DirichletBoundaryConditions(ctx.dh)
+    #TODO: See if newer version of JuAFEM export a "boundary" nodeset
+    if which == "all"
+        dbc = JuAFEM.DirichletBoundaryCondition(:T,
+                union(getfaceset(ctx.grid, "left"),
+                 getfaceset(ctx.grid, "right"),
+                  getfaceset(ctx.grid, "top"),
+                   getfaceset(ctx.grid, "bottom")), (x,t)->0)
+   elseif isempty(which)
+       return boundaryData(Vector{Int}())
+   else
+       dbc = JuAFEM. DirichletBoundaryCondition(:T,
+               union([getfaceset(ctx.grid, str) for str in which]...)
+               ,(x,t) -> 0
+           )
+   end
+    add!(dbcs, dbc)
+    close!(dbcs)
+    update!(dbcs, 0.0)
+    return boundaryData(dbcs.prescribed_dofs)
+end
+
+
+function undoBCS(ctx, u,bdata)
+        correspondsTo = BCTable(ctx,bdata)
+        n = ctx.n
+        result = zeros(n)
+        for i in 1:n
+            if correspondsTo[i] == 0
+                result[i] = 0.0
+            else
+                result[i] = u[correspondsTo[i]]
+            end
         end
-        return ures
+        return result
+end
+
+function getDofCoordinates{dim}(ctx::gridContext{dim},dofindex::Int)
+    return ctx.grid.nodes[ctx.dof_to_node[dofindex]].x
+end
+
+function BCTable{dim}(ctx::gridContext{dim},bdata::boundaryData)
+    dbcs_prescribed_dofs=bdata.dbc_dofs
+    periodic_dofs_from = bdata.periodic_dofs_from
+    periodic_dofs_to = bdata.periodic_dofs_to
+
+    if dbcs_prescribed_dofs==nothing
+        dbcs_prescribed_dofs = getHomDBCS(ctx).prescribed_dofs
+    end
+    if !issorted(dbcs_prescribed_dofs)
+        error("DBCS are not sorted")
+    end
+    k = length(dbcs_prescribed_dofs)
+    l = length(periodic_dofs_from)
+    n = ctx.n
+    correspondsTo = zeros(Int, n)
+    dbc_ptr = 0
+    boundary_ptr = 0
+    skipcounter = 0
+    for j in 1:n
+        skipcounterincreased = false
+        correspondsTo[j] = j - skipcounter
+        jnew = j
+        if boundary_ptr <l && periodic_dofs_from[boundary_ptr+1] == j
+            jnew = periodic_dofs_to[boundary_ptr+1]
+            boundary_ptr += 1
+            if jnew != j
+                skipcounter += 1
+                skipcounterincreased = true
+            end
+        end
+        if (dbc_ptr < k)  && (dbcs_prescribed_dofs[dbc_ptr + 1] == j)
+            dbc_ptr += 1
+            correspondsTo[j] = 0
+            if !skipcounterincreased
+                skipcounter += 1
+            end
+            continue
+        end
+        correspondsTo[j] =  correspondsTo[jnew]
+    end
+    return correspondsTo
+end
+
+function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
+    k = length(bdata.dbc_dofs)
+    n = ctx.n
+
+    correspondsTo = BCTable(ctx,bdata)
+    new_n = length(unique(correspondsTo))
+    Kres = spzeros(new_n,new_n)
+
+    vals = nonzeros(K)
+    rows = rowvals(K)
+    for j = 1:n
+        if correspondsTo[j] == 0
+            continue
+        end
+        for i in nzrange(K,j)
+                row = rows[i]
+                if correspondsTo[row] == 0
+                    continue
+                end
+                Kres[correspondsTo[row],correspondsTo[j]] += vals[i]
+        end
+    end
+    return Kres
+end
+
+function identifyPoints{dim}(ctx::gridContext{dim},predicate)
+    boundary_dofs = getHomDBCS(ctx).dbc_dofs
+    identify_with = copy(boundary_dofs)*0
+    for (index, i) in enumerate(boundary_dofs)
+        for j in 1:i
+            if predicate(getDofCoordinates(ctx,i),getDofCoordinates(ctx,j))
+                identify_with[index] = j
+                break
+            end
+        end
+        if identify_with[index] == 0
+            identify_with[index] = i
+        end
+    end
+    return boundary_dofs,identify_with
 end

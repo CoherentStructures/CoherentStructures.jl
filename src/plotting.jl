@@ -1,8 +1,8 @@
 
 #TODO: Can this be made more efficient?
-function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=true,kwargs...)
+function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=true,bdata=nothing,kwargs...)
     id = x -> x
-    plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,plotit=plotit;kwargs...)
+    plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,plotit=plotit,bdata=bdata;kwargs...)
 end
 
 function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(), kwargs...)
@@ -26,16 +26,16 @@ function plot_u_eulerian(
                     ny=60;
                     plotit=true,euler_to_lagrange_points=nothing,
                     only_get_lagrange_points=false,postprocessor=nothing,
+                    bdata=nothing,
                     kwargs...)
-
-    if (ctx.n != length(dof_vals))
+    if (bdata==nothing) && (ctx.n != length(dof_vals))
         dbcs = getHomDBCS(ctx)
-        if length(dbcs.prescribed_dofs) + length(dof_vals) != ctx.n
+        if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
             error("Input u has wrong length")
         end
         dof_values = upsample2DBCS(ctx,dof_vals,dbcs)
     else
-        dof_values = dof_vals
+        dof_values = undoBCS(ctx,dof_vals,bdata)
     end
     x1 = Float64[]
     x2 = Float64[]
