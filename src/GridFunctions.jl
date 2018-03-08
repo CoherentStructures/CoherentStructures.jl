@@ -788,6 +788,9 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
 
     correspondsTo = BCTable(ctx,bdata)
     new_n = length(unique(correspondsTo))
+    if 0 ∈ correspondsTo
+        new_n -= 1
+    end
     Kres = spzeros(new_n,new_n)
 
     vals = nonzeros(K)
