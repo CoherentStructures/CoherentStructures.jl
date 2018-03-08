@@ -1,6 +1,7 @@
 #Functions for pulling back Tensors
 
 
+
 """function flow(rhs,  u0, tspan; tolerance, p, solver)
 
 Solve the ODE with right hand side given by `@param rhs` and initial value given by `@param u0`.
@@ -13,15 +14,26 @@ function flow(
             tspan::AbstractVector{Float64};
             tolerance = 1.e-3,
             p = nothing,
-            solver = OrdinaryDiffEq.BS5()
+            solver = OrdinaryDiffEq.BS5(),
+            ctx_for_boundscheck=nothing
         ) where {T<:Real}
-
-   prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0), (tspan[1],tspan[end]), p)
+    callback = nothing
+    if ctx_for_boundscheck != nothing
+       LL::Vec{2,Float64} = ctx_for_boundscheck.spatialBounds[1]
+       UR::Vec{2,Float64} = ctx_for_boundscheck.spatialBounds[2]
+       leftSide(x,y,integrator) = x[1] - LL[1]
+       bottomSide(x,y,integrator) = x[2] - LL[2]
+       rightSide(x,y,integrator) = UR[1] - x[1]
+       topSide(x,y,integrator) = UR[2] - x[2]
+       callback = OrdinaryDiffEq.CallbackSet(
+           map(x-> OrdinaryDiffEq.ContinuousCallback(x,OrdinaryDiffEq.terminate!),
+           [leftSide,rightSide,topSide,bottomSide])...)
+   end
+   prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),
+       (tspan[1],tspan[end]), p,callback=callback)
    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                             save_everystep=false, dense=false,
-                             reltol=tolerance, abstol=tolerance)
-
-   #TODO: can we use point notation here, or something from the DifferentialEquations package?
+                         save_everystep=false, dense=false,
+                         reltol=tolerance, abstol=tolerance)
    return map(Vec{2}, sol.u)
 end
 

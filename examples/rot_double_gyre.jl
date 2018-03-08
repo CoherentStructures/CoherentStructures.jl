@@ -27,11 +27,10 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0])[end]
+    forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0],ctx_for_boundscheck=ctx,tolerance=1e-2)[end]
     @time S2= adaptiveTO(ctx,forwards_flow)
     @time λ, v = eigs(-1*(S + S2),M,which=:SM)
 end
-
 #With L2-Galerkin calculation of ALPHA
 begin
     @time S = assembleStiffnessMatrix(ctx)
