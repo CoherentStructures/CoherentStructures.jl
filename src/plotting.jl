@@ -33,7 +33,7 @@ function plot_u_eulerian(
         if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
             error("Input u has wrong length")
         end
-        dof_values = upsample2DBCS(ctx,dof_vals,dbcs)
+        dof_values = undoBCS(ctx,dof_vals,dbcs)
     elseif (bdata != nothing)
         dof_values = undoBCS(ctx,dof_vals,bdata)
     else
