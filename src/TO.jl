@@ -7,7 +7,9 @@ zero2D = zero(Vec{2})
 one2D = e1 + e2
 
 #Currently only works on a rectangular grid that must be specified in advance
-function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function,LL=zero2D, UR=one2D )
+function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
+    LL = ctx.spatialBounds[1]
+    UR = ctx.spatialBounds[2]
     n = ctx.n
     result = spzeros(n,n)
     for j in 1:n
@@ -44,7 +46,7 @@ function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=defa
     #xs = [i[1] for i in new_nodes_in_dof_order]
     #ys = [i[2] for i in new_nodes_in_dof_order]
     #GR.plot(xs,ys,".")
-    new_ctx = gridContext{2}(Triangle, new_nodes_in_dof_order, quadrature_order)
+    new_ctx = gridContext{2}(Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
     #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
     I,J,V = findnz(assembleStiffnessMatrix(new_ctx))
     l = length(I)
