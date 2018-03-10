@@ -103,6 +103,7 @@ function linearized_flow(
             solver = OrdinaryDiffEq.BS5()
         ) where {T <: Real}  # TODO: add dim
 
+    dim = length(u)
     Flow(x) = ad_flow(odefun,x,tspan,tolerance=tolerance,p=p,solver=solver)
     DF      = ForwardDiff.jacobian(Flow,u)
     df      = [Tensor{2,2}(DF[i:i+(dim-1),:]) for i=1:dim:size(DF,1)]
