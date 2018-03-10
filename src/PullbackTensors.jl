@@ -17,6 +17,7 @@ function flow(
             solver = OrdinaryDiffEq.BS5(),
             ctx_for_boundscheck=nothing
         ) where {T<:Real}
+        
     callback = nothing
     if ctx_for_boundscheck != nothing
        LL::Vec{2,Float64} = ctx_for_boundscheck.spatialBounds[1]
@@ -47,10 +48,10 @@ end
             tolerance::Float64 = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
-        ) where {T <: Real,dim}
+        ) where {T <: Real}
 
-    const dx = [δ,zero(δ)];
-    const dy = [zero(δ),δ];
+    const dx = [δ, zero(δ)];
+    const dy = [zero(δ), δ];
 
     #In order to solve only one ODE, write all the initial values
     #one after the other in one big vector
@@ -61,7 +62,7 @@ end
     @inbounds stencil[7:8] .= x .- dy
 
     const num_tsteps = length(tspan)
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),
+    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,Array{T}(u),p,t,odefun, 4,2),
                                      stencil, (tspan[1],tspan[end]), p)
 
     sol = OrdinaryDiffEq.solve(prob, solver, saveat = tspan, save_everystep = false,
