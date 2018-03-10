@@ -46,7 +46,7 @@ function ad_flow(
             tolerance = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
-        )
+        ) where {T<:Real}
     
     prob = OrdinaryDiffEq.ODEProblem(odefun,u,T.((tspan[1], tspan[end])),p)
     sol = convert(Array,OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance))
