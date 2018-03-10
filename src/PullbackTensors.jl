@@ -209,7 +209,7 @@ function pullback_tensors_geo(
             tspan::AbstractVector{T},
             δ::T;
             D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
-            tol::Float64=1e-3,
+            tolerance::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
         ) where {T<:Real}
@@ -217,7 +217,7 @@ function pullback_tensors_geo(
     G = inv(D)
     met2deg_init = met2deg(u)
     prob = ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
-    sol = solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=1e-5,abstol=1e-5).u
+    sol = solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
@@ -239,8 +239,8 @@ function pullback_metric_tensor_geo(
         ) where {T<:Real}
 
     met2deg_init = met2deg(u)
-    prob = ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
-    sol = solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=1e-5,abstol=1e-5).u
+    prob = OrdinaryDiffEq.ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
@@ -276,13 +276,13 @@ function pullback_SDE_diffusion_tensor_geo(
                 tspan::AbstractVector{T},
                 δ::T;
                 D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
-                tol::Float64=1e-3,
+                tolerance::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()
             ) where {T<:Real}
 
-    prob = ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
-    sol = solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+    prob = OrdinaryDiffEq.ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
