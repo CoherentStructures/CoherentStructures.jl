@@ -31,11 +31,25 @@ function flow(
            [leftSide,rightSide,topSide,bottomSide])...)
    end
    prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),# is this Array a no-op for arrays? if not, dispatch
-       T.((tspan[1],tspan[end])), p,callback=callback)
+       (tspan[1],tspan[end]), p,callback=callback)
    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                          save_everystep=false, dense=false,
                          reltol=tolerance, abstol=tolerance)
    return sol.u
+end
+
+# this is a flow-function that works with ForwardDiff
+function ad_flow(
+            odefun::Function,
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{Float64};
+            tolerance = 1.e-3,
+            p = nothing,
+            solver = OrdinaryDiffEq.BS5()
+        )
+    
+    prob = OrdinaryDiffEq.ODEProblem(odefun,u,T.((tspan[1], tspan[end])),p)
+    sol = convert(Array,OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance))
 end
 
 #Calculate derivative of flow map by finite differences.
@@ -89,7 +103,7 @@ function linearized_flow(
             solver = OrdinaryDiffEq.BS5()
         ) where {T <: Real}  # TODO: add dim
 
-    Flow(x) = flow(odefun,x,tspan,tolerance=tolerance,p=p,solver=solver)
+    Flow(x) = ad_flow(odefun,x,tspan,tolerance=tolerance,p=p,solver=solver)
     DF      = ForwardDiff.jacobian(Flow,u)
     df      = [Tensor{2,2}(DF[i:i+(dim-1),:]) for i=1:dim:size(DF,1)]
     return df
