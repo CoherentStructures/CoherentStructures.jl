@@ -31,7 +31,7 @@ function flow(
            [leftSide,rightSide,topSide,bottomSide])...)
    end
    prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),# is this Array a no-op for arrays? if not, dispatch
-       (tspan[1],tspan[end]), p,callback=callback)
+       T.((tspan[1],tspan[end])), p,callback=callback)
    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                          save_everystep=false, dense=false,
                          reltol=tolerance, abstol=tolerance)
