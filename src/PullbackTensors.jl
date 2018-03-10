@@ -234,7 +234,7 @@ function pullback_metric_tensor_geo(
     return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
 
-@everywhere function pullback_diffusion_tensor_geo(
+function pullback_diffusion_tensor_geo(
                 odefun,
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
@@ -255,7 +255,7 @@ end
     return [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
 end
 
-@everywhere function pullback_SDE_diffusion_tensor_geo(
+function pullback_SDE_diffusion_tensor_geo(
                 odefun,
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
