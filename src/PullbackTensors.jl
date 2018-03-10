@@ -79,13 +79,17 @@ end
 end
 
 #TODO: document this
+# This is the autodiff-version of linearized_flow
 function linearized_flow(
             odefun::Function,
             u::AbstractArray{T,1},
-            tspan::AbstractVector{Float64}
+            tspan::AbstractVector{Float64};
+            tolerance::Float64 = 1.e-3,
+            p = nothing,
+            solver = OrdinaryDiffEq.BS5()
         ) where {T <: Real}  # TODO: add dim
 
-    Flow(x) = flow(odefun,x,tspan,p=p)
+    Flow(x) = flow(odefun,x,tspan,tolerance=tolerance,p=p,solver=solver)
     DF      = ForwardDiff.jacobian(Flow,u)
     df      = [Tensor{2,2}(DF[i:i+(dim-1),:]) for i=1:dim:size(DF,1)]
     return df
