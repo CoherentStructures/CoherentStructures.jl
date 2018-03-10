@@ -121,7 +121,7 @@ function pullback_tensors(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            D::Tensors.SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
@@ -144,7 +144,7 @@ function pullback_metric_tensor(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            G::Tensors.SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            G::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
@@ -162,7 +162,7 @@ function pullback_diffusion_tensor(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            D::Tensors.SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
@@ -189,7 +189,7 @@ function pullback_tensors_geo(
             u::AbstractArray{T,1},
             tspan::AbstractVector{T},
             δ::T;
-            D::Tensors.SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+            D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
             tol::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
@@ -213,7 +213,7 @@ function pullback_metric_tensor_geo(
             u::AbstractArray{T,1},
             tspan::AbstractVector{T},
             δ::T;
-            G::Tensors.SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+            G::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
             tolerance::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
@@ -235,7 +235,7 @@ end
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::Tensors.SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+                D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
                 tolerance::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()
@@ -256,7 +256,7 @@ end
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::Tensors.SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+                D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
                 tol::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()
