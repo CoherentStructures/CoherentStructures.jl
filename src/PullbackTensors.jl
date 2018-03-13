@@ -15,25 +15,31 @@ function flow(
             tolerance = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5(),
-            ctx_for_boundscheck=nothing
+            ctx_for_boundscheck=nothing,
+            force_dtmin=false
         ) where {T<:Real}
     callback = nothing
     if ctx_for_boundscheck != nothing
-       LL::Vec{2,Float64} = ctx_for_boundscheck.spatialBounds[1]
-       UR::Vec{2,Float64} = ctx_for_boundscheck.spatialBounds[2]
-       leftSide(x,y,integrator) = x[1] - LL[1]
-       bottomSide(x,y,integrator) = x[2] - LL[2]
-       rightSide(x,y,integrator) = UR[1] - x[1]
-       topSide(x,y,integrator) = UR[2] - x[2]
+       LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
+       LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
+       UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
+       UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
+       leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
+       bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
+       rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
+       topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
+       function affect!(integrator)
+           return terminate!(integrator)
+       end
        callback = OrdinaryDiffEq.CallbackSet(
-           map(x-> OrdinaryDiffEq.ContinuousCallback(x,OrdinaryDiffEq.terminate!),
+           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
            [leftSide,rightSide,topSide,bottomSide])...)
    end
    prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),
        (tspan[1],tspan[end]), p,callback=callback)
    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                          save_everystep=false, dense=false,
-                         reltol=tolerance, abstol=tolerance)
+                         reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
    return map(Vec{2}, sol.u)
 end
 
