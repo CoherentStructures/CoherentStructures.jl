@@ -109,16 +109,16 @@ end # r₀=6371e-3
 
 
 #TODO: Give variables a sensible type here
-function interpolateVF(Lon,Lat,UT, time,VT)
+function interpolateVF(Lon,Lat,UT, time,VT,interpolation_type=BSpline(Cubic(Free())))
     # convert arrays into linspace-form for interpolation
     const lon = linspace(minimum(Lon),maximum(Lon),length(Lon))
     const lat = linspace(minimum(Lat),maximum(Lat),length(Lat))
     const Time = linspace(minimum(time),maximum(time),length(time))
 
-    UI = Interpolations.interpolate(permutedims(UT,[2,1,3]),BSpline(Cubic(Free())),OnGrid())
+    UI = Interpolations.interpolate(permutedims(UT,[2,1,3]),interpolation_type,OnGrid())
     UI = Interpolations.scale(UI,lon,lat,Time)
     # UE = extrapolate(UI,(Linear(),Linear(),Flat()))
-    VI = Interpolations.interpolate(permutedims(VT,[2,1,3]),BSpline(Cubic(Free())),OnGrid())
+    VI = Interpolations.interpolate(permutedims(VT,[2,1,3]),interpolation_type,OnGrid())
     VI = Interpolations.scale(VI,lon,lat,Time)
     # VE = extrapolate(VI,(Linear(),Linear(),Flat()))
     return UI,VI
