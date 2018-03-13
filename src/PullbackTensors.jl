@@ -18,6 +18,7 @@ function flow(
             ctx_for_boundscheck=nothing,
             force_dtmin=false
         ) where {T<:Real}
+        
     callback = nothing
     if ctx_for_boundscheck != nothing
        LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
@@ -35,28 +36,42 @@ function flow(
            map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
            [leftSide,rightSide,topSide,bottomSide])...)
    end
-   prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),
+   prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),# is this Array a no-op for arrays? if not, dispatch
        (tspan[1],tspan[end]), p,callback=callback)
    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                          save_everystep=false, dense=false,
                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-   return map(Vec{2}, sol.u)
+   return sol.u
+end
+
+# this is a flow-function that works with ForwardDiff
+function ad_flow(
+            odefun::Function,
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{Float64};
+            tolerance = 1.e-3,
+            p = nothing,
+            solver = OrdinaryDiffEq.BS5()
+        ) where {T<:Real}
+    
+    prob = OrdinaryDiffEq.ODEProblem(odefun,u,T.((tspan[1], tspan[end])),p)
+    sol = convert(Array,OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance))
 end
 
 #Calculate derivative of flow map by finite differences.
 #TODO: implement this for dim==3, currently it only works if dim==2
 @inline function linearized_flow(
             odefun::Function,
-            x::Vec{dim,T},
+            x::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
             tolerance::Float64 = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
-        ) where {T <: Real,dim}
+        ) where {T <: Real}
 
-    const dx = [δ,zero(δ)];
-    const dy = [zero(δ),δ];
+    const dx = [δ, zero(δ)];
+    const dy = [zero(δ), δ];
 
     #In order to solve only one ODE, write all the initial values
     #one after the other in one big vector
@@ -67,7 +82,7 @@ end
     @inbounds stencil[7:8] .= x .- dy
 
     const num_tsteps = length(tspan)
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2),
+    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,Array{T}(u),p,t,odefun, 4,2),
                                      stencil, (tspan[1],tspan[end]), p)
 
     sol = OrdinaryDiffEq.solve(prob, solver, saveat = tspan, save_everystep = false,
@@ -84,13 +99,18 @@ end
 end
 
 #TODO: document this
+# This is the autodiff-version of linearized_flow
 function linearized_flow(
             odefun::Function,
-            u::Vec{dim,T},
-            tspan::AbstractVector{Float64}
-        ) where {T <: Real,dim}
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{Float64};
+            tolerance::Float64 = 1.e-3,
+            p = nothing,
+            solver = OrdinaryDiffEq.BS5()
+        ) where {T <: Real}  # TODO: add dim
 
-    Flow(x) = flow(odefun,x,tspan,p=p)
+    dim = length(u)
+    Flow(x) = ad_flow(odefun,x,tspan,tolerance=tolerance,p=p,solver=solver)
     DF      = ForwardDiff.jacobian(Flow,u)
     df      = [Tensor{2,2}(DF[i:i+(dim-1),:]) for i=1:dim:size(DF,1)]
     return df
@@ -111,11 +131,11 @@ Derivatives are computed with finite differences
 """
 @inline function invCGTensor(
             odefun,
-            x::Vec{dim,T},
+            x::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
             kwargs...
-        ) where {T<:Real, dim}
+        ) where {T<:Real} # TODO: add dim
     return mean(dott.(inv.(linearized_flow(odefun,x,tspan,δ;kwargs...))))
 end
 
@@ -123,14 +143,14 @@ end
 #TODO: Pass through tolerance for ODE solver etc.
 function pullback_tensors(
             odefun::Function,
-            u::Vec{dim,T},
+            u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
-            δ::Float64,
-            D::Tensors.SymmetricTensor{2,dim,T,3};
+            δ::Float64;
+            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
-        ) where {T <: Real,dim}
+        ) where {T <: Real}  # TODO: add dim for 3D
 
     G = inv(D)
 
@@ -138,55 +158,141 @@ function pullback_tensors(
       DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
       DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
 
-    DFinv = inv.(DF)
-    MT = [symmetric(transpose(df)⋅(G⋅df)) for df in DF]
+    MT = [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
     DF .= inv.(DF)
-    DT = [symmetric(df⋅(D⋅transpose(df))) for df in DF]
+    DT = [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
     return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
 end
 
 function pullback_metric_tensor(
             odefun,
-            u::Vec{dim, T},
+            u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
-            δ::Float64,
-            G::Tensors.SymmetricTensor{2,dim,T,3};
+            δ::Float64;
+            G::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
-        ) where {T <: Real,dim}
+        ) where {T <: Real} # TODO: add dim for 3D
 
     iszero(δ) ?
       DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
       DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
 
-    return [symmetric(transpose(df)⋅(G⋅df)) for df in DF]
+    return [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
 end
 
 function pullback_diffusion_tensor(
             odefun,
-            u::Vec{dim,T},
+            u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
-            δ::Float64,
-            D::Tensors.SymmetricTensor{2,dim,T};
+            δ::Float64;
+            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
-        ) where {T <: Real,dim}
+        ) where {T <: Real} # TODO: add dim for 3D
 
     iszero(δ) ?
       DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
       DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
 
-    DF = inv.(DF)
-    return [symmetric(df⋅(D⋅transpose(df))) for df in DF]
+    DF .= inv.(DF)
+    return [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
 end
 
-#TODO: Think whether to define the functions below for the Vec{} type
 function met2deg(u::AbstractVector{T}) where T <: Real
-    diagm(Tensor{2,2}, [cos(deg2rad(u[2])), one(T)])
+    diagm(Tensor{2,2,T,3}, [1/cos(deg2rad(u[2])), one(T)])
 end
 
 function deg2met(u::AbstractVector{T}) where T <: Real
-    diagm(Tensor{2,2}, [1/cos(deg2rad(u[2])), one(T)])
+    diagm(Tensor{2,2,T,3}, [cos(deg2rad(u[2])), one(T)])
+end
+
+function pullback_tensors_geo(
+            odefun,
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{T},
+            δ::T;
+            D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+            tolerance::Float64=1e-3,
+            p=nothing,
+            solver=OrdinaryDiffEq.BS5()
+        ) where {T<:Real}
+
+    G = inv(D)
+    met2deg_init = met2deg(u)
+    prob = ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
+    sol = solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+    iszero(δ) ?
+        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+    
+    PBmet = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
+    PBdiff = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
+    return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
+end
+
+function pullback_metric_tensor_geo(
+            odefun,
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{T},
+            δ::T;
+            G::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+            tolerance::Float64=1e-3,
+            p=nothing,
+            solver=OrdinaryDiffEq.BS5()
+        ) where {T<:Real}
+
+    met2deg_init = met2deg(u)
+    prob = OrdinaryDiffEq.ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+    iszero(δ) ?
+        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+    
+    PB = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
+    return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
+end
+
+function pullback_diffusion_tensor_geo(
+                odefun,
+                u::AbstractVector{T},
+                tspan::AbstractVector{T},
+                δ::T;
+                D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+                tolerance::Float64=1e-3,
+                p=nothing,
+                solver=OrdinaryDiffEq.BS5()
+            ) where {T<:Real}
+
+    prob = OrdinaryDiffEq.ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+    iszero(δ) ?
+        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+    
+    PB = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
+    return [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
+end
+
+function pullback_SDE_diffusion_tensor_geo(
+                odefun,
+                u::AbstractVector{T},
+                tspan::AbstractVector{T},
+                δ::T;
+                D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+                tolerance::Float64=1e-3,
+                p=nothing,
+                solver=OrdinaryDiffEq.BS5()
+            ) where {T<:Real}
+
+    prob = OrdinaryDiffEq.ODEProblem(odefun,Array{T}(u),(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+    iszero(δ) ?
+        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+    
+    B = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
+    return B
 end

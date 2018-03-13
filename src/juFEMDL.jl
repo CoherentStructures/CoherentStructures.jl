@@ -1,7 +1,7 @@
 module juFEMDL
 
     using Tensors
-    using DiffEqBase, OrdinaryDiffEq#, ForwardDiff
+    using DiffEqBase, OrdinaryDiffEq, ForwardDiff
     using Interpolations
 
 

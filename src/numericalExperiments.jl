@@ -124,7 +124,7 @@ function makeOceanFlowTestCase(location="examples/Ocean_geostrophic_velocity.jld
     time = vars["time"]
     VT = vars["VT"]
 
-    UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
+    UI, VI = interpolateVF(Lon,Lat,time,UT,VT)
     p = (UI,VI)
 
     #The computational domain
