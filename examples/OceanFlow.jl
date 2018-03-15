@@ -18,9 +18,8 @@ LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
 p=(UI,VI)
-ctx = regularTriangularGrid((250,150),LL,UR,quadrature_order=1)
+ctx = regularP2TriangularGrid((50,30),LL,UR,quadrature_order=2)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
-Id = one(SymmetricTensor{2,2})
 times = [t_initial,t_final]
 As = [
         invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
@@ -36,32 +35,33 @@ end
 #With CG-Method
 begin
         q = [mean_As]
-        @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,dirichlet_boundary=true)
-        @time M2 = assembleMassMatrix(ctx,dirichlet_boundary=true)
+        bdata = juFEMDL.getHomDBCS(ctx)
+        #bdata = juFEMDL.boundaryData()
+        @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,bdata=bdata)
+        @time M2 = assembleMassMatrix(ctx,bdata=bdata)
         @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
 end
 plot_real_spectrum(λ2)
+plot_u(ctx,v2[:,5],200,200,bdata=bdata)
 using Clustering
-begin
-        numclusters = 6
-        res = kmeans(v2[:,2:numclusters+1]',numclusters)
-        u = kmeansresult2LCS(res)
-end
+numclusters = 5
+res = kmeans(v2[:,1:numclusters]',numclusters+1)
+u = kmeansresult2LCS(res)
+plot_u(ctx,u[:,5],200,200,color=:viridis)
 
-plot_u(ctx,u[:,3],200,200,color=:viridis)
 LL_big = [-10,-40.0]
 UR_big = [6,-25.0]
 inverse_flow_map = u0 -> flow(interp_rhs,u0, [t_final,t_initial],p=(UI,VI),tolerance=1e-4)[end]
-plot_u_eulerian(ctx,u[:,4],
+plot_u_eulerian(ctx,u[:,5],
         LL_big,UR_big,inverse_flow_map,
         100,100)
 #With adaptive TO method
 begin
-    ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
-    @time S = assembleStiffnessMatrix(ctx)
-    @time M = assembleMassMatrix(ctx)
-    @time S2= adaptiveTO(ctx,ocean_flow_map)
-    @time λ, v = eigs(S + S2,M,which=:SM)
+ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
+@time S = assembleStiffnessMatrix(ctx)
+@time M = assembleMassMatrix(ctx)
+@time S2= adaptiveTO(ctx,ocean_flow_map)
+@time λ, v = eigs(S + S2,M,which=:SM)
 end
 
 
