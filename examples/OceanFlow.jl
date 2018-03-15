@@ -16,7 +16,7 @@ t_final = t_initial + 90
 
 LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
-UI, VI = interpolateVF(Lon,Lat,UT,time,VT)
+UI, VI = interpolateVF(Lon,Lat,time,UT,VT)
 p=(UI,VI)
 ctx = regularP2TriangularGrid((50,30),LL,UR,quadrature_order=2)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]

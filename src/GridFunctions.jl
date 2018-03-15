@@ -791,23 +791,38 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
     if 0 ∈ correspondsTo
         new_n -= 1
     end
-    Kres = spzeros(new_n,new_n)
-
-    vals = nonzeros(K)
-    rows = rowvals(K)
-    for j = 1:n
-        if correspondsTo[j] == 0
-            continue
+    if issparse(K)
+        Kres = spzeros(new_n,new_n)
+        vals = nonzeros(K)
+        rows = rowvals(K)
+        for j = 1:n
+            if correspondsTo[j] == 0
+                continue
+            end
+            for i in nzrange(K,j)
+                    row = rows[i]
+                    if correspondsTo[row] == 0
+                        continue
+                    end
+                    Kres[correspondsTo[row],correspondsTo[j]] += vals[i]
+            end
         end
-        for i in nzrange(K,j)
-                row = rows[i]
-                if correspondsTo[row] == 0
+        return Kres
+    else
+        Kres = zeros(new_n,new_n)
+        for j = 1:n
+            if correspondsTo[j] == 0
+                continue
+            end
+            for i in 1:n
+                if correspondsTo[i] == 0
                     continue
                 end
-                Kres[correspondsTo[row],correspondsTo[j]] += vals[i]
+                Kres[correspondsTo[i],correspondsTo[j]] = K[i,j]
+            end
         end
+        return Kres
     end
-    return Kres
 end
 
 function identifyPoints{dim}(ctx::gridContext{dim},predicate)

@@ -1,26 +1,28 @@
 #velocityFields.jl from Daniel Karrasch
 
-#TODO: Uncomment everything with @ode_def and figure out why it causes an error
+#TODO: See if type specification actually helps, remove redundant vector fields,
+# rotating double gyre and Bickley jet can both be obtained from Alvaro's macro
+# this means, apart from the interpolation functions, all other functions may be removed?
 
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
-function rot_double_gyre2!(dx::AbstractArray{Float64},x::AbstractArray{Float64}, p,t::Float64)
+function rot_double_gyre2!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
 #function rot_double_gyre2(t::Float64,x,dx)
-  st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>=1)*1
-  dxΨP = 2π*cos(2π*x[1])*sin(π*x[2])
-  dyΨP = π*sin(2π*x[1])*cos(π*x[2])
-  dxΨF = π*cos(π*x[1])*sin(2π*x[2])
-  dyΨF = 2π*sin(π*x[1])*cos(2π*x[2])
-  dx[1] = - ((1-st)dyΨP + st*dyΨF)
-  dx[2] = (1-st)dxΨP + st*dxΨF
+  st = ((t>0) & (t<1))*t^2*(3-2*t) + (t>=1)*1
+  dxΨP = 2π*cos(2π*u[1])*sin(π*u[2])
+  dyΨP = π*sin(2π*u[1])*cos(π*u[2])
+  dxΨF = π*cos(π*u[1])*sin(2π*u[2])
+  dyΨF = 2π*sin(π*u[1])*cos(2π*u[2])
+  du[1] = - ((1-st)*dyΨP + st*dyΨF)
+  du[2] = (1-st)*dxΨP + st*dxΨF
 end
 
 
-transientGyres = @ode_def tGyres begin
-    dx = -((1-t^2*(3-2*t))*π*sin(2π*x)*cos(π*y) + t^2*(3-2*t)*2π*sin(π*x)*cos(2π*y))
-    dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
-end
+# transientGyres = @ode_def tGyres begin
+#    dx = -((1-t^2*(3-2*t))*π*sin(2π*x)*cos(π*y) + t^2*(3-2*t)*2π*sin(π*x)*cos(2π*y))
+#    dy = (1-t^2*(3-2*t))*2π*cos(2π*x)*sin(π*y) + t^2*(3-2*t)*π*cos(π*x)*sin(2π*y)
+# end
 
-function transientGyresEqVari(du,u,p,t)
+function transientGyresEqVari(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
     st = ((t>0)&(t<1))*t^2*(3-2*t) + (t>1)*1
 
     # Psi_P = sin(2*pi*x)*sin(pi*y)
@@ -61,24 +63,25 @@ function transientGyresEqVari(du,u,p,t)
     du[6] = df2*u[5]+df4*u[6]
 end
 
-bickleyJet = @ode_def bJet begin
-  U=62.66e-6
-  L=1770e-3
-  c₂=1.28453e-5
-  c₃=2.888626e-5
-  ϵ₁=0.0075
-  ϵ₂=0.15
-  ϵ₃=0.3
-  k₁=0.31392246115209543
-  k₂=0.6278449223041909
-  k₃=0.9417673834562862
-  c₁=9.058543015644972e-6
-  dx = U*sech(y/L)^2+(2*ϵ₁*U*cos(k₁*(x-c₁*t))+2*ϵ₂*U*cos(k₂*(x-c₂*t))+2*ϵ₃*U*cos(k₃*(x-c₃*t)))*tanh(y/L)*sech(y/L)^2
-  dy = -(ϵ₁*k₁*U*L*sin(k₁*(x-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(x-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(x-c₃*t)))*sech(y/L)^2
+function bickleyJet(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
+    # these parameters could be retrieved from param p
+    U = 62.66e-6
+    L = 1770e-3
+    c₂ = 1.28453e-5
+    c₃ = 2.888626e-5
+    ϵ₁ = 0.0075
+    ϵ₂ = 0.15
+    ϵ₃ = 0.3
+    k₁ = 0.31392246115209543
+    k₂ = 0.6278449223041909
+    k₃ = 0.9417673834562862
+    c₁ = 9.058543015644972e-6
+    x = u[2]/L
+    du[1] = U*sech(x)^2+(2*ϵ₁*U*cos(k₁*(u[1]-c₁*t))+2*ϵ₂*U*cos(k₂*(u[1]-c₂*t))+2*ϵ₃*U*cos(k₃*(u[1]-c₃*t)))*tanh(x)*sech(x)^2
+    du[2] = -(ϵ₁*k₁*U*L*sin(k₁*(u[1]-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(u[1]-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(u[1]-c₃*t)))*sech(x)^2
 end
 
-
-function bickleyJetEqVari(du::AbstractArray, u::AbstractArray, p, t::Float64)
+function bickleyJetEqVari(du::AbstractVector{T}, u::AbstractVector{T}, p, t::T) where {T <: Real}
  # velo = bickleyJet(t,[u[1],u[2]])
  # du[1] = velo[1]
  # du[2] = velo[2]
@@ -109,17 +112,17 @@ end # r₀=6371e-3
 
 
 #TODO: Give variables a sensible type here
-function interpolateVF(Lon,Lat,UT, time,VT)
+function interpolateVF(Lon,Lat,Time, UT, VT,interpolation_type=BSpline(Cubic(Free())))
     # convert arrays into linspace-form for interpolation
     const lon = linspace(minimum(Lon),maximum(Lon),length(Lon))
     const lat = linspace(minimum(Lat),maximum(Lat),length(Lat))
-    const Time = linspace(minimum(time),maximum(time),length(time))
+    const time = linspace(minimum(Time),maximum(Time),length(Time))
 
-    UI = Interpolations.interpolate(permutedims(UT,[2,1,3]),BSpline(Cubic(Free())),OnGrid())
-    UI = Interpolations.scale(UI,lon,lat,Time)
+    UI = Interpolations.interpolate(permutedims(UT,[2,1,3]),interpolation_type,OnGrid())
+    UI = Interpolations.scale(UI,lon,lat,time)
     # UE = extrapolate(UI,(Linear(),Linear(),Flat()))
-    VI = Interpolations.interpolate(permutedims(VT,[2,1,3]),BSpline(Cubic(Free())),OnGrid())
-    VI = Interpolations.scale(VI,lon,lat,Time)
+    VI = Interpolations.interpolate(permutedims(VT,[2,1,3]),interpolation_type,OnGrid())
+    VI = Interpolations.scale(VI,lon,lat,time)
     # VE = extrapolate(VI,(Linear(),Linear(),Flat()))
     return UI,VI
 end
@@ -128,7 +131,7 @@ end
 #The interpolant is passed via the p argument
 
 #TODO: think of adding @inbounds here
-function interp_rhs(du::AbstractArray{Float64},u::AbstractArray{Float64},p,t::Float64)
+function interp_rhs(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <: Real}
     du[1] = p[1][u[1],u[2],t]
     du[2] = p[2][u[1],u[2],t]
 end
