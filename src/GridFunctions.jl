@@ -792,9 +792,32 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
         new_n -= 1
     end
     if issparse(K)
-        Kres = spzeros(new_n,new_n)
         vals = nonzeros(K)
         rows = rowvals(K)
+
+        #Make an empty sparse matrix
+        I = Int[]
+        sizehint!(I,length(rows))
+        J = Int[]
+        sizehint!(J,length(rows))
+        vals = nonzeros(K)
+        for j in 1:n
+            if correspondsTo[j] == 0
+                continue
+            end
+            for i in nzrange(K,j)
+                row = rows[i]
+                if correspondsTo[row] == 0
+                    continue
+                end
+                push!(I,correspondsTo[j])
+                push!(J,correspondsTo[row])
+            end
+        end
+        V = zeros(length(I))
+        #TODO: Find out if pairs (I,J) need to be unique
+        Kres = sparse(I,J,V)
+
         for j = 1:n
             if correspondsTo[j] == 0
                 continue
@@ -804,7 +827,7 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
                     if correspondsTo[row] == 0
                         continue
                     end
-                    Kres[correspondsTo[row],correspondsTo[j]] += vals[i]
+                    @inbounds Kres[correspondsTo[row],correspondsTo[j]] += vals[i]
             end
         end
         return Kres

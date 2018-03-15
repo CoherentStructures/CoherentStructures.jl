@@ -86,10 +86,10 @@ function assembleMassMatrix{dim}(
         for q in 1:getnquadpoints(cv) # loop over quadrature points
             const dΩ = getdetJdV(cv,q)*ctx.mass_weights[index]
             for i in 1:n
-                const φ = shape_value(cv,q,i)
+                const φ::Float64 = shape_value(cv,q,i)
                 for j in 1:(i-1)
-                    const ψ = shape_value(cv,q,j)
-                    const scalprod = (φ ⋅ ψ) * dΩ
+                    const ψ::Float64 = shape_value(cv,q,j)
+                    const scalprod::Float64 = (φ ⋅ ψ) * dΩ
                     Me[i,j] += scalprod
                     Me[j,i] += scalprod
                 end
@@ -100,7 +100,6 @@ function assembleMassMatrix{dim}(
         celldofs!(dofs, cell)
         assemble!(a_M, dofs, Me)
     end
-
 
     M = applyBCS(ctx,M,bdata)
 
