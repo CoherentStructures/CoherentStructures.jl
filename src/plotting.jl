@@ -5,16 +5,46 @@ function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=tr
     plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,plotit=plotit,bdata=bdata;kwargs...)
 end
 
-function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(), kwargs...)
-    x1 =  linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx)
-    x2 =  linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny)
-    DF = [linearized_flow(odefun,Vec{2}([x,y]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end] for y in x2, x in x1]
-    arrayabs(x) = abs.(x)
-    FTLE = 1./(2*(tspan[2]-tspan[1]))*log.(maximum.(arrayabs.(eigvals.(eigfact.(dott.(DF))))))
-    #trDF = log.(abs.(trace.(DF)))
-    return Plots.heatmap(x1,x2,FTLE; kwargs...)
-end
 
+function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),inplace=true,existing_plot=nothing,flip_y=true, kwargs...)
+    x1 =  collect(linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx))
+    x2 =  collect(linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny))
+    if flip_y
+	x2 = reverse(x2)
+    end
+    #FTLE = Array{Float64,2}(ny,nx);#SharedArray{Float64,2}(ny,nx)
+    FTLE = SharedArray{Float64,2}(ny,nx)
+    for j in 1:ny
+	for i in 1:nx
+	    FTLE[j,i] = 0.0
+	end
+    end
+    nancounter = 0
+    nonancounter = 0
+    @sync @parallel for i in 1:nx
+	for j in 1:ny
+	    try
+		FTLE[j,i] = 
+		1./(2*(tspan[end]-tspan[1]))*
+		log(maximum(abs.(eigvals(eigfact(dott(linearized_flow(odefun,Vec{2}([x1[i],x2[j]]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end]))))))
+		nonancounter += 1
+	    catch e
+		nancounter+=1
+		FTLE[j,i] = NaN
+	    end
+	end
+    end
+    print("plot_ftle Ignored $nancounter NaN values ($nonancounter were good)")
+    if flip_y == true
+	x2 = reverse(x2)
+	x2 *= -1.0
+    end
+    if inplace
+	return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
+    else
+	return Plots.heatmap(x1,x2,FTLE; kwargs...)
+    end
+end
 
 function plot_u_eulerian(
                     ctx::gridContext,

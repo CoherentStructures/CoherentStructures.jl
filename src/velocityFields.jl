@@ -127,6 +127,21 @@ function interpolateVF(Lon,Lat,Time, UT, VT,interpolation_type=BSpline(Cubic(Fre
     return UI,VI
 end
 
+function interpolateVFPeriodic(Lon,Lat,Time, UT, VT,interpolation_type=BSpline(Linear()))
+    # convert arrays into linspace-form for interpolation
+    const lon = linspace(minimum(Lon),maximum(Lon),length(Lon))
+    const lat = linspace(minimum(Lat),maximum(Lat),length(Lat))
+    const time = linspace(minimum(Time),maximum(Time),length(Time))
+    UI = Interpolations.interpolate(permutedims(UT,[2,1,3]),interpolation_type,OnGrid())
+    UI = Interpolations.scale(UI,lon,lat,time)
+    UE = extrapolate(UI,(Periodic(),Periodic(),Flat()))
+    VI = Interpolations.interpolate(permutedims(VT,[2,1,3]),interpolation_type,OnGrid())
+    VI = Interpolations.scale(VI,lon,lat,time)
+    VE = extrapolate(VI,(Periodic(),Periodic(),Flat()))
+    return UE,VE
+end
+
+
 #The rhs for an ODE on interpolated vector fields
 #The interpolant is passed via the p argument
 

@@ -46,3 +46,18 @@ end
 #Unit Vectors in R^2
 e1 = basevec(Vec{2},1)
 e2 = basevec(Vec{2},2)
+
+
+
+
+function rawInvCGTensor(args...;kwargs...)
+    result = invCGTensor(args...;kwargs...)
+    return result[1,1], result[1,2],result[2,2]
+end
+
+
+function AFromPrecomputedRaw(x,index,q)
+    @views return SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
+end
+
+

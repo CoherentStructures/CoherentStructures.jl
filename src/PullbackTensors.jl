@@ -65,6 +65,7 @@ end
             x::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
+	    give_back_position=false,
             tolerance::Float64 = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
@@ -95,7 +96,15 @@ end
         #so that Tensor{2,2}(a) approximates the Jacobi-Matrix
     	@inbounds result[i] = Tensor{2,2}( (sol[i][1:4] - sol[i][5:8])/2δ)
     end
-    return result
+    if !give_back_position
+	return result
+    else
+	locations = zeros(Vec{2},num_tsteps)
+	@inbounds for i in 1:num_tsteps
+	    @inbounds locations[i] = 0.25*Vec{2}(sol[i][1:2] + sol[i][3:4] + sol[i][5:6] + sol[i][7:8])
+	end
+	return  result, locations
+    end
 end
 
 #TODO: document this
@@ -200,6 +209,38 @@ function pullback_diffusion_tensor(
     DF .= inv.(DF)
     return [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
 end
+
+
+
+function pullback_diffusion_tensor_function(
+            odefun,
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{Float64},
+            δ::Float64,
+            Dfun::Function;
+            p = nothing,
+            tolerance = 1.e-3,
+            solver = OrdinaryDiffEq.BS5()
+        ) where {T <: Real} # TODO: add dim for 3D
+
+    DF,pos = iszero(δ) ?
+      linearized_flow(odefun,u,tspan, p=p,tolerance=tolerance, solver=solver,give_back_position=true) :
+      linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver,give_back_position=true)
+
+    DF .= inv.(DF)
+    tlen = length(tspan)
+    result = SymmetricTensor{2,2,Float64,3}[]
+    sizehint!(result,tlen)
+    for i in 1:tlen
+	push!(result,symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i])))
+    end
+    return result
+end
+
+
+
+
+
 
 function met2deg(u::AbstractVector{T}) where T <: Real
     diagm(Tensor{2,2,T,3}, [1/cos(deg2rad(u[2])), one(T)])
