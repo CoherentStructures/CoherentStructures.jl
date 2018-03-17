@@ -13,7 +13,6 @@ export
 	bickleyJetEqVari,
 	interpolateVF,
 	oceanVF,
-	interp_rhs,
 	bickleyJet,
 	transientGyres,
 
@@ -35,6 +34,7 @@ export
 	plot_spectrum,
 	plot_real_spectrum,
 	plot_u_eulerian,
+	plot_ftle,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,
@@ -55,6 +55,7 @@ export
 	#util.jl
 	dof2U,
 	kmeansresult2LCS,
+	interp_rhs,
 
 	#advection_diffusion.jl
 	ADimplicitEulerStep,

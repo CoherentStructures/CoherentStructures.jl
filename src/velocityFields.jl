@@ -142,14 +142,6 @@ function interpolateVFPeriodic(Lon,Lat,Time, UT, VT,interpolation_type=BSpline(L
 end
 
 
-#The rhs for an ODE on interpolated vector fields
-#The interpolant is passed via the p argument
-
-#TODO: think of adding @inbounds here
-function interp_rhs(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <: Real}
-    du[1] = p[1][u[1],u[2],t]
-    du[2] = p[2][u[1],u[2],t]
-end
 
 
 # @everywhere function oceanVFEqVari(t::Number,u::Vector,du::Vector)

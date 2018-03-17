@@ -61,3 +61,18 @@ function AFromPrecomputedRaw(x,index,q)
 end
 
 
+#The rhs for an ODE on interpolated vector fields
+#The interpolant is passed via the p argument
+
+#TODO: think of adding @inbounds here
+function interp_rhs(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <: Real}
+    du[1] = p[1][u[1],u[2],t]
+    du[2] = p[2][u[1],u[2],t]
+end
+
+#Returns true for all inputs. This is the default for plot_ftle
+function always_true(x,y,p)
+    return true
+end
+
+
