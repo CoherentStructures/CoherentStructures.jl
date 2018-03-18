@@ -117,12 +117,15 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
 end
 
 function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
-    vars = JLD2.@load(location)
-    Lat = vars["Lat"]
-    Lon = vars["Lon"]
-    Time = vars["Time"]
-    UT = vars["UT"]
-    VT = vars["VT"]
+    
+    JLD2.@load location Lon Lat Time UT VT
+    # JLD version, requires more dependencies
+    # vars = JLD.@load(location)
+    # Lat = vars["Lat"]
+    # Lon = vars["Lon"]
+    # Time = vars["Time"]
+    # UT = vars["UT"]
+    # VT = vars["VT"]
 
     UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
     p = (UI,VI)
