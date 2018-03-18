@@ -1,4 +1,3 @@
-
 #TODO: Can this be made more efficient?
 function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=true,bdata=nothing,kwargs...)
     id = x -> x
@@ -93,7 +92,7 @@ function plot_u_eulerian(
     if only_get_lagrange_points
         return euler_to_lagrange_points
     end
-    z = zeros(nx,ny)
+    z = zeros(ny,nx)
     for i in 1:nx
         for j in 1:ny
             if isnan((euler_to_lagrange_points[j,i])[1])
