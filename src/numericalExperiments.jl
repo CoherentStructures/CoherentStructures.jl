@@ -116,15 +116,15 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
     end
 end
 
-function makeOceanFlowTestCase(location="examples/Ocean_geostrophic_velocity.jld")
-    vars = JLD.load(location)
-    Lon = vars["Lon"]
+function makeOceanFlowTestCase(location="examples/Ocean_geostrophic_velocity.jld2")
+    vars = JLD2.load(location)
     Lat = vars["Lat"]
+    Lon = vars["Lon"]
+    Time = vars["Time"]
     UT = vars["UT"]
-    time = vars["time"]
     VT = vars["VT"]
 
-    UI, VI = interpolateVF(Lon,Lat,time,UT,VT)
+    UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
     p = (UI,VI)
 
     #The computational domain
