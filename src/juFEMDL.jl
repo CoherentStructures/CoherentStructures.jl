@@ -7,7 +7,7 @@ module juFEMDL
 
     import GeometricalPredicates
     import VoronoiDelaunay
-    import JLD
+    import JLD2
 
     using JuAFEM
 
