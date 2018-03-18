@@ -4,12 +4,13 @@ using juFEMDL
 using Tensors
 using Clustering #For kmeans function
 
-vars = JLD2.load("examples/Ocean_geostrophic_velocity.jld2")
-Lat = vars["Lat"]
-Lon = vars["Lon"]
-Time = vars["Time"]
-UT = vars["UT"]
-VT = vars["VT"]
+JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
+# vars = JLD2.load("examples/Ocean_geostrophic_velocity.jld2")
+# Lat = vars["Lat"]
+# Lon = vars["Lon"]
+# Time = vars["Time"]
+# UT = vars["UT"]
+# VT = vars["VT"]
 
 t_initial = minimum(Time)
 t_final = t_initial + 90
