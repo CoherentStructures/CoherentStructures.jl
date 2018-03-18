@@ -4,19 +4,19 @@ using juFEMDL
 using Tensors
 using Clustering #For kmeans function
 
-vars = JLD.load("examples/Ocean_geostrophic_velocity.jld")
-Lon = vars["Lon"]
+vars = JLD2.load("examples/Ocean_geostrophic_velocity.jld2")
 Lat = vars["Lat"]
+Lon = vars["Lon"]
+Time = vars["Time"]
 UT = vars["UT"]
 VT = vars["VT"]
-time = vars["time"]
 
-t_initial = minimum(time)
+t_initial = minimum(Time)
 t_final = t_initial + 90
 
 LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
-UI, VI = interpolateVF(Lon,Lat,time,UT,VT)
+UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
 p=(UI,VI)
 ctx = regularP2TriangularGrid((50,30),LL,UR,quadrature_order=2)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
@@ -25,7 +25,7 @@ As = [
         invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
         #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
         for x in ctx.quadrature_points
-        ]
+        ] # TODO: replace by pmap call
 #mean_As = mean.(As)
 mean_As = As
 function mean_Afun(x,index,p)
