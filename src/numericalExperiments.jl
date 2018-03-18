@@ -116,7 +116,7 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
     end
 end
 
-function makeOceanFlowTestCase(location="examples/Ocean_geostrophic_velocity.jld2")
+function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
     vars = JLD2.@load(location)
     Lat = vars["Lat"]
     Lon = vars["Lon"]
