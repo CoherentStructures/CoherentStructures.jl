@@ -9,7 +9,7 @@ function plot_ftle(
 		   odefun, p,tspan,
 		   LL, UR, nx=50,ny=50;δ=1e-9,
 		   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-		   inplace=true,existing_plot=nothing,flip_y=true, check_inbounds=always_true,
+		   inplace=true,existing_plot=nothing,flip_y=false, check_inbounds=always_true,
 		   kwargs...)
     x1 =  collect(linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx))
     x2 =  collect(linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny))
@@ -116,7 +116,7 @@ function plot_u_eulerian(
        z =  postprocessor(z)
     end
 
-    result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1;kwargs...)#,colormap=GR.COLORMAP_JET)
+    result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1,xlim=(LL[1],UR[1]),ylim=(LL[2],UR[2]);kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
     end
@@ -137,5 +137,67 @@ function eulerian_video(ctx, u::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map
         current_inv_flow_map = (x) -> inverse_flow_map_t(t,x)
         current_u = u(nt)
         plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;kwargs...)
+    end
+end
+
+function eulerian_video_fast(ctx, u::Function,
+    nx, ny, t0,tf,nt, forward_flow_map, LL_big,UR_big;bdata=nothing,display_inplace=true,kwargs...)
+
+    LL = ctx.spatialBounds[1]
+    UR = ctx.spatialBounds[2]
+    function corrected_u(t)
+        dof_vals = u(t)
+        if (bdata==nothing) && (ctx.n != length(dof_vals))
+            dbcs = getHomDBCS(ctx)
+            if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
+                error("Input u has wrong length")
+            end
+            dof_values = undoBCS(ctx,dof_vals,dbcs)
+        elseif (bdata != nothing)
+            dof_values = undoBCS(ctx,dof_vals,bdata)
+        else
+            dof_values = dof_vals
+        end
+        return dof_values
+    end
+    x1 = linspace(LL[1],UR[1],nx)
+    x2 = linspace(LL[2],UR[2],ny)
+    allpoints = [
+        Vec{2}((x,y)) for y in x2, x in x1
+    ]
+    allpoints_initial = copy(allpoints)
+
+    times = linspace(t0,tf,nt)
+    x1p = [p[1] for p in allpoints]
+    x2p = [p[2] for p in allpoints]
+    ut = dof2U(ctx,corrected_u(t0))
+    val = [evaluate_function(ctx,[p[1],p[2]],ut) for p in allpoints]
+
+    res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
+        xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
+        marker=:square,markersize=300./nx,markerstrokewidth=0;kwargs...)]
+    if display_inplace
+        Plots.display(res[end])
+    end
+
+    for t in 1:(nt-1)
+        allpoints = [forward_flow_map(times[t], times[t+1],p) for p in allpoints]
+        x1p = [p[1] for p in allpoints]
+        x2p = [p[2] for p in allpoints]
+        ut = dof2U(ctx,corrected_u(times[t+1]))
+        val = [evaluate_function(ctx,p,ut) for p in allpoints_initial]
+        push!(res,
+            Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
+                xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
+                marker=:square,markersize=70./nx,markerstrokewidth=0;kwargs...)
+                )
+
+    if display_inplace
+        Plots.display(res[end])
+    end
+
+    end
+    return @animate for p in res
+        p
     end
 end
