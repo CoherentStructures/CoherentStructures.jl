@@ -33,14 +33,14 @@ end
 #quiver(xs, xs', quiver = quiv)
 
 
-xmin = 0.0; xmax = 20; ymin = -3.; ymax = 3.0
+xmin = 0.0; xmax = 6.371π; ymin = -3.; ymax = 3.0
 ctx = regularTriangularGrid((100,30),[xmin,ymin],[xmax,ymax],quadrature_order=1)
 field = bickley[:(du,u,p,t)]
 function periodicField(du,u,p,t)
-    return field(du,Vec{2}([u[1] % 20,u[2]]),p,t)
+    return field(du,[u[1] % 6.371π,u[2]],p,t)
 end
-cgfun = (x -> invCGTensor(periodicField, x,[0.0,40*3600*24], 1.e-8,tolerance=1.e-4))
-predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%20) < 1e-10)
+cgfun = (x -> mean(pullback_diffusion_tensor(periodicField, x,linspace(0.0,40*3600*24,81), 1.e-8,tolerance=1.e-4)))
+predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%6.371π) < 1e-10)
 bdata = juFEMDL.boundaryData(ctx,predicate,[])
 @time K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
 @time M = assembleMassMatrix(ctx,bdata=bdata)
