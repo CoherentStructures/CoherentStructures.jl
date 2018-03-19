@@ -24,9 +24,9 @@ function plot_ftle(
 	end
     end
     nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in 1:nx
+        nancounter_local = 0
+        nonancounter_local = 0
 	for j in 1:ny
-	    nancounter_local = 0
-	    nonancounter_local = 0
 	    if check_inbounds(x1[i],x2[j],p)
 		try
 		    FTLE[j,i] = 
@@ -38,6 +38,7 @@ function plot_ftle(
 		end
 	    end
 	end
+	(nancounter_local,nonancounter_local)
     end
 
     print("plot_ftle Ignored $nancounter NaN values ($nonancounter were good)")
