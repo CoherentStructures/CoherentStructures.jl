@@ -29,7 +29,7 @@ function plot_ftle(
 	for j in 1:ny
 	    if check_inbounds(x1[i],x2[j],p)
 		try
-		    FTLE[j,i] = 
+		    FTLE[j,i] =
 		    1./(2*(tspan[end]-tspan[1]))*
 		    log(maximum(abs.(eigvals(eigfact(dott(linearized_flow(odefun,Vec{2}([x1[i],x2[j]]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end]))))))
 		    nonancounter_local += 1
@@ -87,10 +87,15 @@ function plot_u_eulerian(
         euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
         for i in 1:nx
             for j in 1:ny
+                point = Vec{2}((x1[i],x2[j]))
                 try
-                    euler_to_lagrange_points[j,i] = inverse_flow_map(Vec{2}([x1[i],x2[j]]))
+                    euler_to_lagrange_points[j,i] = Vec{2}(inverse_flow_map(point))
                 catch e
-                    euler_to_lagrange_points[j,i] = Vec{2}([NaN,NaN])
+                    if isa(e,InexactError)
+                        euler_to_lagrange_points[j,i] = Vec{2}([NaN,NaN])
+                    else
+                        throw(e)
+                    end
                 end
             end
         end
@@ -125,4 +130,13 @@ end
 
 function plot_real_spectrum(λ)
     Plots.scatter(1:length(λ),real.(λ))
+end
+
+function eulerian_video(ctx, u::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map_t;kwargs...)
+    return @animate for (index,t) in enumerate(linspace(t0,tf,nt))
+        print("Processing frame $index")
+        current_inv_flow_map = (x) -> inverse_flow_map_t(t,x)
+        current_u = u(nt)
+        plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;kwargs...)
+    end
 end
