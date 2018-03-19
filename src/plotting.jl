@@ -5,7 +5,12 @@ function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=tr
 end
 
 
-function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),inplace=true,existing_plot=nothing,flip_y=true, inbounds_checker=always_true, kwargs...)
+function plot_ftle(
+		   odefun, p,tspan,
+		   LL, UR, nx=50,ny=50;δ=1e-9,
+		   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
+		   inplace=true,existing_plot=nothing,flip_y=true, check_inbounds=always_true,
+		   kwargs...)
     x1 =  collect(linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx))
     x2 =  collect(linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny))
     if flip_y
@@ -18,23 +23,23 @@ function plot_ftle(odefun, p,tspan, LL, UR, nx=50,ny=50;δ=1e-9,tolerance=1e-4,s
 	    FTLE[j,i] = NaN
 	end
     end
-    nancounter = 0
-    nonancounter = 0
-    @sync @parallel for i in 1:nx
+    nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in 1:nx
 	for j in 1:ny
-	    if inbounds_checker(x1[i],x2[j],p)
+	    nancounter_local = 0
+	    nonancounter_local = 0
+	    if check_inbounds(x1[i],x2[j],p)
 		try
 		    FTLE[j,i] =
 		    1./(2*(tspan[end]-tspan[1]))*
 		    log(maximum(abs.(eigvals(eigfact(dott(linearized_flow(odefun,Vec{2}([x1[i],x2[j]]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end]))))))
-		    nonancounter += 1
+		    nonancounter_local += 1
 		catch e
-		    nancounter+=1
-		    FTLE[j,i] = NaN
+		    nancounter_local += 1
 		end
 	    end
 	end
     end
+
     print("plot_ftle Ignored $nancounter NaN values ($nonancounter were good)")
     if flip_y == true
 	x2 = reverse(x2)
