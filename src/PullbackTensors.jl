@@ -337,3 +337,21 @@ function pullback_SDE_diffusion_tensor_geo(
     B = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return B
 end
+
+function pullback_SDE_diffusion_tensor(
+                odefun,
+                u::AbstractVector{T},
+                tspan::AbstractVector{T},
+                δ::T;
+                D::SymmetricTensor{2,2}=one(SymmetricTensor{2,2}),
+                tolerance::Float64=1e-3,
+                p=nothing,
+                solver=OrdinaryDiffEq.BS5()
+            ) where {T<:Real}
+
+    iszero(δ) ?
+        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+        
+    return inv.(DF)
+end
