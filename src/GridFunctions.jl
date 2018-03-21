@@ -307,12 +307,12 @@ end
 #And [nodes] is the list of corresponding node ids, ordered in the order of the
 #corresponding shape functions from JuAFEM's interpolation.jl file
 #Here we call the specialized locatePoint function for this kind of grid
-function locatePoint(ctx::gridContext{dim}, x::Vec{dim}) where dim
+function locatePoint(ctx::gridContext{dim}, x::AbstractVector{Float64}) where dim
     return locatePoint(ctx.loc,ctx.grid,x)
 end
 
-#TODO: Make this also work for P2-Lagrange
-function evaluate_function(ctx::gridContext,x::Vec{2},u::Vector{Float64},outside_value=0.0)
+function evaluate_function(ctx::gridContext,x::AbstractVector{Float64},u::Vector{Float64},outside_value=0.0)
+    assert(length(u) == ctx.n)
     local_coordinates,nodes = try
          locatePoint(ctx,x)
     catch y
@@ -379,7 +379,7 @@ struct delaunayCellLocator <: cellLocator
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
 end
 
-function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
+function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVector{Float64})
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
@@ -424,7 +424,7 @@ struct p2DelaunayCellLocator <: cellLocator
     end
 end
 
-function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Vec{2})
+function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVector{Float64})
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
@@ -448,7 +448,7 @@ struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     LL::Vec{2}
     UR::Vec{2}
 end
-function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::Vec{2})
+function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -484,7 +484,7 @@ function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::Vec
     return
 end
 
-function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x::Vec{2})
+function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -512,7 +512,7 @@ function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x
 end
 
 #Same principle as for Triangle type above
-function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Grid, x::Vec{2})
+function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -554,7 +554,7 @@ function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Gri
 end
 
 
-function locatePoint(loc::regularGridLocator{QuadraticQuadrilateral},grid::JuAFEM.Grid, x::Vec{2})
+function locatePoint(loc::regularGridLocator{QuadraticQuadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end

@@ -5,21 +5,15 @@ using Tensors
 using Clustering #For kmeans function
 
 JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
-# vars = JLD2.load("examples/Ocean_geostrophic_velocity.jld2")
-# Lat = vars["Lat"]
-# Lon = vars["Lon"]
-# Time = vars["Time"]
-# UT = vars["UT"]
-# VT = vars["VT"]
 
 t_initial = minimum(Time)
 t_final = t_initial + 90
 
 LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
-UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
+UI, VI = interpolateVF(Lon,Lat,Time,permutedims(UT,[2,1,3]),permutedims(VT,[2,1,3]))
 p=(UI,VI)
-ctx = regularP2TriangularGrid((50,30),LL,UR,quadrature_order=2)
+ctx = regularP2TriangularGrid((100,60),LL,UR,quadrature_order=5)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
 times = [t_initial,t_final]
 As = [
@@ -43,19 +37,30 @@ begin
         @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
 end
 plot_real_spectrum(λ2)
-plot_u(ctx,v2[:,5],200,200,bdata=bdata)
+plot_u(ctx,v2[:,2],200,200,bdata=bdata)
 using Clustering
-numclusters = 5
+numclusters = 3
 res = kmeans(v2[:,1:numclusters]',numclusters+1)
 u = kmeansresult2LCS(res)
-plot_u(ctx,u[:,5],200,200,color=:viridis)
+plot_u(ctx,u[:,2],200,200,color=:viridis)
 
+##Make a video of the LCS being advected
+
+#Inverse-flow map at time t
+inverse_flow_map_t = (t,u0) -> flow(interp_rhs,u0,
+        [t,t_initial],p=(UI,VI),tolerance=1e-4)[end]
+#Function u(t), here it is just constant
+current_u = t -> u[:,2]
+#Where to plot the video
 LL_big = [-10,-40.0]
 UR_big = [6,-25.0]
-inverse_flow_map = u0 -> flow(interp_rhs,u0, [t_final,t_initial],p=(UI,VI),tolerance=1e-4)[end]
-plot_u_eulerian(ctx,u[:,5],
-        LL_big,UR_big,inverse_flow_map,
-        100,100)
+#Make the video
+res = juFEMDL.eulerian_video(ctx,current_u,LL_big,UR_big,
+        100,100,t_initial, t_final, #nx = 100, ny=100
+        30,inverse_flow_map_t)#nt = 20
+#Save it
+Plots.mp4(res,"/tmp/output.mp4")
+
 #With adaptive TO method
 begin
 ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
