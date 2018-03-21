@@ -53,7 +53,8 @@ function plot_ftle(
     end
 end
 
-@everywhere function plot_u_eulerian(
+#@everywhere # macht Probleme
+function plot_u_eulerian(
                     ctx::gridContext,
                     dof_vals::Vector{Float64},
                     LL::AbstractVector{Float64},
