@@ -78,10 +78,10 @@ end
 function fast_trilinear_earth_interpolate(du,u,p,tin)
     Us = p[1]
     Vs = p[2]
-    nx::Int64 = size(Us)[2]
-    ny::Int64 = size(Us)[1]
+    nx::Int64 = size(Us)[1]
+    ny::Int64 = size(Us)[2]
     nt::Int64 = size(Us)[3]
-
+    #Get the spatial bounds from p
     ll1::Float64,ur1::Float64  = p[3]
     ll2::Float64,ur2::Float64 = p[4]
     t0::Float64,tf::Float64 = p[5]
@@ -92,35 +92,36 @@ function fast_trilinear_earth_interpolate(du,u,p,tin)
     if t < t0
         t = t0
     end
-
     #Just divrem, but casts the first result to Int
     function gooddivrem(x,y)
         a,b = divrem(x,y)
         return Int(a), b
     end
     xindex::Int64, xcoord::Float64 = gooddivrem(mod((u[1] - ll1), 360)/360.*nx,1)
-    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2 + 90), 180))/180.*ny,1)
-
+    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2), 180))/180.*ny,1)
+    #
     tindex, tcoord = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
     tindex += 1
-
     #Make sure we don't go out of bounds
     tpp = tindex + 1
     if tpp > nt
         tpp = nt
     end
-
-    r1u::Float64 =  Us[yindex + 1,xindex+1,tindex ]*(1 - xcoord) + Us[ yindex + 1, (xindex + 1) % nx + 1,tindex ]*xcoord
-    r2u::Float64 =  Us[(yindex + 1) % ny + 1,xindex+1,tindex ]*(1 - xcoord) + Us[ (yindex + 1)%ny + 1, (xindex + 1) % nx + 1,tindex ]*xcoord
-    r3u::Float64 =  Us[yindex + 1,xindex+1,tpp ]*(1 - xcoord) + Us[ yindex + 1, (xindex + 1) % nx + 1,tpp ]*xcoord
-    r4u::Float64 =  Us[(yindex + 1) % ny + 1,xindex+1,tpp ]*(1 - xcoord) + Us[ (yindex + 1)%ny + 1, (xindex + 1) % nx + 1,tpp ]*xcoord
-
+    #Actual interpolation for u
+    r1u::Float64 =  Us[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Us[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
+    r2u::Float64 =  Us[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
+    r3u::Float64 =  Us[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Us[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
+    r4u::Float64 =  Us[xindex+1,(yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +    Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
     du[1] =  (
         (1-tcoord)*((1-ycoord)*r1u + ycoord*r2u)
          + tcoord*((1-ycoord)*r3u + ycoord*r4u))
-
-    r1v::Float64 =  Vs[yindex + 1,xindex+1,tindex ]*(1 - xcoord) + Vs[ yindex + 1, (xindex + 1) % nx + 1,tindex ]*xcoord
-    r2v::Float64 =  Vs[(yindex + 1) % ny + 1,xindex+1,tindex ]*(1 - xcoord) + Vs[ (yindex + 1)%ny + 1, (xindex + 1) % nx + 1,tindex ]*xcoord
-    r3v::Float64 =  Vs[yindex + 1,xindex+1,tpp ]*(1 - xcoord) + Vs[ yindex + 1, (xindex + 1) % nx + 1,tpp ]*xcoord
-    r4v::Float64 =  Vs[(yindex + 1) % ny + 1,xindex+1,tpp ]*(1 - xcoord) + Vs[ (yindex + 1)%ny + 1, (xindex + 1) % nx + 1,tpp ]*xcoord
+    #For v
+    r1v::Float64 =  Vs[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Vs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
+    r2v::Float64 =  Vs[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
+    r3v::Float64 =  Vs[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Vs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
+    r4v::Float64 =  Vs[xindex+1, (yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +   Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
+    du[2] =  (
+        (1-tcoord)*((1-ycoord)*r1v + ycoord*r2v)
+         + tcoord*((1-ycoord)*r3v + ycoord*r4v))
+    return 
 end
