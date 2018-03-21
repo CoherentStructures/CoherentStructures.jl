@@ -11,16 +11,13 @@ t_final = t_initial + 90
 
 LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
-UI, VI = interpolateVF(Lon,Lat,Time,permutedims(UT,[2,1,3]),permutedims(VT,[2,1,3]))
+UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
 p=(UI,VI)
 ctx = regularP2TriangularGrid((100,60),LL,UR,quadrature_order=5)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
 times = [t_initial,t_final]
-As = [
-        invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
-        #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
-        for x in ctx.quadrature_points
-        ] # TODO: replace by pmap call
+As = pmap(x -> mean(pullback_diffusion_tensor(interp_rhs, x,linspace(t_initial,t_final,91), 1.e-8,Id,tolerance=1.e-4,p=p)),ctx.quadrature_points)
+# As = [ invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p) for x in ctx.quadrature_points ]
 #mean_As = mean.(As)
 mean_As = As
 function mean_Afun(x,index,p)
