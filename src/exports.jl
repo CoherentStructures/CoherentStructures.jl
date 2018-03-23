@@ -6,6 +6,7 @@ export
 	pullback_tensors,
 	pullback_metric_tensor,
 	pullback_diffusion_tensor,
+	pullback_SDE_diffusion_tensor,
 
 	#velocityFields.jl
 	rot_double_gyre2!,
@@ -45,7 +46,7 @@ export
 	adaptiveTO,
 	L2GalerkinTO,
 
-	#numericalExperimens.jl
+	#numericalExperiments.jl
 	makeOceanFlowTestCase,
 	makeDoubleGyreTestCase,
 	experimentResult,

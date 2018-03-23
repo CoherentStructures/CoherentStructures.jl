@@ -63,6 +63,7 @@ function plot_u_eulerian(
                     ny=60;
                     plotit=true,euler_to_lagrange_points=nothing,
                     only_get_lagrange_points=false,postprocessor=nothing,
+                    return_scalar_field=false,
                     bdata=nothing,
                     kwargs...)
     if (bdata==nothing) && (ctx.n != length(dof_vals))
@@ -76,7 +77,7 @@ function plot_u_eulerian(
     else
         dof_values = dof_vals
     end
-
+    #
     x1 = Float64[]
     x2 = Float64[]
     values = Float64[]
@@ -84,21 +85,30 @@ function plot_u_eulerian(
     x1 =  linspace(LL[1] , UR[1] ,nx)
     x2 =  linspace(LL[2] ,UR[2] ,ny)
     if euler_to_lagrange_points == nothing
-        euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
-        for i in 1:nx
+	euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
+        @sync @parallel for i in 1:nx
             for j in 1:ny
                 point = Vec{2}((x1[i],x2[j]))
                 try
-                    euler_to_lagrange_points[j,i] = Vec{2}(inverse_flow_map(point))
+		    back = inverse_flow_map(point)
+		    euler_to_lagrange_points_raw[j,i,1] = back[1]
+		    euler_to_lagrange_points_raw[j,i,2] = back[2]
                 catch e
                     if isa(e,InexactError)
-                        euler_to_lagrange_points[j,i] = Vec{2}([NaN,NaN])
+			euler_to_lagrange_points_raw[j,i,1] = NaN
+			euler_to_lagrange_points_raw[j,i,2] = NaN
                     else
                         throw(e)
                     end
                 end
             end
         end
+	euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
+	for i in 1:nx
+	    for j in 1:ny
+		euler_to_lagrange_points[j,i] = Vec{2}(euler_to_lagrange_points_raw[j,i,1:2])
+	    end
+	end
     end
     if only_get_lagrange_points
         return euler_to_lagrange_points
@@ -116,10 +126,12 @@ function plot_u_eulerian(
     if postprocessor != nothing
        z =  postprocessor(z)
     end
-
     result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1,xlim=(LL[1],UR[1]),ylim=(LL[2],UR[2]);kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
+    end
+    if return_scalar_field
+        return result, z
     end
     return result
 end
@@ -143,7 +155,6 @@ end
 
 function eulerian_video_fast(ctx, u::Function,
     nx, ny, t0,tf,nt, forward_flow_map, LL_big,UR_big;bdata=nothing,display_inplace=true,kwargs...)
-
     LL = ctx.spatialBounds[1]
     UR = ctx.spatialBounds[2]
     function corrected_u(t)
@@ -167,20 +178,20 @@ function eulerian_video_fast(ctx, u::Function,
         Vec{2}((x,y)) for y in x2, x in x1
     ]
     allpoints_initial = copy(allpoints)
-
+    #
     times = linspace(t0,tf,nt)
     x1p = [p[1] for p in allpoints]
     x2p = [p[2] for p in allpoints]
     ut = dof2U(ctx,corrected_u(t0))
     val = [evaluate_function(ctx,[p[1],p[2]],ut) for p in allpoints]
-
+    #
     res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
         xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
         marker=:square,markersize=300./nx,markerstrokewidth=0;kwargs...)]
     if display_inplace
         Plots.display(res[end])
     end
-
+    #
     for t in 1:(nt-1)
         allpoints = [forward_flow_map(times[t], times[t+1],p) for p in allpoints]
         x1p = [p[1] for p in allpoints]
@@ -192,11 +203,10 @@ function eulerian_video_fast(ctx, u::Function,
                 xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
                 marker=:square,markersize=70./nx,markerstrokewidth=0;kwargs...)
                 )
-
-    if display_inplace
-        Plots.display(res[end])
-    end
-
+		#
+	if display_inplace
+	    Plots.display(res[end])
+	end
     end
     return @animate for p in res
         p

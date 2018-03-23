@@ -127,7 +127,7 @@ function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrop
     # UT = vars["UT"]
     # VT = vars["VT"]
 
-    UI, VI = interpolateVF(Lon,Lat,Time,permutedims(UT,[2,1,3]),permutedims(VT,[2,1,3]))
+    UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
     p = (UI,VI)
 
     #The computational domain

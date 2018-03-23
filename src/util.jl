@@ -97,8 +97,8 @@ function fast_trilinear_earth_interpolate(du,u,p,tin)
         a,b = divrem(x,y)
         return Int(a), b
     end
-    xindex::Int64, xcoord::Float64 = gooddivrem(mod((u[1] - ll1), 360)/360.*nx,1)
-    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2), 180))/180.*ny,1)
+    xindex::Int64, xcoord::Float64 = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
+    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
     #
     tindex, tcoord = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
     tindex += 1
