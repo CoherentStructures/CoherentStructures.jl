@@ -127,14 +127,14 @@ function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrop
     # UT = vars["UT"]
     # VT = vars["VT"]
 
-    UI, VI = interpolateVF(Lon,Lat,Time,permutedims(UT,[2,1,3]),permutedims(VT,[2,3,1]))
+    UI, VI = interpolateVF(Lon,Lat,Time,permutedims(UT,[2,1,3]),permutedims(VT,[2,1,3]))
     p = (UI,VI)
 
     #The computational domain
     LL = Vec{2}([-4.0,-34.0])
     UR = Vec{2}([6.0,-28.0])
 
-    t_initial = minimum(time)
+    t_initial = minimum(Time)
     t_final = t_initial + 90
     result = testCase("Ocean Flow", LL,UR,t_initial,t_final, interp_rhs,p)
     return result
@@ -197,6 +197,7 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
 end
 
 function testDoubleGyre()
+    doubleGyreTestCase = makeDoubleGyreTestCase()
     referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)

@@ -349,13 +349,13 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
 function delaunay2(x::Vector{Vec{2,Float64}})
     width = VD.max_coord - VD.min_coord
     max_x = maximum(map(v->v[1],x))
-    min_x = minimum(map(v->v[1],x))
+    minx = minimum(map(v->v[1],x))
     max_y = maximum(map(v->v[2],x))
-    min_y = minimum(map(v->v[2],x))
-    scale_x = 0.9*width/(max_x - min_x)
-    scale_y = 0.9*width/(max_y - min_y)
+    miny = minimum(map(v->v[2],x))
+    scale_x = 0.9*width/(max_x - minx)
+    scale_y = 0.9*width/(max_y - miny)
     n = length(x)
-    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - min_x)*scale_x,VD.min_coord+(x[i][2]-min_y)*scale_y,i) for i in 1:n]
+    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - minx)*scale_x,VD.min_coord+(x[i][2]-miny)*scale_y,i) for i in 1:n]
     for i in 1:n
         assert(!(GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord))
     end
@@ -365,7 +365,7 @@ function delaunay2(x::Vector{Vec{2,Float64}})
     for i in tess
         m += 1
     end
-    return tess,m,scale_x,scale_y,min_x,min_y
+    return tess,m,scale_x,scale_y,minx,miny
 end
 
 #For delaunay triangulations, we can use the tesselation
@@ -374,13 +374,13 @@ struct delaunayCellLocator <: cellLocator
     m::Int64
     scale_x::Float64
     scale_y::Float64
-    min_x::Float64
-    min_y::Float64
+    minx::Float64
+    miny::Float64
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
 end
 
 function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVector{Float64})
-    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
+    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
     end
@@ -403,12 +403,12 @@ struct p2DelaunayCellLocator <: cellLocator
     m::Int64
     scale_x::Float64
     scale_y::Float64
-    min_x::Float64
-    min_y::Float64
+    minx::Float64
+    miny::Float64
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
     internal_triangles::Vector{Int}
     inv_internal_triangles::Vector{Int}
-    function p2DelaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
+    function p2DelaunayCellLocator(m,scale_x,scale_y,minx,miny,tess)
         itr = start(tess)
         internal_triangles = []
         inv_internal_triangles = zeros(length(tess._trigs))
@@ -419,13 +419,13 @@ struct p2DelaunayCellLocator <: cellLocator
         for (i,j) in enumerate(internal_triangles)
             inv_internal_triangles[j] = i
         end
-        res = new(m,scale_x,scale_y,min_x,min_y,tess,internal_triangles,inv_internal_triangles)
+        res = new(m,scale_x,scale_y,minx,miny,tess,internal_triangles,inv_internal_triangles)
         return res
     end
 end
 
 function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVector{Float64})
-    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.min_x)*loc.scale_x,VD.min_coord+(x[2]-loc.min_y)*loc.scale_y)
+    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
     end
@@ -443,8 +443,8 @@ end
 
 #Here N gives the number of nodes and M gives the number of faces
 struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
-    n_x::Int
-    n_y::Int
+    nx::Int
+    ny::Int
     LL::Vec{2}
     UR::Vec{2}
 end
@@ -454,24 +454,24 @@ function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::Abs
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.n_x-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.n_y-1),1)
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
     n1 = Int(n1f)
     n2 = Int(n2f)
-    if n1 == (loc.n_x-1) #If we hit the right hand edge
-        n1 = loc.n_x-2
+    if n1 == (loc.nx-1) #If we hit the right hand edge
+        n1 = loc.nx-2
         loc1 = 1.0
     end
-    if n2 == (loc.n_y-1) #If we hit the top edge
-        n2 = loc.n_y-2
+    if n2 == (loc.ny-1) #If we hit the top edge
+        n2 = loc.ny-2
         loc2 = 1.0
     end
     #Get the four node numbers of quadrilateral the point is in:
-    ll = n1 + n2*loc.n_x
+    ll = n1 + n2*loc.nx
     lr = ll + 1
-    ul = n1 + (n2+1)*loc.n_x
+    ul = n1 + (n2+1)*loc.nx
     ur = ul + 1
-    assert(ur < (loc.n_x * loc.n_y))
+    assert(ur < (loc.nx * loc.ny))
     if loc1 + loc2 <= 1.0 # ◺
         return Vec{2}([loc1,loc2]), [lr+1, ul+1,ll+1]
     else # ◹
@@ -490,24 +490,24 @@ function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.n_x-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.n_y-1),1)
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
     n1 = Int(n1f)
     n2 = Int(n2f)
-    if n1 == (loc.n_x-1) #If we hit the right hand edge
-        n1 = loc.n_x-2
+    if n1 == (loc.nx-1) #If we hit the right hand edge
+        n1 = loc.nx-2
         loc1 = 1.0
     end
-    if n2 == (loc.n_y-1) #If we hit the top edge
-        n2 = loc.n_y-2
+    if n2 == (loc.ny-1) #If we hit the top edge
+        n2 = loc.ny-2
         loc2 = 1.0
     end
     #Get the four node numbers of quadrilateral the point is in:
-    ll = n1 + n2*loc.n_x
+    ll = n1 + n2*loc.nx
     lr = ll + 1
-    ul = n1 + (n2+1)*loc.n_x
+    ul = n1 + (n2+1)*loc.nx
     ur = ul + 1
-    assert(ur < (loc.n_x * loc.n_y))
+    assert(ur < (loc.nx * loc.ny))
     return Vec{2}([2*loc1-1,2*loc2-1]), [ll+1,lr+1,ur+1,ul+1]
 end
 
@@ -518,22 +518,22 @@ function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Gri
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.n_x-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.n_y-1),1)
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
     n1 = Int(n1f)
     n2 = Int(n2f)
-    if n1 == (loc.n_x-1) #If we hit the right hand edge
-        n1 = loc.n_x-2
+    if n1 == (loc.nx-1) #If we hit the right hand edge
+        n1 = loc.nx-2
         loc1 = 1.0
     end
-    if n2 == (loc.n_y-1) #If we hit the top edge
-        n2 = loc.n_y-2
+    if n2 == (loc.ny-1) #If we hit the top edge
+        n2 = loc.ny-2
         loc2 = 1.0
     end
     #Get the four node numbers of quadrilateral the point is in
     #Zero-indexing of the array here, so we need to +1 for everything being returned
-    num_x_with_edge_nodes::Int = loc.n_x  + loc.n_x - 1
-    num_y_with_edge_nodes::Int = loc.n_y + loc.n_y -1
+    num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
+    num_y_with_edge_nodes::Int = loc.ny + loc.n_y -1
     ll = 2*n1 + 2*n2*num_x_with_edge_nodes
     lr = ll + 2
     ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
@@ -560,22 +560,22 @@ function locatePoint(loc::regularGridLocator{QuadraticQuadrilateral},grid::JuAFE
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.n_x-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.n_y-1),1)
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
     n1 = Int(n1f)
     n2 = Int(n2f)
-    if n1 == (loc.n_x-1) #If we hit the right hand edge
-        n1 = loc.n_x-2
+    if n1 == (loc.nx-1) #If we hit the right hand edge
+        n1 = loc.nx-2
         loc1 = 1.0
     end
-    if n2 == (loc.n_y-1) #If we hit the top edge
-        n2 = loc.n_y-2
+    if n2 == (loc.ny-1) #If we hit the top edge
+        n2 = loc.ny-2
         loc2 = 1.0
     end
     #Get the four node numbers of quadrilateral the point is in
     #Zero-indexing of the array here, so we need to +1 for everything being returned
-    num_x_with_edge_nodes::Int = loc.n_x  + loc.n_x - 1
-    num_y_with_edge_nodes::Int = loc.n_y + loc.n_y -1
+    num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
+    num_y_with_edge_nodes::Int = loc.ny + loc.n_y -1
     ll = 2*n1 + 2*n2*num_x_with_edge_nodes
     lr = ll + 2
     ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
@@ -589,7 +589,7 @@ end
 
 
 function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Vec{2,Float64}})
-    tess,m,scale_x,scale_y,min_x,min_y = delaunay2(nodes_in)
+    tess,m,scale_x,scale_y,minx,miny = delaunay2(nodes_in)
     nodes = Node{2,Float64}[]
     for node_coords in  nodes_in
         push!(nodes,Node(node_coords))
@@ -611,13 +611,13 @@ function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Vec{2,Float64}}
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = delaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
+    locator = delaunayCellLocator(m,scale_x,scale_y,minx,miny,tess)
     return grid, locator
 end
 
 function JuAFEM.generate_grid(::Type{QuadraticTriangle}, nodes_in::Vector{Vec{2,Float64}})
-    tess,m,scale_x,scale_y,min_x,min_y = delaunay2(nodes_in)
-    locator = p2DelaunayCellLocator(m,scale_x,scale_y,min_x,min_y,tess)
+    tess,m,scale_x,scale_y,minx,miny = delaunay2(nodes_in)
+    locator = p2DelaunayCellLocator(m,scale_x,scale_y,minx,miny,tess)
     nodes = Node{2,Float64}[]
     #TODO: replace below with map
     for node_coords in  nodes_in
@@ -698,14 +698,16 @@ end
 
 
 function getHomDBCS{dim}(ctx::gridContext{dim},which="all")
-    dbcs = DirichletBoundaryConditions(ctx.dh)
+    dbcs = ConstraintHandler(ctx.dh)
     #TODO: See if newer version of JuAFEM export a "boundary" nodeset
     if which == "all"
-        dbc = JuAFEM.DirichletBoundaryCondition(:T,
+        dbc = JuAFEM.Dirichlet(:T,
                 union(getfaceset(ctx.grid, "left"),
                  getfaceset(ctx.grid, "right"),
-                  getfaceset(ctx.grid, "top"),
-                   getfaceset(ctx.grid, "bottom")), (x,t)->0)
+                 getfaceset(ctx.grid, "top"),
+                 getfaceset(ctx.grid, "bottom"),
+                 getfaceset(ctx.grid, "boundary"),
+                   ), (x,t)->0)
    elseif isempty(which)
        return boundaryData(Vector{Int}())
    else

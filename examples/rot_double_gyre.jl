@@ -1,7 +1,7 @@
 using juFEMDL
 
 #ctx = regularP2QuadrilateralGrid((25,25))
-ctx = regularTriangularGrid((30,30))
+ctx = regularP2TriangularGrid((25,25))
 #ctx = regularTriangularGrid((25,25))
 #ctx = regularQuadrilateralGrid((10,10))
 #ctx = regularP2TriangularGrid((30,30))
@@ -27,7 +27,7 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0],ctx_for_boundscheck=ctx,tolerance=1e-2)[end]
+    forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0],ctx_for_boundscheck=ctx,tolerance=1e-3)[end]
     @time S2= adaptiveTO(ctx,forwards_flow)
     @time λ, v = eigs(-1*(S + S2),M,which=:SM)
 end
@@ -46,4 +46,4 @@ begin
 end
 index= 2
 title = "\\\lambda = $(λ[index])"
-plot_u(ctx,real.(v[:,index]),50,50,color=:rainbow,title=title)
+plot_u(ctx,real.(v[:,3]),50,50,color=:rainbow,title=title)

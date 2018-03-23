@@ -41,11 +41,8 @@ end
 #Note that it seems like this function is broken somehow TODO: Fix this.
 function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=default_quadrature_order)
     n = ctx.n
-    new_nodes_in_dof_order = [ flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x) for j in 1:n ]
-    #TODO:Remove code commented out below
-    #xs = [i[1] for i in new_nodes_in_dof_order]
-    #ys = [i[2] for i in new_nodes_in_dof_order]
-    #GR.plot(xs,ys,".")
+    new_nodes_in_dof_order = [ Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
+
     new_ctx = gridContext{2}(Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
     #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
     I,J,V = findnz(assembleStiffnessMatrix(new_ctx))

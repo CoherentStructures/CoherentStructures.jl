@@ -13,10 +13,12 @@ LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
 UI, VI = interpolateVF(Lon,Lat,Time,permutedims(UT,[2,1,3]),permutedims(VT,[2,1,3]))
 p=(UI,VI)
-ctx = regularP2TriangularGrid((100,60),LL,UR,quadrature_order=5)
+ctx = regularDelaunayGrid((100,60),LL,UR,quadrature_order=2)
+
+
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
 times = [t_initial,t_final]
-As = [
+@time As = [
         invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
         #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
         for x in ctx.quadrature_points
@@ -30,19 +32,20 @@ end
 #With CG-Method
 begin
         q = [mean_As]
-        bdata = juFEMDL.getHomDBCS(ctx)
-        #bdata = juFEMDL.boundaryData()
+        #bdata = juFEMDL.getHomDBCS(ctx)
+        bdata = juFEMDL.boundaryData()
         @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,bdata=bdata)
         @time M2 = assembleMassMatrix(ctx,bdata=bdata)
         @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
 end
 plot_real_spectrum(λ2)
-plot_u(ctx,v2[:,2],200,200,bdata=bdata)
+plot_u(ctx,v2[:,5],200,200,bdata=bdata)
+
 using Clustering
-numclusters = 3
+numclusters = 5
 res = kmeans(v2[:,1:numclusters]',numclusters+1)
 u = kmeansresult2LCS(res)
-plot_u(ctx,u[:,2],200,200,color=:viridis)
+plot_u(ctx,u[:,3],200,200,color=:viridis)
 
 ##Make a video of the LCS being advected
 
@@ -63,12 +66,14 @@ Plots.mp4(res,"/tmp/output.mp4")
 
 #With adaptive TO method
 begin
-ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
-@time S = assembleStiffnessMatrix(ctx)
-@time M = assembleMassMatrix(ctx)
-@time S2= adaptiveTO(ctx,ocean_flow_map)
-@time λ, v = eigs(S + S2,M,which=:SM)
+        ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
+        @time S = assembleStiffnessMatrix(ctx)
+        @time M = assembleMassMatrix(ctx)
+        @time S2= adaptiveTO(ctx,ocean_flow_map)
+        @time λ, v = eigs(S + S2,M,which=:SM)
 end
+
+plot_u(ctx,v[:,3],200,200,bdata=bdata)
 
 
 plot_spectrum(λ)
