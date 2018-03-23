@@ -63,6 +63,7 @@ function plot_u_eulerian(
                     ny=60;
                     plotit=true,euler_to_lagrange_points=nothing,
                     only_get_lagrange_points=false,postprocessor=nothing,
+                    return_scalar_field=false,
                     bdata=nothing,
                     kwargs...)
     if (bdata==nothing) && (ctx.n != length(dof_vals))
@@ -128,6 +129,9 @@ function plot_u_eulerian(
     result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1,xlim=(LL[1],UR[1]),ylim=(LL[2],UR[2]);kwargs...)#,colormap=GR.COLORMAP_JET)
     if plotit
         Plots.plot(result)
+    end
+    if return_scalar_field
+        return result, z
     end
     return result
 end
