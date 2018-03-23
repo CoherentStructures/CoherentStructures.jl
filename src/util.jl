@@ -75,7 +75,7 @@ function always_true(x,y,p)
     return true
 end
 
-function juFEMDL.fast_trilinear_earth_interpolate(du,u,p,tin)
+function fast_trilinear_earth_interpolate(du,u,p,tin)
     Us = p[1]
     Vs = p[2]
     nx::Int64 = size(Us)[1]
