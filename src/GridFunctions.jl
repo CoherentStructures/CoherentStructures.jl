@@ -533,7 +533,7 @@ function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Gri
     #Get the four node numbers of quadrilateral the point is in
     #Zero-indexing of the array here, so we need to +1 for everything being returned
     num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
-    num_y_with_edge_nodes::Int = loc.ny + loc.n_y -1
+    num_y_with_edge_nodes::Int = loc.ny + loc.ny -1
     ll = 2*n1 + 2*n2*num_x_with_edge_nodes
     lr = ll + 2
     ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
@@ -575,7 +575,7 @@ function locatePoint(loc::regularGridLocator{QuadraticQuadrilateral},grid::JuAFE
     #Get the four node numbers of quadrilateral the point is in
     #Zero-indexing of the array here, so we need to +1 for everything being returned
     num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
-    num_y_with_edge_nodes::Int = loc.ny + loc.n_y -1
+    num_y_with_edge_nodes::Int = loc.ny + loc.ny -1
     ll = 2*n1 + 2*n2*num_x_with_edge_nodes
     lr = ll + 2
     ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
@@ -711,7 +711,7 @@ function getHomDBCS{dim}(ctx::gridContext{dim},which="all")
    elseif isempty(which)
        return boundaryData(Vector{Int}())
    else
-       dbc = JuAFEM. DirichletBoundaryCondition(:T,
+       dbc = JuAFEM.Dirichlet(:T,
                union([getfaceset(ctx.grid, str) for str in which]...)
                ,(x,t) -> 0
            )
