@@ -701,12 +701,11 @@ function getHomDBCS{dim}(ctx::gridContext{dim},which="all")
     dbcs = ConstraintHandler(ctx.dh)
     #TODO: See if newer version of JuAFEM export a "boundary" nodeset
     if which == "all"
-        dbc = JuAFEM.Dirichlet(:T,
+        dbc = Dirichlet(:T,
                 union(getfaceset(ctx.grid, "left"),
                  getfaceset(ctx.grid, "right"),
                  getfaceset(ctx.grid, "top"),
                  getfaceset(ctx.grid, "bottom"),
-                 getfaceset(ctx.grid, "boundary"),
                    ), (x,t)->0)
    elseif isempty(which)
        return boundaryData(Vector{Int}())
