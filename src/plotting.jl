@@ -119,7 +119,7 @@ function plot_u_eulerian(
             if isnan((euler_to_lagrange_points[j,i])[1])
                 z[j,i] = NaN
             else
-                z[j,i] = evaluate_function(ctx,euler_to_lagrange_points[j,i],u_values,NaN)
+                z[j,i] = evaluate_function_from_nodevals(ctx,euler_to_lagrange_points[j,i],u_values,NaN)
             end
         end
     end
@@ -183,7 +183,7 @@ function eulerian_video_fast(ctx, u::Function,
     x1p = [p[1] for p in allpoints]
     x2p = [p[2] for p in allpoints]
     ut = dof2U(ctx,corrected_u(t0))
-    val = [evaluate_function(ctx,[p[1],p[2]],ut) for p in allpoints]
+    val = [evaluate_function_from_nodevals(ctx,[p[1],p[2]],ut) for p in allpoints]
     #
     res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
         xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
@@ -197,7 +197,7 @@ function eulerian_video_fast(ctx, u::Function,
         x1p = [p[1] for p in allpoints]
         x2p = [p[2] for p in allpoints]
         ut = dof2U(ctx,corrected_u(times[t+1]))
-        val = [evaluate_function(ctx,p,ut) for p in allpoints_initial]
+        val = [evaluate_function_from_nodevals(ctx,p,ut) for p in allpoints_initial]
         push!(res,
             Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
                 xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,

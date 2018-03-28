@@ -311,8 +311,8 @@ function locatePoint(ctx::gridContext{dim}, x::AbstractVector{Float64}) where di
     return locatePoint(ctx.loc,ctx.grid,x)
 end
 
-function evaluate_function(ctx::gridContext,x::AbstractVector{Float64},u::Vector{Float64},outside_value=0.0)
-    assert(length(u) == ctx.n)
+function evaluate_function_from_nodevals(ctx::gridContext,x::AbstractVector{Float64},nodevals::Vector{Float64},outside_value=0.0)
+    assert(length(nodevals) == ctx.n)
     local_coordinates,nodes = try
          locatePoint(ctx,x)
     catch y
@@ -324,7 +324,26 @@ function evaluate_function(ctx::gridContext,x::AbstractVector{Float64},u::Vector
     end
     result = 0.0
     for (j,nodeid) in enumerate(nodes)
-        result +=  u[nodeid]*JuAFEM.value(ctx.ip, j, local_coordinates)
+        result +=  nodevals[nodeid]*JuAFEM.value(ctx.ip, j, local_coordinates)
+    end
+    return result
+end
+
+
+function evaluate_function_from_dofvals(ctx::gridContext,x::AbstractVector{Float64},dofvals::Vector{Float64},outside_value=0.0)
+    assert(length(dofvals) == ctx.n)
+    local_coordinates,nodes = try
+         locatePoint(ctx,x)
+    catch y
+        if isa(y,DomainError)
+            return outside_value
+        end
+        print("Unexpected error for $x")
+        throw(y)
+    end
+    result = 0.0
+    for (j,nodeid) in enumerate(nodes)
+        result +=  dofvals[ctx.node_to_dof[nodeid]]*JuAFEM.value(ctx.ip, j, local_coordinates)
     end
     return result
 end

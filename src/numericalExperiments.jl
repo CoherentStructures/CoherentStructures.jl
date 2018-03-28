@@ -99,22 +99,41 @@ end
 function sampleTo(u::Vector{Float64}, ctx_old::gridContext, ctx_new::gridContext)
     u_new::Vector{Float64} = zeros(ctx_new.n)
     for i in 1:ctx_new.n
-        u_new[ctx_new.node_to_dof[i]] = evaluate_function(ctx_old,ctx_new.grid.nodes[i].x,u)
+        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,ctx_new.grid.nodes[i].x,u)
     end
     return u_new
 end
 
-function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞")
+function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞", M=nothing)
     if which == "L∞"
         return maximum(abs.(u))
     elseif which == "L2"
-        M = assembleMassMatrix(ctx)
-        Mu = M*u
-        return Mu ⋅ u
+        return sqrt(getInnerProduct(ctx,u,u,M))
     else
         error("Not yet implemented")
     end
 end
+
+function getInnerProduct(ctx::gridContext, u1::Vector{Float64},u2::Vector{Float64},Min=nothing)
+        if Min == nothing
+            M = assembleMassMatrix(ctx)
+        else
+            M = Min
+        end
+        Mu1 = M*u1
+        return  u2 ⋅ Mu1
+end
+
+function getDiscreteInnerProduct(ctx1::gridContext, u1::Vector{Float64}, ctx2::gridContext, u2::Vector{Float64},nx=400,ny=400)
+    res = 0.0
+    for x in linspace(ctx1.spatialBounds[1][1],ctx1.spatialBounds[2][1],nx)
+        for y in linspace(ctx1.spatialBounds[1][2],ctx1.spatialBounds[2][2],ny)
+            res += evaluate_function_from_dofvals(ctx1,[x,y],u1,NaN) * evaluate_function_from_dofvals(ctx2,[x,y],u2,NaN)
+        end
+    end
+    return  res/(nx*ny)
+end
+
 
 function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
 
@@ -148,18 +167,31 @@ function makeDoubleGyreTestCase()
 end
 
 
-function accuracyTest(tC::testCase,reference::experimentResult)
+function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=default_quadrature_order)
     print("Running reference experiment")
     experimentResults = Vector{experimentResult}(0)
     runExperiment!(reference)
     push!(experimentResults,reference)
     print("Finished running reference experiment")
     gridConstructors = [regularTriangularGrid, regularDelaunayGrid, regularP2TriangularGrid, regularP2DelaunayGrid , regularQuadrilateralGrid,regularP2QuadrilateralGrid]
-    gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay Grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
+    gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
     for (gCindex,gC) in enumerate(gridConstructors)
-        #TODO: replace this with something more sensible...
+        TODO: replace this with something more sensible...
         for width in collect(20:20:200)
-            ctx = gC((width,width),tC.LL,tC.UR)
+            ctx = gC((width,width),tC.LL,tC.UR,quadrature_order=quadrature_order)
+            testCaseName = tC.name
+            gCName = gridConstructorNames[gCindex]
+            print("Running $testCaseName test case on $width×$width $gCName")
+            eR = experimentResult(tC, ctx,:CG)
+            runExperiment!(eR)
+            push!(experimentResults,eR)
+        end
+
+        for width in collect(200:40:400)
+            if gridConstructorNames[gCindex] ∈ ["regular P2 triangular grid", "regular P2 Delaunay grid","regular P2 quadrilateral grid"]
+                continue
+            end
+            ctx = gC((width,width),tC.LL,tC.UR,quadrature_order=quadrature_order)
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
             print("Running $testCaseName test case on $width×$width $gCName")
@@ -173,7 +205,10 @@ end
 
 function buildStatistics!(experimentResults::Vector{experimentResult}, referenceIndex::Int64)
     reference = experimentResults[referenceIndex]
+    M_ref = assembleMassMatrix(reference.ctx)
+    n_experiments = size(experimentResults)[1]
     for (eRindex, eR) in enumerate(experimentResults)
+        print("Building Statistics for run $eRindex/$n_experiments \n")
         if eRindex == referenceIndex
             continue
         end
@@ -181,18 +216,36 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
         l2errors = Vector{Float64}(0)
         λerrors = Vector{Float64}(0)
         errors = Array{Array{Float64}}(0)
+
+        E = zeros(6,6)
+        E_discrete = zeros(6,6)
         for i in 1:6
             index = sortperm(real.(eR.λ))[end- (i - 1)]
-            error = sampleTo(eR.V[:,index],eR.ctx, reference.ctx ) - reference.V[:,index]
-            push!(errors,error)
-            push!(linftyerrors, getnorm(error, reference.ctx,"L∞"))
-            push!(l2errors, getnorm(error, reference.ctx,"L2"))
-            push!(λerrors, abs(eR.λ[index] - reference.λ[index]))
+            upsampled = sampleTo(eR.V[:,index],eR.ctx,reference.ctx)
+            upsampled /= getnorm(upsampled,reference.ctx,"L2",M_ref)
+            for j in 1:6
+                index_ref = sortperm(real.(reference.λ))[end - (j - 1)]
+                ref_ev = reference.V[:,j]
+                ref_ev /= getnorm(ref_ev,reference.ctx,"L2",M_ref)
+                E[i,j] = getInnerProduct(reference.ctx, reference.V[:,index_ref], upsampled,M_ref)
+            end
+
+            index_ref = sortperm(real.(reference.λ))[end - (i - 1)]
+            push!(λerrors, abs(eR.λ[index] - reference.λ[index_ref]))
         end
+        #for j in 1:6
+        #    index_ref = sortperm(real.(reference.λ))[end - (j - 1)]
+        #    normIndex_ref = sqrt(getDiscreteInnerProduct(reference.ctx, reference.V[:,index_ref],
+        #                                                 reference.ctx, reference.V[:,index_ref],800,800))
+        #    for i in 1:6
+        #        index = sortperm(real.(eR.λ))[end- (i - 1)]
+        #        normIndex = sqrt(getDiscreteInnerProduct(eR.ctx, eR.V[:,index], eR.ctx, eR.V[:,index],800,800))
+        #        E_discrete[i,j] = getDiscreteInnerProduct(reference.ctx, reference.V[:,index_ref],eR.ctx,eR.V[:,index])/(normIndex_ref*normIndex)
+        #    end
+        #end
         experimentResults[eRindex].statistics["λ-errors"] = λerrors
-        experimentResults[eRindex].statistics["L∞-errors"]  = linftyerrors
-        experimentResults[eRindex].statistics["L2-errors"]  = l2errors
-        experimentResults[eRindex].statistics["errors"]  = errors
+        experimentResults[eRindex].statistics["E"]  = E
+        #experimentResults[eRindex].statistics["E_discrete"]  = E_discrete
     end
 end
 
@@ -201,6 +254,5 @@ function testDoubleGyre()
     referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
-    buildStatistics!(result,1)
     return result
 end
