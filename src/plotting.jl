@@ -1,7 +1,7 @@
 #TODO: Can this be made more efficient?
-function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;plotit=true,bdata=nothing,kwargs...)
+function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;bdata=nothing,kwargs...)
     id = x -> x
-    plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,plotit=plotit,bdata=bdata;kwargs...)
+    plot_u_eulerian(ctx,dof_vals,ctx.spatialBounds[1],ctx.spatialBounds[2],id,nx,ny,bdata=bdata;kwargs...)
 end
 
 
@@ -61,7 +61,7 @@ function plot_u_eulerian(
                     inverse_flow_map::Function,
                     nx=50,
                     ny=60;
-                    plotit=true,euler_to_lagrange_points=nothing,
+                    euler_to_lagrange_points=nothing,
                     only_get_lagrange_points=false,postprocessor=nothing,
                     return_scalar_field=false,
                     bdata=nothing,
@@ -127,9 +127,7 @@ function plot_u_eulerian(
        z =  postprocessor(z)
     end
     result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1,xlim=(LL[1],UR[1]),ylim=(LL[2],UR[2]);kwargs...)#,colormap=GR.COLORMAP_JET)
-    if plotit
-        Plots.plot(result)
-    end
+
     if return_scalar_field
         return result, z
     end
@@ -144,14 +142,33 @@ function plot_real_spectrum(λ)
     Plots.scatter(1:length(λ),real.(λ))
 end
 
-function eulerian_video(ctx, u::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map_t;kwargs...)
-    return @animate for (index,t) in enumerate(linspace(t0,tf,nt))
-        print("Processing frame $index")
-        current_inv_flow_map = (x) -> inverse_flow_map_t(t,x)
-        current_u = u(nt)
-        plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;kwargs...)
-    end
+
+function eulerian_videos(ctx, us::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map_t,num_videos=1;extra_kwargs=false,extra_kwargs_fun=nothing,kwargs...)
+    allvideos = [Animation() for i in 1:num_videos]
+
+    for (index,t) in enumerate(linspace(t0,tf,nt))
+	print("Processing frame $index")
+	current_inv_flow_map = x -> inverse_flow_map_t(t,x)
+	euler_to_lagrange_points = plot_u_eulerian(ctx,zeros(ctx.n), LL,UR,current_inv_flow_map,nx,ny; only_get_lagrange_points=true,kwargs...)
+	for i in 1:num_videos
+	    current_u = us(i,t)
+	    if extra_kwargs
+		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,extra_kwargs_fun(i,t)...,kwargs...);
+	    else
+		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,kwargs...);
+	    end
+	    frame(allvideos[i],curframe)
+	end
+    end;
+    return allvideos
 end
+
+function eulerian_video(ctx, u::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map_t;kwargs...)
+    usfun = (index,t) -> u(t)
+    return eulerian_videos(ctx,usfun,LL,UR,nx,ny,t0,tf,nt,inverse_flow_map_t,1;kwargs...)
+end
+
+
 
 function eulerian_video_fast(ctx, u::Function,
     nx, ny, t0,tf,nt, forward_flow_map, LL_big,UR_big;bdata=nothing,display_inplace=true,kwargs...)
