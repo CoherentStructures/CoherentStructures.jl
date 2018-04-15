@@ -5,8 +5,9 @@
 """function flow(rhs,  u0, tspan; tolerance, p, solver)
 
 Solve the ODE with right hand side given by `@param rhs` and initial value given by `@param u0`.
-`dim` is the dimension of the ODE.
-`p` is a parameter passed as the third argument to `rhs`
+`p` is a parameter passed as the third argument to `rhs`.
+`tolerance` is passed as both relative and absolute tolerance to the solver,
+which is determined by `solver`.
 """
 function flow(
             rhs::Function,
@@ -36,8 +37,7 @@ function flow(
            map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
            [leftSide,rightSide,topSide,bottomSide])...)
    end
-   prob = OrdinaryDiffEq.ODEProblem(rhs, Array{T}(u0),# is this Array a no-op for arrays? if not, dispatch
-       (tspan[1],tspan[end]), p,callback=callback)
+   prob = OrdinaryDiffEq.ODEProblem(rhs, u0, (tspan[1],tspan[end]), p, callback=callback)
    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                          save_everystep=false, dense=false,
                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
@@ -65,7 +65,7 @@ end
             x::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-	    give_back_position=false,
+	        give_back_position=false,
             tolerance::Float64 = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
@@ -83,11 +83,8 @@ end
     @inbounds stencil[7:8] .= x .- dy
 
     const num_tsteps = length(tspan)
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> arraymap(du,Array{T}(u),p,t,odefun, 4,2),
-                                     stencil, (tspan[1],tspan[end]), p)
-
-    sol = OrdinaryDiffEq.solve(prob, solver, saveat = tspan, save_everystep = false,
-                               dense = false, reltol = tolerance, abstol = tolerance).u
+    rhs = (du,u,p,t) -> arraymap(du,Array{T}(u),p,t,odefun, 4,2)
+    sol = flow(rhs, stencil, (tspan[1],tspan[end]), p=p, tolerance=tolerance, solver=solver)
 
     result = zeros(Tensor{2,2}, num_tsteps)
     @inbounds for i in 1:num_tsteps
@@ -210,8 +207,6 @@ function pullback_diffusion_tensor(
     return [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
 end
 
-
-
 function pullback_diffusion_tensor_function(
             odefun,
             u::AbstractArray{T,1},
@@ -276,7 +271,7 @@ function pullback_tensors_geo(
 
     G = inv(D)
     met2deg_init = met2deg(u)
-    sol = flow(prob,u,tspan,solver=solver,tolerance=tolerance,p=p)
+    sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
@@ -298,7 +293,7 @@ function pullback_metric_tensor_geo(
         ) where {T<:Real}
 
     met2deg_init = met2deg(u)
-    sol = flow(prob,u,tspan,solver=solver,tolerance=tolerance,p=p)
+    sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
@@ -318,7 +313,7 @@ function pullback_diffusion_tensor_geo(
                 solver=OrdinaryDiffEq.BS5()
             ) where {T<:Real}
 
-    sol = flow(prob,u,tspan,solver=solver,tolerance=tolerance,p=p)
+    sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
@@ -338,7 +333,7 @@ function pullback_SDE_diffusion_tensor_geo(
                 solver=OrdinaryDiffEq.BS5()
             ) where {T<:Real}
 
-    sol = flow(prob,u,tspan,solver=solver,tolerance=tolerance,p=p)
+    sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
