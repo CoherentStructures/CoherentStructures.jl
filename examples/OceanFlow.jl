@@ -19,11 +19,11 @@ ctx = regularDelaunayGrid((100,60),LL,UR,quadrature_order=2)
 ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
 times = [t_initial,t_final]
 @time As = [
-        invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
-        #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
+        invCGTensor(interp_rhs, SVector{2}(x...),times, 1.e-8,tolerance=1.e-5,p=p)
+        #pullback_diffusion_tensor(interp_rhs, SVector{2}(x...),times, 1.e-8,tolerance=1.e-4,p=p)
         for x in ctx.quadrature_points
         ] # TODO: replace by pmap call
-#As = pmap(x -> mean(pullback_diffusion_tensor(interp_rhs, x,linspace(t_initial,t_final,91), 1.e-8,Id,tolerance=1.e-4,p=p)),ctx.quadrature_points)
+#As = pmap(x -> mean(pullback_diffusion_tensor(interp_rhs, SVector{2}(x...),linspace(t_initial,t_final,91), 1.e-8,Id,tolerance=1.e-4,p=p)),ctx.quadrature_points)
 #mean_As = mean.(As)
 mean_As = As
 function mean_Afun(x,index,p)
@@ -51,7 +51,7 @@ plot_u(ctx,u[:,3],200,200,color=:viridis)
 ##Make a video of the LCS being advected
 
 #Inverse-flow map at time t
-inverse_flow_map_t = (t,u0) -> flow(interp_rhs,u0,
+inverse_flow_map_t = (t,u0) -> flow(interp_rhs!,u0,
         [t,t_initial],p=(UI,VI),tolerance=1e-4)[end]
 #Function u(t), here it is just constant
 current_u = t -> u[:,2]
@@ -67,7 +67,7 @@ Plots.mp4(res,"/tmp/output.mp4")
 
 #With adaptive TO method
 begin
-        ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI))[end]
+        ocean_flow_map = u0 -> flow(interp_rhs!,u0, [t_initial,t_final],p=(UI,VI))[end]
         @time S = assembleStiffnessMatrix(ctx)
         @time M = assembleMassMatrix(ctx)
         @time S2= adaptiveTO(ctx,ocean_flow_map)
