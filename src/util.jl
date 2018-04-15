@@ -65,9 +65,15 @@ end
 #The interpolant is passed via the p argument
 
 #TODO: think of adding @inbounds here
-function interp_rhs(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <: Real}
+function interp_rhs!(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <: Real}
     du[1] = p[1][u[1],u[2],t]
     du[2] = p[2][u[1],u[2],t]
+end
+
+function interp_rhs(u,p,t)
+    du1 = p[1][u[1],u[2],t]
+    du2 = p[2][u[1],u[2],t]
+    return SVector{2}(du1, du2)
 end
 
 #Returns true for all inputs. This is the default for plot_ftle
