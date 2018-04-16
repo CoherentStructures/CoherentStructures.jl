@@ -2,17 +2,20 @@
 #Various utility functions
 
 
-#The following function is like `map', but operates on 1d-datastructures.
-#@param t::Float64 is just some number
-#@param u::Float64 must have howmanytimes*basesize elements
-#@param odefun is a function that takes arguments (du,u,p,t)
-#     where t::Float64, x is an Array{Float64} of size basesize,
-#       and du::Array{Float64} is of size basesize
-#       odefun is assumed to return the result into the result array passed to it
-#This function applies myfun consecutively to slices of u, and stores
-#the result in the relevant slice of result.
-#This is so that a "diagonalized" ODE with several starting values can
-#be solved without having to call the ODE solver multiple times.
+"""
+The following function is like `map', but operates on 1d-datastructures.
+#Arguments
+t::Float64 - time (passed to odefun)
+u::Float64[] -  must have howmanytimes*basesize elements
+odefun is a function that takes arguments (du,u,p,t)
+     where t::Float64, x is an Array{Float64} of size basesize,
+       and du::Array{Float64} is of size basesize
+       odefun is assumed to return the result into the result array passed to it
+This function applies myfun consecutively to slices of u, and stores
+the result in the relevant slice of result.
+This is so that a "diagonalized" ODE with several starting values can
+be solved without having to call the ODE solver multiple times.
+"""
 @inline function arraymap(du::Array{Float64},u::Array{Float64},p,t::Float64, odefun::Function,howmanytimes::Int64,basesize::Int64)
     @inbounds for i in 1:howmanytimes
         @views @inbounds  odefun(du[1 + (i - 1)*basesize: i*basesize],u[ 1 + (i-1)*basesize:  i*basesize],p,t)
@@ -75,7 +78,7 @@ function always_true(x,y,p)
     return true
 end
 
-function fast_trilinear_earth_interpolate(du,u,p,tin)
+ function fast_trilinear_earth_interpolate(du::AbstractArray{T},u,p,tin) where {T<:Real}
     Us = p[1]
     Vs = p[2]
     nx::Int64 = size(Us)[1]
@@ -97,10 +100,14 @@ function fast_trilinear_earth_interpolate(du,u,p,tin)
         a,b = divrem(x,y)
         return Int(a), b
     end
-    xindex::Int64, xcoord::Float64 = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
-    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
+    function gooddivrem(x::ForwardDiff.Dual, y)
+        a,b = divrem(x,y)
+        return Int(ForwardDiff.value(a)), b
+    end
+    xindex::Int64, xcoord::T = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
+    yindex::Int64, ycoord::T = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
     #
-    tindex, tcoord = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
+    tindex::Int64, tcoord::Float64 = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
     tindex += 1
     #Make sure we don't go out of bounds
     tpp = tindex + 1
@@ -108,20 +115,71 @@ function fast_trilinear_earth_interpolate(du,u,p,tin)
         tpp = nt
     end
     #Actual interpolation for u
-    r1u::Float64 =  Us[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Us[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
-    r2u::Float64 =  Us[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
-    r3u::Float64 =  Us[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Us[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
-    r4u::Float64 =  Us[xindex+1,(yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +    Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
+    r1u::T =  Us[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Us[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
+    r2u::T =  Us[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
+    r3u::T =  Us[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Us[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
+    r4u::T =  Us[xindex+1,(yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +    Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
     du[1] =  (
         (1-tcoord)*((1-ycoord)*r1u + ycoord*r2u)
          + tcoord*((1-ycoord)*r3u + ycoord*r4u))
     #For v
-    r1v::Float64 =  Vs[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Vs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
-    r2v::Float64 =  Vs[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
-    r3v::Float64 =  Vs[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Vs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
-    r4v::Float64 =  Vs[xindex+1, (yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +   Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
+    r1v::T =  Vs[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Vs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
+    r2v::T =  Vs[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
+    r3v::T =  Vs[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Vs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
+    r4v::T =  Vs[xindex+1, (yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +   Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
     du[2] =  (
         (1-tcoord)*((1-ycoord)*r1v + ycoord*r2v)
          + tcoord*((1-ycoord)*r3v + ycoord*r4v))
-    return 
+    return
+end
+
+
+function fast_trilinear_ssh_gradient_flipped(du::AbstractVector{Float64},u::AbstractVector{Float64},p,tin)
+    sshs = p[7]
+    nx::Int64 = size(sshs)[1]
+    ny::Int64 = size(sshs)[2]
+    nt::Int64 = size(sshs)[3]
+    #Get the spatial bounds from p
+    ll1::Float64,ur1::Float64  = p[3]
+    ll2::Float64,ur2::Float64 = p[4]
+    t0::Float64,tf::Float64 = p[5]
+    t::Float64 = tin
+    if t > tf
+        t = tf
+    end
+    if t < t0
+        t = t0
+    end
+    #Just divrem, but casts the first result to Int
+    function gooddivrem(x,y)
+        a,b = divrem(x,y)
+        return Int(a), b
+    end
+
+    xindex::Int64, xcoord::Float64 = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
+    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
+    #
+    tindex::Int64, tcoord::Float64 = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
+    tindex += 1
+    #Make sure we don't go out of bounds
+    tpp = tindex + 1
+    if tpp > nt
+        tpp = nt
+    end
+    #Actual interpolation for u
+    r1::Float64 =  sshs[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            sshs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
+    dr1dx::Float64 =  -sshs[xindex+1,yindex + 1,tindex ] +            sshs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]
+    r2::Float64 =  sshs[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
+    dr2dx::Float64 =  -sshs[xindex+1,(yindex + 1) % ny + 1,tindex ] + sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]
+    r3::Float64 =  sshs[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               sshs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
+    dr3dx::Float64 =  -sshs[xindex+1,yindex + 1,tpp ] +               sshs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]
+    r4::Float64 =  sshs[xindex+1,(yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +    sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
+    dr4dx::Float64 =  -sshs[xindex+1,(yindex + 1) % ny + 1,tpp ] +    sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]
+
+    du[2] = ((1-tcoord)*((1-ycoord)*dr1dx + ycoord*dr2dx)
+             + tcoord*((1-ycoord)*dr3dx + ycoord*dr4dx))*nx/360.0
+
+    du[1] = ((1-tcoord)*(-r1+ r2)
+             + tcoord*(-r3+ r4))*ny/180.0
+     return
 end

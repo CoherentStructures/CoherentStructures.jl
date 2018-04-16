@@ -30,6 +30,7 @@ export
 	locatePoint,
 	nodal_interpolation,
 	upsample2DBCS,
+	getH,
 
 	#plotting.jl
 	plot_u,
