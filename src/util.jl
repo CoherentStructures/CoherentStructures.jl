@@ -2,7 +2,6 @@
 #Various utility functions
 
 
-<<<<<<< HEAD
 """
 The following function is like `map', but operates on 1d-datastructures.
 #Arguments
@@ -17,21 +16,7 @@ the result in the relevant slice of result.
 This is so that a "diagonalized" ODE with several starting values can
 be solved without having to call the ODE solver multiple times.
 """
-@inline function arraymap(du::Array{Float64},u::Array{Float64},p,t::Float64, odefun::Function,howmanytimes::Int64,basesize::Int64)
-=======
-#The following function is like `map', but operates on 1d-datastructures.
-#@param t::Float64 is just some number
-#@param u::Float64 must have howmanytimes*basesize elements
-#@param odefun is a function that takes arguments (du,u,p,t)
-#     where t::Float64, x is an Array{Float64} of size basesize,
-#       and du::Array{Float64} is of size basesize
-#       odefun is assumed to return the result into the result array passed to it
-#This function applies myfun consecutively to slices of u, and stores
-#the result in the relevant slice of result.
-#This is so that a "diagonalized" ODE with several starting values can
-#be solved without having to call the ODE solver multiple times.
 @inline function arraymap!(du::Array{Float64},u::Array{Float64},p,t::Float64, odefun::Function,howmanytimes::Int64,basesize::Int64)
->>>>>>> b07dece3a281b7700cd1d803c842b3cab4c0830b
     @inbounds for i in 1:howmanytimes
         @views @inbounds  odefun(du[1 + (i - 1)*basesize: i*basesize],u[ 1 + (i-1)*basesize:  i*basesize],p,t)
     end
@@ -160,7 +145,6 @@ end
         (1-tcoord)*((1-ycoord)*r1v + ycoord*r2v)
          + tcoord*((1-ycoord)*r3v + ycoord*r4v))
     return
-<<<<<<< HEAD
 end
 
 
@@ -212,6 +196,4 @@ function fast_trilinear_ssh_gradient_flipped(du::AbstractVector{Float64},u::Abst
     du[1] = ((1-tcoord)*(-r1+ r2)
              + tcoord*(-r3+ r4))*ny/180.0
      return
-=======
->>>>>>> b07dece3a281b7700cd1d803c842b3cab4c0830b
 end
