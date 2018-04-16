@@ -90,7 +90,7 @@ end
         rhs = (u,p,t) -> arraymap(u,p,t,odefun)
     end
 
-    sol = flow(rhs, stencil, (tspan[1],tspan[end]), p=p, tolerance=tolerance, solver=solver)
+    sol = flow(rhs, stencil, tspan, p=p, tolerance=tolerance, solver=solver)
 
     result = zeros(Tensor{2,2}, num_tsteps)
     @inbounds for i in 1:num_tsteps
