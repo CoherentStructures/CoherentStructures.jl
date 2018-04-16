@@ -22,11 +22,11 @@ be solved without having to call the ODE solver multiple times.
     end
 end
 
-@inline function arraymap(u,p,t,odefun) # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
-    du1 = odefun(u[1:2],p,t)
-    du2 = odefun(u[3:4],p,t)
-    du3 = odefun(u[5:6],p,t)
-    du4 = odefun(u[7:8],p,t)
+@inline function arraymap(u,p,t::Float64,odefun::Function) # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
+    du1 = odefun(StaticArrays.SVector{2}(u[1:2]),p,t)
+    du2 = odefun(StaticArrays.SVector{2}(u[3:4]),p,t)
+    du3 = odefun(StaticArrays.SVector{2}(u[5:6]),p,t)
+    du4 = odefun(StaticArrays.SVector{2}(u[7:8]),p,t)
     return StaticArrays.SVector{8}(du1[1], du1[2], du2[1],du2[2], du3[1], du3[2], du4[1], du4[2])
 end
 
