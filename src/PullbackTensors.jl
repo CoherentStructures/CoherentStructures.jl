@@ -70,6 +70,7 @@ Currently assumes dim=2
             δ::Float64;
     	    give_back_position=false,
             tolerance=default_tolerance,
+            p=nothing,
             kwargs...
         ) where {T <: Real}
 
