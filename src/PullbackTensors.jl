@@ -91,16 +91,16 @@ end
         #The ordering of the stencil vector was chosen so
         #that  a:= stencil[1:4] - stencil[5:8] is a vector
         #so that Tensor{2,2}(a) approximates the Jacobi-Matrix
-    	@inbounds result[i] = Tensor{2,2}( (sol[i][1:4] - sol[i][5:8])/2δ)
+        @inbounds result[i] = Tensor{2,2}( (sol[i][1:4] - sol[i][5:8])/2δ )
     end
     if !give_back_position
         return result
     else
-	    locations = zeros(Vec{2},num_tsteps)
-	    @inbounds for i in 1:num_tsteps
-	        @inbounds locations[i] = 0.25*Vec{2}(sol[i][1:2] + sol[i][3:4] + sol[i][5:6] + sol[i][7:8])
-	    end
-	return  result, locations
+        locations = zeros(Vec{2},num_tsteps)
+        @inbounds for i in 1:num_tsteps
+            @inbounds locations[i] = 0.25*Vec{2}(sol[i][1:2] + sol[i][3:4] + sol[i][5:6] + sol[i][7:8])
+        end
+        return  result, locations
     end
 end
 
