@@ -29,9 +29,10 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
 
     #The following two fields are only well-defined for regular rectangular grids
     spatialBounds::Vector{AbstractVector} #In 2D, this is {LL,UR} for regular grids
+    #TODO: rename this, as it is actually related to number of elements in each direction (not points)
     numberOfPointsInEachDirection::Vector{Int}
 
-    gridType::String #See also makeRegularGrid() function
+    gridType::String
 
     function gridContext{dim}(
                 grid::JuAFEM.Grid,
@@ -91,7 +92,7 @@ end
 function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
     dh::DofHandler = ctx.dh
     const n = ctx.n
-    res = fill(0,n)
+    res = fill(-1,n)
     for cell in CellIterator(dh)
         _celldofs = celldofs(cell)
         ctr = 1
@@ -883,4 +884,22 @@ function identifyPoints{dim}(ctx::gridContext{dim},predicate)
         end
     end
     return boundary_dofs,identify_with
+end
+
+function getH(ctx::gridContext)
+    supportedRegularGridTypes = ["regular triangular grid",
+                    "regular P2 triangular grid",
+                    "regular Delaunay grid",
+                    "regular P2 Delaunay grid",
+                    "regular quadrilateral grid",
+                    "regular P2 quadrilateral grid"]
+
+    if ctx.gridType ∉ supportedRegularGridTypes
+        error("Mesh width for this grid type not yet implemented")
+    end
+
+    hx = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
+    hy = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
+
+    return sqrt(hx^2 + hy^2)
 end
