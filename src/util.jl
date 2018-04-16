@@ -13,10 +13,18 @@
 #the result in the relevant slice of result.
 #This is so that a "diagonalized" ODE with several starting values can
 #be solved without having to call the ODE solver multiple times.
-@inline function arraymap(du::Array{Float64},u::Array{Float64},p,t::Float64, odefun::Function,howmanytimes::Int64,basesize::Int64)
+@inline function arraymap!(du::Array{Float64},u::Array{Float64},p,t::Float64, odefun::Function,howmanytimes::Int64,basesize::Int64)
     @inbounds for i in 1:howmanytimes
         @views @inbounds  odefun(du[1 + (i - 1)*basesize: i*basesize],u[ 1 + (i-1)*basesize:  i*basesize],p,t)
     end
+end
+
+@inline function arraymap(u,p,t,odefun) # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
+    du1 = odefun(u[1:2],p,t)
+    du2 = odefun(u[3:4],p,t)
+    du3 = odefun(u[5:6],p,t)
+    du4 = odefun(u[7:8],p,t)
+    return StaticArrays.SVector{8}(du1[1], du1[2], du2[1],du2[2], du3[1], du3[2], du4[1], du4[2])
 end
 
 #Reorders an array of values corresponding to dofs from a DofHandler
@@ -129,5 +137,5 @@ function fast_trilinear_earth_interpolate(du,u,p,tin)
     du[2] =  (
         (1-tcoord)*((1-ycoord)*r1v + ycoord*r2v)
          + tcoord*((1-ycoord)*r3v + ycoord*r4v))
-    return 
+    return
 end

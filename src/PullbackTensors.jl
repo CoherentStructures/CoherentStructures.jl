@@ -19,7 +19,7 @@ function flow(
             ctx_for_boundscheck=nothing,
             force_dtmin=false
         ) where {T<:Real}
-        
+
     callback = nothing
     if ctx_for_boundscheck != nothing
        LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
@@ -53,7 +53,7 @@ function ad_flow(
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
         ) where {T<:Real}
-    
+
     prob = OrdinaryDiffEq.ODEProblem(odefun,u,T.((tspan[1], tspan[end])),p)
     sol = convert(Array,OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance))
 end
@@ -64,26 +64,32 @@ end
             odefun::Function,
             x::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
-            δ::Float64;
+            δ::T;
             give_back_position=false,
             tolerance::Float64 = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
         ) where {T <: Real}
 
-    const dx = [δ, zero(δ)];
-    const dy = [zero(δ), δ];
-
-    #In order to solve only one ODE, write all the initial values
-    #one after the other in one big vector
-    stencil = zeros(8)
-    @inbounds stencil[1:2] .= x .+ dx
-    @inbounds stencil[3:4] .= x .+ dy
-    @inbounds stencil[5:6] .= x .- dx
-    @inbounds stencil[7:8] .= x .- dy
-
     const num_tsteps = length(tspan)
-    rhs = (du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2)
+    if methods(odefun,(Any,Any,Any,Any))
+        const dx = [δ, zero(δ)];
+        const dy = [zero(δ), δ];
+
+        #In order to solve only one ODE, write all the initial values
+        #one after the other in one big vector
+        stencil = zeros(T, 8)
+        @inbounds stencil[1:2] .= x .+ dx
+        @inbounds stencil[3:4] .= x .+ dy
+        @inbounds stencil[5:6] .= x .- dx
+        @inbounds stencil[7:8] .= x .- dy
+
+        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun, 4,2)
+    elseif methods(odefun,(Any,Any,Any))
+        stencil = StaticArrays.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
+        rhs = (u,p,t) -> arraymap(u,p,t,odefun)
+    end
+
     sol = flow(rhs, stencil, (tspan[1],tspan[end]), p=p, tolerance=tolerance, solver=solver)
 
     result = zeros(Tensor{2,2}, num_tsteps)
@@ -246,7 +252,7 @@ function pullback_SDE_diffusion_tensor(
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-        
+
     return inv.(DF)
 end
 
@@ -275,7 +281,7 @@ function pullback_tensors_geo(
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-    
+
     PBmet = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
     PBdiff = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
@@ -297,7 +303,7 @@ function pullback_metric_tensor_geo(
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-    
+
     PB = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
     return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
@@ -317,7 +323,7 @@ function pullback_diffusion_tensor_geo(
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-    
+
     PB = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
 end
@@ -337,7 +343,7 @@ function pullback_SDE_diffusion_tensor_geo(
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-    
+
     B = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return B
 end
