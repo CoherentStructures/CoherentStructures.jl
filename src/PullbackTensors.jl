@@ -65,7 +65,7 @@ end
             x::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-	        give_back_position=false,
+            give_back_position=false,
             tolerance::Float64 = 1.e-3,
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
@@ -83,7 +83,7 @@ end
     @inbounds stencil[7:8] .= x .- dy
 
     const num_tsteps = length(tspan)
-    rhs = (du,u,p,t) -> arraymap(du,Array{T}(u),p,t,odefun, 4,2)
+    rhs = (du,u,p,t) -> arraymap(du,u,p,t,odefun, 4,2)
     sol = flow(rhs, stencil, (tspan[1],tspan[end]), p=p, tolerance=tolerance, solver=solver)
 
     result = zeros(Tensor{2,2}, num_tsteps)
@@ -94,12 +94,12 @@ end
     	@inbounds result[i] = Tensor{2,2}( (sol[i][1:4] - sol[i][5:8])/2δ)
     end
     if !give_back_position
-	return result
+        return result
     else
-	locations = zeros(Vec{2},num_tsteps)
-	@inbounds for i in 1:num_tsteps
-	    @inbounds locations[i] = 0.25*Vec{2}(sol[i][1:2] + sol[i][3:4] + sol[i][5:6] + sol[i][7:8])
-	end
+	    locations = zeros(Vec{2},num_tsteps)
+	    @inbounds for i in 1:num_tsteps
+	        @inbounds locations[i] = 0.25*Vec{2}(sol[i][1:2] + sol[i][3:4] + sol[i][5:6] + sol[i][7:8])
+	    end
 	return  result, locations
     end
 end
