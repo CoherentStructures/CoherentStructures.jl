@@ -26,7 +26,7 @@ function rot_double_gyre(u,p,t)
     dyΨF = 2π*sin(π*u[1])*cos(2π*u[2])
     du1 = - ((1-st)*dyΨP + st*dyΨF)
     du2 = (1-st)*dxΨP + st*dxΨF
-    return SVector{2}(du1, du2)
+    return StaticArrays.SVector{2}(du1, du2)
 end
 
 function transientGyresEqVari!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
@@ -109,7 +109,7 @@ function transientGyresEqVari(u,p,t)
     du4 = df2*u[3]+df4*u[4]
     du5 = df1*u[5]+df3*u[6]
     du6 = df2*u[5]+df4*u[6]
-    return SVector{6}(du1, du2, du3, du4, du5, du6)
+    return StaticArrays.SVector{6}(du1, du2, du3, du4, du5, du6)
 end
 
 function bickleyJet!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
@@ -124,7 +124,7 @@ function bickleyJet(u,p,t)
     x = u[2]/L
     du1 = U*sech(x)^2+(2*ϵ₁*U*cos(k₁*(u[1]-c₁*t))+2*ϵ₂*U*cos(k₂*(u[1]-c₂*t))+2*ϵ₃*U*cos(k₃*(u[1]-c₃*t)))*tanh(x)*sech(x)^2
     du2 = -(ϵ₁*k₁*U*L*sin(k₁*(u[1]-c₁*t)) + ϵ₂*k₂*U*L*sin(k₂*(u[1]-c₂*t)) + ϵ₃*k₃*U*L*sin(k₃*(u[1]-c₃*t)))*sech(x)^2
-    return SVector{2}(du1, du2)
+    return StaticArrays.SVector{2}(du1, du2)
 end
 
 function bickleyJetEqVari!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
@@ -165,7 +165,7 @@ function bickleyJetEqVari(u,p,t)
     du4 = df2*u[3]+df4*u[4]
     du5 = df1*u[5]+df3*u[6]
     du6 = df2*u[5]+df4*u[6]
-    return SVector{6}(du1, du2, du3, du4, du5, du6)
+    return StaticArrays.SVector{6}(du1, du2, du3, du4, du5, du6)
 end # r₀=6371e-3
 
 #TODO: Give variables a sensible type here
