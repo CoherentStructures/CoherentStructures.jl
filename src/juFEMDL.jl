@@ -1,5 +1,6 @@
 module juFEMDL
 
+    using StaticArrays
     using Tensors
     using DiffEqBase, OrdinaryDiffEq, ForwardDiff
     using Interpolations

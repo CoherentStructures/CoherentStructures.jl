@@ -8,7 +8,7 @@ ctx = regularP2TriangularGrid((25,25))
 
 #With CG-Method
 begin
-    cgfun = x -> invCGTensor(rot_double_gyre2!,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
+    cgfun = x -> invCGTensor(rot_double_gyre!,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx,lumped=false)
     @time λ, v = eigs(-1*K,M,which=:SM)
@@ -18,7 +18,7 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    inverse_flow = u0 -> flow(rot_double_gyre2!,u0,[1.0,0.0])[end]
+    inverse_flow = u0 -> flow(rot_double_gyre!,u0,[1.0,0.0])[end]
     @time ALPHA = nonAdaptiveTO(ctx,inverse_flow)
     @time λ, v = eigs(-1*(S + ALPHA'*S*ALPHA),M,which=:SM)
 end
@@ -27,7 +27,7 @@ end
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    forwards_flow = u0->flow(rot_double_gyre2!, u0,[0.0,1.0],ctx_for_boundscheck=ctx,tolerance=1e-3)[end]
+    forwards_flow = u0->flow(rot_double_gyre!, u0,[0.0,1.0],ctx_for_boundscheck=ctx,tolerance=1e-3)[end]
     @time S2= adaptiveTO(ctx,forwards_flow)
     @time λ, v = eigs(-1*(S + S2),M,which=:SM)
 end
@@ -36,7 +36,7 @@ begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx,lumped=false)
 
-    flowMap = u0->flow(rot_double_gyre2!,u0,[1.0,0.0],tolerance=1.e-4)[end]
+    flowMap = u0->flow(rot_double_gyre!,u0,[1.0,0.0],tolerance=1.e-4)[end]
     @time preALPHAS= juFEMDL.L2GalerkinTOFromInverse(ctx,flowMap)
     Minv = inv(full(M))
     ALPHA = Minv*preALPHAS

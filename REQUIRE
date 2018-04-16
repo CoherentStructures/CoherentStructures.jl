@@ -6,6 +6,7 @@ OrdinaryDiffEq
 GeometricalPredicates
 ParameterizedFunctions
 VoronoiDelaunay
+StaticArrays
 JLD2
 Interpolations
 Plots

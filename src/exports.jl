@@ -1,21 +1,26 @@
 export
 	#PullbackTensors.jl
 	flow,
+	ad_flow,
 	linearized_flow,
 	invCGTensor,
 	pullback_tensors,
 	pullback_metric_tensor,
 	pullback_diffusion_tensor,
+	pullback_diffusion_tensor_function,
 	pullback_SDE_diffusion_tensor,
 
 	#velocityFields.jl
-	rot_double_gyre2!,
+	rot_double_gyre!,
+	rot_double_gyre,
+	transientGyresEqVari!,
 	transientGyresEqVari,
+	bickleyJet!,
+	bickleyJet,
+	bickleyJetEqVari!,
 	bickleyJetEqVari,
 	interpolateVF,
-	oceanVF,
-	bickleyJet,
-	transientGyres,
+	interpolateVFPeriodic,
 
 	#GridFunctions.jl
 	regularTriangularGrid,
@@ -59,6 +64,7 @@ export
 	dof2U,
 	kmeansresult2LCS,
 	interp_rhs,
+	interp_rhs!,
 
 	#advection_diffusion.jl
 	ADimplicitEulerStep,

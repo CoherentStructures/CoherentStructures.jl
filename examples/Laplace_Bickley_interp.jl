@@ -21,12 +21,12 @@ begin
         P[i] = Vec{2}([xspace[i[1]], yspace[i[2]]])
     end
     xi = [p[1] for p in P]'; yi = [p[2] for p in P]'
-    DiffTensor = SymmetricTensor{2,2}(eye(2,2))
+    p = (62.66e-6, 1770e-3, 9.058543015644972e-6, 1.28453e-5, 2.888626e-5,
+         0.0075, 0.15, 0.3, 0.31392246115209543, 0.6278449223041909, 0.9417673834562862)
 end
 
 ##################### tensor computation and interpolation ###################
-@time Dt = map(p -> pullback_diffusion_tensor(bickleyJet,p,tspan,1e-6,DiffTensor),P)
-# @time Dt = pmap(p -> PullBackDiffTensor(bickleyJetEqVari,p,tspan,DiffTensor),P)
+@time Dt = map(u -> pullback_diffusion_tensor(bickleyJet!,u,tspan,1e-6,p=p),P)
 D̅ = mean.(Dt)
 
 using Interpolations
