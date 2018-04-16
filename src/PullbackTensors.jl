@@ -72,7 +72,7 @@ end
         ) where {T <: Real}
 
     const num_tsteps = length(tspan)
-    if methods(odefun,(Any,Any,Any,Any))
+    if !isempty(methods(odefun,(Any,Any,Any,Any)))
         const dx = [δ, zero(δ)];
         const dy = [zero(δ), δ];
 
@@ -85,7 +85,7 @@ end
         @inbounds stencil[7:8] .= x .- dy
 
         rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun, 4,2)
-    elseif methods(odefun,(Any,Any,Any))
+    elseif !isempty(methods(odefun,(Any,Any,Any)))
         stencil = StaticArrays.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
         rhs = (u,p,t) -> arraymap(u,p,t,odefun)
     end
