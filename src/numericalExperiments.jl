@@ -166,6 +166,20 @@ function makeDoubleGyreTestCase()
     return result
 end
 
+function zeroRHS(du,u,p,t)
+    du[1] = 0
+    du[2] = 0
+    return
+end
+
+
+function makeStaticLaplaceTestCase()
+    LL=Vec{2}([0.0,0.0])
+    UR=Vec{2}([1.5,1.0])
+    result = testCase("Static Laplace",LL,UR,0.0,0.01, zeroRHS,nothing)
+    return result
+end
+
 
 function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=default_quadrature_order)
     print("Running reference experiment")
@@ -176,7 +190,7 @@ function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=
     gridConstructors = [regularTriangularGrid, regularDelaunayGrid, regularP2TriangularGrid, regularP2DelaunayGrid , regularQuadrilateralGrid,regularP2QuadrilateralGrid]
     gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
     for (gCindex,gC) in enumerate(gridConstructors)
-        TODO: replace this with something more sensible...
+        #TODO: replace this with something more sensible...
         for width in collect(20:20:200)
             ctx = gC((width,width),tC.LL,tC.UR,quadrature_order=quadrature_order)
             testCaseName = tC.name
@@ -254,5 +268,14 @@ function testDoubleGyre()
     referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
+    return result
+end
+
+
+function testStaticLaplace()
+    staticLaplaceTestCase = makeStaticLaplaceTestCase()
+    referenceCtx = regularP2QuadrilateralGrid( (200,200), staticLaplaceTestCase.LL,staticLaplaceTestCase.UR)
+    reference = experimentResult(staticLaplaceTestCase,referenceCtx,:CG)
+    result =  accuracyTest(staticLaplaceTestCase, reference)
     return result
 end
