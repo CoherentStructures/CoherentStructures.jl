@@ -62,6 +62,7 @@ export
 	dof2U,
 	kmeansresult2LCS,
 	interp_rhs,
+	interp_rhs!,
 
 	#advection_diffusion.jl
 	ADimplicitEulerStep,
