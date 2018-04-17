@@ -6,8 +6,8 @@ const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
 """function flow(rhs,  u0, tspan; tolerance, p, solver)
 
-Solve the ODE with right hand side given by `@param rhs` and initial value given by `@param u0`.
-`p` is a parameter passed as the third argument to `rhs`.
+Solve the ODE with right hand side given by `rhs` and initial value `u0`.
+`p` is a parameter passed to `rhs`.
 `tolerance` is passed as both relative and absolute tolerance to the solver,
 which is determined by `solver`.
 """
@@ -147,19 +147,17 @@ function linearized_flow(
     return df
 end
 
-"""`invCGTensor(odefun, x, tspan,  ::Float64; tolerance, p)`
+"""`invCGTensor(odefun, u, tspan, δ; tolerance, p)`
 
 Returns the average (inverse) CG-Tensor at a point along a set of times
 Derivatives are computed with finite differences
 
-  -`x::Vec{2,Float64}` the initial point
-  -`tspan::Array{Float64}` is the times
-  -`` is the stencil width for the finite differences
-  -`odefun` is a function that takes arguments `(x,t,result)`
-
-`odefun` needs to store its result in `result`.
-`odefun` evaluates the rhs of the ODE being integrated at `(x,t)`
+  -`odefun` is the RHS of an ODE
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
 """
+
 @inline function invCGTensor(
             odefun,
             x::T,
@@ -170,30 +168,55 @@ Derivatives are computed with finite differences
     return mean(dott.(inv.(linearized_flow(odefun,x,tspan,δ;kwargs...))))
 end
 
-#TODO: Document the functions below, then add to exports.jl
-#TODO: Pass through tolerance for ODE solver etc.
+"""`pullback_tensors(odefun, u, tspan, δ; D, kwargs...)`
+
+Returns the time-resolved pullback tensors of both the diffusion and
+the metric tensor along a trajectory.
+Derivatives are computed with finite differences.
+
+  -`odefun` is the RHS of an ODE
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
+  -`D` is the (constant) diffusion tensor, the metric tensor is computed via inversion
+  -`kwargs` are passed through to `linearized_flow`
+"""
+
 function pullback_tensors(
             odefun::Function,
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
             D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
-            p = nothing,
-            tolerance = 1.e-3,
-            solver = OrdinaryDiffEq.BS5()
+            kwargs...
         ) where {T <: Real}  # TODO: add dim for 3D
 
     G = inv(D)
 
     iszero(δ) ?
-      DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
-      DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
+        DF = linearized_flow(odefun, u, tspan;    kwargs...) :
+        DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
 
     MT = [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
     DF .= inv.(DF)
     DT = [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
     return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
 end
+
+"""`pullback_metric_tensor(odefun, u, tspan, δ; G, kwargs...)`
+
+Returns the time-resolved pullback tensors of the metric tensor along a trajectory,
+aka right Cauchy-Green strain tensor.
+Derivatives are computed with finite differences.
+
+  -`odefun` is the RHS of an ODE, can be mutating or not, then it should return
+    a StaticVector
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
+  -`G` is the (constant) metric tensor
+  -`kwargs` are passed through to `linearized_flow`
+"""
 
 function pullback_metric_tensor(
             odefun,
@@ -207,11 +230,25 @@ function pullback_metric_tensor(
         ) where {T <: Real} # TODO: add dim for 3D
 
     iszero(δ) ?
-      DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
-      DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
+        DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
 
     return [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
 end
+
+"""`pullback_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)`
+
+Returns the time-resolved pullback tensors of the diffusion tensor along a trajectory.
+Derivatives are computed with finite differences.
+
+  -`odefun` is the RHS of an ODE, can be mutating or not, then it should return
+    a StaticVector
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
+  -`D` is the (constant) diffusion tensor
+  -`kwargs` are passed through to `linearized_flow`
+"""
 
 function pullback_diffusion_tensor(
             odefun,
@@ -219,14 +256,12 @@ function pullback_diffusion_tensor(
             tspan::AbstractVector{Float64},
             δ::Float64;
             D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
-            p = nothing,
-            tolerance = 1.e-3,
-            solver = OrdinaryDiffEq.BS5()
+            kwargs...
         ) where {T <: Real} # TODO: add dim for 3D
 
     iszero(δ) ?
-      DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
-      DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+        DF = linearized_flow(odefun,u,tspan;    kwargs...) :
+        DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
 
     DF .= inv.(DF)
     return [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
@@ -244,8 +279,8 @@ function pullback_diffusion_tensor_function(
         ) where {T <: Real} # TODO: add dim for 3D
 
     DF, pos = iszero(δ) ?
-      linearized_flow(odefun,u,tspan, p=p,tolerance=tolerance, solver=solver,give_back_position=true) :
-      linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver,give_back_position=true)
+        linearized_flow(odefun,u,tspan, p=p,tolerance=tolerance, solver=solver,give_back_position=true) :
+        linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver,give_back_position=true)
 
     DF .= inv.(DF)
     tlen = length(tspan)
@@ -257,20 +292,32 @@ function pullback_diffusion_tensor_function(
     return result
 end
 
+"""`pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)`
+
+Returns the time-resolved pullback tensors of the diffusion tensor in SDEs.
+Derivatives are computed with finite differences.
+
+  -`odefun` is the RHS of an ODE, can be mutating or not, then it should return
+    a StaticVector
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
+  -`D` is the (constant) diffusion tensor
+  -`kwargs` are passed through to `linearized_flow`
+"""
+
 function pullback_SDE_diffusion_tensor(
                 odefun,
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
                 D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
-                tolerance::Float64=1e-3,
-                p=nothing,
-                solver=OrdinaryDiffEq.BS5()
+                kwargs...
             ) where {T<:Real}
 
     iszero(δ) ?
-        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
+        DF = linearized_flow(odefun,u,tspan;    kwargs...) :
+        DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
 
     return inv.(DF)
 end
