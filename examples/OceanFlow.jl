@@ -2,6 +2,7 @@
 
 @everywhere begin
     using juFEMDL
+    using Tensors
     JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
     t_initial = minimum(Time)
@@ -60,10 +61,6 @@ function mean_Afun(x,index,p)
     return p[1][index]
 end
 
-@everywhere using Tensors
-function mean_Afun_shared(x,index,p)
-
-end
 
 
 #With CG-Method
@@ -76,7 +73,7 @@ begin
     @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
 end
 plot_real_spectrum(λ2)
-plot_u(ctx,v2[:,5],200,200,bdata=bdata)
+plot_u(ctx,v2[:,4],200,200,bdata=bdata)
 
 using Clustering
 numclusters = 5
