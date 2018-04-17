@@ -22,13 +22,15 @@ be solved without having to call the ODE solver multiple times.
     end
 end
 
-@inline function arraymap(u,p,t,odefun) # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
-    du1 = odefun(u[1:2],p,t)
-    du2 = odefun(u[3:4],p,t)
-    du3 = odefun(u[5:6],p,t)
-    du4 = odefun(u[7:8],p,t)
-    return StaticArrays.SVector{8}(du1[1], du1[2], du2[1],du2[2], du3[1], du3[2], du4[1], du4[2])
+# TODO: this is plainly assuming 2D-systems, generalize to ND-systems
+@inline @inbounds function arraymap(u::StaticVector{8,Float64},p,t::Float64, odefun::Function)::SVector{8,Float64}
+    p1::SVector{2,Float64} = odefun((@SVector Float64[u[1], u[2]]),p,t)
+    p2::SVector{2,Float64} = odefun((@SVector Float64[u[3], u[4]]),p,t)
+    p3::SVector{2,Float64} = odefun((@SVector Float64[u[5], u[6]]),p,t)
+    p4::SVector{2,Float64} = odefun((@SVector Float64[u[7], u[8]]),p,t)
+    @SVector [p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2]]
 end
+
 
 #Reorders an array of values corresponding to dofs from a DofHandler
 #To the order which the nodes of the grid would be

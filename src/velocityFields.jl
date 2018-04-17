@@ -18,7 +18,7 @@ function rot_double_gyre!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) whe
   du[2] = (1-st)*dxΨP + st*dxΨF
 end
 
-function rot_double_gyre(u,p,t)
+@inbounds function rot_double_gyre(u,p,t)
     st = ((t>0) & (t<1))*t^2*(3-2*t) + (t>=1)*1
     dxΨP = 2π*cos(2π*u[1])*sin(π*u[2])
     dyΨP = π*sin(2π*u[1])*cos(π*u[2])
