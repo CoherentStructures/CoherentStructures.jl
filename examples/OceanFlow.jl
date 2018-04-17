@@ -2,7 +2,7 @@
 
 @everywhere begin
     using juFEMDL
-    JLD2.@load "Examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
+    JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
     t_initial = minimum(Time)
     t_final = t_initial + 90
@@ -17,12 +17,29 @@
     times = [t_initial,t_final]
 end
 
-####### for comparison, finally only one of the following lines should remain ####### 
+####### for comparison, finally only one of the following lines should remain #######
 # seems like mean(pullback_diffusion_tensor) is no worse than invCGTensor, maybe even faster
 # first the not-in-place SVector versions
 @everywhere icgt(x) = invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
 @time As = [icgt(x) for x in ctx.quadrature_points]
 @time As = pmap(icgt,ctx.quadrature_points)
+
+As_shared = SharedArray{Float64}(3*length(ctx.quadrature_points))
+@time @sync @parallel for index in 1:length(ctx.quadrature_points)
+    x = ctx.quadrature_points[index]
+    t1,t2,t3,t4 = icgt(x)
+    As_shared[3*(index-1) + 1] = t1
+    As_shared[3*(index-1) + 2] = t2
+    As_shared[3*(index-1) + 3] = t3
+end
+
+As = Vector{SymmetricTensor{2,2,Float64,3}}[]
+for index in 1:length(ctx.quadrature_points)
+    t1 = As_shared[3*(index-1) + 1]
+    t2 = As_shared[3*(index-1) + 2]
+    t3 = As_shared[3*(index-1) + 3]
+    push!(As,SymmetricTensor{2,2,Float64,3}((t1,t2,t3)))
+end
 
 @everywhere mpbt(x) = mean(pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p))
 @time As = [mpbt(x) for x in ctx.quadrature_points]
@@ -42,6 +59,12 @@ mean_As = As
 function mean_Afun(x,index,p)
     return p[1][index]
 end
+
+@everywhere using Tensors
+function mean_Afun_shared(x,index,p)
+
+end
+
 
 #With CG-Method
 begin
