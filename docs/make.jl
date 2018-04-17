@@ -9,5 +9,3 @@ makedocs(
         "Dynamical Systems Utilities" => "util.md"
     ]
     )
-
-makedocs()
