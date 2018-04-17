@@ -1,9 +1,9 @@
-# juFEMDL
+# CoherentStructures.jl
 *Tools for computing Lagrangian Coherent Structures in julia*
 
 ## Introduction
 
-juFEMDL is a toolbox for computing Lagrangian Coherent Structures in Julia.
+CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures in Julia.
 
 ## Installation
 

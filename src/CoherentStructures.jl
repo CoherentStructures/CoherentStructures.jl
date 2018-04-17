@@ -1,4 +1,4 @@
-module juFEMDL
+module CoherentStructures
 
     using StaticArrays
     using Tensors

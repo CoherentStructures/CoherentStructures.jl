@@ -1,5 +1,5 @@
 # Based on static_Laplace_eigvs.jl
-using juFEMDL
+using CoherentStructures
 using Tensors
 
 LL=[0.0,0.0]

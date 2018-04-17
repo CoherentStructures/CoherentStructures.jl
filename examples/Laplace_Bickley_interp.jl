@@ -1,7 +1,7 @@
 #Based on static_Laplace_eigvs.jl
 addprocs()
 
-using juFEMDL
+using CoherentStructures
 using Tensors
 using PyPlot
 

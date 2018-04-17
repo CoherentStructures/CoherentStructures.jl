@@ -1,7 +1,7 @@
 #OceanFlow.jl - based on code from Daniel Karrasch
 
 @everywhere begin
-    using juFEMDL
+    using CoherentStructures
     using Tensors
     JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
@@ -66,8 +66,8 @@ end
 #With CG-Method
 begin
     q = [mean_As]
-    #bdata = juFEMDL.getHomDBCS(ctx)
-    bdata = juFEMDL.boundaryData()
+    #bdata = CoherentStructures.getHomDBCS(ctx)
+    bdata = CoherentStructures.boundaryData()
     @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,bdata=bdata)
     @time M2 = assembleMassMatrix(ctx,bdata=bdata)
     @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
@@ -92,7 +92,7 @@ current_u = t -> u[:,2]
 LL_big = [-10,-40.0]
 UR_big = [6,-25.0]
 #Make the video
-res = juFEMDL.eulerian_video(ctx,current_u,LL_big,UR_big,
+res = CoherentStructures.eulerian_video(ctx,current_u,LL_big,UR_big,
         100,100,t_initial, t_final, #nx = 100, ny=100
         30,inverse_flow_map_t)#nt = 20
 #Save it

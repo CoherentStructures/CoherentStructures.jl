@@ -1,18 +1,18 @@
 #(c) 2018 Nathanael Schilling
 
-using juFEMDL
+using CoherentStructures
 import Plots
 
 #t = makeDoubleGyreTestCase()
-t = juFEMDL.makeStaticLaplaceTestCase()
+t = CoherentStructures.makeStaticLaplaceTestCase()
 l = experimentResult(t,"regular P2 triangular grid",(100,100), :aTO)
 
 runExperiment!(l,12)
 
 plotExperiment(l,axis=false,colorbar=false,margin=0.0Plots.px)
 
-results = juFEMDL.testStaticLaplace()
-juFEMDL.buildStatistics!(results,1)
+results = CoherentStructures.testStaticLaplace()
+CoherentStructures.buildStatistics!(results,1)
 
 ## Plot eigenvalue errors
 

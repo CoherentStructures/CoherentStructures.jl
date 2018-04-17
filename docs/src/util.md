@@ -1,6 +1,5 @@
 # Dynamical Systems Utilities
 
-
 ```@docs
 flow
 ```

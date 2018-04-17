@@ -1,4 +1,4 @@
-using juFEMDL
+using CoherentStructures
 using Tensors
 using Plots # For @animate
 
@@ -35,7 +35,7 @@ end every 10
 mp4(anim,"/tmp/out_mean.mp4")
 
 #Fokker-Planck in Lagrangian coordinates in one fell swoop
-using juFEMDL
+using CoherentStructures
 
 tC = makeOceanFlowTestCase()
 ctx = regularTriangularGrid((50,50),tC.LL,tC.UR)
@@ -73,7 +73,7 @@ p2 = Dict(
         "δ" => δ,
         "ϵ" => 1e-4
         )
-myExtendedRHS = (du,u,p2,t) -> juFEMDL.extendedRHS(interp_rhs,du,u,p2,t)
+myExtendedRHS = (du,u,p2,t) -> CoherentStructures.extendedRHS(interp_rhs,du,u,p2,t)
 using OrdinaryDiffEq
 prob = OrdinaryDiffEq.ODEProblem(
         myExtendedRHS,u_full,

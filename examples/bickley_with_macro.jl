@@ -1,5 +1,5 @@
 #include("../src/field_from_hamiltonian.jl")
-using juFEMDL
+using CoherentStructures
 
 # after this, 'bickley' will reference a Dictionary of functions
 # access it via the desired signature. e.g. F = bickley[:(dU, U, p, t)]
@@ -42,7 +42,7 @@ field = bickley[:(du,u,p,t)]
 #cgfun = (x -> mean(pullback_diffusion_tensor(periodicField, x,linspace(0.0,40*3600*24,81), 1.e-8,tolerance=1.e-4)))
 cgfun = (x -> mean(pullback_diffusion_tensor(field, x,linspace(0.0,40*3600*24,81), 1.e-8,tolerance=1.e-4)))
 predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%6.371π) < 1e-10)
-bdata = juFEMDL.boundaryData(ctx,predicate,[])
+bdata = CoherentStructures.boundaryData(ctx,predicate,[])
 @time K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
 @time M = assembleMassMatrix(ctx,bdata=bdata)
 @time λ, v = eigs(K,M,which=:SM, nev= 10)

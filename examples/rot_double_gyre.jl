@@ -1,4 +1,4 @@
-using juFEMDL
+using CoherentStructures
 
 #ctx = regularP2QuadrilateralGrid((25,25))
 ctx = regularTriangularGrid((25,25))
@@ -39,13 +39,13 @@ begin
     @time M = assembleMassMatrix(ctx,lumped=false)
 
     flowMap = u0->flow(rot_double_gyre!,u0,[1.0,0.0],tolerance=1.e-4)[end]
-    @time preALPHAS= juFEMDL.L2GalerkinTOFromInverse(ctx,flowMap)
+    @time preALPHAS= CoherentStructures.L2GalerkinTOFromInverse(ctx,flowMap)
     Minv = inv(full(M))
     ALPHA = Minv*preALPHAS
     R = -1*(S+ALPHA'*S*ALPHA)
     R = 0.5(R + R')
     @time λ, v = eigs(R,M,which=:SM,nev=6)
 end
-index= 2
+index= 7
 title = "\\\lambda = $(λ[index])"
-plot_u(ctx,real.(v[:,3]),50,50,color=:rainbow,title=title)
+plot_u(ctx,real.(v[:,index]),50,50,color=:rainbow,title=title)

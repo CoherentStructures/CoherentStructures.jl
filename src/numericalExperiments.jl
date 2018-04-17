@@ -1,5 +1,5 @@
 #(c) 2018 Nathanael Schilling
-#This file contains code for running numerical experiments with juFEMDL
+#This file contains code for running numerical experiments with CoherentStructures.jl
 
 
 #TODO: Replace Float64 with a more general type
