@@ -31,7 +31,7 @@ As_shared = SharedArray{Float64}(3*length(ctx.quadrature_points))
     t1,t2,t3,t4 = icgt(x)
     As_shared[3*(index-1) + 1] = t1
     As_shared[3*(index-1) + 2] = t2
-    As_shared[3*(index-1) + 3] = t3
+    As_shared[3*(index-1) + 3] = t4
 end
 
 As = Vector{SymmetricTensor{2,2,Float64,3}}[]
