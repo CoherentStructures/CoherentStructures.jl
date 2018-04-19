@@ -143,29 +143,38 @@ function plot_real_spectrum(λ)
 end
 
 
-function eulerian_videos(ctx, us::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map_t,num_videos=1;extra_kwargs=false,extra_kwargs_fun=nothing,kwargs...)
+function eulerian_videos(ctx, us::Function,inverse_flow_map_t,t0,tf, nx, ny,nt, LL, UR,num_videos=1;extra_kwargs_fun=nothing,kwargs...)
     allvideos = [Animation() for i in 1:num_videos]
 
     for (index,t) in enumerate(linspace(t0,tf,nt))
-	print("Processing frame $index")
-	current_inv_flow_map = x -> inverse_flow_map_t(t,x)
-	euler_to_lagrange_points = plot_u_eulerian(ctx,zeros(ctx.n), LL,UR,current_inv_flow_map,nx,ny; only_get_lagrange_points=true,kwargs...)
-	for i in 1:num_videos
-	    current_u = us(i,t)
-	    if extra_kwargs
-		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,extra_kwargs_fun(i,t)...,kwargs...);
-	    else
-		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,kwargs...);
-	    end
-	    frame(allvideos[i],curframe)
-	end
+    	print("Processing frame $index")
+        if t != t0
+        	current_inv_flow_map = x -> inverse_flow_map_t(t,x)
+        else
+            current_inv_flow_map = x->x
+        end
+    	euler_to_lagrange_points = plot_u_eulerian(ctx,zeros(ctx.n), LL,UR,current_inv_flow_map,nx,ny; only_get_lagrange_points=true,kwargs...)
+    	for i in 1:num_videos
+    	    current_u = us(i,t)
+    	    if extra_kwargs_fun != nothing
+        		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,extra_kwargs_fun(i,t)...,kwargs...);
+    	    else
+        		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,kwargs...);
+    	    end
+    	    frame(allvideos[i],curframe)
+    	end
     end;
     return allvideos
 end
 
-function eulerian_video(ctx, u::Function, LL, UR,nx,ny,t0,tf,nt,inverse_flow_map_t;kwargs...)
+function eulerian_video(ctx, u::Function, inverse_flow_map_t,t0,tf, nx, ny, nt, LL, UR;extra_kwargs_fun=nothing,kwargs...)
     usfun = (index,t) -> u(t)
-    return eulerian_videos(ctx,usfun,LL,UR,nx,ny,t0,tf,nt,inverse_flow_map_t,1;kwargs...)
+    if (extra_kwargs_fun!= nothing)
+        extra_kwargs_fun_out = (i,t) -> extra_kwargs_fun(t)
+    else
+        extra_kwargs_fun_out = nothing
+    end
+    return eulerian_videos(ctx,usfun,inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR,1;extra_kwargs_fun=extra_kwargs_fun_out,kwargs...)[1]
 end
 
 
