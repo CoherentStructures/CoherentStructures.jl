@@ -8,6 +8,7 @@ module CoherentStructures
 
     import GeometricalPredicates
     import VoronoiDelaunay
+    Pkg.pin("DataStructures",v"0.7.4")
     import JLD2
 
     using JuAFEM
