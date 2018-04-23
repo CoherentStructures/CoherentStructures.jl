@@ -311,7 +311,7 @@ function pullback_SDE_diffusion_tensor(
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+                B::Tensors.Tensor{2,2,T,4}=one(Tensors.Tensor{2,2,T,4}),
                 kwargs...
             ) where {T<:Real}
 
@@ -319,7 +319,7 @@ function pullback_SDE_diffusion_tensor(
         DF = linearized_flow(odefun,u,tspan;    kwargs...) :
         DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
 
-    return inv.(DF)
+    return inv.(DF) ⋅ B
 end
 
 function met2deg(u::AbstractVector{T}) where T <: Real
