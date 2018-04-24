@@ -147,25 +147,26 @@ function linearized_flow(
     return df
 end
 
-"""`invCGTensor(odefun, u, tspan, δ; tolerance, p)`
+"""`mean_diff_tensor(odefun, u, tspan, δ; tolerance, p)`
 
-Returns the average (inverse) CG-Tensor at a point along a set of times
-Derivatives are computed with finite differences
+Returns the averaged diffusion tensor at a point along a set of times.
+Derivatives are computed with finite differences.
 
   -`odefun` is the RHS of an ODE
   -`u` the initial value of the ODE
   -`tspan` set of time instances at which to save the trajectory
   -`δ` is the stencil width for the finite differences
+  -`kwargs` are passed to `linearized_flow`
 """
 
-@inline function invCGTensor(
+@inline function mean_diff_tensor(
             odefun,
-            x::T,
+            u::T,
             tspan::AbstractVector{Float64},
             δ::Float64;
             kwargs...
         ) where T
-    return mean(dott.(inv.(linearized_flow(odefun,x,tspan,δ;kwargs...))))
+    return mean(dott.(inv.(linearized_flow(odefun,u,tspan,δ;kwargs...))))
 end
 
 """`pullback_tensors(odefun, u, tspan, δ; D, kwargs...)`
