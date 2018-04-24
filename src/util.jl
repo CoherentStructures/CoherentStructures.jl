@@ -31,6 +31,23 @@ end
     @SVector [p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2]]
 end
 
+"""
+`tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor})`
+computes pointwise invariants of the 2D tensor field `T`, i.e.,
+smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.
+"""
+
+function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
+    Efact = eigfact(T)
+    λ₁ = [ev[1] for ev in eigvals.(Efact)]
+    λ₂ = [ev[2] for ev in eigvals.(Efact)]
+    ξ₁ = [ev[:,1] for ev in eigvecs.(Efact)]
+    ξ₂ = [ev[:,2] for ev in eigvecs.(Efact)]
+    traceT = trace.(T)
+    detT = det.(T)
+    return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+end
+
 
 #Reorders an array of values corresponding to dofs from a DofHandler
 #To the order which the nodes of the grid would be
