@@ -3,7 +3,7 @@ export
 	flow,
 	ad_flow,
 	linearized_flow,
-	invCGTensor,
+	mean_diff_tensor,
 	pullback_tensors,
 	pullback_metric_tensor,
 	pullback_diffusion_tensor,
