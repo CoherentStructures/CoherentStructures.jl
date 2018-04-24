@@ -61,6 +61,7 @@ export
 	plotExperiment,
 
 	#util.jl
+	tensor_invariants,
 	dof2U,
 	kmeansresult2LCS,
 	interp_rhs,
