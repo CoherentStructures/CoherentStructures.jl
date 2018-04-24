@@ -21,7 +21,7 @@ begin
          H =  Psi  + bump(sqrt(r_sqr / (radius^2))) * strength
     end
     field = fields[:(du,u,p,t)]
-    cgfun = (x -> invCGTensor(field, x,[0.0,1.0], 1.e-8,tolerance=1.e-3))
+    cgfun = (x -> mean_diff_tensor(field, x,[0.0,1.0], 1.e-8,tolerance=1.e-3))
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx)
     @time λ, v = eigs(K,M,which=:SM, nev= 20)
