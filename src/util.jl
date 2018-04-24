@@ -38,7 +38,7 @@ smallest and largest eigenvalues, corresponding eigenvectors, trace and determin
 """
 
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
-    Efact = eigfact(T)
+    Efact = eigfact.(T)
     λ₁ = [ev[1] for ev in eigvals.(Efact)]
     λ₂ = [ev[2] for ev in eigvals.(Efact)]
     ξ₁ = [ev[:,1] for ev in eigvecs.(Efact)]
