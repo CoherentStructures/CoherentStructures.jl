@@ -3,7 +3,7 @@ module CoherentStructures
     using StaticArrays
     using Tensors
     using DiffEqBase, OrdinaryDiffEq
-    # using ForwardDiff
+    using ForwardDiff # TODO: check if we really need it
     using Interpolations
 
 
