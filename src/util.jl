@@ -133,10 +133,7 @@ end
         a,b = divrem(x,y)
         return Int(a), b
     end
-    function gooddivrem(x::ForwardDiff.Dual, y)
-        a,b = divrem(x,y)
-        return Int(ForwardDiff.value(a)), b
-    end
+    
     xindex::Int64, xcoord::T = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
     yindex::Int64, ycoord::T = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
     #
