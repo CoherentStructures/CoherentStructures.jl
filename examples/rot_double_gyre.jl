@@ -1,4 +1,5 @@
-using CoherentStructures
+addprocs()
+@everywhere using CoherentStructures
 
 #ctx = regularP2QuadrilateralGrid((25,25))
 ctx = regularTriangularGrid((25,25))
@@ -14,6 +15,20 @@ begin
     @time M = assembleMassMatrix(ctx,lumped=false)
     @time λ, v = eigs(-1*K,M,which=:SM)
 end
+
+function checkerboard(x)
+    return ((-1)^(floor((x[1]*10)%10)))*((-1)^(floor((x[2]*10)%10)))
+end
+
+ctx2 = regularTriangularGrid((200,200))
+u2 = nodal_interpolation(ctx2,checkerboard)
+plot_u(ctx2,u2,100,100)
+inverse_flow_map_t = (t,u0) -> flow(rot_double_gyre,u0,[t,0.0])[end]
+inverse_flow_map_t(0.5,[0.5,0.5])
+u(t) = u2
+res = CoherentStructures.eulerian_video(ctx2,u,inverse_flow_map_t,
+    0.0,1.0, 500,500,100, [0.0,0.0],[1.0,1.0],colorbar=false,title="Rotating Double Gyre")
+Plots.mp4(res ,"/tmp/res.mp4")
 
 
 #With non-adaptive TO-method:
