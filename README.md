@@ -13,5 +13,4 @@ See also examples/Laplace\_\{Bickley,DG\}\_interp.jl files for more examples
 *TODO*:
    * Write a function that takes as input a tensor-function and a point structure (vector, matrix, 3d array),
 and returns a (possibly time-dependent) tensor field.
-   * Add closed orbit methods-based codes
    * Add graph Laplacian-based codes (WIP)
