@@ -51,7 +51,7 @@ module CoherentStructures
 
 
    #Some test cases, similar to velocityFields.jl
-   include("numericalExperiments.jl")
+   # include("numericalExperiments.jl")
 
    #Plotting
    using Plots
