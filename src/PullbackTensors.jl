@@ -4,6 +4,8 @@
 
 const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
+
+
 """function flow(rhs,  u0, tspan; tolerance, p, solver)
 
 Solve the ODE with right hand side given by `rhs` and initial value `u0`.
@@ -13,14 +15,14 @@ which is determined by `solver`.
 """
 function flow(
             rhs::Function,
-            u0::T,
+            u0::AbstractArray{T},
             tspan::AbstractVector{Float64};
             tolerance = default_tolerance,
             p = nothing,
             solver = default_solver,
             ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T}
+        ) where {T <: Real}
 
     callback = nothing
     if ctx_for_boundscheck != nothing
@@ -83,7 +85,7 @@ Currently assumes dim=2
 
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
-        stencil = zeros(T, 8)
+        stencil::Vector{T} = zeros(T, 8)
         @inbounds stencil[1:2] .= x .+ dx
         @inbounds stencil[3:4] .= x .+ dy
         @inbounds stencil[5:6] .= x .- dx
@@ -157,7 +159,6 @@ Derivatives are computed with finite differences
   -`tspan` set of time instances at which to save the trajectory
   -`δ` is the stencil width for the finite differences
 """
-
 @inline function invCGTensor(
             odefun,
             x::T,
