@@ -3,13 +3,13 @@ module CoherentStructures
     using StaticArrays
     using Tensors
     using DiffEqBase, OrdinaryDiffEq
-    using ForwardDiff # TODO: check if we really need it
+    #using ForwardDiff # TODO: check if we really need it
     using Interpolations
 
 
     import GeometricalPredicates
     import VoronoiDelaunay
-    import JLD2
+    #import JLD2
 
     using JuAFEM
 
