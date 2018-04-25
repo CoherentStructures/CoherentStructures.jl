@@ -50,7 +50,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         times = [eR.experiment.t_initial,eR.experiment.t_final]
         ode_fun = eR.experiment.ode_fun
         #TODO: Think about varying the parameters below.
-        cgfun = (x -> invCGTensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
+        cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
         assembleStiffnessMatrix(eR.ctx)
         eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
         eR.runtime += (@elapsed K = assembleStiffnessMatrix(eR.ctx,cgfun))
@@ -136,7 +136,7 @@ end
 
 
 function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
-
+    
     JLD2.@load location Lon Lat Time UT VT
     # JLD version, requires more dependencies
     # vars = JLD.@load(location)

@@ -13,8 +13,8 @@ plot_u(ctx,u)
 
 #Calculate mean pullback tensor
 mean_As = [
-        invCGTensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-3,p=tC.p)
-        #pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,Id,tolerance=1.e-4,p=p)
+        mean_diff_tensor(interp_rhs, x,times,1.e-8,tolerance=1.e-3,p=tC.p)
+        #pullback_diffusion_tensor(interp_rhs, x,times,1.e-8,tolerance=1.e-4,p=tC.p)
         for x in ctx.quadrature_points
         ]
 
