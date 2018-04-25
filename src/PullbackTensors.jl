@@ -12,38 +12,50 @@ Solve the ODE with right hand side given by `rhs` and initial value `u0`.
 which is determined by `solver`.
 """
 function flow(
-            rhs::Function,
-            u0::T,
+            odefun::Function,
+            u0::AbstractVector{T},
             tspan::AbstractVector{Float64};
             tolerance = default_tolerance,
             p = nothing,
             solver = default_solver,
-            ctx_for_boundscheck=nothing,
+            #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T}
+        ) where {T<:Real}
 
-    callback = nothing
-    if ctx_for_boundscheck != nothing
-       LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
-       LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
-       UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
-       UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
-       leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
-       bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
-       rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
-       topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
-       function affect!(integrator)
-           return terminate!(integrator)
-       end
-       callback = OrdinaryDiffEq.CallbackSet(
-           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
-           [leftSide,rightSide,topSide,bottomSide])...)
+    #callback = nothing
+    #if ctx_for_boundscheck != nothing
+    #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
+    #   LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
+    #   UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
+    #   UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
+    #   leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
+    #   bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
+    #   rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
+    #   topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
+    #   function affect!(integrator)
+    #           return terminate!(integrator)#
+    #   end
+    #   callback = OrdinaryDiffEq.CallbackSet(
+    #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
+    #       [leftSide,rightSide,topSide,bottomSide])...)
+   #end
+   const num_args = DiffEqBase.numargs(odefun)
+   if num_args == 4
+       prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+       sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                             save_everystep=false, dense=false,
+                             reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+       return sol.u
+   elseif num_args == 3
+
+       sprob = OrdinaryDiffEq.ODEProblem(odefun,(@SVector T[u0[1],u0[2]]), (tspan[1],tspan[end]), p)
+       ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
+                             save_everystep=false, dense=false,
+                             reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+       return ssol.u
+   else
+       error("Invalid format of odefun")
    end
-   prob = OrdinaryDiffEq.ODEProblem(rhs, u0, (tspan[1],tspan[end]), p)
-   sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                         save_everystep=false, dense=false,
-                         reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-   return sol.u
 end
 
 # this is a flow-function that works with ForwardDiff
@@ -55,6 +67,7 @@ function ad_flow(
             p = nothing,
             solver = OrdinaryDiffEq.BS5()
         ) where {T<:Real}
+
 
     prob = OrdinaryDiffEq.ODEProblem(odefun,u,T.((tspan[1], tspan[end])),p)
     sol = convert(Array,OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance))
