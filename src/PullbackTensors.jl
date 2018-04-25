@@ -283,8 +283,8 @@ function pullback_SDE_diffusion_tensor(
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan;    kwargs...) :
         DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
-
-    return inv.(DF) ⋅ B
+    DF .= inv.(DF)
+    return [df ⋅ B for df in DF]
 end
 
 function met2deg(u::AbstractVector{T}) where T <: Real
