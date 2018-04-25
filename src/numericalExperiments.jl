@@ -81,7 +81,7 @@ function plotExperiment(eR::experimentResult,nev=-1; kwargs...)
         print("Experiment not yet run")
         return
     end
-    #TODO: Can we get rid of the error in any other way
+    #TODO: Can we get rid of the error message from using :rainbow in any other way?
     Plots.clibrary(:misc)
     allplots = []
     for (i,lam) in enumerate(eR.λ)
@@ -97,9 +97,9 @@ end
 
 #TODO: Think of moving helper functions like these to GridFunctions.jl
 function sampleTo(u::Vector{Float64}, ctx_old::gridContext, ctx_new::gridContext)
-    u_new::Vector{Float64} = zeros(ctx_new.n)
+    u_new::Vector{Float64} = zeros(ctx_new.n)*NaN
     for i in 1:ctx_new.n
-        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,ctx_new.grid.nodes[i].x,u)
+        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,ctx_new.grid.nodes[i].x,u,NaN,true)
     end
     return u_new
 end
@@ -159,17 +159,15 @@ function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrop
     return result
 end
 
-function makeDoubleGyreTestCase()
+function makeDoubleGyreTestCase(tf=1.0)
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.0,1.0])
-    result = testCase("Rotating Double Gyre",LL,UR,0.0,1.0, rot_double_gyre2!,nothing)
+    result = testCase("Rotating Double Gyre",LL,UR,0.0,tf, rot_double_gyre,nothing)
     return result
 end
 
-function zeroRHS(du,u,p,t)
-    du[1] = 0
-    du[2] = 0
-    return
+function zeroRHS(u,p,t)
+    return @SVector [0.0, 0.0]
 end
 
 
@@ -187,24 +185,14 @@ function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=
     runExperiment!(reference)
     push!(experimentResults,reference)
     print("Finished running reference experiment")
-    gridConstructors = [regularTriangularGrid, regularDelaunayGrid, regularP2TriangularGrid, regularP2DelaunayGrid , regularQuadrilateralGrid,regularP2QuadrilateralGrid]
-    gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
+    #gridConstructors = [regularTriangularGrid, regularDelaunayGrid, regularP2TriangularGrid, regularP2DelaunayGrid , regularQuadrilateralGrid,regularP2QuadrilateralGrid]
+    #gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
+
+    gridConstructors = [regularTriangularGrid, regularP2TriangularGrid ]
+    gridConstructorNames = ["regular triangular grid", "regular P2 triangular grid" ]
     for (gCindex,gC) in enumerate(gridConstructors)
         #TODO: replace this with something more sensible...
         for width in collect(20:20:200)
-            ctx = gC((width,width),tC.LL,tC.UR,quadrature_order=quadrature_order)
-            testCaseName = tC.name
-            gCName = gridConstructorNames[gCindex]
-            print("Running $testCaseName test case on $width×$width $gCName")
-            eR = experimentResult(tC, ctx,:CG)
-            runExperiment!(eR)
-            push!(experimentResults,eR)
-        end
-
-        for width in collect(200:40:400)
-            if gridConstructorNames[gCindex] ∈ ["regular P2 triangular grid", "regular P2 Delaunay grid","regular P2 quadrilateral grid"]
-                continue
-            end
             ctx = gC((width,width),tC.LL,tC.UR,quadrature_order=quadrature_order)
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
@@ -263,8 +251,8 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
     end
 end
 
-function testDoubleGyre()
-    doubleGyreTestCase = makeDoubleGyreTestCase()
+function testDoubleGyre(tf=1.0)
+    doubleGyreTestCase = makeDoubleGyreTestCase(tf)
     referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
