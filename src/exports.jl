@@ -21,6 +21,15 @@ export
 	bickleyJetEqVari,
 	interpolateVF,
 	interpolateVFPeriodic,
+	
+	#EllipticLCS.jl
+	singularity_location_detection,
+	singularity_type_detection,
+	detect_elliptic_region,
+	set_Poincaré_section,
+	compute_returning_orbit,
+	compute_outermost_closed_orbit,
+	ellipticLCS,
 
 	#GridFunctions.jl
 	regularTriangularGrid,
