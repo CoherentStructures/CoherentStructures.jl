@@ -136,8 +136,9 @@ end
 
 
 function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
-
-    JLD2.@load location Lon Lat Time UT VT
+    
+    using JLD2
+    @load location Lon Lat Time UT VT
     # JLD version, requires more dependencies
     # vars = JLD.@load(location)
     # Lat = vars["Lat"]
