@@ -2,7 +2,8 @@ module CoherentStructures
 
     using StaticArrays
     using Tensors
-    using DiffEqBase, OrdinaryDiffEq, ForwardDiff
+    using DiffEqBase, OrdinaryDiffEq
+    # using ForwardDiff
     using Interpolations
 
 
@@ -24,6 +25,9 @@ module CoherentStructures
 
     ##Functions related to pulling back tensors
     include("PullbackTensors.jl")
+    
+    ##Functions related to geodesic elliptic LCS detection
+    include("EllipticLCS.jl")
 
     ##Definitions of velocity fields
     include("velocityFields.jl")
