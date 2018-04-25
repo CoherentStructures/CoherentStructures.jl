@@ -154,14 +154,18 @@ function eulerian_videos(ctx, us::Function,inverse_flow_map_t,t0,tf, nx, ny,nt, 
             current_inv_flow_map = x->x
         end
     	euler_to_lagrange_points = plot_u_eulerian(ctx,zeros(ctx.n), LL,UR,current_inv_flow_map,nx,ny; only_get_lagrange_points=true,kwargs...)
-    	for i in 1:num_videos
+        function plotsingleframe(i)
     	    current_u = us(i,t)
     	    if extra_kwargs_fun != nothing
         		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,extra_kwargs_fun(i,t)...,kwargs...);
     	    else
         		curframe = plot_u_eulerian(ctx, current_u, LL, UR, current_inv_flow_map, nx,ny;euler_to_lagrange_points=euler_to_lagrange_points,kwargs...);
     	    end
-    	    frame(allvideos[i],curframe)
+            return curframe
+        end
+        tmpres = pmap(plotsingleframe, 1:num_videos)
+        for i in 1:num_videos
+    	    frame(allvideos[i],tmpres[i])
     	end
     end;
     return allvideos
