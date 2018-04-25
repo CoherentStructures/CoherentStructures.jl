@@ -312,7 +312,15 @@ function locatePoint(ctx::gridContext{dim}, x::AbstractVector{Float64}) where di
     return locatePoint(ctx.loc,ctx.grid,x)
 end
 
-function evaluate_function_from_nodevals(ctx::gridContext,x::AbstractVector{Float64},nodevals::Vector{Float64},outside_value=0.0)
+function evaluate_function_from_nodevals(ctx::gridContext,x_in::AbstractVector{Float64},nodevals::Vector{Float64},outside_value=0.0,project_in=false)
+    if !project_in
+        x = Vec{2,Float64}((x_in[1],x_in[2]))
+    else
+        x = Vec{2,Float64}(
+            (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
+            ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
+            ))
+    end
     assert(length(nodevals) == ctx.n)
     local_coordinates,nodes = try
          locatePoint(ctx,x)
@@ -331,7 +339,15 @@ function evaluate_function_from_nodevals(ctx::gridContext,x::AbstractVector{Floa
 end
 
 
-function evaluate_function_from_dofvals(ctx::gridContext,x::AbstractVector{Float64},dofvals::Vector{Float64},outside_value=0.0)
+function evaluate_function_from_dofvals(ctx::gridContext,x_in::AbstractVector{Float64},dofvals::Vector{Float64},outside_value=0.0,project_in=false)
+    if !project_in
+        x = Vec{2,Float64}((x_in[1],x_in[2]))
+    else
+        x = Vec{2,Float64}(
+            (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
+            ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
+            ))
+    end
     assert(length(dofvals) == ctx.n)
     local_coordinates,nodes = try
          locatePoint(ctx,x)
@@ -899,7 +915,7 @@ function getH(ctx::gridContext)
     end
 
     hx = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
-    hy = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
+    hy = (ctx.spatialBounds[2][2] - ctx.spatialBounds[1][2])/(ctx.numberOfPointsInEachDirection[1] - 1)
 
     return sqrt(hx^2 + hy^2)
 end
