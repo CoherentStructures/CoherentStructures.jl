@@ -4,6 +4,8 @@
 
 const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
+
+
 """function flow(rhs,  u0, tspan; tolerance, p, solver)
 
 Solve the ODE with right hand side given by `rhs` and initial value `u0`.
@@ -12,7 +14,7 @@ Solve the ODE with right hand side given by `rhs` and initial value `u0`.
 which is determined by `solver`.
 """
 function flow(
-            odefun::Function,
+            rhs::Function,
             u0::AbstractVector{T},
             tspan::AbstractVector{Float64};
             tolerance = default_tolerance,
@@ -39,38 +41,23 @@ function flow(
     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
     #       [leftSide,rightSide,topSide,bottomSide])...)
    #end
-   const num_args = DiffEqBase.numargs(odefun)
+   const num_args = DiffEqBase.numargs(rhs)
    if num_args == 4
-       prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+       prob = OrdinaryDiffEq.ODEProblem(rhs, Vector{T}(u0), (tspan[1],tspan[end]), p)
        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                              save_everystep=false, dense=false,
                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
        return sol.u
    elseif num_args == 3
 
-       sprob = OrdinaryDiffEq.ODEProblem(odefun,(@SVector T[u0[1],u0[2]]), (tspan[1],tspan[end]), p)
+       sprob = OrdinaryDiffEq.ODEProblem(rhs,(@SVector T[u0[1],u0[2]]), (tspan[1],tspan[end]), p)
        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
                              save_everystep=false, dense=false,
                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
        return ssol.u
    else
-       error("Invalid format of odefun")
+       error("Invalid format of rhs")
    end
-end
-
-# this is a flow-function that works with ForwardDiff
-function ad_flow(
-            odefun::Function,
-            u::AbstractArray{T,1},
-            tspan::AbstractVector{Float64};
-            tolerance = 1.e-3,
-            p = nothing,
-            solver = OrdinaryDiffEq.BS5()
-        ) where {T<:Real}
-
-
-    prob = OrdinaryDiffEq.ODEProblem(odefun,u,T.((tspan[1], tspan[end])),p)
-    sol = convert(Array,OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance))
 end
 
 """
@@ -96,7 +83,7 @@ Currently assumes dim=2
 
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
-        stencil = zeros(T, 8)
+        stencil::Vector{T} = zeros(T, 8)
         @inbounds stencil[1:2] .= x .+ dx
         @inbounds stencil[3:4] .= x .+ dy
         @inbounds stencil[5:6] .= x .- dx
@@ -138,47 +125,25 @@ Currently assumes dim=2
 
 end
 
+"""`mean_diff_tensor(odefun, u, tspan, δ; tolerance, p)`
 
-
-
-
-#TODO: document this
-# This is the autodiff-version of linearized_flow
-function linearized_flow(
-            odefun::Function,
-            u::AbstractArray{T,1},
-            tspan::AbstractVector{Float64};
-            tolerance::Float64 = 1.e-3,
-            p = nothing,
-            solver = OrdinaryDiffEq.BS5()
-        ) where {T <: Real}  # TODO: add dim
-
-    dim = length(u)
-    Flow(x) = ad_flow(odefun,x,tspan,tolerance=tolerance,p=p,solver=solver)
-    DF      = ForwardDiff.jacobian(Flow,u)
-    df      = [Tensor{2,2}(DF[i:i+(dim-1),:]) for i=1:dim:size(DF,1)]
-    return df
-end
-
-"""`invCGTensor(odefun, u, tspan, δ; tolerance, p)`
-
-Returns the average (inverse) CG-Tensor at a point along a set of times
-Derivatives are computed with finite differences
+Returns the averaged diffusion tensor at a point along a set of times.
+Derivatives are computed with finite differences.
 
   -`odefun` is the RHS of an ODE
   -`u` the initial value of the ODE
   -`tspan` set of time instances at which to save the trajectory
   -`δ` is the stencil width for the finite differences
+  -`kwargs` are passed to `linearized_flow`
 """
-
-@inline function invCGTensor(
+@inline function mean_diff_tensor(
             odefun,
-            x::T,
+            u::T,
             tspan::AbstractVector{Float64},
             δ::Float64;
             kwargs...
         ) where T
-    return mean(dott.(inv.(linearized_flow(odefun,x,tspan,δ;kwargs...))))
+    return mean(dott.(inv.(linearized_flow(odefun,u,tspan,δ;kwargs...))))
 end
 
 """`pullback_tensors(odefun, u, tspan, δ; D, kwargs...)`
@@ -324,15 +289,15 @@ function pullback_SDE_diffusion_tensor(
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+                B::Tensors.Tensor{2,2,T,4}=one(Tensors.Tensor{2,2,T,4}),
                 kwargs...
             ) where {T<:Real}
 
     iszero(δ) ?
         DF = linearized_flow(odefun,u,tspan;    kwargs...) :
         DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
-
-    return inv.(DF)
+    DF .= inv.(DF)
+    return [df ⋅ B for df in DF]
 end
 
 function met2deg(u::AbstractVector{T}) where T <: Real

@@ -31,6 +31,23 @@ end
     @SVector [p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2]]
 end
 
+"""
+`tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor})`
+computes pointwise invariants of the 2D tensor field `T`, i.e.,
+smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.
+"""
+
+function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
+    Efact = eigfact.(T)
+    λ₁ = [ev[1] for ev in eigvals.(Efact)]
+    λ₂ = [ev[2] for ev in eigvals.(Efact)]
+    ξ₁ = [ev[:,1] for ev in eigvecs.(Efact)]
+    ξ₂ = [ev[:,2] for ev in eigvecs.(Efact)]
+    traceT = trace.(T)
+    detT = det.(T)
+    return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+end
+
 
 #Reorders an array of values corresponding to dofs from a DofHandler
 #To the order which the nodes of the grid would be
@@ -89,113 +106,7 @@ function interp_rhs(u,p,t)
     return SVector{2}(du1, du2)
 end
 
-#Returns true for all inputs. This is the default for plot_ftle
+#Returns true for all inputs. This is the default function for inbounds checking in plot_ftle
 function always_true(x,y,p)
     return true
-end
-
- function fast_trilinear_earth_interpolate(du::AbstractArray{T},u,p,tin) where {T<:Real}
-    Us = p[1]
-    Vs = p[2]
-    nx::Int64 = size(Us)[1]
-    ny::Int64 = size(Us)[2]
-    nt::Int64 = size(Us)[3]
-    #Get the spatial bounds from p
-    ll1::Float64,ur1::Float64  = p[3]
-    ll2::Float64,ur2::Float64 = p[4]
-    t0::Float64,tf::Float64 = p[5]
-    t::Float64 = tin
-    if t > tf
-        t = tf
-    end
-    if t < t0
-        t = t0
-    end
-    #Just divrem, but casts the first result to Int
-    function gooddivrem(x,y)
-        a,b = divrem(x,y)
-        return Int(a), b
-    end
-    function gooddivrem(x::ForwardDiff.Dual, y)
-        a,b = divrem(x,y)
-        return Int(ForwardDiff.value(a)), b
-    end
-    xindex::Int64, xcoord::T = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
-    yindex::Int64, ycoord::T = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
-    #
-    tindex::Int64, tcoord::Float64 = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
-    tindex += 1
-    #Make sure we don't go out of bounds
-    tpp = tindex + 1
-    if tpp > nt
-        tpp = nt
-    end
-    #Actual interpolation for u
-    r1u::T =  Us[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Us[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
-    r2u::T =  Us[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
-    r3u::T =  Us[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Us[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
-    r4u::T =  Us[xindex+1,(yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +    Us[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
-    du[1] =  (
-        (1-tcoord)*((1-ycoord)*r1u + ycoord*r2u)
-         + tcoord*((1-ycoord)*r3u + ycoord*r4u))
-    #For v
-    r1v::T =  Vs[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            Vs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
-    r2v::T =  Vs[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
-    r3v::T =  Vs[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               Vs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
-    r4v::T =  Vs[xindex+1, (yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +   Vs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
-    du[2] =  (
-        (1-tcoord)*((1-ycoord)*r1v + ycoord*r2v)
-         + tcoord*((1-ycoord)*r3v + ycoord*r4v))
-    return
-end
-
-
-function fast_trilinear_ssh_gradient_flipped(du::AbstractVector{Float64},u::AbstractVector{Float64},p,tin)
-    sshs = p[7]
-    nx::Int64 = size(sshs)[1]
-    ny::Int64 = size(sshs)[2]
-    nt::Int64 = size(sshs)[3]
-    #Get the spatial bounds from p
-    ll1::Float64,ur1::Float64  = p[3]
-    ll2::Float64,ur2::Float64 = p[4]
-    t0::Float64,tf::Float64 = p[5]
-    t::Float64 = tin
-    if t > tf
-        t = tf
-    end
-    if t < t0
-        t = t0
-    end
-    #Just divrem, but casts the first result to Int
-    function gooddivrem(x,y)
-        a,b = divrem(x,y)
-        return Int(a), b
-    end
-
-    xindex::Int64, xcoord::Float64 = gooddivrem((mod((u[1] - ll1), 360)*nx)/360.0,1)
-    yindex::Int64, ycoord::Float64 = gooddivrem((mod((u[2] - ll2), 180)*ny)/180.0,1)
-    #
-    tindex::Int64, tcoord::Float64 = gooddivrem((nt-1)*(t-t0)/(tf-t0),1)
-    tindex += 1
-    #Make sure we don't go out of bounds
-    tpp = tindex + 1
-    if tpp > nt
-        tpp = nt
-    end
-    #Actual interpolation for u
-    r1::Float64 =  sshs[xindex+1,yindex + 1,tindex ]*(1 - xcoord) +            sshs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]*xcoord
-    dr1dx::Float64 =  -sshs[xindex+1,yindex + 1,tindex ] +            sshs[ (xindex + 1) % nx + 1,yindex + 1, tindex ]
-    r2::Float64 =  sshs[xindex+1,(yindex + 1) % ny + 1,tindex ]*(1 - xcoord) + sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]*xcoord
-    dr2dx::Float64 =  -sshs[xindex+1,(yindex + 1) % ny + 1,tindex ] + sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tindex ]
-    r3::Float64 =  sshs[xindex+1,yindex + 1,tpp ]*(1 - xcoord) +               sshs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]*xcoord
-    dr3dx::Float64 =  -sshs[xindex+1,yindex + 1,tpp ] +               sshs[ (xindex + 1) % nx + 1,yindex + 1, tpp ]
-    r4::Float64 =  sshs[xindex+1,(yindex + 1) % ny + 1,tpp ]*(1 - xcoord) +    sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]*xcoord
-    dr4dx::Float64 =  -sshs[xindex+1,(yindex + 1) % ny + 1,tpp ] +    sshs[ (xindex + 1) % nx + 1,(yindex + 1)%ny + 1, tpp ]
-
-    du[2] = ((1-tcoord)*((1-ycoord)*dr1dx + ycoord*dr2dx)
-             + tcoord*((1-ycoord)*dr3dx + ycoord*dr4dx))*nx/360.0
-
-    du[1] = ((1-tcoord)*(-r1+ r2)
-             + tcoord*(-r3+ r4))*ny/180.0
-     return
 end

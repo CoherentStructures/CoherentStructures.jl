@@ -4,9 +4,10 @@ Tensors
 DiffEqBase
 OrdinaryDiffEq
 GeometricalPredicates
-ParameterizedFunctions
 VoronoiDelaunay
 StaticArrays
 JLD2
 Interpolations
 Plots
+Distances
+Contour

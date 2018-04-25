@@ -68,13 +68,8 @@ y = [1 - abs(x.statistics["E"][2,2])  for x in results[indexes_to_plot]]
 [x.time]
 gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
 
-for index in 2:100
-  Plots.display(plot_u(results[index].ctx,results[index].V[:,2]))
-  sleep(1)
-end
-
 Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Error",
-  xscale=:log10, yscale=:log10,ylim=(1e-5,1e2), legend=:best,
+  xscale=:log10, yscale=:log10, legend=:best,
   title="Error in second Eigenfunction")
 Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/evec2errs.pdf")
 

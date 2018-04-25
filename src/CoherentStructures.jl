@@ -2,13 +2,14 @@ module CoherentStructures
 
     using StaticArrays
     using Tensors
-    using DiffEqBase, OrdinaryDiffEq, ForwardDiff
+    using DiffEqBase, OrdinaryDiffEq
+    #using ForwardDiff # TODO: check if we really need it
     using Interpolations
 
 
     import GeometricalPredicates
     import VoronoiDelaunay
-    import JLD2
+    #import JLD2
 
     using JuAFEM
 
@@ -24,6 +25,9 @@ module CoherentStructures
 
     ##Functions related to pulling back tensors
     include("PullbackTensors.jl")
+    
+    ##Functions related to geodesic elliptic LCS detection
+    include("EllipticLCS.jl")
 
     ##Definitions of velocity fields
     include("velocityFields.jl")
@@ -47,7 +51,7 @@ module CoherentStructures
 
 
    #Some test cases, similar to velocityFields.jl
-   include("numericalExperiments.jl")
+   # include("numericalExperiments.jl")
 
    #Plotting
    using Plots

@@ -84,7 +84,7 @@ function assembleMassMatrix{dim}(
         fill!(Me,0)
         JuAFEM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
-            const dΩ = getdetJdV(cv,q)*ctx.mass_weights[index]
+            const dΩ::Float64 = getdetJdV(cv,q)*ctx.mass_weights[index]
             for i in 1:n
                 const φ::Float64 = shape_value(cv,q,i)
                 for j in 1:(i-1)
