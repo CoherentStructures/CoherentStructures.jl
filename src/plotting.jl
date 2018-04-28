@@ -88,7 +88,7 @@ function plot_u_eulerian(
 	euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
         @sync @parallel for i in 1:nx
             for j in 1:ny
-                point = Vec{2}((x1[i],x2[j]))
+                point = StaticArrays.SVector{2}(x1[i],x2[j])
                 try
 		    back = inverse_flow_map(point)
 		    euler_to_lagrange_points_raw[j,i,1] = back[1]
@@ -103,10 +103,10 @@ function plot_u_eulerian(
                 end
             end
         end
-	euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
+	euler_to_lagrange_points = [zero(StaticArrays.SVector{2}) for y in x2, x in x1]
 	for i in 1:nx
 	    for j in 1:ny
-		euler_to_lagrange_points[j,i] = Vec{2}(euler_to_lagrange_points_raw[j,i,1:2])
+		euler_to_lagrange_points[j,i] = StaticArrays.SVector{2}(euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2])
 	    end
 	end
     end
