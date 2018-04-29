@@ -11,45 +11,42 @@ function plot_ftle(
 		   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
 		   inplace=true,existing_plot=nothing,flip_y=false, check_inbounds=always_true,
 		   kwargs...)
-    x1 =  collect(linspace(LL[1] + 1e-8, UR[1] -1.e-8,nx))
-    x2 =  collect(linspace(LL[2] + 1.e-8,UR[2]-1.e-8,ny))
+    x1 = collect(linspace(LL[1] + 1.e-8, UR[1] - 1.e-8,nx))
+    x2 = collect(linspace(LL[2] + 1.e-8, UR[2] - 1.e-8,ny))
     if flip_y
-	x2 = reverse(x2)
+        x2 = reverse(x2)
     end
     #Initialize FTLE-field with NaNs
     FTLE = SharedArray{Float64,2}(ny,nx)
-    for j in 1:ny
-	for i in 1:nx
-	    FTLE[j,i] = NaN
-	end
+    for I in CartesianRange(size(FTLE))
+	    FTLE[I] = NaN
     end
-    nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in 1:nx
+    nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in eachindex(x1)
         nancounter_local = 0
         nonancounter_local = 0
-	for j in 1:ny
-	    if check_inbounds(x1[i],x2[j],p)
-		try
-		    FTLE[j,i] =
-		    1./(2*(tspan[end]-tspan[1]))*
-		    log(maximum(abs.(eigvals(eigfact(dott(linearized_flow(odefun,Vec{2}([x1[i],x2[j]]),tspan,δ,tolerance=tolerance,p=p,solver=solver )[end]))))))
-		    nonancounter_local += 1
-		catch e
-		    nancounter_local += 1
-		end
-	    end
-	end
-	(nancounter_local,nonancounter_local)
-    end
+        for j in eachindex(x2)
+            if check_inbounds(x1[i],x2[j],p)
+                try
+                    FTLE[j,i] = 1.0/(2*(tspan[end]-tspan[1]))*
+		                          log(eigvals(eigfact(dott(linearized_flow(odefun,[x1[i],x2[j]],tspan,δ,tolerance=tolerance,p=p,solver=solver)[end])))[1])
+                    nonancounter_local += 1
+                catch e
+                    nancounter_local += 1
+                end
+            end
+        end
+        (nancounter_local,nonancounter_local)
+        end
 
-    print("plot_ftle Ignored $nancounter NaN values ($nonancounter were good)")
+    print("plot_ftle ignored $nancounter NaN values ($nonancounter were good)")
     if flip_y == true
-	x2 = reverse(x2)
-	x2 *= -1.0
+            x2 = reverse(x2)
+        x2 *= -1.0
     end
     if inplace
-	return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
+        return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
     else
-	return Plots.heatmap(x1,x2,FTLE; kwargs...)
+        return Plots.heatmap(x1,x2,FTLE; kwargs...)
     end
 end
 
@@ -78,51 +75,50 @@ function plot_u_eulerian(
         dof_values = dof_vals
     end
     #
-    x1 = Float64[]
-    x2 = Float64[]
-    values = Float64[]
+    # x1 = Float64[]
+    # x2 = Float64[]
+    # values = Float64[]
     const u_values =  dof2U(ctx,dof_values)
-    x1 =  linspace(LL[1] , UR[1] ,nx)
-    x2 =  linspace(LL[2] ,UR[2] ,ny)
+    x1 = linspace(LL[1],UR[1],nx)
+    x2 = linspace(LL[2],UR[2],ny)
     if euler_to_lagrange_points == nothing
-	euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
-        @sync @parallel for i in 1:nx
-            for j in 1:ny
-                point = Vec{2}((x1[i],x2[j]))
-                try
-		    back = inverse_flow_map(point)
-		    euler_to_lagrange_points_raw[j,i,1] = back[1]
-		    euler_to_lagrange_points_raw[j,i,2] = back[2]
-                catch e
-                    if isa(e,InexactError)
-			euler_to_lagrange_points_raw[j,i,1] = NaN
-			euler_to_lagrange_points_raw[j,i,2] = NaN
-                    else
-                        throw(e)
-                    end
-                end
-            end
-        end
-	euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
-	for i in 1:nx
-	    for j in 1:ny
-		euler_to_lagrange_points[j,i] = Vec{2}(euler_to_lagrange_points_raw[j,i,1:2])
+        # euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
+        # @sync @parallel for i in eachindex(x1)
+        #     for j in eachindex(x2)
+        #         point = StaticArrays.SVector{2}(x1[i],x2[j])
+        #         try
+        #             back = inverse_flow_map(point)
+        #             euler_to_lagrange_points_raw[j,i,1] = back[1]
+        #             euler_to_lagrange_points_raw[j,i,2] = back[2]
+        #         catch e
+        #             if isa(e,InexactError)
+        #                 euler_to_lagrange_points_raw[j,i,1] = NaN
+        #                 euler_to_lagrange_points_raw[j,i,2] = NaN
+        #             else
+        #                 throw(e)
+        #             end
+        #         end
+        #     end
+        # end
+        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,x1,x2)
+        euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
+        for i in 1:nx, j in 1:ny
+            euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
 	    end
 	end
-    end
+
     if only_get_lagrange_points
         return euler_to_lagrange_points
     end
-    z = zeros(ny,nx)
-    for i in 1:nx
-        for j in 1:ny
-            if isnan((euler_to_lagrange_points[j,i])[1])
-                z[j,i] = NaN
-            else
-                z[j,i] = evaluate_function_from_nodevals(ctx,euler_to_lagrange_points[j,i],u_values,NaN)
-            end
+    z = zeros(size(euler_to_lagrange_points))
+    for I in eachindex(euler_to_lagrange_points)
+        if isnan((euler_to_lagrange_points[I])[1])
+            z[I] = NaN
+        else
+            z[I] = evaluate_function_from_nodevals(ctx,euler_to_lagrange_points[I],u_values,NaN)
         end
     end
+
     if postprocessor != nothing
        z =  postprocessor(z)
     end
@@ -132,6 +128,28 @@ function plot_u_eulerian(
         return result, z
     end
     return result
+end
+
+function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
+    euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
+    @sync @parallel for i in eachindex(x1)
+        for j in eachindex(x2)
+            point = StaticArrays.SVector{2}(x1[i],x2[j])
+            try
+                back = inv_flow_map(point)
+                euler_to_lagrange_points_raw[j,i,1] = back[1]
+                euler_to_lagrange_points_raw[j,i,2] = back[2]
+            catch e
+                if isa(e,InexactError)
+                    euler_to_lagrange_points_raw[j,i,1] = NaN
+                    euler_to_lagrange_points_raw[j,i,2] = NaN
+                else
+                    throw(e)
+                end
+            end
+        end
+    end
+    return euler_to_lagrange_points_raw
 end
 
 function plot_spectrum(λ)

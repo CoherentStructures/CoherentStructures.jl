@@ -4,7 +4,7 @@
     using CoherentStructures
     using Tensors
     using JLD2
-    @load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
+    JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
     t_initial = minimum(Time)
     t_final = t_initial + 90
