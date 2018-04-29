@@ -11,10 +11,29 @@ VD = VoronoiDelaunay
 
 const default_quadrature_order=5
 
-#This type is used for storing everything needed as context to work on a grid
-#when doing FEM on scalar fields. Currently implemented only for 2D
-#mutable so that it is passed by reference and not by value. #TODO: is this sensible?
-mutable struct gridContext{dim} <: abstractGridContext{dim}
+"""
+    struct gridContext
+
+Storing everything needed as "context" to be able to work on a FEM grid based on the `JuAFEM` package
+Adds a point-location API which makes it possible to plot functions defined on the grid within julia.
+Currently only `dim==2` is implemented
+
+# Fields
+- `grid::JuAFEM.Grid`,`ip::JuAFEM.Interpolation`,`qr::JuAFEM.QuadratureRule` - See the `JuAFEM` package
+- `loc::CellLocator` object used for point-location on the grid.
+- `node_to_dof::Vector{Int}`  lookup table for dof index of a node
+- `dof_to_node::Vector{Int}`  inverse of node_to_dof
+- `n::Int` number of nodes on the grid
+- `m::Int` number of elements (e.g. triangles,quadrilaterals, ...) on the grid
+- `quadrature_points::Vector{Vec{dim,Float64}} All quadrature points on the grid, in a fixed order.
+- `mass_weights::Vector{Float64}` Weighting for mass matrix
+- `spatialBounds' If available, the corners of a bounding box of a domain. For regular grids, the bounds are tight.
+- `numberOfPointsInEachDirection' For regular grids, how many (non-interior) nodes make up the regular grid.
+- `gridType` A string describing what kind of grid this is (e.g. "regular triangular grid")
+
+The easiest way of constructing a `gridContext` is with something like the `regularGrid` function.
+"""
+mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set as mutable, is this sensible?
     grid::JuAFEM.Grid
     ip::JuAFEM.Interpolation
     dh::JuAFEM.DofHandler
@@ -55,7 +74,7 @@ mutable struct gridContext{dim} <: abstractGridContext{dim}
     end
 end
 
-#TODO: is it better for gridType to be of type ::Symbol?
+
 regularGridTypes = ["regular triangular grid",
                     "regular P2 triangular grid",
                     "regular Delaunay grid",

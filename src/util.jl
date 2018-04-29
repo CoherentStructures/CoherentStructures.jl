@@ -3,16 +3,12 @@
 
 
 """
-The following function is like `map', but operates on 1d-datastructures.
-#Arguments
-t::Float64 - time (passed to odefun)
-u::Float64[] -  must have howmanytimes*basesize elements
-odefun is a function that takes arguments (du,u,p,t)
-     where t::Float64, x is an Array{Float64} of size basesize,
-       and du::Array{Float64} is of size basesize
-       odefun is assumed to return the result into the result array passed to it
-This function applies myfun consecutively to slices of u, and stores
-the result in the relevant slice of result.
+    arraymap!(du::Array{Float64},u::AbstractArray{Float64,1},p,t,odefun,howmanytimes::Int,basesize::Int)
+
+Like `map', but operates on 1d-datastructures.
+# Arguments
+Apply odefun(du,u,p,t) consecutively to `howmany` subarrays of size `basesize` of `u`, and stores
+the result in the relevant slice of `du`.
 This is so that a "diagonalized" ODE with several starting values can
 be solved without having to call the ODE solver multiple times.
 """
@@ -32,7 +28,8 @@ end
 end
 
 """
-`tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor})`
+    tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor})
+
 computes pointwise invariants of the 2D tensor field `T`, i.e.,
 smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.
 """
@@ -49,8 +46,12 @@ function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) w
 end
 
 
-#Reorders an array of values corresponding to dofs from a DofHandler
-#To the order which the nodes of the grid would be
+"""
+    dof2U(ctx,u)
+
+Interprets `u` as an array of coefficients ordered in dof order,
+and reorders them to be in node order.
+"""
 function dof2U(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
    n = ctx.n
    res = fill(0.0,getnnodes(ctx.grid))
@@ -60,6 +61,22 @@ function dof2U(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
   return res
 end
 
+"""
+    kmeansresult2LCS(kmeansresult)
+
+Takes the result-object from kmeans(),
+and returns a coefficient vector (in dof order)
+corresponding to (interpolated) indicator functions.
+
+# Example
+```
+v, λ = eigs(K,M)
+numclusters = 5
+res = kmeans(v[:,1:numclusters]',numclusters+1)
+u = kmeansresult2LCS(res)
+plot_u(ctx,u)
+```
+"""
 function kmeansresult2LCS(kmeansresult)
     n = length(kmeansresult.assignments)
     numclusters = size(kmeansresult.centers)[2]
