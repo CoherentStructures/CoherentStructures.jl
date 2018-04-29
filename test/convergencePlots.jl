@@ -3,100 +3,110 @@
 using CoherentStructures
 import Plots
 
-#t = makeDoubleGyreTestCase()
-t = CoherentStructures.makeStaticLaplaceTestCase()
-l = experimentResult(t,"regular P2 triangular grid",(100,100), :aTO)
-
-runExperiment!(l,12)
-
 plotExperiment(l,axis=false,colorbar=false,margin=0.0Plots.px)
 
-results = CoherentStructures.testStaticLaplace()
+
+dgTc = makeDoubleGyreTestCase(0.5)
+referenceCtx = regularP2TriangularGrid( (300,300), dgTc.LL,dgTc.UR)
+reference = experimentResult(dgTc,referenceCtx,:CG)
+runExperiment!(reference)
+CoherentStructures.buildStatistics!(results,22)
+
+results = CoherentStructures.testDoubleGyre(0.25)
 CoherentStructures.buildStatistics!(results,1)
+fd = open("DG025","w")
+serialize(fd,results)
+close(fd)
+
+
+reference_index = 1
+results=open(deserialize,"DG025")
+
+reference_index = 21
+results=open(deserialize,"SL")
+
+reference_index = 22
+results = open(deserialize, "DG05")
+
+reference_index= 43
+results = open(deserialize, "DG")
+
+results[reference_index].ctx.numberOfPointsInEachDirection[1]
+results[reference_index].ctx.gridType
 
 ## Plot eigenvalue errors
 
-indexes_to_plot= Int64[]
-for (index,i) in enumerate(results)
-  if index == 1
-    continue
+begin
+  indexes_to_plot= Int64[]
+  for (index,i) in enumerate(results)
+    if i.ctx.gridType ∈ ["regular Delaunay grid", "regular P2 Delaunay grid","regular quadrilateral grid","regular P2 quadrilateral grid"]
+      continue
+    end
+    if index == reference_index
+      continue
+    end
+    push!(indexes_to_plot,index)
   end
-  if i.ctx.gridType ∈ ["regular Delaunay grid", "regular P2 Delaunay grid"]
-    #continue
-  end
-  push!(indexes_to_plot,index)
+end
+
+for i in 1:21
+  Plots.display(plot_u(results[i].ctx,results[i].V[:,2],title="$i"))
+  sleep(1)
 end
 
 
-indexes_to_plot = 2:length(results)
-x = [getH(x.ctx) for x in results[indexes_to_plot]]
-y = [abs(x.λ[2] - results[1].λ[2])  for x in results[indexes_to_plot]]
-gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
+whichev=2
+y = [(x.λ[whichev] - results[reference_index].λ[whichev])/(results[reference_index].λ[whichev])  for x in results[indexes_to_plot]]
+y
+begin
+  whichev = 2
+  x = [getH(x.ctx) for x in results[indexes_to_plot]]
+  y = [-abs(x.λ[whichev] - results[reference_index].λ[whichev])/(results[reference_index].λ[whichev])  for x in results[indexes_to_plot]]
+  gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
+  Plots.scatter(x,y,group=gridtypes,xlabel="Number of Basis Functions",ylabel="Absolute error",
+    xscale=:log10,yscale=:log10,  legend=:bottomright,
+    title="Errors in second eigenvalue")
+  #slope 2 line
+  xl = collect(linspace(minimum(x), maximum(x),100))
+  yl = xl.^2*100
+  legendlabel = ["Slope 2 line" for x in xl]
+  Plots.plot!(xl,yl,group=legendlabel)
 
-Plots.scatter(x,y,group=gridtypes,xlabel="Number of Basis Functions",ylabel="Absolute error",
-  xscale=:log10, yscale=:log10, legend=:bottomright,
-  title="Errors in second eigenvalue")
+  #Slope 4 line
+  xl = collect(linspace(minimum(x),maximum(x),100))
+  yl = xl.^4*500
+  legendlabel = ["Slope 4 line" for x in xl]
+  #Plots.plot!(xl,yl,group=legendlabel)
+  Plots.display()
+end
+
+
 Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/ev1errs.pdf")
-
-x = [getH(x.ctx) for x in results[indexes_to_plot]]
-y = [abs(x.λ[3] - results[1].λ[3])  for x in results[indexes_to_plot]]
-gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
-Plots.scatter(x,y,group=gridtypes,xlabel="Mesh Width",ylabel="Absolute error",
-  xscale=:log10,yscale=:log10, legend=:none,
-  title="Errors in third eigenvalue",ylim=(1e-16,200))
-Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/ev2errs.pdf")
-
-#slope 2 line
-xl = collect(linspace(minimum(x), maximum(x),100))
-yl = xl.^2
-legendlabel = ["Slope 2 line" for x in xl]
-Plots.plot!(xl,yl,group=legendlabel)
-
-#Slope 4 line
-xl = collect(linspace(minimum(x),maximum(x),100))
-yl = xl.^4
-legendlabel = ["Slope 4 line" for x in xl]
-Plots.plot!(xl,yl,group=legendlabel)
-
 
 
 
 #Plot second eigenvector errors
+begin
+  whichev = 4
+  x = [getH(x.ctx) for x in results[indexes_to_plot]]
+  y = [max(1e-10,sqrt(1 - abs(x.statistics["E"][whichev,whichev])))  for x in results[indexes_to_plot]]
+  gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
+  Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Eigenvector error",
+    xscale=:log10, yscale=:log10, legend=:bottomright,
+    title="Error in Eigenfunction $whichev")
 
-x = [getH(x.ctx) for x in results[indexes_to_plot]]
-y = [1 - abs(x.statistics["E"][2,2])  for x in results[indexes_to_plot]]
-[x.time]
-gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
+  xl = collect(linspace(minimum(x), maximum(x),100))
+  yl = xl.^2*20
+  legendlabel = ["Slope 2 line" for x in xl]
+  Plots.plot!(xl,yl,group=legendlabel)
 
-Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Error",
-  xscale=:log10, yscale=:log10, legend=:best,
-  title="Error in second Eigenfunction")
+  xl = collect(linspace(minimum(x), maximum(x),100))
+  yl = xl.^3*100
+  legendlabel = ["Slope 3 line" for x in xl]
+  Plots.plot!(xl,yl,group=legendlabel)
+end
+plot_u(results[1].ctx,results[1].V[:,3])
+results[1].ctx.numberOfPointsInEachDirection
+
+
 Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/evec2errs.pdf")
-
-
-#Plot third eigenvector errors
-
-y
-
-x = [x.ctx.n for x in results[indexes_to_plot]]
-y = [max(1e-19, 1 - abs(x.statistics["E"][3,3]))  for x in results[indexes_to_plot]]
-gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
-Plots.scatter(x,y,group=gridtypes,xlabel="Number of Basis Functions",ylabel="Error",
-  xscale=:log10, yscale=:log10,ylim=(1e-7,1e3),xlim=(1e3,10e5), legend=:best,title="Error in third Eigenfunction")
-Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/evec3errs.pdf")
-
-
-x = [x.ctx.n for x in results[indexes_to_plot]]
-y = [max(1e-19, 1 - abs(x.statistics["E"][4,4]))  for x in results[indexes_to_plot]]
-gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
-Plots.scatter(x,y,group=gridtypes,xlabel="Number of Basis Functions",ylabel="Error",
-  xscale=:log10, yscale=:log10,ylim=(1e-7,1e3),xlim=(1e3,10e5), legend=:best,title="Error in fourth Eigenfunction")
-Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/evec4errs.pdf")
-
-
-x = [x.ctx.n for x in results[indexes_to_plot]]
-y = [max(1e-19, 1 - abs(x.statistics["E"][5,5]))  for x in results[indexes_to_plot]]
-gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
-Plots.scatter(x,y,group=gridtypes,xlabel="Number of Basis Functions",ylabel="Error",
-  xscale=:log10, yscale=:log10,ylim=(1e-7,1e3),xlim=(1e3,10e5), legend=:best,title="Error in fifth Eigenfunction")
-Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/evec5errs.pdf")

@@ -136,7 +136,7 @@ end
 
 
 function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
-    
+
     JLD2.@load location Lon Lat Time UT VT
     # JLD version, requires more dependencies
     # vars = JLD.@load(location)
@@ -253,7 +253,7 @@ end
 
 function testDoubleGyre(tf=1.0)
     doubleGyreTestCase = makeDoubleGyreTestCase(tf)
-    referenceCtx = regularP2QuadrilateralGrid( (200,200), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
+    referenceCtx = regularP2TriangularGrid( (300,300), doubleGyreTestCase.LL,doubleGyreTestCase.UR)
     reference = experimentResult(doubleGyreTestCase,referenceCtx,:CG)
     result =  accuracyTest(doubleGyreTestCase, reference)
     return result
