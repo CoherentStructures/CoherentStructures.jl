@@ -77,29 +77,30 @@ function plot_u_eulerian(
     #
     # x1 = Float64[]
     # x2 = Float64[]
-    values = Float64[]
+    # values = Float64[]
     const u_values =  dof2U(ctx,dof_values)
-    x1 = linspace(LL[1], UR[1],nx)
+    x1 = linspace(LL[1],UR[1],nx)
     x2 = linspace(LL[2],UR[2],ny)
     if euler_to_lagrange_points == nothing
-        euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
-        @sync @parallel for i in eachindex(x1)
-            for j in eachindex(x2)
-                point = StaticArrays.SVector{2}(x1[i],x2[j])
-                try
-                    back = inverse_flow_map(point)
-                    euler_to_lagrange_points_raw[j,i,1] = back[1]
-                    euler_to_lagrange_points_raw[j,i,2] = back[2]
-                catch e
-                    if isa(e,InexactError)
-                        euler_to_lagrange_points_raw[j,i,1] = NaN
-                        euler_to_lagrange_points_raw[j,i,2] = NaN
-                    else
-                        throw(e)
-                    end
-                end
-            end
-        end
+        # euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
+        # @sync @parallel for i in eachindex(x1)
+        #     for j in eachindex(x2)
+        #         point = StaticArrays.SVector{2}(x1[i],x2[j])
+        #         try
+        #             back = inverse_flow_map(point)
+        #             euler_to_lagrange_points_raw[j,i,1] = back[1]
+        #             euler_to_lagrange_points_raw[j,i,2] = back[2]
+        #         catch e
+        #             if isa(e,InexactError)
+        #                 euler_to_lagrange_points_raw[j,i,1] = NaN
+        #                 euler_to_lagrange_points_raw[j,i,2] = NaN
+        #             else
+        #                 throw(e)
+        #             end
+        #         end
+        #     end
+        # end
+        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,x1,x2)
         euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
         for i in 1:nx, j in 1:ny
             euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
@@ -127,6 +128,28 @@ function plot_u_eulerian(
         return result, z
     end
     return result
+end
+
+function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
+    euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
+    @sync @parallel for i in eachindex(x1)
+        for j in eachindex(x2)
+            point = StaticArrays.SVector{2}(x1[i],x2[j])
+            try
+                back = inv_flow_map(point)
+                euler_to_lagrange_points_raw[j,i,1] = back[1]
+                euler_to_lagrange_points_raw[j,i,2] = back[2]
+            catch e
+                if isa(e,InexactError)
+                    euler_to_lagrange_points_raw[j,i,1] = NaN
+                    euler_to_lagrange_points_raw[j,i,2] = NaN
+                else
+                    throw(e)
+                end
+            end
+        end
+    end
+    return euler_to_lagrange_points_raw
 end
 
 function plot_spectrum(λ)
