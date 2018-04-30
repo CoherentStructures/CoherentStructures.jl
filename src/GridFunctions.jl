@@ -290,15 +290,15 @@ end
 
 #Constructor for regular 2D quadrilateral grids
 (::Type{gridContext{2}})(
-            ::Type{Quadrilateral},
+            ::Type{JuAFEM.Quadrilateral},
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=Tensors.Vec{2}([0.0,0.0]),
             UR::AbstractVector=Tensors.Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order) =
 begin
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = generate_grid(Quadrilateral,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
-    loc = regularGridLocator{Quadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    grid = generate_grid(JuAFEM.Quadrilateral,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    loc = regularGridLocator{JuAFEM.Quadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
     ip = Lagrange{2, RefCube, 1}()
     dh = DofHandler(grid)
     qr = QuadratureRule{2, RefCube}(quadrature_order)
@@ -318,7 +318,7 @@ function regularQuadrilateralGrid(
             UR::AbstractVector=Tensors.Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
-    return gridContext{2}(Quadrilateral,numnodes, LL,UR,quadrature_order=quadrature_order)
+    return gridContext{2}(JuAFEM.Quadrilateral,numnodes, LL,UR,quadrature_order=quadrature_order)
 end
 
 
@@ -539,7 +539,7 @@ function locatePoint(loc::regularGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid,
     return
 end
 
-function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regularGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
