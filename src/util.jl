@@ -19,12 +19,12 @@ be solved without having to call the ODE solver multiple times.
 end
 
 # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
-@inline @inbounds function arraymap(u::StaticVector{8,Float64},p,t::Float64, odefun::Function)::SVector{8,Float64}
-    p1::SVector{2,Float64} = odefun((@SVector Float64[u[1], u[2]]),p,t)
-    p2::SVector{2,Float64} = odefun((@SVector Float64[u[3], u[4]]),p,t)
-    p3::SVector{2,Float64} = odefun((@SVector Float64[u[5], u[6]]),p,t)
-    p4::SVector{2,Float64} = odefun((@SVector Float64[u[7], u[8]]),p,t)
-    @SVector [p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2]]
+@inline @inbounds function arraymap(u::StaticVector{8,Float64},p,t::Float64, odefun::Function)::StaticArrays.SVector{8,Float64}
+    p1::StaticArrays.SVector{2,Float64} = odefun((@SVector Float64[u[1], u[2]]),p,t)
+    p2::StaticArrays.SVector{2,Float64} = odefun((@SVector Float64[u[3], u[4]]),p,t)
+    p3::StaticArrays.SVector{2,Float64} = odefun((@SVector Float64[u[5], u[6]]),p,t)
+    p4::StaticArrays.SVector{2,Float64} = odefun((@SVector Float64[u[7], u[8]]),p,t)
+    StaticArrays.@SVector [p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2]]
 end
 
 """
