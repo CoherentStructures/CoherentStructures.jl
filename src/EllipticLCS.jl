@@ -1,6 +1,6 @@
 # (c) 2018 Daniel Karrasch
 
-using Contour, Distances#, Roots, Tensors #NLsolve, Interpolations,
+# using Contour, Distances#, Roots, Tensors #NLsolve, Interpolations,
 
 function singularity_location_detection(Σ::AbstractMatrix,
                                         xspan::AbstractVector{T},
