@@ -1,7 +1,7 @@
 using JuAFEM
 
-Id = one(SymmetricTensor{2,2})
-function tensorIdentity(x::Vec{2},i::Int,p)
+Id = one(Tensors.SymmetricTensor{2,2})
+function tensorIdentity(x::Tensors.Vec{2},i::Int,p)
     return Id
 end
 
@@ -34,9 +34,9 @@ function assembleStiffnessMatrix{dim}(
     A_type::Int = 0 #What type of function A is.
     if A == tensorIdentity
         A_type = 3
-    elseif !isempty(methods(A,(Vec{dim},)))
+    elseif !isempty(methods(A,(Tensors.Vec{dim},)))
         A_type = 0
-    elseif !isempty(methods(A,(Vec{dim},Int,Any)))
+    elseif !isempty(methods(A,(Tensors.Vec{dim},Int,Any)))
         A_type = 1
     elseif !isempty(methods(A,(Vector{Float64},)))
         A_type = 2
@@ -45,7 +45,7 @@ function assembleStiffnessMatrix{dim}(
     end
 
     #Note: the Float64,3 part below is important! otherwise the method becomes 30x slower
-    Aqcoords::SymmetricTensor{2,2,Float64,3} = zero(SymmetricTensor{2,2})
+    Aqcoords::Tensors.SymmetricTensor{2,2,Float64,3} = zero(Tensors.SymmetricTensor{2,2})
     @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
         fill!(Ke,0)
         JuAFEM.reinit!(cv,cell)
@@ -155,7 +155,7 @@ function getQuadPoints{dim}(ctx::gridContext{dim})
     dh::DofHandler{dim} = ctx.dh
     dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
     dofs = zeros(Int, ndofs_per_cell(dh))
-    result = Vec{dim,Float64}[]
+    result = Tensors.Vec{dim,Float64}[]
 
     const n::Int = getnbasefunctions(cv)         # number of basis functions
     @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
