@@ -1,17 +1,17 @@
 module CoherentStructures
 
-    using StaticArrays
-    using Tensors
-    using DiffEqBase, OrdinaryDiffEq
+    import StaticArrays
+    import Tensors
+    import DiffEqBase, OrdinaryDiffEq
     #using ForwardDiff # TODO: check if we really need it
-    using Interpolations
+    import Interpolations
 
 
     import GeometricalPredicates
     import VoronoiDelaunay
     #import JLD2
 
-    using JuAFEM
+    import JuAFEM
 
 
     #Contains a list of functions being exported
@@ -54,7 +54,7 @@ module CoherentStructures
    # include("numericalExperiments.jl")
 
    #Plotting
-   using Plots
+   import using Plots
    include("plotting.jl")
 
    #Solving Advection/Diffusion Equation
