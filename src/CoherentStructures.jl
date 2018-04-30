@@ -54,7 +54,7 @@ module CoherentStructures
    # include("numericalExperiments.jl")
 
    #Plotting
-   import using Plots
+   import Plots
    include("plotting.jl")
 
    #Solving Advection/Diffusion Equation
