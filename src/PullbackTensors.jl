@@ -165,7 +165,7 @@ function pullback_tensors(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             kwargs...
         ) where {T <: Real}  # TODO: add dim for 3D
 
@@ -201,7 +201,7 @@ function pullback_metric_tensor(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            G::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            G::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
@@ -233,7 +233,7 @@ function pullback_diffusion_tensor(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             kwargs...
         ) where {T <: Real} # TODO: add dim for 3D
 
@@ -262,7 +262,7 @@ function pullback_diffusion_tensor_function(
 
     DF .= inv.(DF)
     tlen = length(tspan)
-    result = SymmetricTensor{2,2,Float64,3}[]
+    result = Tensors.SymmetricTensor{2,2,Float64,3}[]
     sizehint!(result,tlen)
     for i in 1:tlen
 	    push!(result,symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i])))
@@ -313,7 +313,7 @@ function pullback_tensors_geo(
             u::AbstractArray{T,1},
             tspan::AbstractVector{T},
             δ::T;
-            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             tolerance::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
@@ -336,7 +336,7 @@ function pullback_metric_tensor_geo(
             u::AbstractArray{T,1},
             tspan::AbstractVector{T},
             δ::T;
-            G::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            G::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             tolerance::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
@@ -357,7 +357,7 @@ function pullback_diffusion_tensor_geo(
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+                D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
                 tolerance::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()
@@ -377,7 +377,7 @@ function pullback_SDE_diffusion_tensor_geo(
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+                D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
                 tolerance::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()
