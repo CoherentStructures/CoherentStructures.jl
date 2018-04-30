@@ -2,7 +2,7 @@
 
 These methods rely on the theory outlined by Froyland's [*Dynamical Laplacian*]
 (http://arxiv.org/pdf/1411.7186v4.pdf)
-and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrash & Keller.
+and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrasch & Keller.
 
 This involves the discretization of an averaged heat_flow operator of the form:
 
