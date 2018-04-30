@@ -3,6 +3,7 @@ module CoherentStructures
     import StaticArrays
     import Tensors
     import DiffEqBase, OrdinaryDiffEq
+    import Contour, Distances
     #using ForwardDiff # TODO: check if we really need it
     import Interpolations
 
