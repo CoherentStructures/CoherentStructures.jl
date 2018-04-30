@@ -91,8 +91,8 @@ end
 
 
 #Unit Vectors in R^2
-e1 = Tensors.basevec(Vec{2},1)
-e2 = Tensors.basevec(Vec{2},2)
+e1 = Tensors.basevec(Tensors.Vec{2},1)
+e2 = Tensors.basevec(Tensors.Vec{2},2)
 
 
 
