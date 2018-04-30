@@ -127,11 +127,11 @@ end
 #Constructor for grids created with delaunay triangulations.
 #It has to be defined like this as otherwise julia complains that 2 is not a type
 (::Type{gridContext{2}})(
-            ::Type{Triangle},
+            ::Type{JuAFEM.Triangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order) =
 begin
-        grid,loc = generate_grid(Triangle,node_list)
+        grid,loc = generate_grid(JuAFEM.Triangle,node_list)
         ip = Lagrange{2, RefTetrahedron, 1}()
         dh = DofHandler(grid)
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
@@ -157,7 +157,7 @@ function regularDelaunayGrid(
             push!(node_list,Tensors.Vec{2}([x0,x1]))
         end
     end
-    result = gridContext{2}(Triangle,node_list, quadrature_order=quadrature_order)
+    result = gridContext{2}(JuAFEM.Triangle,node_list, quadrature_order=quadrature_order)
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
     result.gridType = "regular Delaunay grid"
@@ -165,11 +165,11 @@ function regularDelaunayGrid(
 end
 
 (::Type{gridContext{2}})(
-            ::Type{QuadraticTriangle},
+            ::Type{JuAFEM.QuadraticTriangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order) =
 begin
-        grid,loc = generate_grid(QuadraticTriangle,node_list)
+        grid,loc = generate_grid(JuAFEM.QuadraticTriangle,node_list)
         ip = Lagrange{2, RefTetrahedron, 2}()
         dh = DofHandler(grid)
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
@@ -193,7 +193,7 @@ function regularP2DelaunayGrid(
             push!(node_list,Tensors.Vec{2}([x0,x1]))
         end
     end
-    result = gridContext{2}(QuadraticTriangle,node_list, quadrature_order=quadrature_order)
+    result = gridContext{2}(JuAFEM.QuadraticTriangle,node_list, quadrature_order=quadrature_order)
     #TODO: Think about what values would be sensible for the two variables below
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2]]
@@ -203,12 +203,12 @@ end
 
 
 #Constructor for regular 2D triangular grids (without delaunay)
-( ::Type{gridContext{2}})(::Type{Triangle},
+( ::Type{gridContext{2}})(::Type{JuAFEM.Triangle},
                          numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Tensors.Vec{2}([0.0,0.0]),UR::AbstractVector=Tensors.Vec{2}([1.0,1.0]);
                          quadrature_order::Int=default_quadrature_order) = begin
         #The -1 below is needed because JuAFEM internally then goes on to increment it
-        grid = generate_grid(Triangle,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL),Tensors.Vec{2}(UR) )
-        loc = regularGridLocator{Triangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+        grid = generate_grid(JuAFEM.Triangle,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL),Tensors.Vec{2}(UR) )
+        loc = regularGridLocator{JuAFEM.Triangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
         ip = Lagrange{2, RefTetrahedron, 1}()
         dh = DofHandler(grid)
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
@@ -223,17 +223,17 @@ end
 
 #Creates a regular grid on a rectangle with Triangles but without delaunay Triangulation
 function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Tensors.Vec{2}([0.0,0.0]),UR::AbstractVector=Tensors.Vec{2}([1.0,1.0]);quadrature_order::Int=default_quadrature_order)
-    return gridContext{2}(Triangle,numnodes, LL,UR,quadrature_order=quadrature_order)
+    return gridContext{2}(JuAFEM.Triangle,numnodes, LL,UR,quadrature_order=quadrature_order)
 end
 
 
 #Constructor for regular P2-Lagrange 2D triangular grids (without delaunay)
-(::Type{gridContext{2}})(::Type{QuadraticTriangle},
+(::Type{gridContext{2}})(::Type{JuAFEM.QuadraticTriangle},
                          numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=Tensors.Vec{2}([0.0,0.0]),UR::AbstractVector=Tensors.Vec{2}([1.0,1.0]);
                          quadrature_order::Int=default_quadrature_order) = begin
         #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = generate_grid(QuadraticTriangle,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL), Tensors.Vec{2}(UR ))
-    loc = regularGridLocator{QuadraticTriangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    grid = generate_grid(JuAFEM.QuadraticTriangle,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL), Tensors.Vec{2}(UR ))
+    loc = regularGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
     ip = Lagrange{2, RefTetrahedron, 2}()
     dh = DofHandler(grid)
     qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
@@ -252,7 +252,7 @@ function regularP2TriangularGrid(
             UR::AbstractVector=Tensors.Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
-    return gridContext{2}(QuadraticTriangle,numnodes, LL,UR,quadrature_order=quadrature_order)
+    return gridContext{2}(JuAFEM.QuadraticTriangle,numnodes, LL,UR,quadrature_order=quadrature_order)
 end
 
 #Constructor for regular P2-Lagrange 2D quadrilateral grids
@@ -503,7 +503,7 @@ struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     LL::Tensors.Vec{2}
     UR::Tensors.Vec{2}
 end
-function locatePoint(loc::regularGridLocator{Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regularGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -567,7 +567,7 @@ function locatePoint(loc::regularGridLocator{Quadrilateral},grid::JuAFEM.Grid, x
 end
 
 #Same principle as for Triangle type above
-function locatePoint(loc::regularGridLocator{QuadraticTriangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticTriangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -643,22 +643,22 @@ end
 
 
 
-function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
+function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
     tess,m,scale_x,scale_y,minx,miny = delaunay2(nodes_in)
     nodes = Node{2,Float64}[]
     for node_coords in  nodes_in
         push!(nodes,Node(node_coords))
     end
-    cells = Triangle[]
+    cells = JuAFEM.Triangle[]
     for tri in tess
         J = (nodes_in[tri._b.id] - nodes_in[tri._a.id]) ⊗ e1
         J +=  (nodes_in[tri._c.id] - nodes_in[tri._a.id]) ⊗ e2
         detJ = det(J)
         @assert det(J) != 0
         if detJ > 0
-            new_tri  = Triangle((tri._a.id,tri._b.id,tri._c.id))
+            new_tri  = JuAFEM.Triangle((tri._a.id,tri._b.id,tri._c.id))
         else
-            new_tri  = Triangle((tri._a.id,tri._c.id,tri._b.id))
+            new_tri  = JuAFEM.Triangle((tri._a.id,tri._c.id,tri._b.id))
         end
         push!(cells, new_tri)
     end
@@ -670,7 +670,7 @@ function JuAFEM.generate_grid(::Type{Triangle}, nodes_in::Vector{Tensors.Vec{2,F
     return grid, locator
 end
 
-function JuAFEM.generate_grid(::Type{QuadraticTriangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
+function JuAFEM.generate_grid(::Type{JuAFEM.QuadraticTriangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
     tess,m,scale_x,scale_y,minx,miny = delaunay2(nodes_in)
     locator = p2DelaunayCellLocator(m,scale_x,scale_y,minx,miny,tess)
     nodes = Node{2,Float64}[]
@@ -682,7 +682,7 @@ function JuAFEM.generate_grid(::Type{QuadraticTriangle}, nodes_in::Vector{Tensor
     ctr = n #As we add nodes (for edge vertices), increment the ctr...
 
     centerNodes = spzeros(n,n)
-    cells = QuadraticTriangle[]
+    cells = JuAFEM.QuadraticTriangle[]
     for tri_id in 1:m
         tri = tess._trigs[locator.internal_triangles[tri_id]]
 
@@ -716,9 +716,9 @@ function JuAFEM.generate_grid(::Type{QuadraticTriangle}, nodes_in::Vector{Tensor
 
         @assert det(J) != 0
         if detJ > 0
-            new_tri  = QuadraticTriangle((tri._a.id,tri._b.id,tri._c.id,ab,bc,ac))
+            new_tri  = JuAFEM.QuadraticTriangle((tri._a.id,tri._b.id,tri._c.id,ab,bc,ac))
         else
-            new_tri  = QuadraticTriangle((tri._a.id,tri._c.id,tri._b.id,ac,bc,ab))
+            new_tri  = JuAFEM.QuadraticTriangle((tri._a.id,tri._c.id,tri._b.id,ac,bc,ab))
         end
         push!(cells, new_tri)
     end
