@@ -50,7 +50,7 @@ function flow(
        return sol.u
    elseif num_args == 3
 
-       sprob = OrdinaryDiffEq.ODEProblem(rhs,(@SVector T[u0[1],u0[2]]), (tspan[1],tspan[end]), p)
+       sprob = OrdinaryDiffEq.ODEProblem(rhs,(StaticArrays.@SVector T[u0[1],u0[2]]), (tspan[1],tspan[end]), p)
        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
                              save_everystep=false, dense=false,
                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
@@ -105,7 +105,7 @@ Currently assumes dim=2
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
-        sstencil::SVector{8,Float64} = @SVector [x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ]
+        sstencil::StaticArrays.SVector{8,Float64} = StaticArrays.@SVector [x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ]
         srhs = (u,p,t) -> arraymap(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
