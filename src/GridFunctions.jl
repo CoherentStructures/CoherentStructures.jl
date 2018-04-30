@@ -257,15 +257,15 @@ end
 
 #Constructor for regular P2-Lagrange 2D quadrilateral grids
 (::Type{gridContext{2}})(
-            ::Type{QuadraticQuadrilateral},
+            ::Type{JuAFEM.QuadraticQuadrilateral},
             numnodes::Tuple{Int,Int}=(25,25),
             LL::Tensors.Vec{2}=Tensors.Vec{2}([0.0,0.0]),
             UR::Tensors.Vec{2}=Tensors.Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order) =
 begin
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = generate_grid(QuadraticQuadrilateral,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL), Tensors.Vec{2}(UR) )
-    loc = regularGridLocator{QuadraticQuadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    grid = generate_grid(JuAFEM.QuadraticQuadrilateral,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL), Tensors.Vec{2}(UR) )
+    loc = regularGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
     ip = Lagrange{2, RefCube, 2}()
     dh = DofHandler(grid)
     qr = QuadratureRule{2, RefCube}(quadrature_order)
@@ -284,7 +284,7 @@ function regularP2QuadrilateralGrid(
             UR::AbstractVector{Float64}=Tensors.Vec{2}([1.0,1.0]);
             quadrature_order::Int=default_quadrature_order
         )
-    return gridContext{2}(QuadraticQuadrilateral,numnodes, Tensors.Vec{2}(LL),Tensors.Vec{2}(UR),quadrature_order=quadrature_order)
+    return gridContext{2}(JuAFEM.QuadraticQuadrilateral,numnodes, Tensors.Vec{2}(LL),Tensors.Vec{2}(UR),quadrature_order=quadrature_order)
 end
 
 
@@ -609,7 +609,7 @@ function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticTriangle},grid::JuA
 end
 
 
-function locatePoint(loc::regularGridLocator{QuadraticQuadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticQuadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
