@@ -256,7 +256,7 @@ function eulerian_video_fast(ctx, u::Function,
 	    Plots.display(res[end])
 	end
     end
-    return @animate for p in res
+    return Plots.@animate for p in res
         p
     end
 end
