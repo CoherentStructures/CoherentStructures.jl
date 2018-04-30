@@ -1,5 +1,5 @@
 export
-	#PullbackTensors.jl
+	#pullbacktensors.jl
 	flow,
 	ad_flow,
 	linearized_flow,
@@ -10,7 +10,7 @@ export
 	pullback_diffusion_tensor_function,
 	pullback_SDE_diffusion_tensor,
 
-	#velocityFields.jl
+	#velocityfields.jl
 	rot_double_gyre!,
 	rot_double_gyre,
 	transientGyresEqVari!,
@@ -21,8 +21,8 @@ export
 	bickleyJetEqVari,
 	interpolateVF,
 	interpolateVFPeriodic,
-	
-	#EllipticLCS.jl
+
+	#ellipticLCS.jl
 	singularity_location_detection,
 	singularity_type_detection,
 	detect_elliptic_region,
@@ -31,7 +31,7 @@ export
 	compute_outermost_closed_orbit,
 	ellipticLCS,
 
-	#GridFunctions.jl
+	#gridfunctions.jl
 	regularTriangularGrid,
 	regularDelaunayGrid,
 	regularP2TriangularGrid,
