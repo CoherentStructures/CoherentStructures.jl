@@ -1,17 +1,16 @@
 module CoherentStructures
 
-    using StaticArrays
-    using Tensors
-    using DiffEqBase, OrdinaryDiffEq
-    #using ForwardDiff # TODO: check if we really need it
-    using Interpolations
-
+    import StaticArrays
+    import Tensors
+    import DiffEqBase, OrdinaryDiffEq
+    import Contour, Distances, NearestNeighbors
+    import Interpolations
+    import LinearMaps
 
     import GeometricalPredicates
     import VoronoiDelaunay
-    #import JLD2
 
-    using JuAFEM
+    import JuAFEM
 
 
     #Contains a list of functions being exported
@@ -24,13 +23,13 @@ module CoherentStructures
     include("util.jl")
 
     ##Functions related to pulling back tensors
-    include("PullbackTensors.jl")
-    
+    include("pullbacktensors.jl")
+
     ##Functions related to geodesic elliptic LCS detection
-    include("EllipticLCS.jl")
+    include("ellipticLCS.jl")
 
     ##Definitions of velocity fields
-    include("velocityFields.jl")
+    include("velocityfields.jl")
 
     ##Extensions to JuAFEM dealing with non-curved grids
     ##Support for evaluating functions at grid points, delaunay Triangulations
@@ -41,7 +40,7 @@ module CoherentStructures
 
     abstract type cellLocator end
 
-    include("GridFunctions.jl")
+    include("gridfunctions.jl")
 
     #Creation of Stiffness and Mass-matrices
     include("FEMassembly.jl")
@@ -54,7 +53,7 @@ module CoherentStructures
    # include("numericalExperiments.jl")
 
    #Plotting
-   using Plots
+   import Plots
    include("plotting.jl")
 
    #Solving Advection/Diffusion Equation

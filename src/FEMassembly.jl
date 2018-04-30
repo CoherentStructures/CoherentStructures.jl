@@ -1,7 +1,7 @@
-using JuAFEM
+JFM = JuAFEM
 
-Id = one(SymmetricTensor{2,2})
-function tensorIdentity(x::Vec{2},i::Int,p)
+Id = one(Tensors.SymmetricTensor{2,2})
+function tensorIdentity(x::Tensors.Vec{2},i::Int,p)
     return Id
 end
 
@@ -23,20 +23,20 @@ function assembleStiffnessMatrix{dim}(
         p=nothing;
         bdata=boundaryData() #Default to natural BCs
         )
-    cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
-    dh::DofHandler{dim} = ctx.dh
-    K::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
-    a_K::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = start_assemble(K)
-    dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
-    n::Int64 = getnbasefunctions(cv)         # number of basis functions
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
+    dh::JFM.DofHandler{dim} = ctx.dh
+    K::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
+    a_K::JFM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(K)
+    dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
+    n::Int64 = JFM.getnbasefunctions(cv)         # number of basis functions
     Ke::Array{Float64,2} = zeros(n,n)
     index::Int = 1 #Counter to know the number of the current quadrature point
     A_type::Int = 0 #What type of function A is.
     if A == tensorIdentity
         A_type = 3
-    elseif !isempty(methods(A,(Vec{dim},)))
+    elseif !isempty(methods(A,(Tensors.Vec{dim},)))
         A_type = 0
-    elseif !isempty(methods(A,(Vec{dim},Int,Any)))
+    elseif !isempty(methods(A,(Tensors.Vec{dim},Int,Any)))
         A_type = 1
     elseif !isempty(methods(A,(Vector{Float64},)))
         A_type = 2
@@ -45,10 +45,10 @@ function assembleStiffnessMatrix{dim}(
     end
 
     #Note: the Float64,3 part below is important! otherwise the method becomes 30x slower
-    Aqcoords::SymmetricTensor{2,2,Float64,3} = zero(SymmetricTensor{2,2})
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
+    Aqcoords::Tensors.SymmetricTensor{2,2,Float64,3} = zero(Tensors.SymmetricTensor{2,2})
+    @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         fill!(Ke,0)
-        JuAFEM.reinit!(cv,cell)
+        JFM.reinit!(cv,cell)
         for q in 1:getnquadpoints(cv) # loop over quadrature points
             if A_type == 0
                 Aqcoords = A(ctx.quadrature_points[index])
@@ -59,11 +59,11 @@ function assembleStiffnessMatrix{dim}(
             elseif A_type == 3
                 Aqcoords = Id
             end
-            const dΩ::Float64 = getdetJdV(cv,q) * ctx.mass_weights[index]
+            const dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
-                const ∇φ::Vec{2} = shape_gradient(cv,q,i)
+                const ∇φ::Tensors.Vec{2} = JFM.shape_gradient(cv,q,i)
                 for j in 1:(i-1)
-                    const ∇ψ::Vec{2} = shape_gradient(cv,q,j)
+                    const ∇ψ::Tensors.Vec{2} = JFM.shape_gradient(cv,q,j)
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
 
@@ -72,8 +72,8 @@ function assembleStiffnessMatrix{dim}(
             end
             index += 1
         end
-        celldofs!(dofs, cell)
-        assemble!(a_K, dofs, Ke)
+        JFM.celldofs!(dofs, cell)
+        JFM.assemble!(a_K, dofs, Ke)
     end
     return applyBCS(ctx,K,bdata)
 end
@@ -100,24 +100,24 @@ function assembleMassMatrix{dim}(
         bdata=boundaryData(),
         lumped=false,
         )
-    cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
-    dh::DofHandler{dim} = ctx.dh
-    M::SparseMatrixCSC{Float64,Int64} = create_sparsity_pattern(dh)
-    a_M::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = start_assemble(M)
-    dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
-    n::Int64 = getnbasefunctions(cv)         # number of basis functions
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
+    dh::JFM.DofHandler{dim} = ctx.dh
+    M::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
+    a_M::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(M)
+    dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
+    n::Int64 = JFM.getnbasefunctions(cv)         # number of basis functions
     Me::Array{Float64,2} = zeros(n,n)   # Local stiffness and mass matrix
     index::Int = 1
 
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
+    @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         fill!(Me,0)
-        JuAFEM.reinit!(cv,cell)
-        for q in 1:getnquadpoints(cv) # loop over quadrature points
-            const dΩ::Float64 = getdetJdV(cv,q)*ctx.mass_weights[index]
+        JFM.reinit!(cv,cell)
+        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
+            const dΩ::Float64 = JFM.getdetJdV(cv,q)*ctx.mass_weights[index]
             for i in 1:n
-                const φ::Float64 = shape_value(cv,q,i)
+                const φ::Float64 = JFM.shape_value(cv,q,i)
                 for j in 1:(i-1)
-                    const ψ::Float64 = shape_value(cv,q,j)
+                    const ψ::Float64 = JFM.shape_value(cv,q,j)
                     const scalprod::Float64 = (φ ⋅ ψ) * dΩ
                     Me[i,j] += scalprod
                     Me[j,i] += scalprod
@@ -126,8 +126,8 @@ function assembleMassMatrix{dim}(
             end
             index += 1
         end
-        celldofs!(dofs, cell)
-        assemble!(a_M, dofs, Me)
+        JFM.celldofs!(dofs, cell)
+        JFM.assemble!(a_M, dofs, Me)
     end
 
     M = applyBCS(ctx,M,bdata)
@@ -151,23 +151,23 @@ Compute the coordinates of all quadrature points on a grid.
 Helper function.
 """
 function getQuadPoints{dim}(ctx::gridContext{dim})
-    cv::CellScalarValues{dim} = CellScalarValues(ctx.qr, ctx.ip)
-    dh::DofHandler{dim} = ctx.dh
-    dofs::Vector{Int} = zeros(Int, ndofs_per_cell(dh))
-    dofs = zeros(Int, ndofs_per_cell(dh))
-    result = Vec{dim,Float64}[]
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
+    dh::JFM.DofHandler{dim} = ctx.dh
+    dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
+    dofs = zeros(Int, JFM.ndofs_per_cell(dh))
+    result = Tensors.Vec{dim,Float64}[]
 
-    const n::Int = getnbasefunctions(cv)         # number of basis functions
-    @inbounds for (cellcount, cell) in enumerate(CellIterator(dh))
+    const n::Int = JFM.getnbasefunctions(cv)         # number of basis functions
+    @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         JuAFEM.reinit!(cv,cell)
-        for q in 1:getnquadpoints(cv) # loop over quadrature points
-    	    q_coords = zero(Vec{dim})
+        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
+    	    q_coords = zero(Tensors.Vec{dim})
             for j in 1:n
                 q_coords +=cell.coords[j] * cv.M[j,q]
             end
             push!(result,q_coords)
         end
-        celldofs!(dofs, cell)
+        JFM.celldofs!(dofs, cell)
     end
     return result
 end

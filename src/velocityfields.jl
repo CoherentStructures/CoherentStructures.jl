@@ -1,4 +1,6 @@
-#velocityFields.jl from Daniel Karrasch
+#velocityfields.jl from Daniel Karrasch
+
+ITP = Interpolations
 
 #TODO: See if type specification actually helps, remove redundant vector fields,
 # rotating double gyre and Bickley jet can both be obtained from Alvaro's macro
@@ -169,31 +171,31 @@ function bickleyJetEqVari(u,p,t)
 end # r₀=6371e-3
 
 #TODO: Give variables a sensible type here
-function interpolateVF(xspan,yspan,tspan,u,v,interpolation_type=BSpline(Cubic(Free())))
+function interpolateVF(xspan,yspan,tspan,u,v,interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))
     # convert arrays into linspace-form for interpolation
     const X = linspace(minimum(xspan),maximum(xspan),length(xspan))
     const Y = linspace(minimum(yspan),maximum(yspan),length(yspan))
     const T = linspace(minimum(tspan),maximum(tspan),length(tspan))
 
-    ui = Interpolations.interpolate(u,interpolation_type,OnGrid())
-    UI = Interpolations.scale(ui,X,Y,T)
+    ui = ITP.interpolate(u,interpolation_type,ITP.OnGrid())
+    UI = ITP.scale(ui,X,Y,T)
     # UE = extrapolate(UI,(Linear(),Linear(),Flat()))
-    vi = Interpolations.interpolate(v,interpolation_type,OnGrid())
-    VI = Interpolations.scale(vi,X,Y,T)
+    vi = ITP.interpolate(v,interpolation_type,ITP.OnGrid())
+    VI = ITP.scale(vi,X,Y,T)
     # VE = extrapolate(VI,(Linear(),Linear(),Flat()))
     return UI,VI
 end
 
-function interpolateVFPeriodic(Lon,Lat,Time, UT, VT,interpolation_type=BSpline(Linear()))
+function interpolateVFPeriodic(Lon,Lat,Time, UT, VT,interpolation_type=ITP.BSpline(ITP.Linear()))
     # convert arrays into linspace-form for interpolation
     const lon = linspace(minimum(Lon),maximum(Lon),length(Lon))
     const lat = linspace(minimum(Lat),maximum(Lat),length(Lat))
     const time = linspace(minimum(Time),maximum(Time),length(Time))
-    UI = Interpolations.interpolate(UT,interpolation_type,OnGrid())
-    UI = Interpolations.scale(UI,lon,lat,time)
-    UE = extrapolate(UI,(Periodic(),Periodic(),Flat()))
-    VI = Interpolations.interpolate(VT,interpolation_type,OnGrid())
-    VI = Interpolations.scale(VI,lon,lat,time)
-    VE = extrapolate(VI,(Periodic(),Periodic(),Flat()))
+    UI = ITP.interpolate(UT,interpolation_type,ITP.OnGrid())
+    UI = ITP.scale(UI,lon,lat,time)
+    UE = ITP.extrapolate(UI,(ITP.Periodic(),ITP.Periodic(),ITP.Flat()))
+    VI = ITP.interpolate(VT,interpolation_type,ITP.OnGrid())
+    VI = ITP.scale(VI,lon,lat,time)
+    VE = ITP.extrapolate(VI,(ITP.Periodic(),ITP.Periodic(),ITP.Flat()))
     return UE,VE
 end

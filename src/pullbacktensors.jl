@@ -50,7 +50,7 @@ function flow(
        return sol.u
    elseif num_args == 3
 
-       sprob = OrdinaryDiffEq.ODEProblem(rhs,(@SVector T[u0[1],u0[2]]), (tspan[1],tspan[end]), p)
+       sprob = OrdinaryDiffEq.ODEProblem(rhs,StaticArrays.SVector{2}(u0[1],u0[2]), (tspan[1],tspan[end]), p)
        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
                              save_everystep=false, dense=false,
                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
@@ -93,32 +93,32 @@ Currently assumes dim=2
         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
 
-        result = Tensor{2,2,T,4}[]
+        result = Tensors.Tensor{2,2,T,4}[]
         sizehint!(result,num_tsteps)
         @inbounds for i in 1:num_tsteps
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensor{2,2,T}( (sol[i][1:4] - sol[i][5:8])/2δ))
+        	push!(result,Tensors.Tensor{2,2,T}( (sol[i][1:4] - sol[i][5:8])/2δ))
         end
-        return  result
+        return result
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
-        sstencil::SVector{8,Float64} = @SVector [x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ]
+        sstencil::StaticArrays.SVector{8,Float64} = StaticArrays.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
         srhs = (u,p,t) -> arraymap(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
 
-        sresult = Tensor{2,2,T,4}[]
+        sresult = Tensors.Tensor{2,2,T,4}[]
         sizehint!(sresult,num_tsteps)
         @inbounds for i in 1:num_tsteps
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(sresult,Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
+        	push!(sresult,Tensors.Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
         end
-        return  sresult
+        return sresult
     else
         error("odefun has invalid number of arguments")
     end
@@ -165,7 +165,7 @@ function pullback_tensors(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             kwargs...
         ) where {T <: Real}  # TODO: add dim for 3D
 
@@ -201,7 +201,7 @@ function pullback_metric_tensor(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            G::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            G::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             p = nothing,
             tolerance = 1.e-3,
             solver = OrdinaryDiffEq.BS5()
@@ -233,7 +233,7 @@ function pullback_diffusion_tensor(
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
             δ::Float64;
-            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             kwargs...
         ) where {T <: Real} # TODO: add dim for 3D
 
@@ -262,7 +262,7 @@ function pullback_diffusion_tensor_function(
 
     DF .= inv.(DF)
     tlen = length(tspan)
-    result = SymmetricTensor{2,2,Float64,3}[]
+    result = Tensors.SymmetricTensor{2,2,Float64,3}[]
     sizehint!(result,tlen)
     for i in 1:tlen
 	    push!(result,symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i])))
@@ -313,7 +313,7 @@ function pullback_tensors_geo(
             u::AbstractArray{T,1},
             tspan::AbstractVector{T},
             δ::T;
-            D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             tolerance::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
@@ -336,7 +336,7 @@ function pullback_metric_tensor_geo(
             u::AbstractArray{T,1},
             tspan::AbstractVector{T},
             δ::T;
-            G::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+            G::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
             tolerance::Float64=1e-3,
             p=nothing,
             solver=OrdinaryDiffEq.BS5()
@@ -357,7 +357,7 @@ function pullback_diffusion_tensor_geo(
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+                D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
                 tolerance::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()
@@ -377,7 +377,7 @@ function pullback_SDE_diffusion_tensor_geo(
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
                 δ::T;
-                D::SymmetricTensor{2,2,T,3}=one(SymmetricTensor{2,2,T,3}),
+                D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
                 tolerance::Float64=1e-3,
                 p=nothing,
                 solver=OrdinaryDiffEq.BS5()

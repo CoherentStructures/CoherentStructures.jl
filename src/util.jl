@@ -19,12 +19,12 @@ be solved without having to call the ODE solver multiple times.
 end
 
 # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
-@inline @inbounds function arraymap(u::StaticVector{8,Float64},p,t::Float64, odefun::Function)::SVector{8,Float64}
-    p1::SVector{2,Float64} = odefun((@SVector Float64[u[1], u[2]]),p,t)
-    p2::SVector{2,Float64} = odefun((@SVector Float64[u[3], u[4]]),p,t)
-    p3::SVector{2,Float64} = odefun((@SVector Float64[u[5], u[6]]),p,t)
-    p4::SVector{2,Float64} = odefun((@SVector Float64[u[7], u[8]]),p,t)
-    @SVector [p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2]]
+@inline @inbounds function arraymap(u::StaticArrays.SVector{8,Float64},p,t::Float64, odefun::Function)::StaticArrays.SVector{8,Float64}
+    p1::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[1], u[2]),p,t)
+    p2::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[3], u[4]),p,t)
+    p3::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[5], u[6]),p,t)
+    p4::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[7], u[8]),p,t)
+    StaticArrays.SVector{8}(p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2])
 end
 
 """
@@ -91,20 +91,20 @@ end
 
 
 #Unit Vectors in R^2
-e1 = basevec(Vec{2},1)
-e2 = basevec(Vec{2},2)
+e1 = Tensors.basevec(Tensors.Vec{2},1)
+e2 = Tensors.basevec(Tensors.Vec{2},2)
 
 
 
 
 function rawInvCGTensor(args...;kwargs...)
     result = invCGTensor(args...;kwargs...)
-    return result[1,1], result[1,2],result[2,2]
+    return result[1,1], result[1,2], result[2,2]
 end
 
 
 function AFromPrecomputedRaw(x,index,q)
-    @views return SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
+    @views return Tensors.SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
 end
 
 
@@ -120,7 +120,7 @@ end
 function interp_rhs(u,p,t)
     du1 = p[1][u[1],u[2],t]
     du2 = p[2][u[1],u[2],t]
-    return SVector{2}(du1, du2)
+    return StaticArrays.SVector{2}(du1, du2)
 end
 
 #Returns true for all inputs. This is the default function for inbounds checking in plot_ftle
