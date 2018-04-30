@@ -1,5 +1,4 @@
 using Documenter, CoherentStructures
-
 makedocs(
     format=:html,
     sitename="CoherentStructures.jl",
@@ -8,5 +7,6 @@ makedocs(
         "FEM-based methods" => "fem.md"
         "Dynamical Systems Utilities" => "util.md"
         "Examples" => "examples.md"
+        "API" => "api.md"
     ]
     )
