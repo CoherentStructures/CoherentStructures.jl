@@ -104,7 +104,7 @@ end
 
 
 function AFromPrecomputedRaw(x,index,q)
-    @views return SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
+    @views return Tensors.SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
 end
 
 
@@ -120,7 +120,7 @@ end
 function interp_rhs(u,p,t)
     du1 = p[1][u[1],u[2],t]
     du2 = p[2][u[1],u[2],t]
-    return SVector{2}(du1, du2)
+    return StaticArrays.SVector{2}(du1, du2)
 end
 
 #Returns true for all inputs. This is the default function for inbounds checking in plot_ftle
