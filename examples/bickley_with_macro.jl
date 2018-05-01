@@ -11,15 +11,12 @@ bickley = @makefields from stream begin
 
     re_sum_term =  Σ₁ + Σ₂ + Σ₃
 
-    Σ₁  =  ε₁ * cos(k₁*x - K₁*c₁*t)
-    Σ₂  =  ε₂ * cos(k₂*x - K₂*c₂*t)
-    Σ₃  =  ε₃ * cos(k₃*x - K₃*c₃*t)
+    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))
+    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))
+    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))
 
     k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀
 
-    lx  = 6.371e6π ; ly = 1.777e6
-
-    K₁ = 2π / lx   ; K₂ = 4π / lx ; K₃ = 6π / lx
     ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3
     c₁ = 0.1446U₀  ; c₂ = 0.205U₀ ; c₃ = 0.461U₀
 
