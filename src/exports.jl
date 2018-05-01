@@ -45,8 +45,10 @@ export
 	evaluate_function_from_nodevals,
 	locatePoint,
 	nodal_interpolation,
-	upsample2DBCS,
+	undoBCS,
 	getH,
+	boundaryData,
+	nDofs,
 
 	#plotting.jl
 	plot_u,

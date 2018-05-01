@@ -54,7 +54,7 @@ TODO: finish this, describe CG and TO-based approaches, supported elements and g
 
 The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
 This package is very low-level and does not provide point-location/plotting functions.
-To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid can be stored in an object of type `gridContext`. This includes the grid points, the qudarature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble stiffness matrices, and provides an interface for point-location and plotting.
+To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid can be stored in an object of type `gridContext`. This includes the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble stiffness matrices, and provides an interface for point-location and plotting.
 
 In this documentation, the variable name `ctx` is exclusively used for objects of this type.
 
@@ -86,5 +86,36 @@ For more details, consult the API: [`evaluate_function_from_dofvals`](@ref), [`e
 
 ## Boundary Conditions
 
+To use something other than the natural homogeneous von Neumann boundary conditions, the `CoherentStructures.boundaryData` type can be used. This currently supports combinations of homogeneous Dirichlet and periodic boundary conditions.
+ - Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass matrices to be deleted
+ - Periodic boundary conditions require rows and columns of the stiffness/mass matrices to be added to each other.
+
+ This means that the coefficient vectors for elements of the approximation space that satisfy the boundary conditions are potentially smaller and in a different order. Given a `bdata` argument, functions like `plot_u` will take this into account.
+
+### Constructing Boundary Conditions
+
+Natural von-Neumann boundary conditions can be constructed with:
+`boundaryData()` and are generally the default
+
+Homogeneous Dirichlet boundary conditions can be constructed with the `getHomDBCS(ctx,[which="all"])` function. The optional `which` parameter is a vector of strings, corresponding to `JuAFEM` face-sets, e.g. `getHomDBCS(ctx,which=["left","right"])`
+
+Periodic boundary conditions are constructed by calling `boundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a function that should return `true` if and only if two points should be identified. Due to floating-point rounding errors, note that using exact comparisons (`==`) should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are considered. If this is too restrictive, use the `boundaryData(dbc_dofs, periodic_dofs_from,periodic_dofs_to)` constructor.
+
+TODO: Document that constructor, specficially what needs to be sorted.
+
+### Example
+
+Here we apply Homogeneous DBC to top and bottom, and identify the left and right side:
+```@example 1
+
+ctx = regularQuadrilateralGrid((10,10))
+predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%1.0) < 1e-10)
+bdata = boundaryData(ctx,predicate,["top","bottom"])
+u = ones(nDofs(ctx,bdata))
+u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
+plot_u(ctx,u,200,200,bdata=bdata,colorbar=:none)
+```
+
+To apply boundary conditions to a stiffness/mass matrix, use the `applyBCS` function. Note that `assembleStiffnessMatrix` and `assembleMassMatrix` take a `bdata` argument that does this internally.
 
 ## Plotting

@@ -760,7 +760,7 @@ mutable struct boundaryData
         assert(issorted(periodic_dofs_from))
         return new(dbc_dofs, periodic_dofs_from,periodic_dofs_to)
     end
-    function boundaryData{dim}(ctx::gridContext{dim},predicate::Function,which_dbc="all")
+    function boundaryData{dim}(ctx::gridContext{dim},predicate::Function,which_dbc=[])
         dbcs = getHomDBCS(ctx,which_dbc).dbc_dofs
         from, to = identifyPoints(ctx,predicate)
         return boundaryData(dbcs,from,to)
@@ -852,6 +852,11 @@ function BCTable{dim}(ctx::gridContext{dim},bdata::boundaryData)
         correspondsTo[j] =  correspondsTo[jnew]
     end
     return correspondsTo
+end
+
+#TODO: Make this more efficient
+function nDofs{dim}(ctx::gridContext{dim},bdata::boundaryData)
+    return length(unique(BCTable(ctx,bdata)))
 end
 
 function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
