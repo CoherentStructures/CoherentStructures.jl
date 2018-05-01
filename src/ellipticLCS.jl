@@ -1,81 +1,125 @@
 # (c) 2018 Daniel Karrasch
 
-# using Contour, Distances#, Roots, Tensors #NLsolve, Interpolations,
+ITP = Interpolations
 
-function singularity_location_detection(Σ::AbstractMatrix,
-                                        xspan::AbstractVector{T},
-                                        yspan::AbstractVector{T}) where T
+"""
+    ``singularity_location_detection(T,xspan,yspan)``
+Detects tensor singularities of the tensor field ``T``, given as a matrix of
+``SymmetricTensor{2,2}``. ``xspan`` and ``yspan`` correspond to the uniform
+grid vectors over which ``T`` is given. Returns a list of static 2-vectors.
+"""
+function singularity_location_detection(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
+                                        xspan::AbstractVector{S},
+                                        yspan::AbstractVector{S}) where S
 
-    z1 = [c[1]-c[4] for c in Σ]
-    z2 = [c[2] for c in Σ]
+    z1 = [c[1]-c[4] for c in T]
+    z2 = [c[2] for c in T]
     zdiff = z1-z2
-    C = Contour.contours(xspan,yspan,zdiff,[0.])
-    cl = levels(contours(xspan,yspan,zdiff,[0.]))[1]
-    itp = Interpolations.interpolate(z1,Interpolations.BSpline(Interpolations.Linear()),Interpolations.OnGrid())
-    sitp = Interpolations.scale(itp, xspan, yspan)
+    # C = Contour.contours(xspan,yspan,zdiff,[0.])
+    cl = Contour.levels(Contour.contours(xspan,yspan,zdiff,[0.]))[1]
+    itp = ITP.interpolate(z1,ITP.BSpline(ITP.Linear()),ITP.OnGrid())
+    sitp = ITP.scale(itp, xspan, yspan)
     Xs = Float64[]; Ys = Float64[]
-    for line in lines(cl)
-        xL, yL = coordinates(line)
+    for line in Contour.lines(cl)
+        xL, yL = Contour.coordinates(line)
         zL = [sitp[xL[i],yL[i]] for i in eachindex(xL,yL)]
         ind = find(zL[1:end-1].*zL[2:end].<=0.)
         Xs = append!(Xs,xL[ind]+( xL[ind+1]-xL[ind] ).*( 0-zL[ind] )./( zL[ind+1]-zL[ind] ));
         Ys = append!(Ys,yL[ind]+( yL[ind+1]-yL[ind] ).*( 0-zL[ind] )./( zL[ind+1]-zL[ind] ));
     end
-    return [StaticArrays.SVector{2,T}(Xs[i], Ys[i]) for i in eachindex(Xs,Ys)]
+    return [StaticArrays.SVector{2,S}(Xs[i], Ys[i]) for i in eachindex(Xs,Ys)]
 end
 
-function singularity_type_detection(singularity::StaticArrays.SVector{2,T},
-                                    ξrad,
-                                    radius::Float64) where T
+"""
+    ``singularity_type_detection(singularity,T,radius,xspan,yspan)``
+Determines the singularity type of the singularity candidate ``singularity``
+by querying the tensor eigenvector field of ``T`` in a circle of radius ``radius``
+around the singularity. ``xspan`` and ``yspan`` correspond to the computational grid.
+Returns ``1`` for a trisector, ``-1`` for a wedge, and ``0`` otherwise.
+"""
+
+function singularity_type_detection(singularity::StaticArrays.SVector{2,S},
+                                    ξ::ITP.ScaledInterpolation,
+                                    radius::Float64) where S
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
-    circle = [StaticArrays.SVector{2,T}(radius*cos(t), radius*sin(t)) for t in linspace(-π,π,Ntheta)]
+    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in linspace(-π,π,Ntheta)]
     pnts = [singularity+c for c in circle]
-    radVals = [ξrad[p[1],p[2]] for p in pnts]
-    SingularityType = 0
+    radVals = [ξ[p[1],p[2]] for p in pnts]
+    singularity_type = 0
     if (sum(diff(radVals).<0)/Ntheta>0.62)
-        SingularityType =  1  # trisector
+        singularity_type =  1  # trisector
     elseif (sum(diff(radVals).>0)/Ntheta>0.62)
-        SingularityType =  -1  # wedge
+        singularity_type =  -1  # wedge
     end
-    return SingularityType
+    return singularity_type
 end
 
-function detect_elliptic_region(singularities::Vector{StaticArrays.SVector{2,T}},
-                                singularityTypes::Vector{Int},
+"""
+    detect_elliptic_region(singularities,
+                            singularityTypes,
+                            MaxWedgeDist,
+                            MinWedgeDist,
+                            Min2ndDist)
+
+Determines candidate regions for closed tensor line orbits.
+   * ``singularities``: list of all singularities
+   * ``singularityTypes``: list of corresponding singularity types
+   * ``MaxWedgeDist``: maximum distance to closest wedge
+   * ``MinWedgeDist``: minimal distance to closest wedge
+   * ``Min2ndDist``: minimal distance to second closest wedge
+
+Returns a list of vortex centers.
+"""
+
+function detect_elliptic_region(singularities::Vector{StaticArrays.SVector{2,S}},
+                                singularity_types::Vector{Int},
                                 MaxWedgeDist::Float64,
                                 MinWedgeDist::Float64,
-                                Min2ndDist::Float64) where T <: Number
+                                Min2ndDist::Float64) where S <: Number
 
-    indWedges = find(singularityTypes.==-1.)
-    wedgeDist = pairwise(Euclidean(0),hcat(singularities[singularityTypes.==-1.]...))
+    indWedges = find(singularity_types .== -1)
+    wedgeDist = Distances.pairwise(Distances.Euclidean(),hcat(singularities[indWedges]...))
     idx = zeros(Int64,size(wedgeDist,1),2)
     pairs = Vector{Int64}[]
     for i=1:size(wedgeDist,1)
         idx = selectperm(wedgeDist[i,:],2:3)
-        if (wedgeDist[i,idx[1]]<MaxWedgeDist && wedgeDist[i,idx[1]]>MinWedgeDist && wedgeDist[i,idx[2]]>Min2ndDist)
+        if (wedgeDist[i,idx[1]]<=MaxWedgeDist && wedgeDist[i,idx[1]]>=MinWedgeDist && wedgeDist[i,idx[2]]>=Min2ndDist)
             push!(pairs,[i, idx[1]])
         end
     end
     pairind = indexin(pairs,flipdim.(pairs,1))
-    vortexCenters = StaticArrays.SVector{2,T}[]
+    vortexCenters = StaticArrays.SVector{2,S}[]
     for p in pairind
         if p!=0
-            push!(vortexCenters,StaticArrays.SVector{2,T}(mean(singularities[indWedges[pairs[p]]])...))
+            push!(vortexCenters,StaticArrays.SVector{2,S}(mean(singularities[indWedges[pairs[p]]])...))
         end
     end
     return unique(vortexCenters)
 end
 
-function set_Poincaré_section(vc::StaticArrays.SVector{2,T},
-                                pLength::Float64,
-                                numSeeds::Int) where T <: Real
+"""
+    set_Poincaré_section(vc,p_length,n_seeds)
 
-    pSection = [vc]::Vector{StaticArrays.SVector{2,T}}
-    ex = StaticArrays.SVector{2,T}(1., 0.)
-    pspan = linspace(vc+.2*pLength*ex,vc+pLength*ex,numSeeds)
-    append!(pSection,pspan)
-    return pSection[all.([p.<=[xmax, ymax] for p in pSection]).*all.([p.>=[xmin, ymin] for p in pSection])]
+Generates a horizontal Poincaré section, centered at the vortex center ``vc``
+of length ``p_length`` consisting of ``n_seeds`` starting at ``0.2*p_length``
+eastwards. All points are guaranteed to lie in the computational domain given
+by ``xspan`` and ``yspan``.
+"""
+
+function set_Poincaré_section(vc::StaticArrays.SVector{2,S},
+                                p_length::Float64,
+                                n_seeds::Int,
+                                xspan::AbstractVector{S},
+                                yspan::AbstractVector{S}) where S <: Real
+
+    xmin, xmax = extrema(xspan)
+    ymin, ymax = extrema(yspan)
+    p_section = [vc]::Vector{StaticArrays.SVector{2,S}}
+    ex = StaticArrays.SVector{2,S}(1., 0.)
+    pspan = linspace(vc+.2*p_length*ex,vc+p_length*ex,n_seeds)
+    append!(p_section,pspan)
+    return p_section[all.([p.<=[xmax, ymax] for p in p_section]).*all.([p.>=[xmin, ymin] for p in p_section])]
 end
 
 function compute_returning_orbit(calT::Float64,
@@ -88,17 +132,14 @@ function compute_returning_orbit(calT::Float64,
                                  xspan::AbstractVector{T},
                                  yspan::AbstractVector{T}) where T <: Real
 
-    # println(calT)
-    # println(seed)
-    # println(s)
     α = real.(sqrt.(Complex.((λ₂-calT)./(λ₂-λ₁))))
     β = real.(sqrt.(Complex.((calT-λ₁)./(λ₂-λ₁))))
     isposdef(s) ?
         η = α.*ξ₁ + β.*ξ₂ :
         η = α.*ξ₁ - β.*ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
-    ηitp = Interpolations.interpolate(η,Interpolations.BSpline(Interpolations.Linear()),Interpolations.OnGrid())
-    ηsitp = Interpolations.scale(ηitp,xspan,yspan)
+    ηitp = ITP.interpolate(η,ITP.BSpline(ITP.Linear()),ITP.OnGrid())
+    ηsitp = ITP.scale(ηitp,xspan,yspan)
     function ηfield(u,p,t)
         field = ηsitp[u[1],u[2]]
         du1 = field[1]
@@ -172,24 +213,25 @@ function bisection(f, a::T, b::T, tol::Float64=1.e-4, maxiter::Integer=15) where
     return c
 end
 
-function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,T}},
-                                        λ₁::Matrix{T},
-                                        λ₂::Matrix{T},
-                                        ξ₁::Matrix{Tensors.Tensor{1,2,T,2}},
-                                        ξ₂::Matrix{Tensors.Tensor{1,2,T,2}},
-                                        l1itp::Interpolations.ScaledInterpolation,
-                                        l2itp::Interpolations.ScaledInterpolation,
-                                        xspan::AbstractVector{T},
-                                        yspan::AbstractVector{T};
+function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,S}},
+                                        T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
+                                        xspan::AbstractVector{S},
+                                        yspan::AbstractVector{S};
                                         calTmin::Float64 = .7,
-                                        calTmax::Float64 = 1.3) where T <: Real
+                                        calTmax::Float64 = 1.3) where S <: Real
+
+    λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
+    l1itp = ITP.scale(ITP.interpolate(λ₁,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
+                        xspan,yspan)
+    l2itp = ITP.scale(ITP.interpolate(λ₂,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
+                        xspan,yspan)
 
     # for computational tractability, pre-orient the eigenvector fields
     const Ω = Tensors.Tensor{2,2}([0.,-1.,1.,0.])
-    relP = [Tensors.Tensor{1,2}(p .- pSection[1]) for p in P]
+    relP = [Tensors.Tensor{1,2}([x, y] .- pSection[1]) for x in xspan, y in yspan]
     n = [Ω⋅dx for dx in relP]
-    ξ₁ = sign.(n.⋅ξ₁).*ξ₁
-    ξ₂ = sign.(relP.⋅ξ₂).*ξ₂
+    ξ₁ .= sign.(n.⋅ξ₁).*ξ₁
+    ξ₂ .= sign.(relP.⋅ξ₂).*ξ₂
 
     # go along the Poincaré section and solve for T
     # first, define a nonlinear root finding problem
@@ -255,14 +297,11 @@ function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,
     end
 end
 
+"""
+    ellipticLCS(T,xspan,yspan,p)
+"""
+
 function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
-                        λ₁::Matrix{S},
-                        λ₂::Matrix{S},
-                        ξ₁::Matrix{Tensors.Tensor{1,2,S,2}},
-                        ξ₂::Matrix{Tensors.Tensor{1,2,S,2}},
-                        l1itp::Interpolations.ScaledInterpolation,
-                        l2itp::Interpolations.ScaledInterpolation,
-                        ξraditp::Interpolations.ScaledInterpolation,
                         xspan::AbstractVector{S},
                         yspan::AbstractVector{S},
                         p) where S <: Real
@@ -270,11 +309,28 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
     # unpack parameters
     radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, pLength, numSeeds = p
 
+    # @everywhere begin
+    #     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
+    #     l1itp = ITP.scale(ITP.interpolate(λ₁,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
+    #                         xspan,yspan)
+    #     l2itp = ITP.scale(ITP.interpolate(λ₂,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
+    #                         xspan,yspan)
+    #     ξrad = atan.([v[2]./v[1] for v in ξ₁])
+    #     ξraditp = ITP.scale(ITP.interpolate(ξrad,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
+    #                         xspan,yspan)
+    # end
+
     singularities = singularity_location_detection(T,xspan,yspan)
-    singularityTypes = map(s->singularity_type_detection(s,ξraditp,radius),singularities)
-    vortexCenters = detect_elliptic_region(singularities,singularityTypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
-    Psection = map(vc -> set_Poincaré_section(vc,pLength,numSeeds),vortexCenters)
-    @everywhere coco(ps) = compute_outermost_closed_orbit(ps,λ₁,λ₂,ξ₁,ξ₂,l1itp,l2itp,xspan,yspan)
-    @time OCC = pmap(coco,Psection)
-    return OCC
+    ξ = [eigvecs(t)[:,1] for t in T]
+    ξrad = atan.([v[2]./v[1] for v in ξ])
+    ξraditp = ITP.scale(ITP.interpolate(ξrad,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
+                                                        xspan,yspan)
+    singularitytypes = map(s->singularity_type_detection(s,ξraditp,radius),singularities)
+    vortexcenters = detect_elliptic_region(singularities,singularitytypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
+    p_section = map(vc -> set_Poincaré_section(vc,pLength,numSeeds,xspan,yspan),vortexcenters)
+    @everywhere @eval p_section = $p_section
+    @time closedorbits = pmap(p_section) do ps
+        compute_outermost_closed_orbit(ps,T,xspan,yspan)
+    end
+    return closedorbits
 end
