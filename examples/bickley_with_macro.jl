@@ -47,7 +47,6 @@ Plots.heatmap(
     linspace(xmin,xmax,200),linspace(ymin,ymax,200), (x,y) -> difference(x,y,40*3600*24.0)
     )
 
-cgfun = (x -> mean(pullback_diffusion_tensor(field, x,linspace(0.0,40*3600*24,81),
 cgfun = (x -> mean_diff_tensor(field, x,linspace(0.0,40*3600*24,81),
      1.e-8,tolerance=1.e-4)))
 
