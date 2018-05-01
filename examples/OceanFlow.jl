@@ -1,8 +1,8 @@
 #OceanFlow.jl - based on code from Daniel Karrasch
+nprocs() == 1 && addprocs()
 
 @everywhere begin
     using CoherentStructures
-    using Tensors
     using JLD2
     JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
@@ -12,10 +12,10 @@
     LL = [-4.0,-34.0]
     UR = [6.0,-28.0]
     UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
-    p=(UI,VI)
+    p = (UI,VI)
     ctx = regularDelaunayGrid((100,60),LL,UR,quadrature_order=2)
 
-    ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
+    # ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
     times = [t_initial,t_final]
 end
 
@@ -25,36 +25,13 @@ end
 @everywhere mdt(x) = mean_diff_tensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p)
 @time As = [mdt(x) for x in ctx.quadrature_points]
 @time As = pmap(mdt,ctx.quadrature_points)
-
-As_shared = SharedArray{Float64}(3*length(ctx.quadrature_points))
-@time @sync @parallel for index in 1:length(ctx.quadrature_points)
-    x = ctx.quadrature_points[index]
-    t1,t2,t3,t4 = mdt(x)
-    As_shared[3*(index-1) + 1] = t1
-    As_shared[3*(index-1) + 2] = t2
-    As_shared[3*(index-1) + 3] = t4
-end
-
-As = SymmetricTensor{2,2,Float64,3}[]
-for index in 1:length(ctx.quadrature_points)
-    t1 = As_shared[3*(index-1) + 1]
-    t2 = As_shared[3*(index-1) + 2]
-    t3 = As_shared[3*(index-1) + 3]
-    push!(As,SymmetricTensor{2,2,Float64,3}((t1,t2,t3)))
-end
-
-@everywhere mpbt(x) = mean(pullback_diffusion_tensor(interp_rhs, x,times, 1.e-8,tolerance=1.e-5,p=p))
-@time As = [mpbt(x) for x in ctx.quadrature_points]
-@time As = pmap(mpbt,ctx.quadrature_points)
+@time As = parallel_tensor(mdt,ctx.quadrature_points)
 
 # now the mutating
 @everywhere mdt!(x) = mean_diff_tensor(interp_rhs!, x,times, 1.e-8,tolerance=1.e-5,p=p)
 @time As = [mdt!(x) for x in ctx.quadrature_points]
 @time As = pmap(mdt!,ctx.quadrature_points)
-
-@everywhere mpbt!(x) = mean(pullback_diffusion_tensor(interp_rhs!, x,times, 1.e-8,tolerance=1.e-5,p=p))
-@time As = [mpbt!(x) for x in ctx.quadrature_points]
-@time As = pmap(mpbt!,ctx.quadrature_points)
+@time As = parallel_tensor(mdt!,ctx.quadrature_points)
 ######### end of comparison
 
 mean_As = As

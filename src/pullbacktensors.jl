@@ -128,6 +128,20 @@ Currently assumes dim=2
 
 end
 
+function parallel_tensor(tensor_fun::Function,P::AbstractArray{T,N}) where T where N
+
+    T_shared = SharedArray{Float64}(3,length(P))
+    @sync @parallel for index in eachindex(P)
+        T_shared[:,index] = tensor_fun(P[index])[[1,2,4]]
+    end
+
+    Tfield = Array{Tensors.SymmetricTensor{2,2,Float64,3}}(size(P))
+    for index in eachindex(P)
+        Tfield[index] = Tensors.SymmetricTensor{2,2}(T_shared[:,index])
+    end
+    return Tfield
+end
+
 """
     mean_diff_tensor(odefun, u, tspan, δ; tolerance, p)
 
