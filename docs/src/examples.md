@@ -1,3 +1,11 @@
-# Examples
+# Test Cases
 
-# Rotating double gyre
+## Rotating Double Gyre
+
+## Bickely Jet
+
+## Geostrophic Ocean Flow
+
+## Standard Map
+
+TODO: Finish this

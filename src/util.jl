@@ -47,12 +47,12 @@ end
 
 
 """
-    dof2U(ctx,u)
+    dof2node(ctx,u)
 
 Interprets `u` as an array of coefficients ordered in dof order,
 and reorders them to be in node order.
 """
-function dof2U(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
+function dof2node(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
    n = ctx.n
    res = fill(0.0,getnnodes(ctx.grid))
    for node in 1:n

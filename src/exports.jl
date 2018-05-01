@@ -40,7 +40,7 @@ export
 	regularP2QuadrilateralGrid,
 	regularGrid,
 	evaluate_function_from_dofvals,
-	evaluate_function_from_u,
+	evaluate_function_from_nodevals,
 	locatePoint,
 	nodal_interpolation,
 	upsample2DBCS,
@@ -71,7 +71,7 @@ export
 
 	#util.jl
 	tensor_invariants,
-	dof2U,
+	dof2node,
 	kmeansresult2LCS,
 	interp_rhs,
 	interp_rhs!,

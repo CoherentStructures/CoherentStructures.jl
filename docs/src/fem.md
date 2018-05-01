@@ -25,7 +25,7 @@ K = assembleStiffnessMatrix(ctx,A)
 M = assembleMassMatrix(ctx)
 λ, v = eigs(-K,M,which=:SM);
 ```
-Here we have a time-dependent velocity field that describes the rotating double gyre dynamical system, this velocity field is given by the `rot_double_gyre` function. The second argument to `mean_diff_tensor` are the times at which we average the pullback diffusion tensors. The third parameter is the δ used for the finite-difference scheme, `tolerance` is passed to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)` approximates the mean diffusion tensor given by
+Here we have a time-dependent velocity field that describes the [Rotating Double Gyre](@ref) dynamical system, this velocity field is given by the `rot_double_gyre` function. The second argument to `mean_diff_tensor` are the times at which we average the pullback diffusion tensors. The third parameter is the δ used for the finite-difference scheme, `tolerance` is passed to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)` approximates the mean diffusion tensor given by
 
 $A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}$
 
@@ -39,7 +39,7 @@ Looking at the spectrum, there seems to be a gap after the third eigenvalue:
 ```@example 1
 Plots.scatter(range(1,6), real.(λ))
 ```
-We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package to compute coherent structures from the first two non-trivial eigenvalues:
+We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package to compute coherent structures from the first two nontrivial eigenfunctions:
 ```@example 1
 using Clustering
 numclusters=2
@@ -48,15 +48,19 @@ u = kmeansresult2LCS(res)
 Plots.plot([plot_u(ctx,u[:,i],200,200,color=:viridis) for i in [1,2,3]]...)
 
 ```
-## The `gridContext` type
+## Features
+TODO: finish this, describe CG and TO-based approaches, supported elements and grids, etc...
+## The `gridContext` Type
 
 The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
 This package is very low-level and does not provide point-location/plotting functions.
-To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid can be stored in an object of type `gridContext`, which also provides an interface for point-location and plotting.
+To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid can be stored in an object of type `gridContext`. This includes the grid points, the qudarature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble stiffness matrices, and provides an interface for point-location and plotting.
 
 In this documentation, the variable name `ctx` is exclusively used for objects of this type.
 
 Details regarding the internals of this type can ben found in the API section, it is in general easier not to worry about these but to simply treat the type as an abstraction representing a grid.
+
+See also [`CoherentStructures.gridContext`](@ref)
 
 ### Node ordering and dof ordering
 
@@ -67,12 +71,20 @@ The nodes of the grid can be obtained in the following way `[n.x for n in ctx.gr
 However, most of the methods of this package do _not_ return results in this order, but instead
 use `JuAFEM.jl`'s dof-ordering.
 
-TODO: describe how to convert between the orderings
+See also the documentation in [`dof2node`](@ref) and [`CoherentStructures.gridContext`](@ref)
 
+## Evaluating Functions in the Approximation Space
+
+given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_nodevals` or `evaluate_function_from_dofvals` functions.
+```@example 1
+ctx = regularP2TriangularGrid((10,10))
+u = zeros(ctx.n)
+u[45] = 1.0
+Plots.heatmap(linspace(0,1,200),linspace(0,1,200), (x,y)->evaluate_function_from_nodevals(ctx,u,[x,y]))
+```
+For more details, consult the API: [`evaluate_function_from_dofvals`](@ref), [`evaluate_function_from_nodevals`](@ref)
 
 ## Boundary Conditions
 
 
-TODO: Finish this
-
-##Plotting
+## Plotting
