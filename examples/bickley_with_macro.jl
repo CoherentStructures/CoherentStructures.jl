@@ -48,6 +48,7 @@ Plots.heatmap(
     )
 
 cgfun = (x -> mean(pullback_diffusion_tensor(field, x,linspace(0.0,40*3600*24,81),
+cgfun = (x -> mean_diff_tensor(field, x,linspace(0.0,40*3600*24,81),
      1.e-8,tolerance=1.e-4)))
 
 #cgfun = (x -> mean(pullback_diffusion_tensor(bickleyJet!, x,linspace(0.0,40*3600*24,81),
