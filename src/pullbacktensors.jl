@@ -150,8 +150,28 @@ Derivatives are computed with finite differences.
     return mean(dott.(inv.(linearized_flow(odefun,u,tspan,δ;kwargs...))))
 end
 
+"""`CG_tensor(odefun, u, tspan, δ; tolerance, p)`
+
+Returns the classic right Cauchy--Green strain tensor.
+Derivatives are computed with finite differences.
+
+  -`odefun` is the RHS of an ODE
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
+  -`kwargs` are passed to `linearized_flow`
 """
-    pullback_tensors(odefun, u, tspan, δ; D, kwargs...)
+@inline function CG_tensor(
+            odefun,
+            u::T,
+            tspan::AbstractVector{Float64},
+            δ::Float64;
+            kwargs...
+        ) where T
+    return tdot(linearized_flow(odefun,u,[tspan[1],tspan[end]],δ;kwargs...)[end])
+end
+
+"""`pullback_tensors(odefun, u, tspan, δ; D, kwargs...)`
 
 Returns the time-resolved pullback tensors of both the diffusion and
 the metric tensor along a trajectory.
@@ -202,7 +222,7 @@ Derivatives are computed with finite differences.
   -`kwargs` are passed through to `linearized_flow`
 """
 
-function pullback_metric_tensor(
+@inline function pullback_metric_tensor(
             odefun,
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
@@ -235,7 +255,7 @@ Derivatives are computed with finite differences.
   -`kwargs` are passed through to `linearized_flow`
 """
 
-function pullback_diffusion_tensor(
+@inline function pullback_diffusion_tensor(
             odefun,
             u::AbstractArray{T,1},
             tspan::AbstractVector{Float64},
@@ -292,7 +312,7 @@ Derivatives are computed with finite differences.
   -`kwargs` are passed through to `linearized_flow`
 """
 
-function pullback_SDE_diffusion_tensor(
+@inline function pullback_SDE_diffusion_tensor(
                 odefun,
                 u::AbstractVector{T},
                 tspan::AbstractVector{T},
@@ -306,6 +326,41 @@ function pullback_SDE_diffusion_tensor(
         DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
     DF .= inv.(DF)
     return [df ⋅ B for df in DF]
+end
+
+"""`transport_tensor(odefun, u, tspan, δ; G, kwargs...)`
+
+Returns the transport tensor of a trajectory,
+aka  time-averaged, di usivity-structure-weighted version of
+the classic right Cauchy–Green strain tensor.
+Derivatives are computed with finite differences.
+
+  -`odefun` is the RHS of an ODE, can be mutating or not, then it should return
+    a StaticVector
+  -`u` the initial value of the ODE
+  -`tspan` set of time instances at which to save the trajectory
+  -`δ` is the stencil width for the finite differences
+  -`D` is the (constant) diffusivity-structure tensor
+  -`kwargs` are passed through to `linearized_flow`
+"""
+
+function av_weighted_CG_tensor(
+            odefun,
+            u::AbstractArray{T,1},
+            tspan::AbstractVector{Float64},
+            δ::Float64;
+            D::Tensors.SymmetricTensor{2,2,T,3}=one(Tensors.SymmetricTensor{2,2,T,3}),
+            p = nothing,
+            tolerance = 1.e-3,
+            solver = OrdinaryDiffEq.BS5()
+        ) where {T <: Real} # TODO: add dim for 3D
+
+    G = inv(D)
+    iszero(δ) ?
+        DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
+        DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
+
+    return det(D)*mean([symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
 end
 
 function met2deg(u::AbstractVector{T}) where T <: Real

@@ -4,11 +4,13 @@ export
 	ad_flow,
 	linearized_flow,
 	mean_diff_tensor,
+	CG_tensor,
 	pullback_tensors,
 	pullback_metric_tensor,
 	pullback_diffusion_tensor,
 	pullback_diffusion_tensor_function,
 	pullback_SDE_diffusion_tensor,
+	av_weighted_CG_tensor,
 
 	#velocityfields.jl
 	rot_double_gyre!,
