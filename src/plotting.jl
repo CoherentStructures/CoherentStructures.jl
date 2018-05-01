@@ -78,7 +78,7 @@ function plot_u_eulerian(
     # x1 = Float64[]
     # x2 = Float64[]
     # values = Float64[]
-    const u_values =  dof2U(ctx,dof_values)
+    const u_values =  dof2node(ctx,dof_values)
     x1 = linspace(LL[1],UR[1],nx)
     x2 = linspace(LL[2],UR[2],ny)
     if euler_to_lagrange_points == nothing
@@ -115,7 +115,7 @@ function plot_u_eulerian(
         if isnan((euler_to_lagrange_points[I])[1])
             z[I] = NaN
         else
-            z[I] = evaluate_function_from_nodevals(ctx,euler_to_lagrange_points[I],u_values,NaN)
+            z[I] = evaluate_function_from_nodevals(ctx,u_values,euler_to_lagrange_points[I],NaN)
         end
     end
 
@@ -162,7 +162,7 @@ end
 
 
 function eulerian_videos(ctx, us::Function,inverse_flow_map_t,t0,tf, nx, ny,nt, LL, UR,num_videos=1;extra_kwargs_fun=nothing,kwargs...)
-    allvideos = [Animation() for i in 1:num_videos]
+    allvideos = [Plots.Animation() for i in 1:num_videos]
 
     for (index,t) in enumerate(linspace(t0,tf,nt))
     	print("Processing frame $index")
@@ -183,7 +183,7 @@ function eulerian_videos(ctx, us::Function,inverse_flow_map_t,t0,tf, nx, ny,nt, 
         end
         tmpres = pmap(plotsingleframe, 1:num_videos)
         for i in 1:num_videos
-    	    frame(allvideos[i],tmpres[i])
+    	    Plots.frame(allvideos[i],tmpres[i])
     	end
     end;
     return allvideos
@@ -230,8 +230,8 @@ function eulerian_video_fast(ctx, u::Function,
     times = linspace(t0,tf,nt)
     x1p = [p[1] for p in allpoints]
     x2p = [p[2] for p in allpoints]
-    ut = dof2U(ctx,corrected_u(t0))
-    val = [evaluate_function_from_nodevals(ctx,[p[1],p[2]],ut) for p in allpoints]
+    ut = dof2node(ctx,corrected_u(t0))
+    val = [evaluate_function_from_nodevals(ctx,ut,[p[1],p[2]]) for p in allpoints]
     #
     res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
         xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
@@ -244,8 +244,8 @@ function eulerian_video_fast(ctx, u::Function,
         allpoints = [forward_flow_map(times[t], times[t+1],p) for p in allpoints]
         x1p = [p[1] for p in allpoints]
         x2p = [p[2] for p in allpoints]
-        ut = dof2U(ctx,corrected_u(times[t+1]))
-        val = [evaluate_function_from_nodevals(ctx,p,ut) for p in allpoints_initial]
+        ut = dof2node(ctx,corrected_u(times[t+1]))
+        val = [evaluate_function_from_nodevals(ctx,ut,p) for p in allpoints_initial]
         push!(res,
             Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
                 xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,

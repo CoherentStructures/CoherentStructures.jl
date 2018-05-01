@@ -5,8 +5,7 @@ makedocs(
     pages = [
         "Home" => "index.md"
         "FEM-based methods" => "fem.md"
-        "Dynamical Systems Utilities" => "util.md"
-        "Examples" => "examples.md"
+        "Test Cases" => "examples.md"
         "API" => "api.md"
     ]
     )

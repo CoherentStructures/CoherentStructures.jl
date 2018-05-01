@@ -12,7 +12,7 @@ VD = VoronoiDelaunay
 const default_quadrature_order=5
 
 """
-    struct gridContext
+    struct gridContext<dim>
 
 Storing everything needed as "context" to be able to work on a FEM grid based on the `JuAFEM` package
 Adds a point-location API which makes it possible to plot functions defined on the grid within julia.
@@ -25,12 +25,12 @@ Currently only `dim==2` is implemented
 - `dof_to_node::Vector{Int}`  inverse of node_to_dof
 - `n::Int` number of nodes on the grid
 - `m::Int` number of elements (e.g. triangles,quadrilaterals, ...) on the grid
-- `quadrature_points::Vector{Vec{dim,Float64}} All quadrature points on the grid, in a fixed order.
+- `quadrature_points::Vector{Vec{dim,Float64}}` All quadrature points on the grid, in a fixed order.
 - `mass_weights::Vector{Float64}` Weighting for mass matrix
-- `spatialBounds' If available, the corners of a bounding box of a domain. For regular grids, the bounds are tight.
-- `numberOfPointsInEachDirection' For regular grids, how many (non-interior) nodes make up the regular grid.
+- `spatialBounds` If available, the corners of a bounding box of a domain. For regular grids, the bounds are tight.
+- `numberOfPointsInEachDirection` For regular grids, how many (non-interior) nodes make up the regular grid.
 - `gridType` A string describing what kind of grid this is (e.g. "regular triangular grid")
-
+# Constructors
 The easiest way of constructing a `gridContext` is with something like the `regularGrid` function.
 """
 mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set as mutable, is this sensible?
@@ -322,16 +322,24 @@ function regularQuadrilateralGrid(
 end
 
 
-#The locatePoint function returns a tuple (coords, [nodes])
-#where coords gives the coordinates within the reference shape (e.g. standard simplex)
-#And [nodes] is the list of corresponding node ids, ordered in the order of the
-#corresponding shape functions from JuAFEM's interpolation.jl file
-#Here we call the specialized locatePoint function for this kind of grid
+"""
+    locatePoint(ctx,x)
+Point location on grids.
+Returns a tuple (coords, [nodes])
+where coords gives the coordinates within the reference shape (e.g. standard simplex)
+And [nodes] is the list of corresponding node ids, ordered in the order of the
+corresponding shape functions from JuAFEM's interpolation.jl file.
+"""#TODO: could this be more efficient, etc.. with multiple dispatch?
 function locatePoint(ctx::gridContext{dim}, x::AbstractVector{Float64}) where dim
     return locatePoint(ctx.loc,ctx.grid,x)
 end
 
-function evaluate_function_from_nodevals(ctx::gridContext,x_in::AbstractVector{Float64},nodevals::Vector{Float64},outside_value=0.0,project_in=false)
+"""
+    evaluate_function_from_nodevals(ctx,nodevals,x_in; [outside_value=0,project_in=false])
+
+Like `evaluate_function_from_dofvals`, but the coefficients from `nodevals` are assumed to be in node order.
+"""
+function evaluate_function_from_nodevals(ctx::gridContext,nodevals::Vector{Float64},x_in::AbstractVector{Float64},outside_value=0.0,project_in=false)
     if !project_in
         x = Tensors.Vec{2,Float64}((x_in[1],x_in[2]))
     else
@@ -358,7 +366,15 @@ function evaluate_function_from_nodevals(ctx::gridContext,x_in::AbstractVector{F
 end
 
 
-function evaluate_function_from_dofvals(ctx::gridContext,x_in::AbstractVector{Float64},dofvals::Vector{Float64},outside_value=0.0,project_in=false)
+"""
+    evaluate_function_from_dofvals(ctx,dofvals,x_in; [outside_value=0,project_in=false])
+
+Evaluate a function in the approximation space at the point `x_in`. If `x_in` is out of points, return `outside_value`.
+If `project_in` is `true`, points not within `ctx.spatialBounds` are first projected into the domain.
+
+The coefficients in `nodevals` are interpreted to be in dof order.
+"""
+function evaluate_function_from_dofvals(ctx::gridContext,dofvals::Vector{Float64},x_in::AbstractVector{Float64},outside_value=0.0,project_in=false)
     if !project_in
         x = Tensors.Vec{2,Float64}((x_in[1],x_in[2]))
     else

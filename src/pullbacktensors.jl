@@ -6,7 +6,8 @@ const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
 
 
-"""function flow(rhs,  u0, tspan; tolerance, p, solver)
+"""
+    flow(rhs,  u0, tspan; tolerance, p, solver)
 
 Solve the ODE with right hand side given by `rhs` and initial value `u0`.
 `p` is a parameter passed to `rhs`.
@@ -61,6 +62,8 @@ function flow(
 end
 
 """
+    linearized_flow(odefun, x, tspan,δ; ...)
+
 Calculate derivative of flow map by finite differences.
 Currently assumes dim=2
 """
@@ -125,7 +128,8 @@ Currently assumes dim=2
 
 end
 
-"""`mean_diff_tensor(odefun, u, tspan, δ; tolerance, p)`
+"""
+    mean_diff_tensor(odefun, u, tspan, δ; tolerance, p)
 
 Returns the averaged diffusion tensor at a point along a set of times.
 Derivatives are computed with finite differences.
@@ -202,7 +206,8 @@ function pullback_tensors(
     return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
 end
 
-"""`pullback_metric_tensor(odefun, u, tspan, δ; G, kwargs...)`
+"""
+    pullback_metric_tensor(odefun, u, tspan, δ; G, kwargs...)
 
 Returns the time-resolved pullback tensors of the metric tensor along a trajectory,
 aka right Cauchy-Green strain tensor.
@@ -235,7 +240,8 @@ Derivatives are computed with finite differences.
     return [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
 end
 
-"""`pullback_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)`
+"""
+    pullback_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)
 
 Returns the time-resolved pullback tensors of the diffusion tensor along a trajectory.
 Derivatives are computed with finite differences.
@@ -291,7 +297,8 @@ function pullback_diffusion_tensor_function(
     return result
 end
 
-"""`pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)`
+"""
+    pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)
 
 Returns the time-resolved pullback tensors of the diffusion tensor in SDEs.
 Derivatives are computed with finite differences.

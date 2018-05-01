@@ -36,17 +36,31 @@ end
 xmin = 0.0; xmax = 6.371π; ymin = -3.; ymax = 3.0
 ctx = regularTriangularGrid((100,30),[xmin,ymin],[xmax,ymax],quadrature_order=1)
 field = bickley[:(du,u,p,t)]
-#function periodicField(du,u,p,t)
-#    return field(du,[u[1] % 6.371π,u[2]],p,t)
-#end
-#cgfun = (x -> mean(pullback_diffusion_tensor(periodicField, x,linspace(0.0,40*3600*24,81), 1.e-8,tolerance=1.e-4)))
-cgfun = (x -> mean(pullback_diffusion_tensor(field, x,linspace(0.0,40*3600*24,81), 1.e-8,tolerance=1.e-4)))
+
+p = (62.66e-6, 1770e-3, 9.058543015644972e-6, 1.28453e-5, 2.888626e-5,
+         0.0075, 0.15, 0.3, 0.31392246115209543, 0.6278449223041909, 0.9417673834562862)
+function difference(x,y,t)
+    du = [0.0,0.0]
+    bickleyJet!(du,[x,y],p,t)
+    du2 = [0.0,0.0]
+    field(du2,[x,y],p,t)
+    return norm(du-du2)
+end
+Plots.heatmap(
+    linspace(xmin,xmax,200),linspace(ymin,ymax,200), (x,y) -> difference(x,y,40*3600*24.0)
+    )
+
+cgfun = (x -> mean(pullback_diffusion_tensor(field, x,linspace(0.0,40*3600*24,81),
+     1.e-8,tolerance=1.e-4)))
+
+#cgfun = (x -> mean(pullback_diffusion_tensor(bickleyJet!, x,linspace(0.0,40*3600*24,81),
+#     1.e-8,tolerance=1.e-4,p=p)))
 predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%6.371π) < 1e-10)
 bdata = CoherentStructures.boundaryData(ctx,predicate,[])
 @time K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
 @time M = assembleMassMatrix(ctx,bdata=bdata)
 @time λ, v = eigs(K,M,which=:SM, nev= 10)
-plot_u(ctx,v[:,1],bdata=bdata)
+plot_u(ctx,v[:,4],bdata=bdata)
 
 for i in 1:10
     title = "Eigenvector with eigenvalue $(λ[i])"

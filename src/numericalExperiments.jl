@@ -99,7 +99,7 @@ end
 function sampleTo(u::Vector{Float64}, ctx_old::gridContext, ctx_new::gridContext)
     u_new::Vector{Float64} = zeros(ctx_new.n)*NaN
     for i in 1:ctx_new.n
-        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,ctx_new.grid.nodes[i].x,u,NaN,true)
+        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u,ctx_new.grid.nodes[i].x,NaN,true)
     end
     return u_new
 end
@@ -128,7 +128,7 @@ function getDiscreteInnerProduct(ctx1::gridContext, u1::Vector{Float64}, ctx2::g
     res = 0.0
     for x in linspace(ctx1.spatialBounds[1][1],ctx1.spatialBounds[2][1],nx)
         for y in linspace(ctx1.spatialBounds[1][2],ctx1.spatialBounds[2][2],ny)
-            res += evaluate_function_from_dofvals(ctx1,[x,y],u1,NaN) * evaluate_function_from_dofvals(ctx2,[x,y],u2,NaN)
+            res += evaluate_function_from_dofvals(ctx1,u1,[x,y],NaN) * evaluate_function_from_dofvals(ctx2,u2,[x,y],NaN)
         end
     end
     return  res/(nx*ny)

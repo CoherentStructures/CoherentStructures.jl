@@ -19,6 +19,7 @@ function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
             #TODO: Is using the Vec{2} type here slower than using Arrays?
             pointPullback = Vec{2}(min.(UR - 1e-10one2D, max.(LL + 1e-10*one2D, inverse_flow_map(current_point))))
             #TODO: Don't doo this pointwise, but pass whole vector to locatePoint
+            #TODO: can't I use evaluate_function here?
             local_coords, nodelist = locatePoint(ctx,pointPullback)
             for  (i,nodeid) in enumerate(nodelist)
                 result[jdof,ctx.node_to_dof[nodeid]] = JuAFEM.value(ctx.ip,i,local_coords)
