@@ -7,7 +7,9 @@ CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures 
 
 ## Installation
 
-To install, run the following in the Julia REPL:
+First install the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
+
+Then, run the following in the Julia REPL:
 
     Pkg.clone("git@gitlab.lrz.de:ga24guz/CoherentStructures.git")
 

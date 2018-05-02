@@ -54,11 +54,9 @@ TODO: finish this, describe CG and TO-based approaches, supported elements and g
 
 The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
 This package is very low-level and does not provide point-location/plotting functionality.
-To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid can be stored in an object of type `gridContext`. This includes the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble stiffness matrices, and provides an interface for point-location and plotting.
+To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a `gridContext` structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.
 
-In this documentation, the variable name `ctx` is exclusively used for objects of this type.
-
-Details regarding the internals of this type can ben found in the API section, it is in general easier not to worry about these but to simply treat the type as an abstraction representing a grid.
+In this documentation, the variable name `ctx` is exclusively used for `gridContext` objects.
 
 See also [Constructing Grids](@ref) in the [FEM-API](@ref) section.
 
@@ -73,7 +71,7 @@ use `JuAFEM.jl`'s dof-ordering.
 
 See also the documentation in [`dof2node`](@ref) and [`CoherentStructures.gridContext`](@ref)
 
-When working with (non-natural) boundary conditions, the ordering is further changed, as there will be less degrees of freedom in total. See also the documentation below.
+When working with (non-natural) [Boundary Conditions](@ref), the ordering is further changed, due to there being fewer degrees of freedom in total.
 
 ## Assembly
 
@@ -129,7 +127,7 @@ plot_u(ctx,u,200,200,bdata=bdata,colorbar=:none)
 
 To apply boundary conditions to a stiffness/mass matrix, use the `applyBCS` function. Note that `assembleStiffnessMatrix` and `assembleMassMatrix` take a `bdata` argument that does this internally.
 
-## Plotting
+## Plotting and Videos
 
 There are some helper functions that exist for making plots and videos of functions on grids. These rely on the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) library. Plotting recipes are unfortunately not implemented.
 
