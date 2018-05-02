@@ -127,3 +127,27 @@ end
 function always_true(x,y,p)
     return true
 end
+
+
+"""
+    getH(ctx)
+
+Return the mesh width of a regular grid.
+"""
+function getH(ctx::abstractGridContext)
+    supportedRegularGridTypes = ["regular triangular grid",
+                    "regular P2 triangular grid",
+                    "regular Delaunay grid",
+                    "regular P2 Delaunay grid",
+                    "regular quadrilateral grid",
+                    "regular P2 quadrilateral grid"]
+
+    if ctx.gridType ∉ supportedRegularGridTypes
+        error("Mesh width for this grid type not yet implemented")
+    end
+
+    hx = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
+    hy = (ctx.spatialBounds[2][2] - ctx.spatialBounds[1][2])/(ctx.numberOfPointsInEachDirection[1] - 1)
+
+    return sqrt(hx^2 + hy^2)
+end

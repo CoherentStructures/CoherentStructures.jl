@@ -60,7 +60,7 @@ In this documentation, the variable name `ctx` is exclusively used for objects o
 
 Details regarding the internals of this type can ben found in the API section, it is in general easier not to worry about these but to simply treat the type as an abstraction representing a grid.
 
-See also [`CoherentStructures.gridContext`](@ref)
+See also [Constructing Grids](@ref) in the [FEM-API](@ref) section.
 
 ### Node ordering and dof ordering
 
@@ -73,6 +73,12 @@ use `JuAFEM.jl`'s dof-ordering.
 
 See also the documentation in [`dof2node`](@ref) and [`CoherentStructures.gridContext`](@ref)
 
+When working with (non-natural) boundary conditions, the ordering is further changed, as there will be less degrees of freedom in total. See also the documentation below.
+
+## Assembly
+
+See [Stiffness and Mass Matrices](@ref) from the [API](@ref) section.
+
 ## Evaluating Functions in the Approximation Space
 
 given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_nodevals` or `evaluate_function_from_dofvals` functions.
@@ -83,6 +89,10 @@ u[45] = 1.0
 Plots.heatmap(linspace(0,1,200),linspace(0,1,200), (x,y)->evaluate_function_from_nodevals(ctx,u,[x,y]))
 ```
 For more details, consult the API: [`evaluate_function_from_dofvals`](@ref), [`evaluate_function_from_nodevals`](@ref)
+
+## Nodal Interpolation
+
+To perform nodal interpolation of a grid, use the [`nodal_interpolation`](@ref) function.
 
 ## Boundary Conditions
 
@@ -101,7 +111,8 @@ Homogeneous Dirichlet boundary conditions can be constructed with the `getHomDBC
 
 Periodic boundary conditions are constructed by calling `boundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a function that should return `true` if and only if two points should be identified. Due to floating-point rounding errors, note that using exact comparisons (`==`) should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are considered. If this is too restrictive, use the `boundaryData(dbc_dofs, periodic_dofs_from,periodic_dofs_to)` constructor.
 
-TODO: Document that constructor, specficially what needs to be sorted.
+For details, see [`boundaryData`](@ref)
+
 
 ### Example
 
@@ -119,3 +130,13 @@ plot_u(ctx,u,200,200,bdata=bdata,colorbar=:none)
 To apply boundary conditions to a stiffness/mass matrix, use the `applyBCS` function. Note that `assembleStiffnessMatrix` and `assembleMassMatrix` take a `bdata` argument that does this internally.
 
 ## Plotting
+
+There are some helper functions that exist for making plots and videos of functions on grids. These rely on the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) library. Plotting recipes are unfortunately not implemented.
+
+The simplest way to plot is using the [`plot_u`](@ref) function. Plots and videos of eulerian plots like `` f \circ \Phi^0_t `` can be made with the [`plot_u_eulerian`](@ref) and  [`eulerian_videos`](@ref) functions.
+
+## Parallelisation
+
+Many of the plotting functions support parallelism internally.
+Tensor fields can be constructed in parallel, and then passed to [`assembleStiffnessMatrix`](@ref). For an example that does this, see
+TODO: Add this example

@@ -46,9 +46,11 @@ export
 	locatePoint,
 	nodal_interpolation,
 	undoBCS,
-	getH,
+	applyBCS,
+	getHomDBCS,
 	boundaryData,
 	nDofs,
+	getDofCoordinates,
 
 	#plotting.jl
 	plot_u,
@@ -56,6 +58,8 @@ export
 	plot_real_spectrum,
 	plot_u_eulerian,
 	plot_ftle,
+	eulerian_videos,
+	eulerian_video,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,
@@ -79,6 +83,7 @@ export
 	kmeansresult2LCS,
 	interp_rhs,
 	interp_rhs!,
+	getH,
 
 	#advection_diffusion.jl
 	ADimplicitEulerStep,
