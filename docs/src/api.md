@@ -4,7 +4,6 @@
 ```@meta
 CurrentModule = CoherentStructures
 ```
-Test
 ```@docs
 flow
 ```
@@ -12,6 +11,8 @@ flow
 ```@docs
 linearized_flow
 ```
+
+TODO: add documentation for various pullback diffusion tensor functions, etc...
 
 ## FEM-API
 
