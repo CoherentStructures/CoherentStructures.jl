@@ -1,6 +1,9 @@
-""" perform all substitutions that are defined in `code` until
-    the resulting expression does not contain free variables.
-    variables can be bound by `knowns`
+"""
+    symbolic_substitutions(code::Expr, variable::Symbol, knowns = [])
+
+Perform all substitutions that are defined in `code` until
+the resulting expression does not contain free variables.
+`variables` can be bound by `knowns`.
 """
 symbolic_substitutions(code::Expr, variable::Symbol, knowns = []) = begin
     ex = quote $variable end
@@ -17,7 +20,10 @@ symbolic_substitutions(code::Expr, variable::Symbol, knowns = []) = begin
 end
 
 
-""" perform all substitutions that are defined in `code` once
+"""
+    compile_expression(defn::Expr, target::Expr)
+
+Perform all substitutions that are defined in `code` once.
 """
 compile_expression(defn::Expr, target::Expr) = begin
     if defn.head == :(=)
@@ -35,7 +41,10 @@ end
 compile_expression(defn, target) = target
 
 
-""" substitute all function calls of f in expr
+"""
+    call_subst(expr::Expr, f_sig, f_body)
+
+Substitute all function calls of `f` in `expr`.
 """
 call_subst(expr::Expr, f_sig, f_body) = begin
     if expr.head == :call && f_sig[1] == expr.args[1]
@@ -56,9 +65,10 @@ call_subst(expr, f_sign, f_body) =  begin
     expr
 end
 
-""" sym_subst(expr, sym, s_expr)
+"""
+    sym_subst(expr, sym, s_expr)
 
-replace all occurences of `sym` in `expr` by `s_expr`
+Replace all occurences of `sym` in `expr` by `s_expr`.
 """
 sym_subst(expr,         sym::Symbol, s_expr::Union{Symbol, Expr}) = expr
 sym_subst(expr::Symbol, sym::Symbol, s_expr::Union{Symbol, Expr}) =
@@ -82,7 +92,10 @@ sym_subst(expr, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
 
 
 
-""" does <ex> contain a symbol that is not bound by <bound_vars>?
+"""
+    has_free_symb(ex::Expr, bound_vars)
+
+Does <ex> contain a symbol that is not bound by <bound_vars>?
 """
 has_free_symb(ex::Expr, bound_vars) = begin
     !all((!).(has_free_symb.(ex.args, [bound_vars])))
@@ -92,7 +105,10 @@ has_free_symb(ex::Symbol, bound_vars) = begin
 end
 has_free_symb(ex, bound_vars) = false
 
-""" clean up enclosing blocks to get to the core expression
+"""
+    remove_blocks(ex::Expr)
+
+Clean up enclosing blocks to get to the core expression.
 """
 remove_blocks(ex::Expr) = begin
     if ex.head == :block
@@ -103,7 +119,11 @@ remove_blocks(ex::Expr) = begin
 end
 remove_blocks(ex) = ex
 
-""" get signature [<f_name> <arg1> <arg2> ...], where a symbol is a function without arguments
+"""
+    signature
+    
+Get signature [<f_name> <arg1> <arg2> ...], where a symbol is a
+function without arguments.
 """
 signature(ex::Symbol) = [ex]
 signature(ex::Expr) = ex.args

@@ -1,29 +1,6 @@
 export
-	#pullbacktensors.jl
-	flow,
-	ad_flow,
-	linearized_flow,
-	parallel_tensor,
-	mean_diff_tensor,
-	CG_tensor,
-	pullback_tensors,
-	pullback_metric_tensor,
-	pullback_diffusion_tensor,
-	pullback_diffusion_tensor_function,
-	pullback_SDE_diffusion_tensor,
-	av_weighted_CG_tensor,
-
-	#velocityfields.jl
-	rot_double_gyre!,
-	rot_double_gyre,
-	transientGyresEqVari!,
-	transientGyresEqVari,
-	bickleyJet!,
-	bickleyJet,
-	bickleyJetEqVari!,
-	bickleyJetEqVari,
-	interpolateVF,
-	interpolateVFPeriodic,
+	#advection_diffusion.jl
+	ADimplicitEulerStep,
 
 	#ellipticLCS.jl
 	singularity_location_detection,
@@ -33,6 +10,19 @@ export
 	compute_returning_orbit,
 	compute_outermost_closed_orbit,
 	ellipticLCS,
+
+	#diffusion_operators.jl
+	sparse_time_coup_diff_op,
+	sparseaffinitykernel,
+	α_normalize!,
+	wlap_normalize!,
+
+	#FEMassembly.jl
+	assembleStiffnessMatrix,
+	assembleMassMatrix,
+
+	#field_from_hamiltonian.jl
+	@makefields,
 
 	#gridfunctions.jl
 	regularTriangularGrid,
@@ -51,6 +41,13 @@ export
 	boundaryData,
 	nDofs,
 
+	#numericalExperiments.jl
+	makeOceanFlowTestCase,
+	makeDoubleGyreTestCase,
+	experimentResult,
+	runExperiment!,
+	plotExperiment,
+
 	#plotting.jl
 	plot_u,
 	plot_spectrum,
@@ -58,21 +55,24 @@ export
 	plot_u_eulerian,
 	plot_ftle,
 
-	#FEMassembly.jl
-	assembleStiffnessMatrix,
-	assembleMassMatrix,
+	#pullbacktensors.jl
+	flow,
+	ad_flow,
+	linearized_flow,
+	parallel_tensor,
+	mean_diff_tensor,
+	CG_tensor,
+	pullback_tensors,
+	pullback_metric_tensor,
+	pullback_diffusion_tensor,
+	pullback_diffusion_tensor_function,
+	pullback_SDE_diffusion_tensor,
+	av_weighted_CG_tensor,
 
 	#TO.jl
 	nonAdaptiveTO,
 	adaptiveTO,
 	L2GalerkinTO,
-
-	#numericalExperiments.jl
-	makeOceanFlowTestCase,
-	makeDoubleGyreTestCase,
-	experimentResult,
-	runExperiment!,
-	plotExperiment,
 
 	#util.jl
 	tensor_invariants,
@@ -81,8 +81,14 @@ export
 	interp_rhs,
 	interp_rhs!,
 
-	#advection_diffusion.jl
-	ADimplicitEulerStep,
-
-	#field_from_hamiltonian.jl
-	@makefields
+	#velocityfields.jl
+	rot_double_gyre!,
+	rot_double_gyre,
+	transientGyresEqVari!,
+	transientGyresEqVari,
+	bickleyJet!,
+	bickleyJet,
+	bickleyJetEqVari!,
+	bickleyJetEqVari,
+	interpolateVF,
+	interpolateVFPeriodic

@@ -1,15 +1,14 @@
-import SymEngine
 include("expression_substitutions.jl")
 
 sgn(x) = (x > 0) ? one(x) : (x < 0) ? -one(x) : zero(x)
-heavyside(x) = 0 < x ? one(x) : zero(x)
+heaviside(x) = 0 < x ? one(x) : zero(x)
 
 
 # manually define  derivatives for functions that SymEngine cant differentiate
 diff_dict = Dict()
 diff_dict[:abs] = :sgn
 diff_dict[:sgn] = :zero
-diff_dict[:heavyside] = :zero
+diff_dict[:heaviside] = :zero
 diff_dict[:zero] = :zero
 
 # not a nice way to differentiate expressions, but ReverseDiffSource

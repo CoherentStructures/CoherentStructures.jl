@@ -62,6 +62,29 @@ function flow(
 end
 
 """
+    parallel_flow(flow_fun,P)
+
+Apply the `flow_fun` to each entry in `P`.
+"""
+function parallel_flow(flow_fun,P::AbstractArray{AbstractArray{T}}) where T <: Real
+    dim = length(P[1])
+    dummy = flow_fun(P[1])
+    q = length(dummy)
+
+    sol = SharedArray{T}(dim,q,length(P));
+    @sync @parallel for index in eachindex(P)
+        @async begin
+            u = flow_fun(P[index])
+            for d=1:dim, t=1:q
+                sol[d,t,index] = u[t][d]
+            end
+        end
+    end
+    return sol
+    # think about rearring the array similarly to parallel_tensor
+end
+
+"""
     linearized_flow(odefun, x, tspan,δ; ...)
 
 Calculate derivative of flow map by finite differences.

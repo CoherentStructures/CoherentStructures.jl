@@ -1,7 +1,7 @@
 # (c) 2018 Alvaro de Diego, with minor contributions by Daniel Karrasch
 
-using NearestNeighbors
-using Distances
+NN = NearestNeighbors
+Dists = Distances
 
 """
     sparse_time_coup_diff_op(sol, k, thresh; mapper, metric)
@@ -15,15 +15,15 @@ pairs where ``metric(x_i, x_j)≦ε``. `mapper` is either `pmap`
 
 function sparse_time_coup_diff_op( sols::AbstractArray{T, 3},
                                    kernel::Function,
-                                   cutoff_distance :: T;
+                                   cutoff_distance:: T;
                                    mapper::Function = pmap,
-                                   metric= Euclidean()) where T
+                                   metric = Dists.Euclidean()) where T
     dim, q, N = size(sols)
     # diff_kernel = (x,y) -> kernel(evaluate(metric, x, y))
 
     P = mapper(1:q) do t
         tic()
-        # @time Pₜ = sparseaffinitykernel((@views sols[:,t,:]),
+        # Pₜ = sparseaffinitykernel((@views sols[:,t,:]),
         Pₜ = sparseaffinitykernel(sols[:,t,:],
                                  kernel,
                                  metric,
@@ -48,15 +48,15 @@ Default metric is `Euclidean()`, default `ε` is 1e-3.
 
 function sparseaffinitykernel( A::AbstractArray{T, 2},
                                kernel::F,
-                               metric=Euclidean(),
+                               metric=Dists.Euclidean(),
                                ε::S=convert(S,1e-3) ) where T where S where F <:Function
     dim, N = size(A)
 
     # the "collect" is necessary because BallTree currently cannot handle
     # abstract arrays.
-    # balltree = BallTree(collect(A), metric)
-    balltree = BallTree(A, metric)
-    diff_kernel = (x,y) -> kernel(evaluate(metric, x, y))
+    # balltree = NN.BallTree(collect(A), metric)
+    balltree = NN.BallTree(A, metric)
+    diff_kernel = (x,y) -> kernel(Dists.evaluate(metric, x, y))
 
     # Get a Vector of tuples (I,J,V), one for each column i.
     # We hardcode the type because the compiler can't infer it (function barrier
@@ -64,7 +64,7 @@ function sparseaffinitykernel( A::AbstractArray{T, 2},
     # has changed. (24.04.18)
     matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
     matrix_data_chunks[:] = @views map(1:N) do i
-        Js = inrange(balltree, A[:,i], ε)
+        Js = NN.inrange(balltree, A[:,i], ε)
         Vs = [diff_kernel(A[:,i], A[:,j]) for j in Js]
         Is = fill(i,length(Js))
         # return the resulting I,J,V for the sparse matrix

@@ -1,4 +1,3 @@
-import SymEngine
 include("expr_diff.jl")
 
 """makefields(:from, name_of_H, def_of_H)

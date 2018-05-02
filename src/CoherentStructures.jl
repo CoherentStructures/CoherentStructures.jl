@@ -11,7 +11,7 @@ module CoherentStructures
     import VoronoiDelaunay
 
     import JuAFEM
-    
+
     import SymEngine
 
     #Contains a list of functions being exported
@@ -20,6 +20,9 @@ module CoherentStructures
 
     abstract type abstractGridContext{dim} end
 
+    ##Diffusion operator related functions
+    include("diffusion_operators.jl")
+    
     ##Some small utility functions that are used throughout
     include("util.jl")
 
