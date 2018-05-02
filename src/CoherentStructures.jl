@@ -11,7 +11,8 @@ module CoherentStructures
     import VoronoiDelaunay
 
     import JuAFEM
-
+    
+    import SymEngine
 
     #Contains a list of functions being exported
     include("exports.jl")

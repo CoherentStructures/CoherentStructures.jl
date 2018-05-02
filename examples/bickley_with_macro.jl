@@ -17,7 +17,7 @@ bickley = @makefields from stream begin
     k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀
 
     ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3
-    c₁ = 0.1446U₀  ; c₂ = 0.205U₀ ; c₃ = 0.461U₀
+    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
 
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
@@ -43,4 +43,4 @@ res = kmeans(v[:,2:n_partition]',n_partition)
 u = kmeansresult2LCS(res)
 
 sum([u[:,i]*i for i in 1:n_partition])
-plot_u(ctx, sum([u[:,i]*i for i in 1:n_partition]),200,200,color=:viridis,bdata=bdata) 
+plot_u(ctx, sum([u[:,i]*i for i in 1:n_partition]),200,200,color=:viridis,bdata=bdata)

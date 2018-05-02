@@ -19,19 +19,26 @@ be solved without having to call the ODE solver multiple times.
 end
 
 # TODO: this is plainly assuming 2D-systems, generalize to ND-systems
-@inline @inbounds function arraymap(u::StaticArrays.SVector{8,Float64},p,t::Float64, odefun::Function)::StaticArrays.SVector{8,Float64}
-    p1::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[1], u[2]),p,t)
-    p2::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[3], u[4]),p,t)
-    p3::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[5], u[6]),p,t)
-    p4::StaticArrays.SVector{2,Float64} = odefun(StaticArrays.SVector{2}(u[7], u[8]),p,t)
-    StaticArrays.SVector{8}(p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2])
+@inline @inbounds function arraymap(u::StaticArrays.SVector{8,T},p,t::Float64, odefun::Function)::StaticArrays.SVector{8,T} where T <: Real
+    p1::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[1], u[2]),p,t)
+    p2::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[3], u[4]),p,t)
+    p3::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[5], u[6]),p,t)
+    p4::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[7], u[8]),p,t)
+    StaticArrays.SVector{8,T}(p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2])
 end
 
 """
     tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor})
 
-computes pointwise invariants of the 2D tensor field `T`, i.e.,
+Returns pointwise invariants of the 2D symmetric tensor field `T`, i.e.,
 smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.
+# Example
+```
+T = [Tensors.SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(T)
+```
+All variables have the same array arrangement as `T`; e.g., `λ₁` is a
+10x20 array with scalar entries.
 """
 
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
@@ -116,6 +123,16 @@ function interp_rhs!(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <
     du[1] = p[1][u[1],u[2],t]
     du[2] = p[2][u[1],u[2],t]
 end
+
+"""
+    interp_rhs(u,p,t)
+
+Defines a 2D vector field that is readily usable for trajectory integration from
+vector field interpolants of the x- and y-direction, resp. It assumes that the
+interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
+`UI` and `VI` are the interpolants for the x- and y-components of the velocity
+field.
+"""
 
 function interp_rhs(u,p,t)
     du1 = p[1][u[1],u[2],t]

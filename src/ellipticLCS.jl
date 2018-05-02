@@ -3,10 +3,11 @@
 ITP = Interpolations
 
 """
-    ``singularity_location_detection(T,xspan,yspan)``
-Detects tensor singularities of the tensor field ``T``, given as a matrix of
-``SymmetricTensor{2,2}``. ``xspan`` and ``yspan`` correspond to the uniform
-grid vectors over which ``T`` is given. Returns a list of static 2-vectors.
+    singularity_location_detection(T,xspan,yspan)
+
+Detects tensor singularities of the tensor field `T`, given as a matrix of
+`SymmetricTensor{2,2}`. `xspan` and `yspan` correspond to the uniform
+grid vectors over which `T` is given. Returns a list of static 2-vectors.
 """
 function singularity_location_detection(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
@@ -31,11 +32,12 @@ function singularity_location_detection(T::Matrix{Tensors.SymmetricTensor{2,2,S,
 end
 
 """
-    ``singularity_type_detection(singularity,T,radius,xspan,yspan)``
-Determines the singularity type of the singularity candidate ``singularity``
-by querying the tensor eigenvector field of ``T`` in a circle of radius ``radius``
-around the singularity. ``xspan`` and ``yspan`` correspond to the computational grid.
-Returns ``1`` for a trisector, ``-1`` for a wedge, and ``0`` otherwise.
+    singularity_type_detection(singularity,T,radius,xspan,yspan)
+
+Determines the singularity type of the singularity candidate `singularity`
+by querying the tensor eigenvector field of `T` in a circle of radius `radius`
+around the singularity. `xspan` and `yspan` correspond to the computational grid.
+Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
 
 function singularity_type_detection(singularity::StaticArrays.SVector{2,S},
@@ -56,19 +58,14 @@ function singularity_type_detection(singularity::StaticArrays.SVector{2,S},
 end
 
 """
-    detect_elliptic_region(singularities,
-                            singularityTypes,
-                            MaxWedgeDist,
-                            MinWedgeDist,
-                            Min2ndDist)
+    detect_elliptic_region(singularities,singularityTypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
 
 Determines candidate regions for closed tensor line orbits.
-   * ``singularities``: list of all singularities
-   * ``singularityTypes``: list of corresponding singularity types
-   * ``MaxWedgeDist``: maximum distance to closest wedge
-   * ``MinWedgeDist``: minimal distance to closest wedge
-   * ``Min2ndDist``: minimal distance to second closest wedge
-
+   * `singularities`: list of all singularities
+   * `singularityTypes`: list of corresponding singularity types
+   * `MaxWedgeDist`: maximum distance to closest wedge
+   * `MinWedgeDist`: minimal distance to closest wedge
+   * `Min2ndDist`: minimal distance to second closest wedge
 Returns a list of vortex centers.
 """
 
@@ -101,10 +98,10 @@ end
 """
     set_Poincaré_section(vc,p_length,n_seeds)
 
-Generates a horizontal Poincaré section, centered at the vortex center ``vc``
-of length ``p_length`` consisting of ``n_seeds`` starting at ``0.2*p_length``
+Generates a horizontal Poincaré section, centered at the vortex center `vc`
+of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
 eastwards. All points are guaranteed to lie in the computational domain given
-by ``xspan`` and ``yspan``.
+by `xspan` and `yspan`.
 """
 
 function set_Poincaré_section(vc::StaticArrays.SVector{2,S},
@@ -160,14 +157,6 @@ function compute_returning_orbit(calT::Float64,
     # end
 end
 
-# function Poincaré_return_distance!(calT::Float64,seed::Vector{Float64},
-#     ξ₁::Matrix{Tensors.Tensor{1,2,Float64,2}},ξ₂::Matrix{Tensors.Tensor{1,2,Float64,2}},
-#     signum::Int,out)
-#
-#     sol = compute_returning_orbit(calT,seed,ξ₁,ξ₂,signum)
-#     out[1] = sol[end][1]-seed[1]
-# end
-
 function Poincaré_return_distance(calT::Float64,
                                     seed::AbstractVector{T},
                                     λ₁::Matrix{T},
@@ -213,12 +202,20 @@ function bisection(f, a::T, b::T, tol::Float64=1.e-4, maxiter::Integer=15) where
     return c
 end
 
+"""
+    compute_outermost_closed_orbit(pSection,T,xspan,yspan;pmin = .7,pmax = 1.3)
+
+Compute the outermost closed orbit for a given Poincaré section `pSection`,
+tensor field `T`, where the total computational domain is spanned by `xspan`
+and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
+shift parameters in which closed orbits are sought.
+"""
 function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,S}},
                                         T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
-                                        calTmin::Float64 = .7,
-                                        calTmax::Float64 = 1.3) where S <: Real
+                                        pmin::Float64 = .7,
+                                        pmax::Float64 = 1.3) where S <: Real
 
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
     l1itp = ITP.scale(ITP.interpolate(λ₁,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
@@ -245,12 +242,12 @@ function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,
         prd_plus(calT) = prd(calT,1)
         prd_minus(calT) = prd(calT,-1)
         try
-            Tsol = bisection(prd_plus,calTmin,calTmax)
+            Tsol = bisection(prd_plus,pmin,pmax)
             # @show Tsol
-            # Tsol = fzero(prd_plus,calTmin,calTmax,abstol=5e-3,reltol=1e-4)
-            # Tsol = fzero(prd_plus,calTmin,calTmax,order=2,abstol=5e-3,reltol=1e-4)
-            # Tsol = fzero(prd_plus,1.,[calTmin,calTmax])
-            # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[calTmin,calTmax],abstol=5e-3,reltol=1e-4)
+            # Tsol = fzero(prd_plus,pmin,pmax,abstol=5e-3,reltol=1e-4)
+            # Tsol = fzero(prd_plus,pmin,pmax,order=2,abstol=5e-3,reltol=1e-4)
+            # Tsol = fzero(prd_plus,1.,[pmin,pmax])
+            # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
             orbit = compute_returning_orbit(Tsol,pSection[i+1],λ₁,λ₂,ξ₁,ξ₂,1,xspan,yspan)
             closed = norm(orbit[1]-orbit[end])<=1e-2
             uniform = all([l1itp[p[1],p[2]]-sqrt(eps(1.)) .<= Tsol .<= l2itp[p[1],p[2]]+sqrt(eps(1.)) for p in orbit])
@@ -264,13 +261,13 @@ function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,
         end
         if iszero(Tsol)
             try
-                Tsol = bisection(prd_minus,calTmin,calTmax,1.e-4,15)
+                Tsol = bisection(prd_minus,pmin,pmax,1.e-4,15)
                 # @show Tsol
-                # Tsol = fzero(prd_minus,calTmin,calTmax,abstol=5e-3,reltol=1e-4)
-                # Tsol = fzero(prd_minus,calTmin,calTmax,order=2,abstol=5e-3,reltol=1e-4)
-                # Tsol = fzero(prd_minus,1.,[calTmin,calTmax])
-                # Tsol = find_zero(prd_minus,1.,Order2(),bracket=[calTmin,calTmax],abstol=5e-3,reltol=1e-4)
-                # Tsol = fzeros(prd_minus,calTmin,calTmax,no_pts=30,abstol=5e-3,reltol=1e-4)[1]
+                # Tsol = fzero(prd_minus,pmin,pmax,abstol=5e-3,reltol=1e-4)
+                # Tsol = fzero(prd_minus,pmin,pmax,order=2,abstol=5e-3,reltol=1e-4)
+                # Tsol = fzero(prd_minus,1.,[pmin,pmax])
+                # Tsol = find_zero(prd_minus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
+                # Tsol = fzeros(prd_minus,pmin,pmax,no_pts=30,abstol=5e-3,reltol=1e-4)[1]
                 orbit = compute_returning_orbit(Tsol,pSection[i+1],λ₁,λ₂,ξ₁,ξ₂,-1,xspan,yspan)
                 closed = norm(orbit[1]-orbit[end])<=1e-2
                 uniform = all([l1itp[p[1],p[2]]-sqrt(eps(1.)) .<= Tsol .<= l2itp[p[1],p[2]]+sqrt(eps(1.)) for p in orbit])
@@ -299,6 +296,20 @@ end
 
 """
     ellipticLCS(T,xspan,yspan,p)
+
+Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
+field given by shifted versions of `T` on the 2D computational grid spanned
+by `xspan` and `yspan`. `p` is a tuple of the following parameters (in that order):
+   * radius: radius in tensor singularity type detection,
+   * MaxWdgeDist: maximal distance to nearest wedge-type singularity,
+   * MinWedgeDist: minimal distance to nearest wedge-type singularity,
+   * Min2ndDist: minimal distance to second-nearest wedge-type singularity,
+   * p_length: length of Poincaré section,
+   * n_seeds: number of seeding points along the Poincaré section,
+Returns a list of tuples, each tuple containing
+   * the parameter λ in the η-formula,
+   * the sign used in the η-formula,
+   * the outermost closed orbit for the corresponding λ and sign.
 """
 
 function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
@@ -307,18 +318,7 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
                         p) where S <: Real
 
     # unpack parameters
-    radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, pLength, numSeeds = p
-
-    # @everywhere begin
-    #     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    #     l1itp = ITP.scale(ITP.interpolate(λ₁,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
-    #                         xspan,yspan)
-    #     l2itp = ITP.scale(ITP.interpolate(λ₂,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
-    #                         xspan,yspan)
-    #     ξrad = atan.([v[2]./v[1] for v in ξ₁])
-    #     ξraditp = ITP.scale(ITP.interpolate(ξrad,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
-    #                         xspan,yspan)
-    # end
+    radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, p_length, n_seeds = p
 
     singularities = singularity_location_detection(T,xspan,yspan)
     ξ = [eigvecs(t)[:,1] for t in T]
@@ -327,7 +327,7 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
                                                         xspan,yspan)
     singularitytypes = map(s->singularity_type_detection(s,ξraditp,radius),singularities)
     vortexcenters = detect_elliptic_region(singularities,singularitytypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
-    p_section = map(vc -> set_Poincaré_section(vc,pLength,numSeeds,xspan,yspan),vortexcenters)
+    p_section = map(vc -> set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan),vortexcenters)
     @everywhere @eval p_section = $p_section
     @time closedorbits = pmap(p_section) do ps
         compute_outermost_closed_orbit(ps,T,xspan,yspan)
