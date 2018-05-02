@@ -6,7 +6,6 @@
 TODO: Cite something here
 
 The Bickley Jet is described by a time-dependent velocity field arising from a stream-function. We can either use the `bickleyJet` (or `bickleyJet!`) functions to get this velocity field, or use the `@makefields` macro:
-TODO: Cite something here
 ```@example 2
 using CoherentStructures
 # after this, 'bickley' will reference a Dictionary of functions
