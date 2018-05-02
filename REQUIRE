@@ -1,13 +1,15 @@
 julia 0.6
-JuAFEM
-Tensors
-DiffEqBase
-OrdinaryDiffEq
-GeometricalPredicates
-VoronoiDelaunay
-StaticArrays
-JLD2
-Interpolations
-Plots
-Distances
 Contour
+DiffEqBase
+Distances
+GeometricalPredicates
+Interpolations
+JuAFEM
+LinearMaps
+NearestNeighbors
+OrdinaryDiffEq
+Plots
+StaticArrays
+SymEngine
+Tensors
+VoronoiDelaunay
