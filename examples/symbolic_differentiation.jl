@@ -12,7 +12,7 @@ begin
     fields = @makefields from H begin
         f(a,b) = a
         Psi = sin(π * f(x,t)) * sin(π * y)
-         bump(r) = (1 - r^2*(3-2r)) * heavyside(r) * heavyside(1-r)
+         bump(r) = (1 - r^2*(3-2r)) * heaviside(r) * heaviside(1-r)
          center_x = 2/3
          center_y = 0.5
          radius = 1/3
