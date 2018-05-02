@@ -13,7 +13,7 @@ Assemble the stiffness-matrix for a symmetric bilinear form
 a(u,v) = \int \nabla u(x) A(x) v(x) dx
 ```
 where the integral is approximated using quadrature.
-`A` is a function that returns a  `Tensors.SymmetricTensor` and has one of the following forms:
+`A` is a function that returns a `Tensors.SymmetricTensor` and has one of the following forms:
    * `A(x::Vector{Float64})`
    * `A(x::Vec{dim})`
    * `A(x::Vec{dim}, index::Int, p)`. Here x is equal to `ctx.quadrature_points[index]`, and `p` is that which is passed to `assembleStiffnessMatrix`
