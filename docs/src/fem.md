@@ -6,11 +6,11 @@ and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/3062916
 
 This involves the discretization of an averaged heat_flow operator of the form:
 
-$\Delta^{dyn} := \sum_{t \in \mathcal T} P^*_t \Delta P_t$
+$\Delta^{dyn} := \sum_{t \in \mathcal T} P_t^* \Delta P_t$
 
-for a finite series of times $\mathcal T$, where $P_t$ is the transfer-operator for the flow at time $t$
+for a finite series of times $\mathcal T$, where $P_t$ is the transfer-operator for the flow at time $t$ (in volume-preserving flows).
 
-The resulting operator is both symmetric and uniformly elliptic, and can be discretize using FEM-based methods. Eigenfunctions of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
+The resulting operator is both symmetric and uniformly elliptic, and can be discretized using the finite-element method (FEM). Eigenfunctions of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 
 ## Example
 
@@ -20,12 +20,12 @@ using CoherentStructures
 LL = [0.0,0.0]; UR = [1.0,1.0];
 ctx = regularTriangularGrid((50,50),LL,UR)
 
-A = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
+A = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-4)
 K = assembleStiffnessMatrix(ctx,A)
 M = assembleMassMatrix(ctx)
 λ, v = eigs(-K,M,which=:SM);
 ```
-Here we have a time-dependent velocity field that describes the [Rotating Double Gyre](@ref) dynamical system, this velocity field is given by the `rot_double_gyre` function. The second argument to `mean_diff_tensor` are the times at which we average the pullback diffusion tensors. The third parameter is the δ used for the finite-difference scheme, `tolerance` is passed to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)` approximates the mean diffusion tensor given by
+Here we have a time-dependent velocity field that describes the [transitory double gyre](dx.doi.org/10.1137/100794110) dynamical system. This velocity field is given by the `rot_double_gyre` function. The second argument to `mean_diff_tensor` are the times at which we average the pullback diffusion tensors. The third parameter is the step size δ used for the finite-difference scheme, `tolerance` is passed to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)` approximates the mean diffusion tensor given by
 
 $A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}$
 
@@ -35,7 +35,7 @@ import Plots
 res = [plot_u(ctx, v[:,i],colorbar=:none,clim=(-3,3)) for i in 1:6];
 Plots.plot(res...,margin=-10Plots.px)
 ```
-Looking at the spectrum, there seems to be a gap after the third eigenvalue:
+Looking at the spectrum, there appears a gap after the third eigenvalue:
 ```@example 1
 Plots.scatter(range(1,6), real.(λ))
 ```
@@ -53,7 +53,7 @@ TODO: finish this, describe CG and TO-based approaches, supported elements and g
 ## The `gridContext` Type
 
 The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
-This package is very low-level and does not provide point-location/plotting functions.
+This package is very low-level and does not provide point-location/plotting functionality.
 To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid can be stored in an object of type `gridContext`. This includes the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble stiffness matrices, and provides an interface for point-location and plotting.
 
 In this documentation, the variable name `ctx` is exclusively used for objects of this type.
