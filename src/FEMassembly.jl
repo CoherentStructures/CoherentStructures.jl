@@ -9,7 +9,9 @@ end
     assembleStiffnessMatrix(ctx,A,[p; bdata])
 
 Assemble the stiffness-matrix for a symmetric bilinear form
-$$ a(u,v) = \int \nabla u(x) A(x) v(x) dx$$
+```math
+a(u,v) = \int \nabla u(x) A(x) v(x) dx
+```
 where the integral is approximated using quadrature.
 `A` is a function that returns a  `Tensors.SymmetricTensor` and has one of the following forms:
    * `A(x::Vector{Float64})`
@@ -82,7 +84,9 @@ end
     assembleMassMatrix(ctx;[bdata,lumped=false])
 
 Assemble the mass matrix
-$$ M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d$$
+```math
+M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d
+```
 using numerical quadrature. The values of `f(x)` are taken from `ctx.mass_weights`,
 and should be ordered in the same way as `ctx.quadrature_points`
 The result is ordered in a way so as to be usable with a stiffness matrix
