@@ -51,7 +51,7 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
     # formats. Accessible by function "signatures"
     quote
     output = Dict()
-    let # protect variables from being global 
+    let # protect variables from being global
         field! = (du, u, p, t) -> begin
             du[1] = $(F[1])
             du[2] = $(F[2])
@@ -59,7 +59,7 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
         end
 
         # save f ∈ R^2x1 and Df ∈ R^2x2 together in a 2x3-matrix
-        eq_var =  (dU, U, p, t) -> begin
+        eq_var! =  (dU, U, p, t) -> begin
             # write field into first column
             @views field!(dU[:,1], U[:,1], p, t)
 
@@ -73,16 +73,36 @@ macro makefields(keyword::Symbol, Hamiltonian::Symbol, code::Expr)
             dU
         end
 
+        field = (u, p, t) -> begin
+            du1 = $(F[1])
+            du2 = $(F[2])
+            return StaticArrays.SVector{2}(du1, du2)
+        end
+
+        eq_var =  (U, p, t) -> begin
+            # write field into first column
+            du1, du2 = field(U[:,1], p, t)
+
+            # store DF in a Tensor here to (hopefully) make it a bit faster
+            # is this really worth it?
+            dF = Tensor{2,2}(($(DF[1,1]), $(DF[2,1]),
+                              $(DF[1,2]), $(DF[2,2])))
+
+            # store the matrix part of the Equation of Variation
+            dU11, dU21, dU12, dU22 = dF ⋅ Tensor{2,2}(@view U[:,2:3])
+            return StaticArrays.SArray{Tuple{2,3}}(du1, du2, dU11, dU21, dU12, dU22)
+        end
+
         # define functions with different signatures
-        field  = (u, p, t) -> field!(zeros(u), u, p, t)
         field2 = (x, y, t) -> field([x,y], nothing, t)
-        field_at_t(t)       = (x,y) -> field(x, y, t)
+        field_at_t(t)       = (x,y) -> field2(x, y, t)
 
         # populate the output dictionary
         output[:info]       = $field_info
-        output[:(u,t)]      = field
         output[:(du,u,p,t)] = field!
-        output[:(dU,U,p,t)] = eq_var
+        output[:(dU,U,p,t)] = eq_var!
+        output[:(u,p,t)]    = field
+        output[:(U,p,t)]    = eq_var
 
         output[:(t)]        = field_at_t
         output[:(x,y,t)]    = field2
