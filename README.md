@@ -1,6 +1,6 @@
-To install, run Pkg.clone("git@gitlab.lrz.de:ga24guz/CoherentStructures.git")
-If you do not have a public key registered with gitlab, do:
-```Pkg.clone("https://gitlab.lrz.de/ga24guz/CoherentStructures.git")```
+To install, run `Pkg.clone("git@gitlab.lrz.de:ga24guz/CoherentStructures.git")`
+If you do not have a public key registered with gitlab, run:
+`Pkg.clone("https://gitlab.lrz.de/ga24guz/CoherentStructures.git")`.
 
 See examples/rot\_double\_gyre.jl for a minimal working example of CG and TO-based methods.
 
