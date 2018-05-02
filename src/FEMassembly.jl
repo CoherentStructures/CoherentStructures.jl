@@ -5,18 +5,19 @@ function tensorIdentity(x::Tensors.Vec{2},i::Int,p)
     return Id
 end
 
-"""
+doc"""
     assembleStiffnessMatrix(ctx,A,[p; bdata])
 
 Assemble the stiffness-matrix for a symmetric bilinear form
 ```math
-a(u,v) = \int \nabla u(x) A(x) v(x) dx
+a(u,v) = \int \nabla u(x)\cdot A(x)\nabla v(x)f(x) dx
 ```
-where the integral is approximated using quadrature.
+The integral is approximated using quadrature.
 `A` is a function that returns a `Tensors.SymmetricTensor` and has one of the following forms:
    * `A(x::Vector{Float64})`
    * `A(x::Vec{dim})`
    * `A(x::Vec{dim}, index::Int, p)`. Here x is equal to `ctx.quadrature_points[index]`, and `p` is that which is passed to `assembleStiffnessMatrix`
+
 The ordering of the result is in dof order, except that boundary conditions from `bdata` are applied. The default is natural boundary conditions.
 """
 function assembleStiffnessMatrix{dim}(
@@ -80,22 +81,25 @@ function assembleStiffnessMatrix{dim}(
     return applyBCS(ctx,K,bdata)
 end
 
-"""
+
+doc"""
     assembleMassMatrix(ctx;[bdata,lumped=false])
 
 Assemble the mass matrix
 ```math
 M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d
 ```
-using numerical quadrature. The values of `f(x)` are taken from `ctx.mass_weights`,
-and should be ordered in the same way as `ctx.quadrature_points`
+The integral is approximated using numerical quadrature.
+The values of `f(x)` are taken from `ctx.mass_weights`, and should be ordered in the same way as `ctx.quadrature_points`
+
 The result is ordered in a way so as to be usable with a stiffness matrix
 with boundary data `bdata`.
 
 Returns a lumped mass matrix if `lumped==true`.
 
 # Example
-```ctx.mass_weights = map(f, ctx.quadrature_points)
+```
+ctx.mass_weights = map(f, ctx.quadrature_points)
 M = assembleMassMatrix(ctx)
 ```
 """

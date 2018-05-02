@@ -37,9 +37,11 @@ export
 	locatePoint,
 	nodal_interpolation,
 	undoBCS,
-	getH,
+	applyBCS,
+	getHomDBCS,
 	boundaryData,
 	nDofs,
+	getDofCoordinates,
 
 	#numericalExperiments.jl
 	makeOceanFlowTestCase,
@@ -54,6 +56,8 @@ export
 	plot_real_spectrum,
 	plot_u_eulerian,
 	plot_ftle,
+	eulerian_videos,
+	eulerian_video,
 
 	#pullbacktensors.jl
 	flow,
@@ -80,6 +84,7 @@ export
 	kmeansresult2LCS,
 	interp_rhs,
 	interp_rhs!,
+	getH,
 
 	#velocityfields.jl
 	rot_double_gyre!,
