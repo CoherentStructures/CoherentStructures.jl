@@ -9,6 +9,10 @@ flow
 ```
 
 ```@docs
+parallel_flow
+```
+
+```@docs
 linearized_flow
 ```
 
@@ -47,7 +51,7 @@ All of these methods return a `gridContext` object.
 CoherentStructures.gridContext
 ```
 #### Irregular grids
-The constructors for `CoherentStructures.gridContext`, including one for irregular delaunay grids, are not exported by default, the documentation is available through the REPL:
+The constructors for `CoherentStructures.gridContext`, including one for irregular Delaunay grids, are not exported by default, the documentation is available through the REPL:
 
 ``` #TODO: add @docs here once it works
 help?> (::Type{CoherentStructures.gridContext{2}})

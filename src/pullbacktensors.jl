@@ -64,7 +64,8 @@ end
 """
     parallel_flow(flow_fun,P)
 
-Apply the `flow_fun` to each element in `P` in parallel, if possible.
+Apply the `flow_fun` to each element in `P` in parallel, if possible. Returns
+a 3D array with dimensions (space dim x no. of time instances x no. of trajectories).
 """
 function parallel_flow(flow_fun,P::AbstractArray)
     dim = length(P[1])
@@ -82,7 +83,7 @@ function parallel_flow(flow_fun,P::AbstractArray)
         end
     end
     return sol
-    # think about rearring the array similarly to parallel_tensor
+    # TODO: think about rearring the array similarly to parallel_tensor
 end
 
 """
