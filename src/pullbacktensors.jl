@@ -64,10 +64,11 @@ end
 """
     parallel_flow(flow_fun,P)
 
-Apply the `flow_fun` to each entry in `P`.
+Apply the `flow_fun` to each element in `P` in parallel, if possible.
 """
-function parallel_flow(flow_fun,P::AbstractArray{AbstractArray{T}}) where T <: Real
+function parallel_flow(flow_fun,P::AbstractArray)
     dim = length(P[1])
+    T = eltype(P[1])
     dummy = flow_fun(P[1])
     q = length(dummy)
 
