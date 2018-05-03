@@ -4,18 +4,20 @@ NN = NearestNeighbors
 Dists = Distances
 
 """
-    sparse_time_coup_diff_op(sol, k, thresh; mapper, metric)
+    sparse_time_coup_diff_op(sol, k, ε; mapper, metric)
 
-Return a list of sparse diffusion/Markov matrices ``P``.
-`k` is the diffusion kernel, `metric` determines the notion of
-distance w.r.t. which the kernel is computed, however, only for point
-pairs where ``metric(x_i, x_j)≦ε``. `mapper` is either `pmap`
-(for parallel computation) or `map`.
+Return a list of sparse diffusion/Markov matrices `P`.
+   * `sol`: 3D array of trajectories of size `(dim,q,N)`, where `dim` is the spatial
+    dimension, `q` is the number of time steps, and `N` is the number of trajectories,
+   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`,
+   * `metric`: distance function w.r.t. which the kernel is computed, however,
+   only for point pairs where ``metric(x_i, x_j)≦ε``,
+   * `mapper` is either `pmap` (default, for parallel computation) or `map`.
 """
 
 function sparse_time_coup_diff_op( sols::AbstractArray{T, 3},
                                    kernel::Function,
-                                   cutoff_distance:: T;
+                                   ε::T;
                                    mapper::Function = pmap,
                                    metric = Dists.Euclidean()) where T
     dim, q, N = size(sols)
@@ -27,7 +29,7 @@ function sparse_time_coup_diff_op( sols::AbstractArray{T, 3},
         Pₜ = sparseaffinitykernel(sols[:,t,:],
                                  kernel,
                                  metric,
-                                 cutoff_distance)
+                                 ε)
         α_normalize!(Pₜ, 1.0)
         wlap_normalize!(Pₜ)
         println("Timestep $t/$q done")
@@ -80,8 +82,8 @@ end
 
 """
     α_normalize!(A, α = 0.5)
-Normalize ``A`` in-place from left and right with the row-sum vector
-``q.^α``. Default for ``α`` is 0.5.
+Normalize rows and columns of `A` in-place with the respective row-sum to the
+α-th power; i.e., return ``a_{ij}:=\frac{a_{ij}}{q_i^αq_j^α}``. Default for `α is 0.5.
 """
 
 function α_normalize!(A::AbstractMatrix{T}, α::T = 0.5) where T<:Number
@@ -92,7 +94,7 @@ end
 
 """
     wlap_normalize!(A)
-Normalize ``A`` in-place from left with the row-sum vector ``q``.
+Normalize rows of `A` in-place with the respective row-sum; i.e., return ``a_{ij}:=\frac{a_{ij}}{q_i}``.
 """
 
 function wlap_normalize!(A::AbstractMatrix)
