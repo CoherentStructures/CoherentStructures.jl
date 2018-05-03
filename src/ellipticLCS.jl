@@ -96,7 +96,7 @@ function detect_elliptic_region(singularities::Vector{StaticArrays.SVector{2,S}}
 end
 
 """
-    set_Poincaré_section(vc,p_length,n_seeds)
+    set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan)
 
 Generates a horizontal Poincaré section, centered at the vortex center `vc`
 of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
@@ -251,7 +251,7 @@ function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,
             orbit = compute_returning_orbit(Tsol,pSection[i+1],λ₁,λ₂,ξ₁,ξ₂,1,xspan,yspan)
             closed = norm(orbit[1]-orbit[end])<=1e-2
             uniform = all([l1itp[p[1],p[2]]-sqrt(eps(1.)) .<= Tsol .<= l2itp[p[1],p[2]]+sqrt(eps(1.)) for p in orbit])
-            @show (closed, uniform)
+            # @show (closed, uniform)
             if (closed && uniform)
                 Tval[i] = Tsol
                 orbits[i] = orbit
@@ -271,7 +271,7 @@ function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,
                 orbit = compute_returning_orbit(Tsol,pSection[i+1],λ₁,λ₂,ξ₁,ξ₂,-1,xspan,yspan)
                 closed = norm(orbit[1]-orbit[end])<=1e-2
                 uniform = all([l1itp[p[1],p[2]]-sqrt(eps(1.)) .<= Tsol .<= l2itp[p[1],p[2]]+sqrt(eps(1.)) for p in orbit])
-                @show (closed, uniform)
+                # @show (closed, uniform)
                 if (closed && uniform)
                     Tval[i] = Tsol
                     orbits[i] = orbit
@@ -321,16 +321,26 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
     radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, p_length, n_seeds = p
 
     singularities = singularity_location_detection(T,xspan,yspan)
+    println("Detected $(length(singularities)) singularity candidates...")
     ξ = [eigvecs(t)[:,1] for t in T]
     ξrad = atan.([v[2]./v[1] for v in ξ])
     ξraditp = ITP.scale(ITP.interpolate(ξrad,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
                                                         xspan,yspan)
     singularitytypes = map(s->singularity_type_detection(s,ξraditp,radius),singularities)
+    println("Determined $(sum(abs.(singularityTypes))) nondegenerate singularities...")
     vortexcenters = detect_elliptic_region(singularities,singularitytypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
+    println("Defined $(length(vortexcenters)) Poincaré sections...")
     p_section = map(vc -> set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan),vortexcenters)
     @everywhere @eval p_section = $p_section
     @time closedorbits = pmap(p_section) do ps
         compute_outermost_closed_orbit(ps,T,xspan,yspan)
     end
+    n_orbits = 0
+    for co in closedorbits
+        if co != nothing
+            n_orbits += 1
+        end
+    end
+    println("Found $(n_orbits) vortices.")
     return closedorbits
 end

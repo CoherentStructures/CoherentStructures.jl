@@ -83,7 +83,7 @@ end
 """
     α_normalize!(A, α = 0.5)
 Normalize rows and columns of `A` in-place with the respective row-sum to the
-α-th power; i.e., return \$ a_{ij}:=\\frac{a_{ij}}{q_i^αq_j^α}\$. Default for `α` is 0.5.
+α-th power; i.e., return \$ a_{ij}:=a_{ij}/(q_i^αq_j^α)\$. Default for `α` is 0.5.
 """
 
 function α_normalize!(A::AbstractMatrix{T}, α::T = 0.5) where T<:Number
@@ -94,7 +94,8 @@ end
 
 doc"""
     wlap_normalize!(A)
-Normalize rows of `A` in-place with the respective row-sum; i.e., return $ a_{ij}:=\frac{a_{ij}}{q_i}$.
+Normalize rows of `A` in-place with the respective row-sum; i.e., return
+$ a_{ij}:=a_{ij}/q_i$.
 """
 
 function wlap_normalize!(A::AbstractMatrix)
