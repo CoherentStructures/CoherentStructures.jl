@@ -87,13 +87,13 @@ export
 	getH,
 
 	#velocityfields.jl
-	rot_double_gyre!,
 	rot_double_gyre,
-	transientGyresEqVari!,
-	transientGyresEqVari,
-	bickleyJet!,
+	rot_double_gyre!,
+	rot_double_gyreEqVari,
+	rot_double_gyreEqVari!,
 	bickleyJet,
-	bickleyJetEqVari!,
+	bickleyJet!,
 	bickleyJetEqVari,
+	bickleyJetEqVari!,
 	interpolateVF,
 	interpolateVFPeriodic

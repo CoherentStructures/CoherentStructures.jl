@@ -28,7 +28,7 @@ function singularity_location_detection(T::Matrix{Tensors.SymmetricTensor{2,2,S,
         Xs = append!(Xs,xL[ind]+( xL[ind+1]-xL[ind] ).*( 0-zL[ind] )./( zL[ind+1]-zL[ind] ));
         Ys = append!(Ys,yL[ind]+( yL[ind+1]-yL[ind] ).*( 0-zL[ind] )./( zL[ind+1]-zL[ind] ));
     end
-    return [StaticArrays.SVector{2,S}(Xs[i], Ys[i]) for i in eachindex(Xs,Ys)]
+    return [[Xs[i], Ys[i]] for i in eachindex(Xs,Ys)]
 end
 
 """
@@ -40,7 +40,7 @@ around the singularity. `xspan` and `yspan` correspond to the computational grid
 Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
 
-function singularity_type_detection(singularity::StaticArrays.SVector{2,S},
+function singularity_type_detection(singularity::Vector{S},
                                     ξ::ITP.ScaledInterpolation,
                                     radius::Float64) where S
 
@@ -69,7 +69,7 @@ Determines candidate regions for closed tensor line orbits.
 Returns a list of vortex centers.
 """
 
-function detect_elliptic_region(singularities::Vector{StaticArrays.SVector{2,S}},
+function detect_elliptic_region(singularities::Vector{Vector{S}},
                                 singularity_types::Vector{Int},
                                 MaxWedgeDist::Float64,
                                 MinWedgeDist::Float64,
@@ -86,13 +86,14 @@ function detect_elliptic_region(singularities::Vector{StaticArrays.SVector{2,S}}
         end
     end
     pairind = indexin(pairs,flipdim.(pairs,1))
-    vortexCenters = StaticArrays.SVector{2,S}[]
+    vortexcenters = Vector{S}[]
+    sizehint!(vortexcenters,length(pairind))
     for p in pairind
         if p!=0
-            push!(vortexCenters,StaticArrays.SVector{2,S}(mean(singularities[indWedges[pairs[p]]])...))
+            push!(vortexcenters,mean(singularities[indWedges[pairs[p]]]))
         end
     end
-    return unique(vortexCenters)
+    return unique(vortexcenters)
 end
 
 """
@@ -104,7 +105,7 @@ eastwards. All points are guaranteed to lie in the computational domain given
 by `xspan` and `yspan`.
 """
 
-function set_Poincaré_section(vc::StaticArrays.SVector{2,S},
+function set_Poincaré_section(vc::Vector{S},
                                 p_length::Float64,
                                 n_seeds::Int,
                                 xspan::AbstractVector{S},
@@ -112,11 +113,12 @@ function set_Poincaré_section(vc::StaticArrays.SVector{2,S},
 
     xmin, xmax = extrema(xspan)
     ymin, ymax = extrema(yspan)
-    p_section = [vc]::Vector{StaticArrays.SVector{2,S}}
-    ex = StaticArrays.SVector{2,S}(1., 0.)
+    p_section = [vc]::Vector{Vector{S}}
+    ex = [1., 0.]
     pspan = linspace(vc+.2*p_length*ex,vc+p_length*ex,n_seeds)
+    pspan = pspan[all.([p.<=[xmax, ymax] for p in pspan]).*all.([p.>=[xmin, ymin] for p in pspan])]
     append!(p_section,pspan)
-    return p_section[all.([p.<=[xmax, ymax] for p in p_section]).*all.([p.>=[xmin, ymin] for p in p_section])]
+    return p_section
 end
 
 function compute_returning_orbit(calT::Float64,
@@ -210,7 +212,7 @@ tensor field `T`, where the total computational domain is spanned by `xspan`
 and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
 shift parameters in which closed orbits are sought.
 """
-function compute_outermost_closed_orbit(pSection::Vector{StaticArrays.SVector{2,S}},
+function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                                         T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
@@ -327,7 +329,7 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
     ξraditp = ITP.scale(ITP.interpolate(ξrad,ITP.BSpline(ITP.Linear()),ITP.OnGrid()),
                                                         xspan,yspan)
     singularitytypes = map(s->singularity_type_detection(s,ξraditp,radius),singularities)
-    println("Determined $(sum(abs.(singularityTypes))) nondegenerate singularities...")
+    println("Determined $(sum(abs.(singularitytypes))) nondegenerate singularities...")
     vortexcenters = detect_elliptic_region(singularities,singularitytypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
     println("Defined $(length(vortexcenters)) Poincaré sections...")
     p_section = map(vc -> set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan),vortexcenters)
@@ -335,12 +337,18 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
     @time closedorbits = pmap(p_section) do ps
         compute_outermost_closed_orbit(ps,T,xspan,yspan)
     end
-    n_orbits = 0
+
+    calTs = Vector{Float64}()
+    signs = Vector{Int}()
+    orbits = Vector{Array{Float64,2}}()
     for co in closedorbits
-        if co != nothing
-            n_orbits += 1
+        try
+            push!(calTs,co[1])
+            push!(signs,co[2])
+            push!(orbits,hcat(co[3]...))
+        catch
         end
     end
-    println("Found $(n_orbits) vortices.")
-    return closedorbits
+    println("Found $(length(signs)) vortices.")
+    return calTs, signs, orbits
 end

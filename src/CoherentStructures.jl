@@ -11,7 +11,7 @@ module CoherentStructures
     import VoronoiDelaunay
 
     import JuAFEM
-
+    import Plots
     import SymEngine
 
     #Contains a list of functions being exported
@@ -22,7 +22,7 @@ module CoherentStructures
 
     ##Diffusion operator related functions
     include("diffusion_operators.jl")
-    
+
     ##Some small utility functions that are used throughout
     include("util.jl")
 
@@ -31,6 +31,9 @@ module CoherentStructures
 
     ##Functions related to geodesic elliptic LCS detection
     include("ellipticLCS.jl")
+
+    #Vector field from Hamiltonian generation
+    include("field_from_hamiltonian.jl")
 
     ##Definitions of velocity fields
     include("velocityfields.jl")
@@ -57,12 +60,8 @@ module CoherentStructures
    # include("numericalExperiments.jl")
 
    #Plotting
-   import Plots
    include("plotting.jl")
 
    #Solving Advection/Diffusion Equation
    include("advection_diffusion.jl")
-
-   #Vector field from Hamiltonian generation
-   include("field_from_hamiltonian.jl")
 end
