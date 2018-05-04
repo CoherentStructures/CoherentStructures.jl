@@ -48,7 +48,7 @@ const DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])
 
 mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,D = DiffTensor,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
 
-T = parallel_tensor(mCG_tensor,P)
+C̅ = parallel_tensor(mCG_tensor,P)
 
 LCSparams = (.1, 0.5, 0.04, 0.5, 1.8, 60)
 vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
@@ -56,7 +56,7 @@ vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 The output is visualized as follows.
 ```
 import Plots
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(T)
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
 l₂ = min.(λ₂,quantile(λ₂[:],0.995))
