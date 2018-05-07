@@ -32,8 +32,7 @@ module CoherentStructures
     ##Functions related to geodesic elliptic LCS detection
     include("ellipticLCS.jl")
 
-    #Vector field from Hamiltonian generation
-    include("field_from_hamiltonian.jl")
+    #Vector field from stream function generation
     include("streammacros.jl")
 
     ##Definitions of velocity fields

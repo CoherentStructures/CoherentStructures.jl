@@ -1,12 +1,39 @@
-macro velo_from_stream(H::Expr, formulas::Expr)
+import StaticArrays
+
+stream_dict = Dict()
+
+macro define_stream(name::Symbol, code::Expr)
+    haskey(stream_dict, name) && warn("overwriting definition of stream $name")
+    stream_dict[name] = code
+    quote
+        # do nothing
+    end
+end
+
+macro velo_from_stream(name::Symbol)
+    haskey(stream_dict, name) || error("stream $name not defined") 
+    quote
+        @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
+    end
+end
+
+macro var_velo_from_stream(name::Symbol)
+    haskey(stream_dict, name) || error("stream $name not defined") 
+    quote
+        @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
+    end
+end
+
+
+macro velo_from_stream(H::Symbol, formulas::Expr)
     F, _ = streamline_derivatives(H, formulas)
     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
-        (u,p,t) -> SVector($F[1], $F[2])
+        (u,p,t) -> StaticArrays.SVector($(F[1]), $(F[2]))
     end 
 end
 
-macro var_velo_from_stream(H::Expr, formulas::Expr)
+macro var_velo_from_stream(H::Symbol, formulas::Expr)
     F, DF = streamline_derivatives(H, formulas)
 
     # substiute :x and :y by access to the first column
@@ -15,25 +42,30 @@ macro var_velo_from_stream(H::Expr, formulas::Expr)
     DF = sym_subst.(DF, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
 
     quote
-         (u,p,t) -> begin 
-            A  = @SMatrix [ U[1,2] U[1,3]
-                            U[2,2] U[2,3] ]
-
-            DF = @SMatrix [ $DF[1,1] $DF[1,2]
-                            $DF[2,1] $DF[2,1] ]
+         (u, p, t)  -> begin 
+            # take as input a  2x3 matrix which is interpreted the following way:
+            # [ x[1] A[1,1] A[1,2]
+            #   x[2] A[2,1] A[2,2] ]
+    
+            # current
+            A = StaticArrays.@SMatrix [ u[1,2] u[1,3]
+                                        u[2,2] u[2,3] ]
+            DF = StaticArrays.@SMatrix [ $(DF[1,1]) $(DF[1,2])
+                                         $(DF[2,1]) $(DF[2,2]) ]
             DA = DF*A
-            return @SMatrix [ $F[1] $DA[1,1] $DA[2,1]
-                              $F[2] $DA[2,1] $DA[2,2] ]
+            return StaticArrays.@SMatrix [ $(F[1]) DA[1,1] DA[1,2]
+                                           $(F[2]) DA[2,1] DA[2,2] ]
         end
     end 
 end
 
 
-function streamline_derivatives(H::Expr, formulas::Expr)
+function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
     # (additional to symbols defined in Base)
-    bound_symbols = [:x,:y,:t, keys(diff_dics)...]
-    H = symbolic_substitutions(code, H, bound_symbols)
+    bound_symbols = [:x,:y,:t, keys(diff_dict)...]
+    H = substitutions(H, formulas, bound_symbols)
+
 
     # symbolic gradient
      ∇H  = expr_diff.(H, [:x,:y])
@@ -43,8 +75,8 @@ function streamline_derivatives(H::Expr, formulas::Expr)
     F  = [:(-$(∇H[2])), ∇H[1]]
     
     # equation of variation for streamlines
-    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[1,1]));
-               ∇²H[2,2]        ∇²H[1,2]
+    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[1,1]))
+               ∇²H[2,2]        ∇²H[1,2]  ] 
     
     return F,DF
 end
@@ -165,7 +197,7 @@ function hessian(expr, coord_vars)
 end
 
 
-#########################################################################################
+####t####################################################################################
 #                 Functions for symbolic manipulation of expressions                    #
 #                      (mainly substitutions of function calls)                         #
 #########################################################################################
@@ -176,7 +208,7 @@ perform all substitutions that are defined in `code` until
 the resulting expression does not contain free variables.
 variables can be bound by `knowns`
 """
-substitutions(code::Expr, variable::Symbol, knowns = []) = begin
+substitutions(variable::Symbol, code::Expr, knowns = []) = begin
     Base.remove_linenums!(code)
     ex = quote $variable end
     maxit = 20; count = 0
