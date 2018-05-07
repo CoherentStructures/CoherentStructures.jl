@@ -71,6 +71,20 @@ function interpolateVFPeriodic(Lon,Lat,Time, UT, VT,interpolation_type=ITP.BSpli
     return UE,VE
 end
 
+function standardMap(u)
+    const a = 0.971635
+    return StaticArrays.SVector{2,Float64}((u[1] + u[2] + a*sin(u[1])) % 2π, (u[2] + a*sin(u[1])) % 2π)
+end
+
+function DstandardMap(u)
+    const a = 0.971635
+    return Tensors.Tensor{2,2,Float64,2}(
+    (
+        1 + a*cos(u[1]), 1,
+        a*cos(u[1]), 1
+    ));
+end
+
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
 # function rot_double_gyre!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
 # #function rot_double_gyre2(t::Float64,x,dx)
