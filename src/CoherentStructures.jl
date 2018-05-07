@@ -33,7 +33,7 @@ module CoherentStructures
     include("ellipticLCS.jl")
 
     #Vector field from Hamiltonian generation
-    include("field_from_hamiltonian.jl")
+#    include("field_from_hamiltonian.jl")
     include("streammacros.jl")
 
     ##Definitions of velocity fields

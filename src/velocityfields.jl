@@ -5,9 +5,8 @@ ITP = Interpolations
 #TODO: See if type specification actually helps, remove redundant vector fields,
 # rotating double gyre and Bickley jet can both be obtained from Alvaro's macro
 # this means, apart from the interpolation functions, all other functions may be removed?
-
-bJet = @makefields from stream begin
-    stream = psi₀ + psi₁
+@define_stream Ψ_bickley begin 
+    Ψ_bickley = psi₀ + psi₁
     psi₀   = - U₀ * L₀ * tanh(y / L₀)
     psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
 
@@ -24,22 +23,20 @@ bJet = @makefields from stream begin
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
 
-bickleyJet          = bJet[:(u,p,t)]
-bickleyJet!         = bJet[:(du,u,p,t)]
-bickleyJetEqVari    = bJet[:(U,p,t)]
-bickleyJetEqVari!   = bJet[:(dU,U,p,t)]
+bickleyJet          = @velo_from_stream Ψ_bickley
+bickleyJetEqVari    = @var_velo_from_stream Ψ_bickley 
 
-rDG = @makefields from Ψ begin
+@define_stream Ψ_rot_dgyre begin
     st = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     Ψ_P = sin(2π*x)*sin(π*y)
     Ψ_F = sin(π*x)*sin(2π*y)
-    Ψ = (1-st)*Ψ_P + st*Ψ_F
+    Ψ_rot_dgyre = (1-st)*Ψ_P + st*Ψ_F
 end
 
-rot_double_gyre = rDG[:(u,p,t)]
-rot_double_gyre! = rDG[:(du,u,p,t)]
-rot_double_gyreEqVari = rDG[:(U,p,t)]
-rot_double_gyreEqVari! = rDG[:(dU,U,p,t)]
+rot_double_gyre = @velo_from_stream Ψ_rot_dgyre 
+rot_double_gyreEqVari = @var_velo_from_stream Ψ_rot_dgyre
+
+
 
 #TODO: Give variables a sensible type here
 function interpolateVF(xspan,yspan,tspan,u,v,interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))
