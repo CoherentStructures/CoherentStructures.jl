@@ -34,6 +34,7 @@ module CoherentStructures
 
     #Vector field from Hamiltonian generation
     include("field_from_hamiltonian.jl")
+    include("streammacros.jl")
 
     ##Definitions of velocity fields
     include("velocityfields.jl")
