@@ -6,7 +6,7 @@ stream_dict = Dict()
 
 Define a scalar stream function on ``R^2``. The defining code can be a series of
 definitions in an enclosing `begin ... end`-block and is treated as a series of
-symbolical substitutions. Starting from the symbol `name` substitutions are
+symbolic substitutions. Starting from the symbol `name`, substitutions are
 performed until the resulting expression only depends on `x`, `y` and `t`. 
 
 The symbol `name` is not brought into the namespace. To access the resulting
@@ -30,8 +30,8 @@ end
 
 Get the flow field corresponding to a stream function on ``R^2``.  The defining
 code can be a series of definitions (in an enclosing `begin ... end`-block and
-is treated as a series of symbolical substitutions. Starting from the symbol
-`name` substitutions are performed until the resulting expression only depends
+is treated as a series of symbolic substitutions. Starting from the symbol
+`name`, substitutions are performed until the resulting expression only depends
 on `x`, `y` and `t`. 
 
 The macro returns an anonymous function f(u,p,t) that returns a SVector{2} holding
