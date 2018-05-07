@@ -5,7 +5,7 @@ ITP = Interpolations
 #TODO: See if type specification actually helps, remove redundant vector fields,
 # rotating double gyre and Bickley jet can both be obtained from Alvaro's macro
 # this means, apart from the interpolation functions, all other functions may be removed?
-@define_stream Ψ_bickley begin 
+@define_stream Ψ_bickley begin
     Ψ_bickley = psi₀ + psi₁
     psi₀   = - U₀ * L₀ * tanh(y / L₀)
     psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -24,7 +24,7 @@ ITP = Interpolations
 end
 
 bickleyJet          = @velo_from_stream Ψ_bickley
-bickleyJetEqVari    = @var_velo_from_stream Ψ_bickley 
+bickleyJetEqVari    = @var_velo_from_stream Ψ_bickley
 
 @define_stream Ψ_rot_dgyre begin
     st = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
@@ -33,7 +33,7 @@ bickleyJetEqVari    = @var_velo_from_stream Ψ_bickley
     Ψ_rot_dgyre = (1-st)*Ψ_P + st*Ψ_F
 end
 
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre 
+rot_double_gyre = @velo_from_stream Ψ_rot_dgyre
 rot_double_gyreEqVari = @var_velo_from_stream Ψ_rot_dgyre
 
 
@@ -70,15 +70,14 @@ end
 
 function standardMap(u)
     const a = 0.971635
-    return StaticArrays.SVector{2,Float64}((u[1] + u[2] + a*sin(u[1])) % 2π, (u[2] + a*sin(u[1])) % 2π)
+    return StaticArrays.SVector{2,Float64}(mod((u[1] + u[2] + a*sin(u[1]),2π), mod(u[2] + a*sin(u[1]), 2π))
 end
 
 function DstandardMap(u)
     const a = 0.971635
-    return Tensors.Tensor{2,2,Float64,2}(
+    return Tensors.Tensor{2,2,Float64,4}(
     (
-        1 + a*cos(u[1]), 1,
-        a*cos(u[1]), 1
+        1 + a*cos(u[1]), a*cos(u[1]), 1.,1.
     ));
 end
 

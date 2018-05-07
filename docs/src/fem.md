@@ -4,6 +4,8 @@ These methods rely on the theory outlined by Froyland's [*Dynamical Laplacian*]
 (http://arxiv.org/pdf/1411.7186v4.pdf)
 and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrasch & Keller.
 
+The operators that appear can be discretized by Finite-Element based methods, see this [paper](https://arxiv.org/pdf/1705.03640.pdf) from Froyland & Junge.
+
 This involves the discretization of an averaged heat_flow operator of the form:
 
 $\Delta^{dyn} := \sum_{t \in \mathcal T} P_t^* \Delta P_t$
