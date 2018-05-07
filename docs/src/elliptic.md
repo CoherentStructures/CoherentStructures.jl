@@ -29,44 +29,50 @@ Then, the algorithm put forward in [Karrasch et al., 2015](https://dx.doi.org/10
 
 ## Example
 
-```
-using CoherentStructures
+```@example 3
+# addprocs()
 
+# @everywhere 
+begin
+    using CoherentStructures
+    import StaticArrays, Tensors, OrdinaryDiffEq
 ############################ integration set up ################################
-const q = 81
-const tspan = collect(linspace(0.,3456000.,q))
-const ny = 120
-const nx = div(ny*20,6)
-const N = nx*ny
-const xmin, xmax, ymin, ymax = 0.0, 6.371π + 2.0, -3.0, 3.0
-xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
-P = StaticArrays.SVector{2}.(xspan,yspan')
-const xi = [p[1] for p in P]'
-const yi = [p[2] for p in P]'
-const δ = 1.e-6
-const DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])
+    const q = 81
+    const tspan = collect(linspace(0.,3456000.,q))
+    const ny = 120
+    const nx = div(ny*20,6)
+    const N = nx*ny
+    const xmin, xmax, ymin, ymax = 0.0, 6.371π + 2.0, -3.0, 3.0
+    xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
+    P = StaticArrays.SVector{2}.(xspan,yspan')
+    const xi = [p[1] for p in P]'
+    const yi = [p[2] for p in P]'
+    const δ = 1.e-6
+    const DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])
+    mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,D = DiffTensor,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
+end
 
-mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,D = DiffTensor,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
-
-C̅ = parallel_tensor(mCG_tensor,P)
+C̅ = map(mCG_tensor,P)
 
 LCSparams = (.1, 0.5, 0.04, 0.5, 1.8, 60)
 vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 ```
-The output is visualized as follows.
-```
+The result is visualized as follows:
+```@example 3
 import Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
 l₂ = min.(λ₂,quantile(λ₂[:],0.995))
-fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
+begin
+    fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
             title="DBS-field and transport barriers",xlims=(0., 6.371π),ylims=(-3., 3.),leg=true)
-for i in eachindex(orbits)
-    Plots.plot!(orbits[1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
-    Plots.plot!(orbits[i][1,:]-6.371π,orbits[i][2,:],w=3)
+    for i in eachindex(orbits)
+        Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
+    end
+    Plots.plot!(orbits[5][1,:]-6.371π,orbits[5][2,:],w=3,label="T = $(round(vals[5],2))")
 end
-fig
+Plots.plot(fig)
 ```
 
 ## Function documentation
