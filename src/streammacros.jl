@@ -2,14 +2,82 @@ import StaticArrays
 
 stream_dict = Dict()
 
+""" @define_stream(name::Symbol, code::Expr)
+
+Define a scalar stream function on ``R^2``. The defining code can be a series of
+definitions in an enclosing `begin ... end`-block and is treated as a series of
+symbolic substitutions. Starting from the symbol `name`, substitutions are
+performed until the resulting expression only depends on `x`, `y` and `t`. 
+
+The symbol `name` is not brought into the namespace. To access the resulting
+vector field and variational equation  use `@velo_from_stream name` and
+`@var_velo_from_stream name`
+
+This is a convenience macro for the case where you want to use
+`@velo_from_stream` and `@var_velo_from_stream` without typing the code twice.
+If you only use one, you might as well use `@velo_from_stream name code` or
+`@var_velo_from_stream` directly.  """
 macro define_stream(name::Symbol, code::Expr)
     haskey(stream_dict, name) && warn("overwriting definition of stream $name")
     stream_dict[name] = code
     quote
-        # do nothing
+        # do nothing, the actual work is done when @velo_from_stream name
+        # is called.  
     end
 end
 
+""" @velo_from_stream(name::Symbol, [code::Expr])
+
+Get the flow field corresponding to a stream function on ``R^2``.  The defining
+code can be a series of definitions (in an enclosing `begin ... end`-block and
+is treated as a series of symbolic substitutions. Starting from the symbol
+`name`, substitutions are performed until the resulting expression only depends
+on `x`, `y` and `t`. 
+
+The macro returns an anonymous function f(u,p,t) that returns a SVector{2} holding
+the vector field at u at time t.  
+
+The macro can be called without the `code` if the stream `name` has been define
+beforehand via `@define_stream`.
+
+### Examples
+```jldoctest
+julia> using CoherentStructures
+
+julia> f = @velo_from_stream Ψ_ellipse begin
+               Ψ_ellipse = a*x^2 + b*y^2
+               a = t
+               b = 3
+           end
+(::#3) (generic function with 1 method)
+
+julia> f([1.0,1.0], nothing, 1.0)
+2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
+ -6.0
+  2.0
+```
+```jldoctest
+julia> using CoherentStructures
+
+julia> @define_stream Ψ_circular begin
+           Ψ_circular = f(x) + g(y)
+
+           # naming of function variables
+           # does not matter:
+           f(a) = a^2
+           g(y) = y^2 
+       end
+
+julia> f2 = @velo_from_stream Ψ_circular
+(::#5) (generic function with 1 method)
+
+julia> f2([1.0,1.0], nothing, 0)
+2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
+ -2.0
+  2.0
+```
+   
+"""
 macro velo_from_stream(name::Symbol)
     haskey(stream_dict, name) || error("stream $name not defined") 
     quote
