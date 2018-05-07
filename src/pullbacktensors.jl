@@ -111,7 +111,7 @@ Calculate derivative of flow map by finite differences.
             solver=default_solver,
             p=nothing,
             kwargs...
-        ) where {T <: Real}
+        )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real}
 
     const num_tsteps = length(tspan)
     const num_args = DiffEqBase.numargs(odefun)
@@ -171,7 +171,7 @@ end
             solver=default_solver,
             p=nothing,
             kwargs...
-        ) where {T <: Real}
+        )::Vector{Tensors.Tensor{3,2,T,9}} where {T <: Real}
 
     const num_tsteps = length(tspan)
     const num_args = DiffEqBase.numargs(odefun)
@@ -200,7 +200,7 @@ end
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensors.Tensor{3,2,T}( (sol[i][1:9] - sol[i][10:18])/2δ))
+        	push!(result,Tensors.Tensor{3,2,T,9}( (sol[i][1:9] - sol[i][10:18])/2δ))
         end
         return result
     elseif num_args == 3
@@ -232,8 +232,12 @@ end
     end
 end
 
-@inline function linearized_flow(odefun::Function, u::Tensors.Vec{dim,T},args...;kwargs...) where {T<:Real,dim}
-    return linearized_flow(odefun, StaticArrays.SVector{dim,T}(u[1],u[2]),args...;kwargs...)
+@inline function linearized_flow(odefun::Function, u::Tensors.Vec{2,T},args...;kwargs...)::Vector{Tensors.Tensor{2,2,T,4}} where {T<:Real}
+    return linearized_flow(odefun, StaticArrays.SVector{2,T}(u),args...;kwargs...)
+end
+
+@inline function linearized_flow(odefun::Function, u::Tensors.Vec{3,T},args...;kwargs...)::Vector{Tensors.Tensor{3,2,T,9}} where {T<:Real}
+    return linearized_flow(odefun, StaticArrays.SVector{3,T}(u),args...;kwargs...)
 end
 
 @inline function linearized_flow(odefun::Function, u::AbstractVector{T},args...;kwargs...) where {T<:Real}
