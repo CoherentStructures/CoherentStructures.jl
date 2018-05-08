@@ -310,7 +310,7 @@ function testStaticLaplace()
 end
 
 function testStandardMap()
-    tC = makeDoubleGyreTestCase()
+    tC = makeStandardMapTestCase()
     referenceCtx = regularP2TriangularGrid( (300,300), tC.LL,tC.UR)
     reference = experimentResult(tC,referenceCtx,:CG)
     result =  accuracyTest(tC, reference)
