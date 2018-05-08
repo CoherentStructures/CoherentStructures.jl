@@ -8,7 +8,7 @@ The following functions implement an LCS methodology developed in the following 
    * [Haller & Beron-Vera, 2013](https://dx.doi.org/10.1017/jfm.2013.391)
    * [Karrasch, Huhn, and Haller, 2015](https://dx.doi.org/10.1098/rspa.2014.0639)
 The present code is structurally inspired--albeit partially significantly
-improved--by Alireza Hadjighasem's MATLAB implementation [github project](https://github.com/Hadjighasem/Elliptic_LCS_2D),
+improved--by Alireza Hadjighasem's [MATLAB implementation](https://github.com/Hadjighasem/Elliptic_LCS_2D),
 which was written in the context of the [SIAM Review paper](https://doi.org/10.1137/140983665). Depending on the indefinite metric
 tensor field used, the functions below yield the following types of coherent structures:
    * black-hole/Lagrangian coherent vortices ([Haller & Beron-Vera, 2012](https://doi.org/10.1017/jfm.2013.391))
