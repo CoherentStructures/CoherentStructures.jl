@@ -284,7 +284,7 @@ end
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensors.Tensor{3,2,T}( (sol[i][1:9] - sol[i][10:18])/2δ) )
+        	push!(sresult,Tensors.Tensor{3,2,T}( (sol[i][1:9] - sol[i][10:18])/2δ) )
         end
         return sresult
     else
