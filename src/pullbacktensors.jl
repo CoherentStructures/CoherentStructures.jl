@@ -1,5 +1,5 @@
 #Functions for pulling back Tensors
-
+SA = StaticArrays
 
 const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
@@ -13,16 +13,76 @@ Solve the ODE with right hand side given by `odefun` and initial value `u0`.
 `tolerance` is passed as both relative and absolute tolerance to the solver,
 which is determined by `solver`.
 """
+# function flow(
+#             odefun::Function,
+#             u0::SA.SVector{dim,T},
+#             tspan::AbstractVector{Float64};
+#             tolerance = default_tolerance,
+#             p = nothing,
+#             solver = default_solver,
+#             #ctx_for_boundscheck=nothing,
+#             force_dtmin=false
+#         ) where {T<:Real,dim}
+#     #callback = nothing
+#     #if ctx_for_boundscheck != nothing
+#     #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
+#     #   LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
+#     #   UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
+#     #   UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
+#     #   leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
+#     #   bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
+#     #   rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
+#     #   topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
+#     #   function affect!(integrator)
+#     #           return terminate!(integrator)#
+#     #   end
+#     #   callback = OrdinaryDiffEq.CallbackSet(
+#     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
+#     #       [leftSide,rightSide,topSide,bottomSide])...)
+#    #end
+#    num_args = DiffEqBase.numargs(odefun)
+#    if num_args == 4
+#        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+#        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+#                              save_everystep=false, dense=false,
+#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+#        return sol.u
+#    elseif num_args == 3
+#        sprob = OrdinaryDiffEq.ODEProblem(odefun,u0, (tspan[1],tspan[end]), p)
+#        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
+#                              save_everystep=false, dense=false,
+#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+#        return ssol.u
+#    else
+#        error("Invalid format of odefun")
+#    end
+# end
+#
+# function flow(odefun::Function,u0::Tensors.Vec{dim,Float64},args...;kwargs...) where dim
+#     return flow(odefun,SA.SVector{dim}(u0),args...;kwargs...)
+# end
+#
+# function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
+#     if length(u0) == 2
+#         return flow(rhs,SA.SVector{2}(u0[1],u0[2]),args...;kwargs...)
+#     elseif length(u0) == 3
+#         return flow(rhs,SA.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
+#     else
+#         error("length(u0) ∉ [2,3]")
+#     end
+# end
+
 function flow(
             odefun::Function,
-            u0::StaticArrays.SVector{dim,T},
+            u0::AbstractVector{T},
             tspan::AbstractVector{Float64};
             tolerance = default_tolerance,
             p = nothing,
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T<:Real,dim}
+        ) where T <: Real
+    # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing
     #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
@@ -40,36 +100,24 @@ function flow(
     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
     #       [leftSide,rightSide,topSide,bottomSide])...)
    #end
-   num_args = DiffEqBase.numargs(odefun)
-   if num_args == 4
-       prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
-       sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                             save_everystep=false, dense=false,
-                             reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-       return sol.u
-   elseif num_args == 3
-       sprob = OrdinaryDiffEq.ODEProblem(odefun,u0, (tspan[1],tspan[end]), p)
-       ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
-                             save_everystep=false, dense=false,
-                             reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-       return ssol.u
-   else
-       error("Invalid format of odefun")
-   end
-end
-
-function flow(odefun::Function,u0::Tensors.Vec{dim,Float64},args...;kwargs...) where dim
-    return flow(odefun,StaticArrays.SVector{dim}(u0),args...;kwargs...)
-end
-
-function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
-    if length(u0) == 2
-        return flow(rhs,StaticArrays.SVector{2}(u0[1],u0[2]),args...;kwargs...)
-    elseif length(u0) == 3
-        return flow(rhs,StaticArrays.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
+    num_args = DiffEqBase.numargs(odefun)
+    if num_args == 3
+        if typeof(u0) <: SA.SVector
+            prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+        elseif length(u0) == 2
+            prob = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{2,T}(u0[1],u0[2]), (tspan[1],tspan[end]), p)
+        elseif length(u0) == 3
+            prob = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{3,T}(u0[1],u0[2],u0[3]), (tspan[1],tspan[end]), p)
+        end
+    elseif num_args == 4
+        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
     else
         error("length(u0) ∉ [2,3]")
     end
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                          save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    return sol.u
 end
 
 """
@@ -104,7 +152,7 @@ Calculate derivative of flow map by finite differences.
 """
 @inline function linearized_flow(
             odefun::Function,
-            x::StaticArrays.SVector{2,T},
+            x::SA.SVector{2,T},
             tspan::AbstractVector{Float64},
             δ::Float64;
             tolerance=default_tolerance,
@@ -113,11 +161,11 @@ Calculate derivative of flow map by finite differences.
             kwargs...
         )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real}
 
-    const num_tsteps = length(tspan)
-    const num_args = DiffEqBase.numargs(odefun)
+    num_tsteps = length(tspan)
+    num_args = DiffEqBase.numargs(odefun)
     if num_args == 4
-        const dx = [δ, zero(δ)];
-        const dy = [zero(δ), δ];
+        dx = [δ, zero(δ)];
+        dy = [zero(δ), δ];
 
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
@@ -143,18 +191,18 @@ Calculate derivative of flow map by finite differences.
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
-        sstencil::StaticArrays.SVector{8,Float64} = StaticArrays.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
+        sstencil::SA.SVector{8,Float64} = SA.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
         srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
 
         sresult = Tensors.Tensor{2,2,T,4}[]
-        sizehint!(sresult,num_tsteps)
+        sizehint!(result,num_tsteps)
         @inbounds for i in 1:num_tsteps
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(sresult,Tensors.Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
+        	push!(result,Tensors.Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
         end
         return sresult
     else
@@ -164,7 +212,7 @@ end
 
 @inline function linearized_flow(
             odefun::Function,
-            x::StaticArrays.SVector{3,T},
+            x::SA.SVector{3,T},
             tspan::AbstractVector{Float64},
             δ::Float64;
             tolerance=default_tolerance,
@@ -173,12 +221,12 @@ end
             kwargs...
         )::Vector{Tensors.Tensor{3,2,T,9}} where {T <: Real}
 
-    const num_tsteps = length(tspan)
-    const num_args = DiffEqBase.numargs(odefun)
+    num_tsteps = length(tspan)
+    num_args = DiffEqBase.numargs(odefun)
     if num_args == 4
-        const dx = [δ, zero(δ),zero(δ)];
-        const dy = [zero(δ), δ,zero(δ)];
-        const dz = [zero(δ),zero(δ),δ]
+        dx = [δ, zero(δ), zero(δ)]
+        dy = [zero(δ), δ, zero(δ)]
+        dz = [zero(δ), zero(δ), δ]
 
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
@@ -200,13 +248,13 @@ end
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensors.Tensor{3,2,T,9}( (sol[i][1:9] - sol[i][10:18])/2δ))
+        	push!(result,Tensors.Tensor{3,2,T,9}( (sol[i][1:9] - sol[i][10:18])/2δ) )
         end
         return result
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
-        sstencil::SVector{18,Float64} = StaticArrays.SVector{18,T}(
+        sstencil::SVector{18,Float64} = SA.SVector{18,T}(
                 x[1] + δ, x[2], x[3],
                 x[1],x[2] + δ, x[3],
                 x[1],x[2], x[3] + δ,
@@ -224,7 +272,7 @@ end
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(sresult,Tensors.Tensor{3,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
+        	push!(result,Tensors.Tensor{3,2,T}( (sol[i][1:9] - sol[i][10:18])/2δ) )
         end
         return sresult
     else
@@ -233,18 +281,18 @@ end
 end
 
 @inline function linearized_flow(odefun::Function, u::Tensors.Vec{2,T},args...;kwargs...)::Vector{Tensors.Tensor{2,2,T,4}} where {T<:Real}
-    return linearized_flow(odefun, StaticArrays.SVector{2,T}(u),args...;kwargs...)
+    return linearized_flow(odefun, SA.SVector{2,T}(u),args...;kwargs...)
 end
 
 @inline function linearized_flow(odefun::Function, u::Tensors.Vec{3,T},args...;kwargs...)::Vector{Tensors.Tensor{3,2,T,9}} where {T<:Real}
-    return linearized_flow(odefun, StaticArrays.SVector{3,T}(u),args...;kwargs...)
+    return linearized_flow(odefun, SA.SVector{3,T}(u),args...;kwargs...)
 end
 
 @inline function linearized_flow(odefun::Function, u::AbstractVector{T},args...;kwargs...) where {T<:Real}
     if length(u) == 2
-        return linearized_flow(odefun, StaticArrays.SVector{2,T}(u[1],u[2]),args...;kwargs...)
+        return linearized_flow(odefun, SA.SVector{2,T}(u[1],u[2]),args...;kwargs...)
     elseif length(u) == 3
-        return linearized_flow(odefun, StaticArrays.SVector{3,T}(u[1],u[2],u[3]),args...;kwargs...)
+        return linearized_flow(odefun, SA.SVector{3,T}(u[1],u[2],u[3]),args...;kwargs...)
     else
         error("length(u) ∉ [2,3]")
     end
