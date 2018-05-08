@@ -334,7 +334,7 @@ function ellipticLCS(T::Matrix{Tensors.SymmetricTensor{2,2,S,3}},
     println("Defined $(length(vortexcenters)) Poincaré sections...")
     p_section = map(vc -> set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan),vortexcenters)
     @everywhere @eval p_section = $p_section
-    @time closedorbits = pmap(p_section) do ps
+    closedorbits = pmap(p_section) do ps
         compute_outermost_closed_orbit(ps,T,xspan,yspan)
     end
 
