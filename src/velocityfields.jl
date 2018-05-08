@@ -70,7 +70,7 @@ end
 
 function standardMap(u)
     const a = 0.971635
-    return StaticArrays.SVector{2,Float64}(mod((u[1] + u[2] + a*sin(u[1]),2π), mod(u[2] + a*sin(u[1]), 2π))
+    return StaticArrays.SVector{2,Float64}(mod((u[1] + u[2] + a*sin(u[1]),2π), mod(u[2] + a*sin(u[1]), 2π)))
 end
 
 function DstandardMap(u)

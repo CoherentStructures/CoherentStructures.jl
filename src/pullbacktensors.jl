@@ -40,7 +40,7 @@ function flow(
     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
     #       [leftSide,rightSide,topSide,bottomSide])...)
    #end
-   const num_args = DiffEqBase.numargs(odefun)
+   num_args = DiffEqBase.numargs(odefun)
    if num_args == 4
        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
@@ -66,7 +66,7 @@ function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
     if length(u0) == 2
         return flow(rhs,StaticArrays.SVector{2}(u0[1],u0[2]),args...;kwargs...)
     elseif length(u0) == 3
-        return flow(rhs,StaticArrays.SVector{3}(u0[1],u0[2]),args...;kwargs...)
+        return flow(rhs,StaticArrays.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
     else
         error("length(u0) ∉ [2,3]")
     end
