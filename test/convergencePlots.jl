@@ -1,15 +1,21 @@
 #(c) 2018 Nathanael Schilling
 
 using CoherentStructures
-import Plots
+include("numericalExperiments.jl")
 
-plotExperiment(l,axis=false,colorbar=false,margin=0.0Plots.px)
 
+tC = makeStandardMapTestCase()
+referenceCtx = regularP2TriangularGrid((100,100),tC.LL,tC.UR)
+reference = experimentResult(tC,referenceCtx, :CG)
+runExperiment!(reference)
 
 dgTc = makeDoubleGyreTestCase(0.5)
 referenceCtx = regularP2TriangularGrid( (300,300), dgTc.LL,dgTc.UR)
 reference = experimentResult(dgTc,referenceCtx,:CG)
 runExperiment!(reference)
+plot_u(reference.ctx,reference.V[:,2])
+
+
 CoherentStructures.buildStatistics!(results,22)
 
 results = CoherentStructures.testDoubleGyre(0.25)
