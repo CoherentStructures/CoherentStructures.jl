@@ -103,21 +103,33 @@ function flow(
     num_args = DiffEqBase.numargs(odefun)
     if num_args == 3
         if typeof(u0) <: SA.SVector
-            prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+            sprob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+            ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
+                                  save_everystep=false, dense=false,
+                                  reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+            return ssol.u
         elseif length(u0) == 2
-            prob = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{2,T}(u0[1],u0[2]), (tspan[1],tspan[end]), p)
+            prob2 = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{2,T}(u0[1],u0[2]), (tspan[1],tspan[end]), p)
+            sol2 = OrdinaryDiffEq.solve(prob2, solver, saveat=tspan,
+                                  save_everystep=false, dense=false,
+                                  reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+            return sol2.u
         elseif length(u0) == 3
-            prob = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{3,T}(u0[1],u0[2],u0[3]), (tspan[1],tspan[end]), p)
+            prob3 = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{3,T}(u0[1],u0[2],u0[3]), (tspan[1],tspan[end]), p)
+            sol3 = OrdinaryDiffEq.solve(prob3, solver, saveat=tspan,
+                                  save_everystep=false, dense=false,
+                                  reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+            return sol3.u
         end
     elseif num_args == 4
-        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+        prob! = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+        sol! = OrdinaryDiffEq.solve(prob!, solver, saveat=tspan,
+                              save_everystep=false, dense=false,
+                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+        return sol!.u
     else
         error("length(u0) ∉ [2,3]")
     end
-    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                          save_everystep=false, dense=false,
-                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-    return sol.u
 end
 
 """
