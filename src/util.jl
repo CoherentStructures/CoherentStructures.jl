@@ -20,7 +20,7 @@ end
 
 """
 arraymap2
-This function is like arraymap(du,u,p,t,odefun, 4,2),
+This function is like arraymap(u,p,t,odefun, 4,2),
 but du is returned as a StaticVector
 """
 @inline function arraymap2(u::StaticArrays.SVector{8,T},p,t::Float64, odefun::Function)::StaticArrays.SVector{8,T} where T
@@ -33,7 +33,7 @@ end
 
 """
 arraymap3
-This function is like arraymap(du,u,pt,odefun,6,3)
+This function is like arraymap(u,pt,odefun,6,3)
 but du is returned as a StaticVector
 """
 @inline function arraymap3(u::StaticArrays.SVector{18,T},p,t::Float64, odefun::Function)::StaticArrays.SVector{18,T} where T
