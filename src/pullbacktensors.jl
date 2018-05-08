@@ -197,12 +197,12 @@ Calculate derivative of flow map by finite differences.
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
 
         sresult = Tensors.Tensor{2,2,T,4}[]
-        sizehint!(result,num_tsteps)
+        sizehint!(sresult,num_tsteps)
         @inbounds for i in 1:num_tsteps
             #The ordering of the stencil vector was chosen so
             #that  a:= stencil[1:4] - stencil[5:8] is a vector
             #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensors.Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
+        	push!(sresult,Tensors.Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
         end
         return sresult
     else
