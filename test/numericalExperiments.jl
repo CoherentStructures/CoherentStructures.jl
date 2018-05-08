@@ -1,6 +1,7 @@
 #(c) 2018 Nathanael Schilling
 #This file contains code for running numerical experiments with CoherentStructures.jl
 
+using JLD2,StaticArrays,Tensors
 
 #TODO: Replace Float64 with a more general type
 #TODO: Generalize to dim != 2
@@ -10,16 +11,28 @@ struct testCase
     name::String #Something like "Ocean Flow" or other (human-readable) description
     LL::Vec{2}
     UR::Vec{2}
+    bdata_predicate::Function
+    dbc_facesets
+
+    is_ode::Bool
+
+    #We need the stuff below if is_ode == true
     t_initial::Float64
     t_final::Float64
     #Things that may be needed for this experiment
-    ode_fun::Function
-    p #Parameters to pass to ode_fun
+    ode_fun
+    p #Parameters to pass to ode_fun,
+
+    #If is_ode == false
+    f
+    Df
+
 end
 
 mutable struct experimentResult
     experiment::testCase
-    ctx::gridContext
+    ctx::CoherentStructures.gridContext
+    bdata::CoherentStructures.boundaryData
     mode::Symbol #One of :naTO, :aTO, :CG, :L2GTO, etc..
     done::Bool
     runtime::Float64
@@ -27,15 +40,23 @@ mutable struct experimentResult
     V::Array{Float64,2}
     statistics::Dict{String, Any} #Things we can calculate about this solution
 
-    #Constructor from general gridContext object
-    function experimentResult(experiment,ctx,mode)
-        result = new(experiment,ctx,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}())
+    #Like below, but make boundary data first
+    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,mode)
+        bdata = boundaryData(ctx,experiment.bdata_predicate, experiment.dbc_facesets)
+        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}())
+        return result
+    end
+
+    #Constructor from general CoherentStructures.gridContext object
+    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,bdata::CoherentStructures.boundaryData,mode)
+        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}())
         return result
     end
     #For regular Grids:
-    function experimentResult(experiment, gridType::String, howmany , mode)
+    function experimentResult(experiment::testCase, gridType::String, howmany , mode)
         ctx = regularGrid(gridType,howmany, experiment.LL, experiment.UR)
-        return experimentResult(experiment,ctx,mode)
+        bdata = boundaryData(ctx,experiment.bdata_predicate,experiment.dbc_facesets)
+        return experimentResult(experiment,ctx,bdata,mode)
     end
 
 end
@@ -48,25 +69,35 @@ function runExperiment!(eR::experimentResult,nev=6)
     eR.runtime = 0.0
     if eR.mode == :CG
         times = [eR.experiment.t_initial,eR.experiment.t_final]
-        ode_fun = eR.experiment.ode_fun
-        #TODO: Think about varying the parameters below.
-        cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
-        assembleStiffnessMatrix(eR.ctx)
-        eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
-        eR.runtime += (@elapsed K = assembleStiffnessMatrix(eR.ctx,cgfun))
+        if eR.experiment.is_ode
+            ode_fun = eR.experiment.ode_fun
+            #TODO: Think about varying the parameters below.
+            cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
+        else
+            cgfun = x->0.5*(one(SymmetricTensor{2,2,Float64,4}) + dott(inv(eR.experiment.Df(x))))
+        end
+        eR.runtime += (@elapsed K = assembleStiffnessMatrix(eR.ctx,cgfun,bdata=eR.bdata))
         #TODO:Vary whether or not we lump the mass matrices or not
-        eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,lumped=false))
+        eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,bdata=eR.bdata,lumped=false))
         eR.runtime +=  (@elapsed λ, v = eigs(K,M,which=:SM,nev=nev))
         eR.λ = λ
         eR.V = v
     elseif eR.mode == :aTO
+        if ! isempty(eR.bdata.periodic_dofs_from)
+            error("Periodic boundary conditions not yet implemented for adaptive TO")
+        end
+        if !eR.experiment.is_ode
+            error("TODO: Implement this!")
+        end
         times = [eR.experiment.t_initial,eR.experiment.t_final]
         ode_fun = eR.experiment.ode_fun
         forwards_flow = u0->flow(ode_fun, u0,times,p=eR.experiment.p)[end]
         eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
-        eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx))
+        eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,bdata=eR.bdata))
         eR.runtime += (@elapsed S2= adaptiveTO(eR.ctx,forwards_flow))
         eR.runtime += (@elapsed λ, v = eigs(-1*(S + S2),M,which=:SM,nev=nev))
+        meanS = CoherentStructures.applyBCS(eR.ctx, -0.5*(S+S2),eR.bdata)
+
         eR.λ = λ
         eR.V = v
     else
@@ -88,7 +119,7 @@ function plotExperiment(eR::experimentResult,nev=-1; kwargs...)
         if nev != -1 && i > nev
             break
         end
-        push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),title=(@sprintf("%.2f",lam)),plotit=false,color=:rainbow;kwargs...))
+        push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),bdata=eR.bdata,title=(@sprintf("%.2f",lam)),plotit=false,color=:rainbow;kwargs...))
     end
     Plots.plot(allplots...)
 end
@@ -96,7 +127,7 @@ end
 
 
 #TODO: Think of moving helper functions like these to GridFunctions.jl
-function sampleTo(u::Vector{Float64}, ctx_old::gridContext, ctx_new::gridContext)
+function sampleTo(u::Vector{Float64}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext)
     u_new::Vector{Float64} = zeros(ctx_new.n)*NaN
     for i in 1:ctx_new.n
         u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u,ctx_new.grid.nodes[i].x,NaN,true)
@@ -104,7 +135,7 @@ function sampleTo(u::Vector{Float64}, ctx_old::gridContext, ctx_new::gridContext
     return u_new
 end
 
-function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞", M=nothing)
+function getnorm(u::Vector{Float64},ctx::CoherentStructures.gridContext,which="L∞", M=nothing)
     if which == "L∞"
         return maximum(abs.(u))
     elseif which == "L2"
@@ -114,7 +145,7 @@ function getnorm(u::Vector{Float64},ctx::gridContext,which="L∞", M=nothing)
     end
 end
 
-function getInnerProduct(ctx::gridContext, u1::Vector{Float64},u2::Vector{Float64},Min=nothing)
+function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Float64},u2::Vector{Float64},Min=nothing)
         if Min == nothing
             M = assembleMassMatrix(ctx)
         else
@@ -124,7 +155,7 @@ function getInnerProduct(ctx::gridContext, u1::Vector{Float64},u2::Vector{Float6
         return  u2 ⋅ Mu1
 end
 
-function getDiscreteInnerProduct(ctx1::gridContext, u1::Vector{Float64}, ctx2::gridContext, u2::Vector{Float64},nx=400,ny=400)
+function getDiscreteInnerProduct(ctx1::CoherentStructures.gridContext, u1::Vector{Float64}, ctx2::CoherentStructures.gridContext, u2::Vector{Float64},nx=400,ny=400)
     res = 0.0
     for x in linspace(ctx1.spatialBounds[1][1],ctx1.spatialBounds[2][1],nx)
         for y in linspace(ctx1.spatialBounds[1][2],ctx1.spatialBounds[2][2],ny)
@@ -155,14 +186,24 @@ function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrop
 
     t_initial = minimum(Time)
     t_final = t_initial + 90
-    result = testCase("Ocean Flow", LL,UR,t_initial,t_final, interp_rhs,p)
+    bdata_predicate = (x,y) -> false
+    result = testCase("Ocean Flow", LL,UR,bdata_predicate,"all",true,t_initial,t_final, interp_rhs,p,nothing,nothing)
     return result
 end
 
 function makeDoubleGyreTestCase(tf=1.0)
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.0,1.0])
-    result = testCase("Rotating Double Gyre",LL,UR,0.0,tf, rot_double_gyre,nothing)
+    bdata_predicate = (x,y) -> false
+    result = testCase("Rotating Double Gyre",LL,UR,bdata_predicate,[], true,0.0,tf, rot_double_gyre,nothing,nothing,nothing)
+    return result
+end
+
+function makeStandardMapTestCase()
+    LL = Vec{2}([0.0,0.0])
+    UR=Vec{2}([2π,2π])
+    bdata_predicate = (x,y) -> (mod(x[1] - y[1],2π) < 1e-9 && mod(x[2] - y[2],2π)<1e-9)
+    result = testCase("Standard Map",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap,CoherentStructures.DstandardMap)
     return result
 end
 
@@ -170,16 +211,16 @@ function zeroRHS(u,p,t)
     return @SVector [0.0, 0.0]
 end
 
-
 function makeStaticLaplaceTestCase()
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.5,1.0])
-    result = testCase("Static Laplace",LL,UR,0.0,0.01, zeroRHS,nothing)
+    bdata_predicate = (x,y) -> false
+    result = testCase("Static Laplace",LL,UR,bdata_predicate,[], true,0.0,0.01, zeroRHS,nothing,nothing,nothing)
     return result
 end
 
 
-function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=default_quadrature_order)
+function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=CoherentStructures.default_quadrature_order)
     print("Running reference experiment")
     experimentResults = Vector{experimentResult}(0)
     runExperiment!(reference)
@@ -223,11 +264,11 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
         E_discrete = zeros(6,6)
         for i in 1:6
             index = sortperm(real.(eR.λ))[end- (i - 1)]
-            upsampled = sampleTo(eR.V[:,index],eR.ctx,reference.ctx)
+            upsampled = sampleTo(undoBCS(eR.ctx,eR.V[:,index],eR.bdata),eR.ctx,reference.ctx)
             upsampled /= getnorm(upsampled,reference.ctx,"L2",M_ref)
             for j in 1:6
                 index_ref = sortperm(real.(reference.λ))[end - (j - 1)]
-                ref_ev = reference.V[:,j]
+                ref_ev = undoBCS(reference.ctx, reference.V[:,j],reference.bdata)
                 ref_ev /= getnorm(ref_ev,reference.ctx,"L2",M_ref)
                 E[i,j] = getInnerProduct(reference.ctx, reference.V[:,index_ref], upsampled,M_ref)
             end
@@ -265,5 +306,13 @@ function testStaticLaplace()
     referenceCtx = regularP2QuadrilateralGrid( (200,200), staticLaplaceTestCase.LL,staticLaplaceTestCase.UR)
     reference = experimentResult(staticLaplaceTestCase,referenceCtx,:CG)
     result =  accuracyTest(staticLaplaceTestCase, reference)
+    return result
+end
+
+function testStandardMap()
+    tC = makeStandardMapTestCase()
+    referenceCtx = regularP2TriangularGrid( (300,300), tC.LL,tC.UR)
+    reference = experimentResult(tC,referenceCtx,:CG)
+    result =  accuracyTest(tC, reference)
     return result
 end

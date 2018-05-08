@@ -823,7 +823,7 @@ end
 Represent (a combination of) homogeneous Dirichlet and periodic boundary conditions.
 Fields:
  - `dbc_dofs` list of dofs that should have homogeneous Dirichlet boundary conditions. Must be sorted.
- - `periodic_dofs_from` and `periodic_dofs_to` are both `Vector{Int}`. The former *must* be sorted, both must be the same length. `periodic_dofs_from[i]` is identified with `periodic_dofs_to[i]`. Multiple dofs can be identified with the same dof. If some dof is identified with another dof and one of them is in `dbc_dofs`, both points *must* be in `dbc_dofs`
+ - `periodic_dofs_from` and `periodic_dofs_to` are both `Vector{Int}`. The former *must* be strictly increasing, both must be the same length. `periodic_dofs_from[i]` is identified with `periodic_dofs_to[i]`. `periodic_dofs_from[i]` must be strictly larger than `periodic_dofs_to[i]`. Multiple dofs can be identified with the same dof. If some dof is identified with another dof and one of them is in `dbc_dofs`, both points *must* be in `dbc_dofs`
 """
 mutable struct boundaryData
     dbc_dofs::Vector{Int}
@@ -879,8 +879,14 @@ Given a vector `u` in dof order with boundary conditions applied, return the cor
 `u` in dof order without the boundary conditions.
 """
 function undoBCS(ctx, u,bdata)
-        correspondsTo = BCTable(ctx,bdata)
         n = ctx.n
+        if length(bdata.dbc_dofs) == 0 && length(bdata.periodic_dofs_from) == 0
+            return copy(u)
+        end
+        if n == length(u)
+            error("u is already of length n, no need for undoBCS")
+        end
+        correspondsTo = BCTable(ctx,bdata)
         result = zeros(n)
         for i in 1:n
             if correspondsTo[i] == 0
@@ -905,6 +911,9 @@ function BCTable{dim}(ctx::gridContext{dim},bdata::boundaryData)
     dbcs_prescribed_dofs=bdata.dbc_dofs
     periodic_dofs_from = bdata.periodic_dofs_from
     periodic_dofs_to = bdata.periodic_dofs_to
+    n = ctx.n
+    k = length(dbcs_prescribed_dofs)
+    l = length(periodic_dofs_from)
 
     if dbcs_prescribed_dofs==nothing
         dbcs_prescribed_dofs = getHomDBCS(ctx).prescribed_dofs
@@ -912,9 +921,16 @@ function BCTable{dim}(ctx::gridContext{dim},bdata::boundaryData)
     if !issorted(dbcs_prescribed_dofs)
         error("DBCS are not sorted")
     end
-    k = length(dbcs_prescribed_dofs)
-    l = length(periodic_dofs_from)
-    n = ctx.n
+    for i in 1:l
+        if i != 1
+            if periodic_dofs_from[i-1] >= periodic_dofs_from[i]
+                error("periodic_dofs_from is not strictly increasing")
+            end
+        end
+        if periodic_dofs_from[i] <= periodic_dofs_to[i]
+            error("periodic_dofs_from[$i] ≦ periodic_dofs_to[$i]")
+        end
+    end
     correspondsTo = zeros(Int, n)
     dbc_ptr = 0
     boundary_ptr = 0
@@ -1027,17 +1043,16 @@ end
 
 function identifyPoints{dim}(ctx::gridContext{dim},predicate)
     boundary_dofs = getHomDBCS(ctx).dbc_dofs
-    identify_with = copy(boundary_dofs)*0
+    identify_from = Int[]
+    identify_to = Int[]
     for (index, i) in enumerate(boundary_dofs)
-        for j in 1:i
+        for j in 1:(i-1)
             if predicate(getDofCoordinates(ctx,i),getDofCoordinates(ctx,j))
-                identify_with[index] = j
+                push!(identify_from,i)
+                push!(identify_to,j)
                 break
             end
         end
-        if identify_with[index] == 0
-            identify_with[index] = i
-        end
     end
-    return boundary_dofs,identify_with
+    return identify_from,identify_to
 end
