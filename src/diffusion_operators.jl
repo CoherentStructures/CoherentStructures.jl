@@ -80,30 +80,43 @@ function sparseaffinitykernel( A::AbstractArray{T, 2},
     return sparse(Is, Js, Vs, N, N)
 end
 
-"""
+doc"""
     α_normalize!(A, α = 0.5)
 Normalize rows and columns of `A` in-place with the respective row-sum to the
-α-th power; i.e., return \$ a_{ij}:=a_{ij}/(q_i^αq_j^α)\$. Default for `α` is 0.5.
+α-th power; i.e., return $ a_{ij}:=a_{ij}/(q_i^{\alpha}q_j^{\alpha})$, where
+$ q_k = \sum_{\ell} a_{k\ell}$. Default for `α` is 0.5.
 """
 
-function α_normalize!(A::AbstractMatrix{T}, α::T = 0.5) where T<:Number
+function α_normalize!(A::AbstractSparseMatrix{T}, α::T = 0.5) where T<:Number
     qₑ = spdiagm( (1./squeeze(sum(A, 2),2).^α))
     A .= qₑ * A * qₑ
     return A
 end
 
+function α_normalize!(A::DenseMatrix{T}, α::T = 0.5) where T<:Number
+    qₑ = 1./squeeze(sum(A, 2),2).^α
+    scale!(A,qₑ)
+    scale!(qₑ,A)
+    return A
+end
+
 doc"""
-    wlap_normalize!(A)
+    wLap_normalize!(A)
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 $ a_{ij}:=a_{ij}/q_i$.
 """
 
-function wlap_normalize!(A::AbstractMatrix)
+function wLap_normalize!(A::AbstractSparseMatrix)
     dᵅ = spdiagm(1./squeeze(sum(A, 2),2))
     A .= dᵅ * A
     return A
- end
+end
 
+function wLap_normalize!(A::DenseMatrix)
+    dᵅ = 1./squeeze(sum(A, 2),2)
+    scale!(dᵅ,A)
+    return A
+ end
 
 # given a collection of Tuple{Vector, Vector, Vector },
 # return a single Tuple{Vector, Vector, Vector}, concatenating
@@ -120,7 +133,7 @@ function collect_entries(entry_lists::Vector{Tuple{Vector{Int}, Vector{Int}, Vec
     nI, nJ, nV = reduce(counter, (0,0,0), entry_lists)
 
     # allocate index and value lists
-    I,J,V = zeros(Int, nI), zeros(Int, nJ), zeros(T, nV)
+    I, J, V = zeros(Int, nI), zeros(Int, nJ), zeros(T, nV)
 
     # traverse the collection of Tuples while
     # filling the (linear) lists I,J and V
@@ -138,6 +151,64 @@ function collect_entries(entry_lists::Vector{Tuple{Vector{Int}, Vector{Int}, Vec
             k += 1
         end
     end
+    return I, J, V
+end
 
-    return I,J,V
+"""
+    meanmetric(F, av, metric)
+
+For a set of trajectories ``x_i^t`` calculate an "averaged" distance matrix
+``K ∈ R^{N×N}`` where ``k_{ij} = av(metric(x_i^1, x_j^1), … , k(x_i^T, x_j^T))``.
+# Arguments
+   * `F`: trajectory data with `size(F) = dim, T, N`
+   * `av`: time-averaging function, see below for examples
+   * `metric`: spatial distance function metric
+
+## Examples for metrics
+   * `Euclidean()`
+   * `Haversine(r)`: geodesic distance on a sphere of radius `r` in the
+        same units as `r`
+   * `PeriodicEuclidean(L)`: Euclidean distance on a periodic domain, periods
+        are contained in the vector `L`
+
+## Examples for time averages
+   * `av = mean`: arithmetic time-average, L¹ in time [Hadjighasem et al.]
+   * `av = x->1/mean(inv,x)`: harmonic time-average [de Diego et al.]
+   * `av = max`: sup/L\^infty in time [mentioned by Hadjighasem et al.]
+   * `av = x->min(x)<=ε`: encounter adjacency [Rypina et al., Padberg-Gehle & Schneide]
+   * `av = x->mean(abs2,x)`: Euclidean delay coordinate metric [cf. Froyland & Padberg-Gehle]
+"""
+function meanmetric(F::AbstractArray{T,3}, av, metric) where T <: Real
+    dim, t, N = size(F)
+
+    entries = div(N*(N+1),2)
+
+    # linear storage of triangular matrix
+    R = SharedArray{T,2}(N,N)
+
+    # enumerate the entries linearily to distribute them
+    # evenly over the workers
+    dummy_value = av([evaluate(metric,F[:,1:1,1], F[:,1:1,1])])
+    @everywhere dists = $(repeat([dummy_value],inner =t))
+
+    @views @sync @parallel for n = 1:entries
+       i, j = tri_indices(n)
+       # fill_distances!(dists, F[:,:,i], F[:,:,j], metric, t)
+       Distances.colwise!(dists, metric, F[:,:,i], F[:,:,j])
+       R[i,j] = av(dists)
+    end
+    Symmetric(R,:L)
+end
+
+function fill_distances!(dists, xis, xjs, k, t)
+    @views for l in 1:t
+        dists[l] = k(xis[:,l], xjs[:,l])
+    end
+    return dists
+end
+
+function tri_indices(n::Int)
+    i = floor(Int, 0.5*(1 + sqrt(8n-7)))
+    j = n - div(i*(i-1),2)
+    return i, j
 end
