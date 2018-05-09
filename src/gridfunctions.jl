@@ -680,7 +680,7 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
         #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
         #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        const tM = Tensors.Tensor{2,2,Float64,4}([1,-1,1,0])
+        const tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
         return tM⋅Tensors.Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1]
     end
 end
@@ -748,7 +748,7 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::J
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
         #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
         #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        const tM = Tensors.Tensor{2,2,Float64,4}([1,-1,1,0])
+        const tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
         return tM⋅Tensors.Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3]
     end
     return
@@ -828,18 +828,28 @@ function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.
     #Get the 8 node numbers of the rectangular hexahedron the point is in:
     #Ordering is like tmp of JuAFEM's generate_grid(::Type{Tetrahedron})
 
-    nodes = [
-        n1 + n2*loc.nx + n3*loc.nx*loc.ny,
-        n1 + 1 + n2*loc.nx + n3*loc.nx*loc.ny,
-        n1 + 1 + (n2 + 1)*loc.nx + n3*loc.nx*loc.ny,
-        n1 + (n2 + 1)*loc.nx + n3*loc.nx*loc.ny,
 
-        n1 + n2*loc.nx + (n3 + 1)*loc.nx*loc.ny,
-        n1 + 1 + n2*loc.nx + (n3 + 1)*loc.nx*loc.ny,
-        n1 + 1 + (n2 + 1)*loc.nx + (n3 + 1)*loc.nx*loc.ny,
-        n1 + (n2 + 1)*loc.nx + (n3 + 1)*loc.nx*loc.ny
-        ]
+    if false
+        nodes = [
+            n1 + n2*loc.nx + n3*loc.nx*loc.ny,
+            n1 + 1 + n2*loc.nx + n3*loc.nx*loc.ny,
+            n1 + 1 + (n2 + 1)*loc.nx + n3*loc.nx*loc.ny,
+            n1 + (n2 + 1)*loc.nx + n3*loc.nx*loc.ny,
 
+            n1 + n2*loc.nx + (n3 + 1)*loc.nx*loc.ny,
+            n1 + 1 + n2*loc.nx + (n3+1)*loc.nx*loc.ny,
+            n1 + 1 + (n2 + 1)*loc.nx + (n3+1)*loc.nx*loc.ny,
+            n1 + (n2 + 1)*loc.nx + (n3+1)*loc.nx*loc.ny,
+
+            ]
+    else
+        i = n1+1
+        j = n2+1
+        k = n3+1
+        node_array = reshape(collect(0:(loc.nx*loc.ny*loc.nz - 1)), (loc.nx, loc.ny, loc.nz))
+        nodes = (node_array[i,j,k], node_array[i+1,j,k], node_array[i+1,j+1,k], node_array[i,j+1,k],
+                   node_array[i,j,k+1], node_array[i+1,j,k+1], node_array[i+1,j+1,k+1], node_array[i,j+1,k+1])
+   end
     #JuAFEM uses a rotated form of no 13 from http://www.baumanneduard.ch/Splitting%20a%20cube%20in%20tetrahedras2.htm
     #Numbering below refers to the ordering in generate_grid
     #The corresponding node number indexes from `nodes` in square brackets
@@ -847,10 +857,10 @@ function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.
         return Tensors.Vec{3}([loc1,loc2,loc3]), nodes[([1,2,4,5])] .+ 1
     elseif loc1 + loc2 - loc3 >= 1.0 #Case 2 [2,3,4,7]
         const tMI =  Tensors.Tensor{2,3,Float64, 9}((0.,1.,0., -1., 1.,0., 0.,1.,1.))
-        return inv(tMI) ⋅  Vec{3}([loc1 - 1,loc2,loc3]), nodes[([2,3,4,7])] .+ 1
+        return inv(tMI) ⋅  Vec{3}([loc1-1,loc2,loc3]), nodes[([2,3,4,7])] .+ 1
     elseif loc1 + loc3 - loc2 >= 1.0#Case 4 [2,5,6,7]
-        const tMI =  Tensors.Tensor{2,3,Float64, 9}((-1.,0.,1.0,0.,0.,1.,0.,1.,1.))
-        return inv(tMI) ⋅ Vec{3}([loc1 - 1,loc2,loc3]), nodes[([2,5,6,7])] .+ 1
+        const tMI =  Tensors.Tensor{2,3,Float64, 9}((-1.,0.,1.,0.,0.,1.,0.,1.,1.))
+        return inv(tMI) ⋅ Vec{3}([loc1-1 ,loc2,loc3]), nodes[([2,5,6,7])] .+ 1
     elseif loc3 + loc2 - loc1 >= 1.0 #Case 5 [4,5,7,8]
         const tMI =  Tensors.Tensor{2,3,Float64, 9}((0.,-1.,1., 1.,0.,1.,0.,0.,1.))
         return inv(tMI) ⋅  Vec{3}([loc1 ,loc2-1,loc3]), nodes[([4,5,7,8])] .+ 1

@@ -1,19 +1,18 @@
 JFM = JuAFEM
 
-Id = one(Tensors.SymmetricTensor{2,2})
-function tensorIdentity(x::Tensors.Vec{2},i::Int,p)
-    return Id
+function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
+        return one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
 end
 
 doc"""
-    assembleStiffnessMatrix(ctx,A,[p; bdata])
+    assembleStiffnessMatrix{dim}(ctx,A,[p; bdata])
 
 Assemble the stiffness-matrix for a symmetric bilinear form
 ```math
 a(u,v) = \int \nabla u(x)\cdot A(x)\nabla v(x)f(x) dx
 ```
 The integral is approximated using quadrature.
-`A` is a function that returns a `Tensors.SymmetricTensor` and has one of the following forms:
+`A` is a function that returns a `Tensors.SymmetricTensor{2,dim}` and has one of the following forms:
    * `A(x::Vector{Float64})`
    * `A(x::Vec{dim})`
    * `A(x::Vec{dim}, index::Int, p)`. Here x is equal to `ctx.quadrature_points[index]`, and `p` is that which is passed to `assembleStiffnessMatrix`
@@ -47,8 +46,9 @@ function assembleStiffnessMatrix{dim}(
         fail("Function parameter A does not accept types supported by assembleStiffnessMatrix")
     end
 
-    #Note: the Float64,3 part below is important! otherwise the method becomes 30x slower
-    Aqcoords::Tensors.SymmetricTensor{2,2,Float64,3} = zero(Tensors.SymmetricTensor{2,2})
+    #Note: the Float64,3*(dim-1) part below is important! otherwise the method becomes 30x slower
+    #This is a dirty, dirty hack that works only in dimensions 2 and 3.
+    Aqcoords::Tensors.SymmetricTensor{2,dim,Float64,3*(dim-1)} = zero(Tensors.SymmetricTensor{2,dim})
     @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         fill!(Ke,0)
         JFM.reinit!(cv,cell)
@@ -60,16 +60,15 @@ function assembleStiffnessMatrix{dim}(
             elseif A_type == 2
                 Aqcoords = A(Vector{Float64}(ctx.quadrature_points[index]))
             elseif A_type == 3
-                Aqcoords = Id
+                Aqcoords = one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
             end
             const dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
-                const ∇φ::Tensors.Vec{2} = JFM.shape_gradient(cv,q,i)
+                const ∇φ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,i)
                 for j in 1:(i-1)
-                    const ∇ψ::Tensors.Vec{2} = JFM.shape_gradient(cv,q,j)
+                    const ∇ψ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,j)
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
-
                 end
                 Ke[i,i] -= (∇φ ⋅(Aqcoords ⋅ ∇φ)) * dΩ
             end
