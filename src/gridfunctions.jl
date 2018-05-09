@@ -10,6 +10,8 @@ VD = VoronoiDelaunay
 #JuAFEM has no functions for determining which cell a point is in.
 
 const default_quadrature_order=5
+const default_quadrature_order3D=2
+
 
 """
     struct gridContext<dim>
@@ -45,8 +47,8 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
     mass_weights::Vector{Float64}
 
     #The following two fields are only well-defined for regular rectangular grids
-    spatialBounds::Vector{AbstractVector} #In 2D, this is {LL,UR} for regular grids
-    #TODO: rename this, as it is actually related to number of elements in each direction (not points)
+    spatialBounds::Vector{AbstractVector} #This is {LL,UR} for regular grids
+    #This is the number of (non-interior) nodes in each direction (not points)
     numberOfPointsInEachDirection::Vector{Int}
 
     gridType::String
@@ -72,7 +74,7 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
     end
 end
 
-regularGridTypes = ["regular triangular grid",
+regular2DGridTypes = ["regular triangular grid",
                     "regular P2 triangular grid",
                     "regular Delaunay grid",
                     "regular P2 Delaunay grid",
@@ -80,11 +82,11 @@ regularGridTypes = ["regular triangular grid",
                     "regular P2 quadrilateral grid"]
 
 """
-    regularGrid(gridType, numnodes, LL=[0.0,0.0],UR=[1.0,1.0];quadrature_order=default_quadrature_order)
+    regular2DGrid(gridType, numnodes, LL=[0.0,0.0],UR=[1.0,1.0];quadrature_order=default_quadrature_order)
 
-Constructs a regular grid. `gridType` should be from `CoherentStructures.regularGridTypes`
+Constructs a regular grid. `gridType` should be from `CoherentStructures.regular2DGridTypes`
 """
-function regularGrid(
+function regular2DGrid(
             gridType::String,
             numnodes::Tuple{Int,Int},
             LL::AbstractVector=Tensors.Vec{2}([0.0,0.0]),
@@ -234,7 +236,7 @@ Create a regular Triangular Grid. Does not use Delaunay triangulation internally
                          quadrature_order::Int=default_quadrature_order) = begin
         #The -1 below is needed because JuAFEM internally then goes on to increment it
         grid = generate_grid(JuAFEM.Triangle,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL),Tensors.Vec{2}(UR) )
-        loc = regularGridLocator{JuAFEM.Triangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+        loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
         ip = Lagrange{2, RefTetrahedron, 1}()
         dh = DofHandler(grid)
         qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
@@ -266,7 +268,7 @@ Constructor for regular P2 triangular grids. Does not use Delaunay triangulation
                          quadrature_order::Int=default_quadrature_order) = begin
         #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = generate_grid(JuAFEM.QuadraticTriangle,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL), Tensors.Vec{2}(UR ))
-    loc = regularGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
     ip = Lagrange{2, RefTetrahedron, 2}()
     dh = DofHandler(grid)
     qr = QuadratureRule{2, RefTetrahedron}(quadrature_order)
@@ -311,7 +313,7 @@ Constructor for regular P1 quadrilateral grids.
 begin
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = generate_grid(JuAFEM.Quadrilateral,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
-    loc = regularGridLocator{JuAFEM.Quadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.Quadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
     ip = Lagrange{2, RefCube, 1}()
     dh = DofHandler(grid)
     qr = QuadratureRule{2, RefCube}(quadrature_order)
@@ -353,7 +355,7 @@ Constructor for regular P2 quadrilateral grids.
 begin
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = generate_grid(JuAFEM.QuadraticQuadrilateral,(numnodes[1]-1,numnodes[2]-1),Tensors.Vec{2}(LL), Tensors.Vec{2}(UR) )
-    loc = regularGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1],numnodes[2],Tensors.Vec{2}(LL),Tensors.Vec{2}(UR))
     ip = Lagrange{2, RefCube, 2}()
     dh = DofHandler(grid)
     qr = QuadratureRule{2, RefCube}(quadrature_order)
@@ -382,6 +384,39 @@ function regularP2QuadrilateralGrid(
 end
 
 
+"""
+    gridContext{3}(JuAFEM.Tetrahedron, numnodes=(10,10,10),LL=[0.0,0.0,0.0],UR=[1.0,1.0,1.0],quadrature_order=default_quadrature_order)
+
+Create a regular Tetrahedral Grid. Does not use Delaunay triangulation internally.
+"""
+( ::Type{gridContext{3}})(::Type{JuAFEM.Tetrahedron},
+                         numnodes::Tuple{Int,Int,Int}=(10,10,10),LL::AbstractVector=Tensors.Vec{3}([0.0,0.0,0.0]),UR::AbstractVector=Tensors.Vec{3}([1.0,1.0,1.0]);
+                         quadrature_order::Int=default_quadrature_order3D) = begin
+        #The -1 below is needed because JuAFEM internally then goes on to increment it
+        grid = generate_grid(JuAFEM.Tetrahedron,(numnodes[1]-1,numnodes[2]-1,numnodes[3] -1),Tensors.Vec{3}(LL),Tensors.Vec{3}(UR) )
+        loc = regular3DGridLocator{JuAFEM.Tetrahedron}(numnodes[1],numnodes[2],numnodes[3],Tensors.Vec{3}(LL),Tensors.Vec{3}(UR))
+        ip = Lagrange{3, RefTetrahedron, 1}()
+        dh = DofHandler(grid)
+        qr = QuadratureRule{3, RefTetrahedron}(quadrature_order)
+        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+        close!(dh)
+        result =  gridContext{3}(grid,ip,dh,qr,loc)
+        result.spatialBounds = [LL,UR]
+        result.numberOfPointsInEachDirection = [numnodes[1],numnodes[2],numnodes[3]]
+        result.gridType = "3D regular triangular grid"
+        return result
+end
+
+
+"""
+    regularTriangularGrid3D(numnodes=(10,10,10), LL=[0.0,0.0,0.0],UR=[1.0,1.0,1.0],quadrature_order=default_quadrature_order3D)
+
+Create a regular P1 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.
+"""
+function regularTriangularGrid3D(numnodes::Tuple{Int,Int,Int}=(10,10,10),LL::AbstractVector=Tensors.Vec{3}([0.0,0.0,0.0]),UR::AbstractVector=Tensors.Vec{3}([1.0,1.0,1.0]);quadrature_order::Int=default_quadrature_order3D)
+    return gridContext{3}(JuAFEM.Tetrahedron,numnodes, LL,UR,quadrature_order=quadrature_order)
+end
+
 
 
 """
@@ -401,14 +436,32 @@ end
 
 Like `evaluate_function_from_dofvals`, but the coefficients from `nodevals` are assumed to be in node order.
 """
-function evaluate_function_from_nodevals(ctx::gridContext,nodevals::Vector{Float64},x_in::AbstractVector{Float64},outside_value=0.0,project_in=false)
+function evaluate_function_from_nodevals{dim}(ctx::gridContext{dim},nodevals::Vector{Float64},x_in::AbstractVector{Float64},outside_value=0.0,project_in=false)
     if !project_in
-        x = Tensors.Vec{2,Float64}((x_in[1],x_in[2]))
+        if dim == 2
+            x = Tensors.Vec{dim,Float64}((x_in[1],x_in[2]))
+        elseif dim == 3
+            x = Tensors.Vec{dim,Float64}((x_in[1],x_in[2],x_in[3]))
+        else
+            error("dim = $dim not supported")
+        end
     else
-        x = Tensors.Vec{2,Float64}(
-            (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
-            ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
-            ))
+        if dim == 2
+            #TODO: replace this with a macro maybe
+            x = Tensors.Vec{3,Float64}(
+                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
+                ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
+                ))
+        elseif dim == 3
+            #TODO: replace this with a macro maybe
+            x = Tensors.Vec{3,Float64}(
+                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
+                ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
+                ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3],x_in[3]))
+                ))
+        else
+            error("dim = $dim not supported")
+        end
     end
     assert(length(nodevals) == ctx.n)
     local_coordinates,nodes = try
@@ -436,14 +489,30 @@ If `project_in` is `true`, points not within `ctx.spatialBounds` are first proje
 
 The coefficients in `nodevals` are interpreted to be in dof order.
 """
-function evaluate_function_from_dofvals(ctx::gridContext,dofvals::Vector{Float64},x_in::AbstractVector{Float64},outside_value=0.0,project_in=false)
+function evaluate_function_from_dofvals{dim}(ctx::gridContext{dim},dofvals::Vector{Float64},x_in::AbstractVector{Float64},outside_value=0.0,project_in=false)
     if !project_in
-        x = Tensors.Vec{2,Float64}((x_in[1],x_in[2]))
+        if dim == 2
+            x = Tensors.Vec{dim,Float64}((x_in[1],x_in[2]))
+        elseif dim == 3
+            x = Tensors.Vec{dim,Float64}((x_in[1],x_in[2],x_in[3]))
+        else
+            error("dim = $dim not supported")
+        end
     else
-        x = Tensors.Vec{2,Float64}(
-            (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
-            ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
-            ))
+        if dim == 2
+            x = Tensors.Vec{dim,Float64}(
+                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
+                ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
+                ))
+        elseif dim == 3
+            x = Tensors.Vec{dim,Float64}(
+                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
+                ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
+                ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3],x_in[3]))
+                ))
+        else
+            error("dim = $dim not supported")
+        end
     end
     assert(length(dofvals) == ctx.n)
     local_coordinates,nodes = try
@@ -523,7 +592,7 @@ function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVec
     end
     v1::Tensors.Vec{2} = grid.nodes[t._b.id].x - grid.nodes[t._a.id].x
     v2::Tensors.Vec{2} = grid.nodes[t._c.id].x - grid.nodes[t._a.id].x
-    J::Tensors.Tensor{2,2} = v1 ⊗ e1  + v2 ⊗ e2
+    J::Tensors.Tensor{2,2,Float64,4} = v1 ⊗ e1  + v2 ⊗ e2
     #TODO: rewrite this so that we actually find the cell in question and get the ids
     #From there (instead of from the tesselation). Then get rid of the permutation that
     #is implicit below (See also comment below in p2DelaunayCellLocator locatePoint())
@@ -569,19 +638,19 @@ function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::AbstractV
     const qTriangle = grid.cells[loc.inv_internal_triangles[t]]
     v1::Tensors.Vec{2} = grid.nodes[qTriangle.nodes[2]].x - grid.nodes[qTriangle.nodes[1]].x
     v2::Tensors.Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
-    J::Tensors.Tensor{2,2} = v1 ⊗ e1  + v2 ⊗ e2
+    J::Tensors.Tensor{2,2,Float64,4} = v1 ⊗ e1  + v2 ⊗ e2
     #TODO: Think about whether doing it like this (with the permutation) is sensible
     return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
 end
 
 #Here N gives the number of nodes and M gives the number of faces
-struct regularGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
+struct regular2DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     nx::Int
     ny::Int
     LL::Tensors.Vec{2}
     UR::Tensors.Vec{2}
 end
-function locatePoint(loc::regularGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -611,13 +680,12 @@ function locatePoint(loc::regularGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid,
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
         #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
         #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        const tM = Tensors.Tensor{2,2}([1,-1,1,0])
+        const tM = Tensors.Tensor{2,2,Float64,4}([1,-1,1,0])
         return tM⋅Tensors.Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1]
     end
-    return
 end
 
-function locatePoint(loc::regularGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -645,7 +713,7 @@ function locatePoint(loc::regularGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.
 end
 
 #Same principle as for Triangle type above
-function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticTriangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -680,14 +748,14 @@ function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticTriangle},grid::JuA
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
         #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
         #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        const tM = Tensors.Tensor{2,2}([1,-1,1,0])
+        const tM = Tensors.Tensor{2,2,Float64,4}([1,-1,1,0])
         return tM⋅Tensors.Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3]
     end
     return
 end
 
 
-function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticQuadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticQuadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -718,6 +786,81 @@ function locatePoint(loc::regularGridLocator{JuAFEM.QuadraticQuadrilateral},grid
     #permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
     return Tensors.Vec{2}([2*loc1-1,2*loc2-1]), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2]
 end
+
+
+struct regular3DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{3,M,N}}
+    nx::Int
+    ny::Int
+    nz::Int
+    LL::Tensors.Vec{3}
+    UR::Tensors.Vec{3}
+end
+
+
+function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.Grid,x::AbstractVector{Float64})
+  if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[3] > loc.UR[3] || x[1] < loc.LL[1] || x[2] < loc.LL[2] || x[3] < loc.LL[3]
+        throw(DomainError())
+    end
+    #Get integer and fractional part of coordinates
+    #This is the lower left corner
+    #warning: all the coputation is done with zero-indexing
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
+    n3f,loc3 = divrem((x[3] - loc.LL[3])/(loc.UR[3] - loc.LL[3]) * (loc.nz-1),1)
+
+
+    n1 = Int(n1f)
+    n2 = Int(n2f)
+    n3 = Int(n3f)
+    if n1 == (loc.nx-1) #If we hit the right hand edge
+        n1 = loc.nx-2
+        loc1 = 1.0
+    end
+    if n2 == (loc.ny-1) #If we hit the top edge
+        n2 = loc.ny-2
+        loc2 = 1.0
+    end
+
+    if n3 == (loc.nz-1) #If we hit the top edge
+        n3 = loc.nz-2
+        loc3 = 1.0
+    end
+    #Get the 8 node numbers of the rectangular hexahedron the point is in:
+    #Ordering is like tmp of JuAFEM's generate_grid(::Type{Tetrahedron})
+
+    nodes = [
+        n1 + n2*loc.nx + n3*loc.nx*loc.ny,
+        n1 + 1 + n2*loc.nx + n3*loc.nx*loc.ny,
+        n1 + 1 + (n2 + 1)*loc.nx + n3*loc.nx*loc.ny,
+        n1 + (n2 + 1)*loc.nx + n3*loc.nx*loc.ny,
+
+        n1 + n2*loc.nx + (n3 + 1)*loc.nx*loc.ny,
+        n1 + 1 + n2*loc.nx + (n3 + 1)*loc.nx*loc.ny,
+        n1 + 1 + (n2 + 1)*loc.nx + (n3 + 1)*loc.nx*loc.ny,
+        n1 + (n2 + 1)*loc.nx + (n3 + 1)*loc.nx*loc.ny
+        ]
+
+    #JuAFEM uses a rotated form of no 13 from http://www.baumanneduard.ch/Splitting%20a%20cube%20in%20tetrahedras2.htm
+    #Numbering below refers to the ordering in generate_grid
+    #The corresponding node number indexes from `nodes` in square brackets
+    if loc1 + loc2 + loc3 <= 1.0 #Case 1 [1,2,4,5]
+        return Tensors.Vec{3}([loc1,loc2,loc3]), nodes[([1,2,4,5])] .+ 1
+    elseif loc1 + loc2 - loc3 >= 1.0 #Case 2 [2,3,4,7]
+        const tMI =  Tensors.Tensor{2,3,Float64, 9}((0.,1.,0., -1., 1.,0., 0.,1.,1.))
+        return inv(tMI) ⋅  Vec{3}([loc1 - 1,loc2,loc3]), nodes[([2,3,4,7])] .+ 1
+    elseif loc1 + loc3 - loc2 >= 1.0#Case 4 [2,5,6,7]
+        const tMI =  Tensors.Tensor{2,3,Float64, 9}((-1.,0.,1.0,0.,0.,1.,0.,1.,1.))
+        return inv(tMI) ⋅ Vec{3}([loc1 - 1,loc2,loc3]), nodes[([2,5,6,7])] .+ 1
+    elseif loc3 + loc2 - loc1 >= 1.0 #Case 5 [4,5,7,8]
+        const tMI =  Tensors.Tensor{2,3,Float64, 9}((0.,-1.,1., 1.,0.,1.,0.,0.,1.))
+        return inv(tMI) ⋅  Vec{3}([loc1 ,loc2-1,loc3]), nodes[([4,5,7,8])] .+ 1
+    else #Case 3 [2,4,5,7]
+        const tMI =  Tensors.Tensor{2,3,Float64, 9}((-1.,1.,0., -1.,0.,1., 0.,1., 1.))
+        return inv(tMI) ⋅ Vec{3}([loc1 - 1,loc2,loc3]), nodes[([2,4,5,7])] .+ 1
+    end
+end
+
+
 
 
 
