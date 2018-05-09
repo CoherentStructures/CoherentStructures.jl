@@ -16,6 +16,7 @@ export
 	sparseaffinitykernel,
 	α_normalize!,
 	wlap_normalize!,
+	meanmetric,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,
