@@ -30,12 +30,12 @@ assembleMassMatrix
 
 There are several helper functions available for constructing grids. The simplest is:
 ```@docs
-regularGrid
+regular2DGrid
 ```
 Supported values for the `gridType` argument are:
 ```@example
 using CoherentStructures #hide
-CoherentStructures.regularGridTypes
+CoherentStructures.regular2DGridTypes
 ```
 The following functions are conceptually similar:
 ```@docs
@@ -99,5 +99,6 @@ plot_ftle
 
 ### Defaults
 ```
-default_quadrature_order=5
+const default_quadrature_order=5
+const default_solver = OrdinaryDiffEq.BS5()
 ```

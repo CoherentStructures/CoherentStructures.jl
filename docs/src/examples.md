@@ -5,7 +5,7 @@
 ## Bickley Jet
 TODO: Cite something here
 
-The Bickley Jet is described by a time-dependent velocity field arising from a stream-function. We can either use the `bickleyJet` (or `bickleyJet!`) functions to get this velocity field, or use the `@makefields` macro:
+The Bickley Jet is described by a time-dependent velocity field arising from a stream-function. We can either use the `bickleyJet` functions to get this velocity field, or use the `@velo_from_stream` macro:
 ```@example 2
 using CoherentStructures
 # after this, 'bickley' will reference a Dictionary of functions
@@ -57,7 +57,7 @@ u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx, u_combined,200,200,bdata=bdata,
     color=:rainbow,colorbar=:none,title="$n_partition-partition of Bickley Jet")
 ```
-We only ran `kmeans` once, to get better results, `kmeans` should be run several times and only the run with the lowest objective function be kept.
+We ran `kmeans` only once. To get better results, `kmeans` should be run several times and only the run with the lowest objective function be kept.
 
 ## Geostrophic Ocean Flow
 
