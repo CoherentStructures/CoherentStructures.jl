@@ -3,7 +3,7 @@
 NN = NearestNeighbors
 Dists = Distances
 
-"""
+doc"""
     sparse_time_coup_diff_op(sol, k, ε; mapper, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
@@ -11,7 +11,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
     dimension, `q` is the number of time steps, and `N` is the number of trajectories,
    * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`,
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-   only for point pairs where ``metric(x_i, x_j)≦ε``,
+   only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$,
    * `mapper` is either `pmap` (default, for parallel computation) or `map`.
 """
 
@@ -87,13 +87,15 @@ Normalize rows and columns of `A` in-place with the respective row-sum to the
 $ q_k = \sum_{\ell} a_{k\ell}$. Default for `α` is 0.5.
 """
 
-function α_normalize!(A::AbstractSparseMatrix{T}, α::T = 0.5) where T<:Number
+function α_normalize!(A::AbstractSparseMatrix{T}, α::S = 0.5) where T <: Real where S <: Real
+    LinAlg.checksquare(A)
     qₑ = spdiagm( (1./squeeze(sum(A, 2),2).^α))
     A .= qₑ * A * qₑ
     return A
 end
 
-function α_normalize!(A::DenseMatrix{T}, α::T = 0.5) where T<:Number
+function α_normalize!(A::DenseMatrix{T}, α::S = 0.5) where T <: Real where S <: Real
+    LinAlg.checksquare(A)
     qₑ = 1./squeeze(sum(A, 2),2).^α
     scale!(A,qₑ)
     scale!(qₑ,A)
@@ -107,12 +109,14 @@ $ a_{ij}:=a_{ij}/q_i$.
 """
 
 function wLap_normalize!(A::AbstractSparseMatrix)
+    LinAlg.checksquare(A)
     dᵅ = spdiagm(1./squeeze(sum(A, 2),2))
     A .= dᵅ * A
     return A
 end
 
 function wLap_normalize!(A::DenseMatrix)
+    LinAlg.checksquare(A)
     dᵅ = 1./squeeze(sum(A, 2),2)
     scale!(dᵅ,A)
     return A
