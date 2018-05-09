@@ -8,7 +8,7 @@ The following functions implement an LCS methodology developed in the following 
    * [Haller & Beron-Vera, 2013](https://dx.doi.org/10.1017/jfm.2013.391)
    * [Karrasch, Huhn, and Haller, 2015](https://dx.doi.org/10.1098/rspa.2014.0639)
 The present code is structurally inspired--albeit partially significantly
-improved--by Alireza Hadjighasem's MATLAB implementation [github project](https://github.com/Hadjighasem/Elliptic_LCS_2D),
+improved--by Alireza Hadjighasem's [MATLAB implementation](https://github.com/Hadjighasem/Elliptic_LCS_2D),
 which was written in the context of the [SIAM Review paper](https://doi.org/10.1137/140983665). Depending on the indefinite metric
 tensor field used, the functions below yield the following types of coherent structures:
    * black-hole/Lagrangian coherent vortices ([Haller & Beron-Vera, 2012](https://doi.org/10.1017/jfm.2013.391))
@@ -32,21 +32,19 @@ Then, the algorithm put forward in [Karrasch et al., 2015](https://dx.doi.org/10
 ```@example 3
 # addprocs()
 
-# @everywhere 
+# @everywhere
 begin
     using CoherentStructures
-    import StaticArrays, Tensors, OrdinaryDiffEq
-############################ integration set up ################################
+    import Tensors, OrdinaryDiffEq
+    ########################## integration set up ############################
     const q = 81
     const tspan = collect(linspace(0.,3456000.,q))
     const ny = 120
-    const nx = div(ny*20,6)
+    const nx = div(ny*24,6)
     const N = nx*ny
-    const xmin, xmax, ymin, ymax = 0.0, 6.371π + 2.0, -3.0, 3.0
+    const xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
     xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
-    P = StaticArrays.SVector{2}.(xspan,yspan')
-    const xi = [p[1] for p in P]'
-    const yi = [p[2] for p in P]'
+    P = vcat.(xspan,yspan')
     const δ = 1.e-6
     const DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])
     mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,D = DiffTensor,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
@@ -70,7 +68,6 @@ begin
     for i in eachindex(orbits)
         Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
     end
-    Plots.plot!(orbits[5][1,:]-6.371π,orbits[5][2,:],w=3,label="T = $(round(vals[5],2))")
 end
 Plots.plot(fig)
 ```

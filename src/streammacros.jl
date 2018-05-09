@@ -1,5 +1,3 @@
-import StaticArrays
-
 stream_dict = Dict()
 
 """ @define_stream(name::Symbol, code::Expr)
@@ -7,7 +5,7 @@ stream_dict = Dict()
 Define a scalar stream function on ``R^2``. The defining code can be a series of
 definitions in an enclosing `begin ... end`-block and is treated as a series of
 symbolic substitutions. Starting from the symbol `name`, substitutions are
-performed until the resulting expression only depends on `x`, `y` and `t`. 
+performed until the resulting expression only depends on `x`, `y` and `t`.
 
 The symbol `name` is not brought into the namespace. To access the resulting
 vector field and variational equation  use `@velo_from_stream name` and
@@ -16,26 +14,28 @@ vector field and variational equation  use `@velo_from_stream name` and
 This is a convenience macro for the case where you want to use
 `@velo_from_stream` and `@var_velo_from_stream` without typing the code twice.
 If you only use one, you might as well use `@velo_from_stream name code` or
-`@var_velo_from_stream` directly.  """
+`@var_velo_from_stream` directly.
+"""
+
 macro define_stream(name::Symbol, code::Expr)
     haskey(stream_dict, name) && warn("overwriting definition of stream $name")
     stream_dict[name] = code
     quote
         # do nothing, the actual work is done when @velo_from_stream name
-        # is called.  
+        # is called.
     end
 end
 
 """ @velo_from_stream(name::Symbol, [code::Expr])
 
-Get the flow field corresponding to a stream function on ``R^2``.  The defining
+Get the velocity field corresponding to a stream function on ``R^2``.  The defining
 code can be a series of definitions (in an enclosing `begin ... end`-block and
 is treated as a series of symbolic substitutions. Starting from the symbol
 `name`, substitutions are performed until the resulting expression only depends
-on `x`, `y` and `t`. 
+on `x`, `y` and `t`.
 
 The macro returns an anonymous function f(u,p,t) that returns a SVector{2} holding
-the vector field at u at time t.  
+the vector field at u at time t.
 
 The macro can be called without the `code` if the stream `name` has been define
 beforehand via `@define_stream`.
@@ -65,7 +65,7 @@ julia> @define_stream Ψ_circular begin
            # naming of function variables
            # does not matter:
            f(a) = a^2
-           g(y) = y^2 
+           g(y) = y^2
        end
 
 julia> f2 = @velo_from_stream Ψ_circular
@@ -76,17 +76,17 @@ julia> f2([1.0,1.0], nothing, 0)
  -2.0
   2.0
 ```
-   
+
 """
 macro velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined") 
+    haskey(stream_dict, name) || error("stream $name not defined")
     quote
         @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
     end
 end
 
 macro var_velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined") 
+    haskey(stream_dict, name) || error("stream $name not defined")
     quote
         @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
     end
@@ -98,7 +98,7 @@ macro velo_from_stream(H::Symbol, formulas::Expr)
     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
         (u,p,t) -> StaticArrays.SVector($(F[1]), $(F[2]))
-    end 
+    end
 end
 
 macro var_velo_from_stream(H::Symbol, formulas::Expr)
@@ -110,11 +110,11 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     DF = sym_subst.(DF, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
 
     quote
-         (u, p, t)  -> begin 
+         (u, p, t)  -> begin
             # take as input a  2x3 matrix which is interpreted the following way:
             # [ x[1] A[1,1] A[1,2]
             #   x[2] A[2,1] A[2,2] ]
-    
+
             # current
             A = StaticArrays.@SMatrix [ u[1,2] u[1,3]
                                         u[2,2] u[2,3] ]
@@ -124,7 +124,7 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
             return StaticArrays.@SMatrix [ $(F[1]) DA[1,1] DA[1,2]
                                            $(F[2]) DA[2,1] DA[2,2] ]
         end
-    end 
+    end
 end
 
 
@@ -138,14 +138,14 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbolic gradient
      ∇H  = expr_diff.(H, [:x,:y])
     ∇²H  = expr_diff.(∇H, [:x :y])
-    
-    # streamlines    
+
+    # streamlines
     F  = [:(-$(∇H[2])), ∇H[1]]
-    
+
     # equation of variation for streamlines
     DF = [:(-$(∇²H[2,1])) :(-$(∇²H[1,1]))
-               ∇²H[2,2]        ∇²H[1,2]  ] 
-    
+               ∇²H[2,2]        ∇²H[1,2]  ]
+
     return F,DF
 end
 
@@ -175,7 +175,7 @@ function expr_diff(expr::Expr, var::Symbol)
     # resolve derivatives that SymEngine doesn't know using diff_dict
     d_expr = additional_derivatives(d_expr)
 
-    # clean up unresolved substitutions that result from SymEnginge treating 
+    # clean up unresolved substitutions that result from SymEnginge treating
     # unknown derivatives
     d_expr = substitution_cleaner(d_expr)
 
@@ -193,7 +193,7 @@ function additional_derivatives(expr::Expr)
 # Expr
 #  head: Symbol call
 #  args: Array{Any}((3,))
-#    1: Symbol Derivative         
+#    1: Symbol Derivative
 #    2: Expr
 #           ... Body of expression ...
 #    3: Symbol x
@@ -281,8 +281,8 @@ substitutions(variable::Symbol, code::Expr, knowns = []) = begin
     ex = quote $variable end
     maxit = 20; count = 0
 
-    # dumb approach: keep blindly performing substitutions until there are no free 
-    # variables left 
+    # dumb approach: keep blindly performing substitutions until there are no free
+    # variables left
     while has_free_symb(ex,knowns) && (count < maxit)
         ex = substitute_once(code, ex)
         ex = remove_blocks(Base.remove_linenums!(ex))
@@ -383,7 +383,7 @@ remove_blocks(ex::Expr) = begin
 end
 remove_blocks(ex) = ex
 
-""" get signature [<f_name> <arg1> <arg2> ...] 
+""" get signature [<f_name> <arg1> <arg2> ...]
 A symbol is interpreted as a function without arguments
 """
 signature(ex::Symbol) = [ex]
