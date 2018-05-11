@@ -17,13 +17,14 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 function sparse_diff_op( sols::AbstractArray{T, 3},
                                    kernel::Function,
-                                   ε::T;
+                                   ε::T,
+                                   σ::T;
                                    # mapper::Function = pmap,
                                    metric = Dists.Euclidean()) where T
     dim, q, N = size(sols)
 
     P = pmap(1:q) do t
-        @time Pₜ = sparse_diff_op( sols[:,t,:], kernel, ε; metric = metric )
+        @time Pₜ = sparse_diff_op( sols[:,t,:], kernel, ε, σ; metric = metric )
         println("Timestep $t/$q done")
         Pₜ
     end
@@ -31,12 +32,14 @@ end
 
 function sparse_diff_op(sols::AbstractArray{T, 2},
                         kernel::Function,
-                        ε::T;
+                        ε::T,
+                        σ::T;
                         metric = Dists.Euclidean()) where T
     dim, N = size(sols)
 
     # P = sparseaffinitykernel((@views sols[:,t,:]),
     P = sparseaffinitykernel( sols, kernel, metric, ε )
+    Gaussian_kernel!(P,σ)
     α_normalize!(P, 1)
     wLap_normalize!(P)
     return P
@@ -62,24 +65,41 @@ function sparseaffinitykernel( A::AbstractArray{T, 2},
     # balltree = NN.BallTree(collect(A), metric)
     balltree = NN.BallTree(A, metric)
 
-    # Get a Vector of tuples (I,J,V), one for each column i.
-    # We hardcode the type because the compiler can't infer it (function barrier
-    # and list comprehension don't help) -> check every once in a while, if this
-    # has changed. (24.04.18)
-    matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
-    matrix_data_chunks[:] = @views map(1:N) do i
-        Js = NN.inrange(balltree, A[:,i], ε)
-        Vs = kernel.(Dists.colwise(metric, A[:,i], A[:,Js]))
-        Is = fill(i,length(Js))
-        # return the resulting I,J,V for the sparse matrix
-        Is, Js, Vs
+    # ################ Alvaro's version #####################
+    # # Get a Vector of tuples (I,J,V), one for each column i.
+    # # We hardcode the type because the compiler can't infer it (function barrier
+    # # and list comprehension don't help) -> check every once in a while, if this
+    # # has changed. (24.04.18)
+    # matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
+    # matrix_data_chunks[:] = @views map(1:N) do i
+    #     Js = NN.inrange(balltree, A[:,i], ε)
+    #     Vs = kernel.(Dists.colwise(metric, A[:,i], A[:,Js]))
+    #     Is = fill(i,length(Js))
+    #     # return the resulting I,J,V for the sparse matrix
+    #     Is, Js, Vs
+    # end
+    #
+    # # concatenate the lists of collected indices and values
+    # # reduce((x,y)-> vcat.(x,y), matrix_data) would do the same, but much slower
+    # Is, Js, Vs = collect_entries(matrix_data_chunks)
+    #
+    # return sparse(Is, Js, Vs, N, N)
+    # ################ end of Alvaro's version ################
+    idxs = NN.inrange(balltree, A, ε, false)
+    Js = vcat(idxs...)
+    Is = vcat([repeat([i],inner=length(idxs[i])) for i in eachindex(idxs)]...)
+    Ds = Dists.colwise(metric,@view(A[:,Is]),@view(A[:,Js]))
+    # @time Vs = kernel.(Ds)
+    return sparse(Is,Js,Ds,N,N)
+end
+
+function Gaussian_kernel!(SqDist::SparseMatrixCSC{T},ϵ::T) where T <: Real
+    # TODO: Think of type for epsilon
+    I, J, V = findnz(SqDist)
+    @inbounds for i in eachindex(I,J,V)
+        SqDist[I[i],J[i]] = exp(-V[i]*V[i]/(4ϵ))
     end
-
-    # concatenate the lists of collected indices and values
-    # reduce((x,y)-> vcat.(x,y), matrix_data) would do the same, but much slower
-    Is, Js, Vs = collect_entries(matrix_data_chunks)
-
-    return sparse(Is, Js, Vs, N, N)
+    return nothing
 end
 
 doc"""
