@@ -4,40 +4,43 @@ NN = NearestNeighbors
 Dists = Distances
 
 doc"""
-    sparse_time_coup_diff_op(sol, k, ε; mapper, metric)
+    sparse_diff_op(sol, k, ε; metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
-   * `sol`: 3D array of trajectories of size `(dim,q,N)`, where `dim` is the spatial
-    dimension, `q` is the number of time steps, and `N` is the number of trajectories,
-   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`,
+   * `sol`: 2D or 3D array of trajectories of size `(dim,N)` and `(dim,q,N)`, resp.,
+   where `dim` is the spatial dimension, `q` is the number of time steps,
+   and `N` is the number of trajectories;
+   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-   only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$,
-   * `mapper` is either `pmap` (default, for parallel computation) or `map`.
+   only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function sparse_time_coup_diff_op( sols::AbstractArray{T, 3},
+function sparse_diff_op( sols::AbstractArray{T, 3},
                                    kernel::Function,
                                    ε::T;
-                                   mapper::Function = pmap,
+                                   # mapper::Function = pmap,
                                    metric = Dists.Euclidean()) where T
     dim, q, N = size(sols)
-    # diff_kernel = (x,y) -> kernel(evaluate(metric, x, y))
 
-    P = mapper(1:q) do t
-        tic()
-        # Pₜ = sparseaffinitykernel((@views sols[:,t,:]),
-        Pₜ = sparseaffinitykernel(sols[:,t,:],
-                                 kernel,
-                                 metric,
-                                 ε)
-        α_normalize!(Pₜ, 1.0)
-        wlap_normalize!(Pₜ)
+    P = pmap(1:q) do t
+        @time Pₜ = sparse_diff_op( sols[:,t,:], kernel, ε; metric = metric )
         println("Timestep $t/$q done")
-        toc()
         Pₜ
     end
 end
 
+function sparse_diff_op(sols::AbstractArray{T, 2},
+                        kernel::Function,
+                        ε::T;
+                        metric = Dists.Euclidean()) where T
+    dim, N = size(sols)
+
+    # P = sparseaffinitykernel((@views sols[:,t,:]),
+    P = sparseaffinitykernel( sols, kernel, metric, ε )
+    α_normalize!(P, 1)
+    wLap_normalize!(P)
+    return P
+end
 
 """
     sparseaffinitykernel(A, k, metric=Euclidean(), ε=1e-3)
@@ -54,11 +57,10 @@ function sparseaffinitykernel( A::AbstractArray{T, 2},
                                ε::S=convert(S,1e-3) ) where T where S where F <:Function
     dim, N = size(A)
 
-    # the "collect" is necessary because BallTree currently cannot handle
-    # abstract arrays.
+    # the "collect" is necessary if an array-view is passed because BallTree
+    # currently cannot handle abstract arrays.
     # balltree = NN.BallTree(collect(A), metric)
     balltree = NN.BallTree(A, metric)
-    diff_kernel = (x,y) -> kernel(Dists.evaluate(metric, x, y))
 
     # Get a Vector of tuples (I,J,V), one for each column i.
     # We hardcode the type because the compiler can't infer it (function barrier
@@ -67,7 +69,7 @@ function sparseaffinitykernel( A::AbstractArray{T, 2},
     matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
     matrix_data_chunks[:] = @views map(1:N) do i
         Js = NN.inrange(balltree, A[:,i], ε)
-        Vs = [diff_kernel(A[:,i], A[:,j]) for j in Js]
+        Vs = kernel.(Dists.colwise(metric, A[:,i], A[:,Js]))
         Is = fill(i,length(Js))
         # return the resulting I,J,V for the sparse matrix
         Is, Js, Vs
