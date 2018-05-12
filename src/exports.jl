@@ -12,7 +12,7 @@ export
 	ellipticLCS,
 
 	#diffusion_operators.jl
-	sparse_diff_op,
+	sparse_time_coup_diff_op,
 	sparseaffinitykernel,
 	α_normalize!,
 	wlap_normalize!,
