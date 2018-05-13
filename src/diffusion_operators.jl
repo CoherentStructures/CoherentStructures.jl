@@ -1,4 +1,4 @@
-# (c) 2018 Alvaro de Diego, with minor contributions by Daniel Karrasch
+# (c) 2018 Alvaro de Diego, with contributions by Daniel Karrasch
 
 NN = NearestNeighbors
 Dists = Distances
@@ -16,13 +16,14 @@ Return a list of sparse diffusion/Markov matrices `P`.
 """
 
 function sparse_diff_op( sols::AbstractArray{T, 3},
-                                   kernel::Function,
-                                   ε::T;
-                                   # mapper::Function = pmap,
-                                   metric = Dists.Euclidean()) where T
+                            kernel::Function,
+                            ε::T;
+                            # mapper::Function = pmap,
+                            metric = Dists.Euclidean()) where T <: Number
     dim, q, N = size(sols)
 
     P = pmap(1:q) do t
+        # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
         @time Pₜ = sparse_diff_op( sols[:,t,:], kernel, ε; metric = metric )
         println("Timestep $t/$q done")
         Pₜ
@@ -32,10 +33,8 @@ end
 function sparse_diff_op(sols::AbstractArray{T, 2},
                         kernel::Function,
                         ε::T;
-                        metric = Dists.Euclidean()) where T
-    dim, N = size(sols)
+                        metric = Dists.Euclidean()) where T <: Number
 
-    # P = sparseaffinitykernel((@views sols[:,t,:]),
     P = sparseaffinitykernel( sols, kernel, metric, ε )
     α_normalize!(P, 1)
     wLap_normalize!(P)
@@ -54,32 +53,40 @@ Default metric is `Euclidean()`, default `ε` is 1e-3.
 function sparseaffinitykernel( A::AbstractArray{T, 2},
                                kernel::F,
                                metric=Dists.Euclidean(),
-                               ε::S=convert(S,1e-3) ) where T where S where F <:Function
+                               ε::S=convert(S,1e-3) ) where T <: Number where S <: Number where F <:Function
     dim, N = size(A)
 
-    # the "collect" is necessary if an array-view is passed because BallTree
-    # currently cannot handle abstract arrays.
-    # balltree = NN.BallTree(collect(A), metric)
     balltree = NN.BallTree(A, metric)
+    idxs = NN.inrange(balltree, A, ε, false)
+    Js::Vector{Int} = vcat(idxs...)
+    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Vs::Vector{T} = kernel.(Dists.colwise(metric, view(A,:,Is), view(A,:,Js)))
+    return sparse(Is,Js,Vs,N,N)
 
-    # Get a Vector of tuples (I,J,V), one for each column i.
-    # We hardcode the type because the compiler can't infer it (function barrier
-    # and list comprehension don't help) -> check every once in a while, if this
-    # has changed. (24.04.18)
-    matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
-    matrix_data_chunks[:] = @views map(1:N) do i
-        Js = NN.inrange(balltree, A[:,i], ε)
-        Vs = kernel.(Dists.colwise(metric, A[:,i], A[:,Js]))
-        Is = fill(i,length(Js))
-        # return the resulting I,J,V for the sparse matrix
-        Is, Js, Vs
-    end
-
-    # concatenate the lists of collected indices and values
-    # reduce((x,y)-> vcat.(x,y), matrix_data) would do the same, but much slower
-    Is, Js, Vs = collect_entries(matrix_data_chunks)
-
-    return sparse(Is, Js, Vs, N, N)
+    # ################ Alvaro's version for comparison #####################
+    # dim, N = size(A)
+    #
+    # balltree = NN.BallTree(A, metric)
+    #
+    # # Get a Vector of tuples (I,J,V), one for each column i.
+    # # We hardcode the type because the compiler can't infer it (function barrier
+    # # and list comprehension don't help) -> check every once in a while, if this
+    # # has changed. (24.04.18)
+    # matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
+    # matrix_data_chunks[:] = @views map(1:N) do i
+    #     Js = NN.inrange(balltree, A[:,i], ε)
+    #     Vs = kernel.([Dists.evaluate(metric, A[:,i], A[:,j]) for j in Js])
+    #     Is = fill(i,length(Js))
+    #     # return the resulting I,J,V for the sparse matrix
+    #     Is, Js, Vs
+    # end
+    #
+    # # concatenate the lists of collected indices and values
+    # # reduce((x,y)-> vcat.(x,y), matrix_data) would do the same, but much slower
+    # Is, Js, Vs = collect_entries(matrix_data_chunks)
+    #
+    # return sparse(Is, Js, Vs, N, N)
+    # ################ end of Alvaro's version ################
 end
 
 doc"""
