@@ -86,6 +86,17 @@ function DstandardMap(u)
     ));
 end
 
+function abcFlow2(u,p,t)
+    A = sqrt(3)
+    B = sqrt(2)
+    C = 1
+    return StaticArrays.SVector{3,Float64}(
+        (A + 0.5*t*sin(π*t))*sin(u[3]) + C*cos(u[2]),
+        B*sin(u[1]) + (A + 0.5*t*sin(π*t))*cos(u[3]),
+        C*sin(u[2]) + B*cos(u[1])
+        )
+end
+
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
 # function rot_double_gyre!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
 # #function rot_double_gyre2(t::Float64,x,dx)

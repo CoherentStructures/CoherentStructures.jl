@@ -797,6 +797,19 @@ struct regular3DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{3,M,N}
 end
 
 
+#TODO: Make this more robust
+function in_tetrahedron(a,b,c,d,p)
+    function mydet(p1,p2,p3)
+        M = zeros(3,3)
+        M[:,1] = p1
+        M[:,2] = p2
+        M[:,3] = p3
+        return det(M)
+    end
+    my0 = eps()
+    return (mydet(b-a,c-a,p-a) >= -my0) && (mydet(b-a,d-a,p-a) <= my0) && (mydet(d-b,c-b,p-b) >= -my0) && (mydet(d-a,c-a,p-a) <= my0)
+end
+
 function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.Grid,x::AbstractVector{Float64})
   if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[3] > loc.UR[3] || x[1] < loc.LL[1] || x[2] < loc.LL[2] || x[3] < loc.LL[3]
         throw(DomainError())
@@ -850,24 +863,23 @@ function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.
         nodes = (node_array[i,j,k], node_array[i+1,j,k], node_array[i+1,j+1,k], node_array[i,j+1,k],
                    node_array[i,j,k+1], node_array[i+1,j,k+1], node_array[i+1,j+1,k+1], node_array[i,j+1,k+1])
    end
-    #JuAFEM uses a rotated form of no 13 from http://www.baumanneduard.ch/Splitting%20a%20cube%20in%20tetrahedras2.htm
-    #Numbering below refers to the ordering in generate_grid
-    #The corresponding node number indexes from `nodes` in square brackets
-    if loc1 + loc2 + loc3 <= 1.0 #Case 1 [1,2,4,5]
-        return Tensors.Vec{3}([loc1,loc2,loc3]), nodes[([1,2,4,5])] .+ 1
-    elseif loc1 + loc2 - loc3 >= 1.0 #Case 2 [2,3,4,7]
-        const tMI =  Tensors.Tensor{2,3,Float64, 9}((0.,1.,0., -1., 1.,0., 0.,1.,1.))
-        return inv(tMI) ⋅  Vec{3}([loc1-1,loc2,loc3]), nodes[([2,3,4,7])] .+ 1
-    elseif loc1 + loc3 - loc2 >= 1.0#Case 4 [2,5,6,7]
-        const tMI =  Tensors.Tensor{2,3,Float64, 9}((-1.,0.,1.,0.,0.,1.,0.,1.,1.))
-        return inv(tMI) ⋅ Vec{3}([loc1-1 ,loc2,loc3]), nodes[([2,5,6,7])] .+ 1
-    elseif loc3 + loc2 - loc1 >= 1.0 #Case 5 [4,5,7,8]
-        const tMI =  Tensors.Tensor{2,3,Float64, 9}((0.,-1.,1., 1.,0.,1.,0.,0.,1.))
-        return inv(tMI) ⋅  Vec{3}([loc1 ,loc2-1,loc3]), nodes[([4,5,7,8])] .+ 1
-    else #Case 3 [2,4,5,7]
-        const tMI =  Tensors.Tensor{2,3,Float64, 9}((-1.,1.,0., -1.,0.,1., 0.,1., 1.))
-        return inv(tMI) ⋅ Vec{3}([loc1 - 1,loc2,loc3]), nodes[([2,4,5,7])] .+ 1
+
+    standard_cube = [Tensors.Vec{3}((0.,0.,0.)),Tensors.Vec{3}((1.,0.,0.)),Tensors.Vec{3}((1.,1.,0.)),Tensors. Vec{3}((0.,1.,0.)),
+        Tensors.Vec{3}((0.,0.,1.)),Tensors.Vec{3}((1.,0.,1.)),Tensors.Vec{3}((1.,1.,1.)),Tensors.Vec{3}((0.,1.,1.))]
+
+    tetrahedra = [[1,2,4,8], [1,5,2,8], [2,3,4,8], [2,7,3,8], [2,5,6,8], [2,6,7,8]]
+    for tet in tetrahedra
+        p1,p2,p3,p4 = standard_cube[tet]
+        if in_tetrahedron(p1,p2,p3,p4,[loc1,loc2,loc3])
+            M = zeros(3,3)
+            M[:,1] = p2-p1
+            M[:,2] = p3-p1
+            M[:,3] = p4-p1
+            tMI::Tensors.Tensor{2,3,Float64,9} =  Tensors.Tensor{2,3,Float64}(M)
+            return inv(tMI) ⋅ Vec{3}([loc1,loc2,loc3] - p1), nodes[tet] .+ 1
+        end
     end
+    throw(DomainError()) #In case we didn't land in any tetrahedron
 end
 
 
@@ -1005,12 +1017,23 @@ function getHomDBCS{dim}(ctx::gridContext{dim},which="all")
     dbcs = ConstraintHandler(ctx.dh)
     #TODO: See if newer version of JuAFEM export a "boundary" nodeset
     if which == "all"
-        dbc = Dirichlet(:T,
-                union(getfaceset(ctx.grid, "left"),
-                 getfaceset(ctx.grid, "right"),
-                 getfaceset(ctx.grid, "top"),
-                 getfaceset(ctx.grid, "bottom"),
-                   ), (x,t)->0)
+        if dim == 2
+            dbc = Dirichlet(:T,
+                    union(getfaceset(ctx.grid, "left"),
+                     getfaceset(ctx.grid, "right"),
+                     getfaceset(ctx.grid, "top"),
+                     getfaceset(ctx.grid, "bottom"),
+                       ), (x,t)->0)
+       else
+            dbc = Dirichlet(:T,
+                    union(getfaceset(ctx.grid, "left"),
+                     getfaceset(ctx.grid, "right"),
+                     getfaceset(ctx.grid, "top"),
+                     getfaceset(ctx.grid, "bottom"),
+                     getfaceset(ctx.grid, "front"),
+                     getfaceset(ctx.grid, "back"),
+                       ), (x,t)->0)
+       end
    elseif isempty(which)
        return boundaryData(Vector{Int}())
    else
