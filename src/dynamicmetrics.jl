@@ -111,7 +111,10 @@ For a set of trajectories ``x_i^t`` calculate an "averaged" distance matrix
    * `av = x->min(x)<=ε`: encounter adjacency [Rypina et al., Padberg-Gehle & Schneide]
    * `av = x->mean(abs2,x)`: Euclidean delay coordinate metric [cf. Froyland & Padberg-Gehle]
 """
-function meanmetric(F::AbstractArray{T,3}, av, metric::Dists.PreMetric) where T <: Real
+function meanmetric(F::AbstractArray{T,3},
+                    av::Function,
+                    metric::Dists.PreMetric = Dists.Euclidean()
+                    ) where T <: Real
     dim, t, N = size(F)
 
     entries = div(N*(N+1),2)
@@ -119,16 +122,15 @@ function meanmetric(F::AbstractArray{T,3}, av, metric::Dists.PreMetric) where T 
     # linear storage of triangular matrix
     R = SharedArray{T,2}(N,N)
 
-    # enumerate the entries linearily to distribute them
-    # evenly over the workers
-    dummy_value = av([evaluate(metric,F[:,1:1,1], F[:,1:1,1])])
-    @everywhere dists = $(repeat([dummy_value],inner =t))
+    # enumerate the entries linearly to distribute them evenly across the workers
+    @everywhere dists = $(Vector{Distances.result_type(metric,F[:,1,1],F[:,1,1])}(t))
 
     @views @sync @parallel for n = 1:entries
        i, j = tri_indices(n)
        # fill_distances!(dists, F[:,:,i], F[:,:,j], metric, t)
        Dists.colwise!(dists, metric, F[:,:,i], F[:,:,j])
        R[i,j] = av(dists)
+       # R[i,j] = av(Dists.colwise(metric, view(F,:,:,i), view(F,:,:,j)))
     end
     Symmetric(R,:L)
 end
@@ -143,7 +145,7 @@ end
 #     return dists
 # end
 
-function tri_indices(n::Int)
+@inline function tri_indices(n::Int)
     i = floor(Int, 0.5*(1 + sqrt(8n-7)))
     j = n - div(i*(i-1),2)
     return i, j
