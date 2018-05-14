@@ -23,6 +23,9 @@ module CoherentStructures
     ##Diffusion operator related functions
     include("diffusion_operators.jl")
 
+    ##Distances related functions and types
+    include("dynamicmetrics.jl")
+
     ##Some small utility functions that are used throughout
     include("util.jl")
 
