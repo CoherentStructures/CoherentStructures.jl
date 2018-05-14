@@ -3,7 +3,7 @@
 
 
 """
-    arraymap!(du::Array{Float64},u::AbstractArray{Float64,1},p,t,odefun,howmanytimes::Int,basesize::Int)
+    arraymap!(du,u,p,t,odefun,howmanytimes,basesize)
 
 Like `map', but operates on 1d-datastructures.
 # Arguments
@@ -19,7 +19,7 @@ be solved without having to call the ODE solver multiple times.
 end
 
 """
-arraymap2
+    arraymap2(u,p,t,odefun) -> StaticArrays.SVector{8}
 This function is like arraymap(u,p,t,odefun, 4,2),
 but du is returned as a StaticVector
 """
@@ -32,7 +32,7 @@ but du is returned as a StaticVector
 end
 
 """
-arraymap3
+    arraymap3(u,p,t,odefun) -> StaticArrays.SVector{18}
 This function is like arraymap(u,pt,odefun,6,3)
 but du is returned as a StaticVector
 """
@@ -48,7 +48,7 @@ end
 
 
 """
-    tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor})
+    tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor}) -> λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 
 Returns pointwise invariants of the 2D symmetric tensor field `T`, i.e.,
 smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.
@@ -145,7 +145,7 @@ function interp_rhs!(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <
 end
 
 """
-    interp_rhs(u,p,t)
+    interp_rhs(u,p,t) -> StaticArrays.SVector{2}
 
 Defines a 2D vector field that is readily usable for trajectory integration from
 vector field interpolants of the x- and y-direction, resp. It assumes that the

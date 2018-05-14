@@ -1,3 +1,5 @@
+# (c) 2018 Alvaro de Diego
+
 stream_dict = Dict()
 
 """ @define_stream(name::Symbol, code::Expr)

@@ -1,4 +1,4 @@
-#velocityfields.jl from Daniel Karrasch
+# (c) 2018 Alvaro de Diego, Daniel Karrasch & Nathanael Schilling
 
 ITP = Interpolations
 

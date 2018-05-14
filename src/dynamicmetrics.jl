@@ -123,14 +123,17 @@ function meanmetric(F::AbstractArray{T,3},
     R = SharedArray{T,2}(N,N)
 
     # enumerate the entries linearly to distribute them evenly across the workers
-    @everywhere dists = $(Vector{Distances.result_type(metric,F[:,1,1],F[:,1,1])}(t))
+    dists = Vector{Distances.result_type(metric,F[:,1,1],F[:,1,1])}(t)
+    @everywhere @eval dists = $(dists)
 
-    @views @sync @parallel for n = 1:entries
-       i, j = tri_indices(n)
-       # fill_distances!(dists, F[:,:,i], F[:,:,j], metric, t)
-       Dists.colwise!(dists, metric, F[:,:,i], F[:,:,j])
-       R[i,j] = av(dists)
-       # R[i,j] = av(Dists.colwise(metric, view(F,:,:,i), view(F,:,:,j)))
+    @sync @parallel for n = 1:entries
+        @async begin
+            i, j = tri_indices(n)
+            # fill_distances!(dists, F[:,:,i], F[:,:,j], metric, t)
+            Dists.colwise!(dists, metric, F[:,:,i], F[:,:,j])
+            R[i,j] = av(dists)
+            # R[i,j] = av(Dists.colwise(metric, view(F,:,:,i), view(F,:,:,j)))
+        end
     end
     Symmetric(R,:L)
 end
