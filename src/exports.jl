@@ -16,6 +16,10 @@ export
 	sparseaffinitykernel,
 	α_normalize!,
 	wlap_normalize!,
+
+	#dynamicmetrics
+	PEuclidean,
+	peuclidean,
 	meanmetric,
 
 	#FEMassembly.jl

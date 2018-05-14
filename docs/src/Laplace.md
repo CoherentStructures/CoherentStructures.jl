@@ -20,7 +20,7 @@ In the LCS context, we have
 ## Function documentation
 
 ```@docs
-sparse_time_coup_diff_op
+sparse_diff_op
 ```
 
 ```@docs
@@ -32,5 +32,9 @@ sparseaffinitykernel
 ```
 
 ```@docs
-wlap_normalize!
+wLap_normalize!
+```
+
+```@docs
+meanmetric
 ```
