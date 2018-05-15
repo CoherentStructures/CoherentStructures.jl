@@ -26,7 +26,7 @@ struct testCase
     #If is_ode == false
     f
     Df
-
+    finv
 end
 
 mutable struct experimentResult
@@ -41,7 +41,7 @@ mutable struct experimentResult
     statistics::Dict{String, Any} #Things we can calculate about this solution
 
     #Like below, but make boundary data first
-    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,mode)
+    function experimentResult(experiment::testCase,ctx::CoherentAStructures.gridContext,mode)
         bdata = boundaryData(ctx,experiment.bdata_predicate, experiment.dbc_facesets)
         result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}())
         return result
@@ -72,7 +72,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         if eR.experiment.is_ode
             ode_fun = eR.experiment.ode_fun
             #TODO: Think about varying the parameters below.
-            cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=1.e-3,p=eR.experiment.p))
+            cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=1.e-8,p=eR.experiment.p))
         else
             cgfun = x->0.5*(one(SymmetricTensor{2,2,Float64,4}) + dott(inv(eR.experiment.Df(x))))
         end
@@ -86,22 +86,36 @@ function runExperiment!(eR::experimentResult,nev=6)
         if ! isempty(eR.bdata.periodic_dofs_from)
             error("Periodic boundary conditions not yet implemented for adaptive TO")
         end
-        if !eR.experiment.is_ode
-            error("TODO: Implement this!")
-        end
         times = [eR.experiment.t_initial,eR.experiment.t_final]
         ode_fun = eR.experiment.ode_fun
-        forwards_flow = u0->flow(ode_fun, u0,times,p=eR.experiment.p)[end]
+        if eR.experiment.is_ode
+            forwards_flow = u0->flow(ode_fun, u0,times,p=eR.experiment.p)[end]
+        else
+            forwards_flow = eR.experiment.f
+        end
         eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
         eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,bdata=eR.bdata))
         eR.runtime += (@elapsed S2= adaptiveTO(eR.ctx,forwards_flow))
-        eR.runtime += (@elapsed λ, v = eigs(-1*(S + S2),M,which=:SM,nev=nev))
-        meanS = CoherentStructures.applyBCS(eR.ctx, -0.5*(S+S2),eR.bdata)
+        eR.runtime += (@elapsed R = CoherentStructures.applyBCS(eR.ctx, -0.5*(S+S2),eR.bdata))
+        eR.runtime += (@elapsed λ, v = eigs(R,M,which=:SM,nev=nev))
+        eR.λ = λ
+        eR.V = v
+    elseif eR.mode == :naTO
+        times = [eR.experiment.t_final,eR.experiment.t_initial]
+        ode_fun = eR.experiment.ode_fun
+        backwards_flow = u0->flow(ode_fun, u0,times,p=eR.experiment.p)[end]
+        eR.runtime += (@elapsed S = assembleStiffnessMatrix(eR.ctx))
+        eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,bdata=eR.bdata))
+        if eR.experiment.is_ode
+            eR.runtime += (@elapsed ALPHA= nonAdaptiveTO(eR.ctx,backwards_flow))
+        else
+            eR.runtime += (@elapsed ALPHA= nonAdaptiveTO(eR.ctx,eR.experiment.finv))
+        end
+        eR.runtime += (@elapsed R = CoherentStructures.applyBCS(ctx,-0.5*(S + ALPHA'*S*ALPHA),eR.bdata))
+        eR.runtime += (@elapsed λ, v = eigs(R,M,which=:SM,nev=nev))
 
         eR.λ = λ
         eR.V = v
-    else
-        error("Not yet implemented")
     end
     eR.done = true
     return eR
@@ -119,9 +133,9 @@ function plotExperiment(eR::experimentResult,nev=-1; kwargs...)
         if nev != -1 && i > nev
             break
         end
-        push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),bdata=eR.bdata,title=(@sprintf("%.2f",lam)),plotit=false,color=:rainbow;kwargs...))
+        push!(allplots,plot_u(eR.ctx,real.(eR.V[:,i]),200,200,bdata=eR.bdata,title=(@sprintf("%.2f",lam)),color=:rainbow,colorbar=:none;kwargs...))
     end
-    Plots.plot(allplots...)
+    Plots.plot(allplots...,margin=-10Plots.px)
 end
 
 
@@ -187,7 +201,7 @@ function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrop
     t_initial = minimum(Time)
     t_final = t_initial + 90
     bdata_predicate = (x,y) -> false
-    result = testCase("Ocean Flow", LL,UR,bdata_predicate,"all",true,t_initial,t_final, interp_rhs,p,nothing,nothing)
+    result = testCase("Ocean Flow", LL,UR,bdata_predicate,"all",true,t_initial,t_final, interp_rhs,p,nothing,nothing,nothing)
     return result
 end
 
@@ -195,15 +209,15 @@ function makeDoubleGyreTestCase(tf=1.0)
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.0,1.0])
     bdata_predicate = (x,y) -> false
-    result = testCase("Rotating Double Gyre",LL,UR,bdata_predicate,[], true,0.0,tf, rot_double_gyre,nothing,nothing,nothing)
+    result = testCase("Rotating Double Gyre",LL,UR,bdata_predicate,[], true,0.0,tf, rot_double_gyre,nothing,nothing,nothing,nothing)
     return result
 end
 
 function makeStandardMapTestCase()
     LL = Vec{2}([0.0,0.0])
     UR=Vec{2}([2π,2π])
-    bdata_predicate = (x,y) -> (mod(x[1] - y[1],2π) < 1e-9 && mod(x[2] - y[2],2π)<1e-9)
-    result = testCase("Standard Map",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap,CoherentStructures.DstandardMap)
+    bdata_predicate = (x,y) -> (CoherentStructures.distmod(x[1],y[1],2π) < 1e-9 && CoherentStructures.distmod(x[2],y[2],2π)<1e-9)
+    result = testCase("Standard Map",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap,CoherentStructures.DstandardMap,CoherentStructures.standardMapInv)
     return result
 end
 
@@ -215,12 +229,12 @@ function makeStaticLaplaceTestCase()
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.5,1.0])
     bdata_predicate = (x,y) -> false
-    result = testCase("Static Laplace",LL,UR,bdata_predicate,[], true,0.0,0.01, zeroRHS,nothing,nothing,nothing)
+    result = testCase("Static Laplace",LL,UR,bdata_predicate,[], true,0.0,0.01, zeroRHS,nothing,nothing,nothing,nothing)
     return result
 end
 
 
-function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=CoherentStructures.default_quadrature_order)
+function accuracyTest(tC::testCase,reference::experimentResult,whichgrids=20:20:200,quadrature_order=CoherentStructures.default_quadrature_order)
     print("Running reference experiment")
     experimentResults = Vector{experimentResult}(0)
     runExperiment!(reference)
@@ -233,7 +247,7 @@ function accuracyTest(tC::testCase,reference::experimentResult,quadrature_order=
     gridConstructorNames = ["regular triangular grid", "regular P2 triangular grid" ]
     for (gCindex,gC) in enumerate(gridConstructors)
         #TODO: replace this with something more sensible...
-        for width in collect(20:20:200)
+        for width in collect(whichgrids)
             ctx = gC((width,width),tC.LL,tC.UR,quadrature_order=quadrature_order)
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
@@ -270,7 +284,7 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
                 index_ref = sortperm(real.(reference.λ))[end - (j - 1)]
                 ref_ev = undoBCS(reference.ctx, reference.V[:,j],reference.bdata)
                 ref_ev /= getnorm(ref_ev,reference.ctx,"L2",M_ref)
-                E[i,j] = getInnerProduct(reference.ctx, reference.V[:,index_ref], upsampled,M_ref)
+                E[i,j] = getInnerProduct(reference.ctx, ref_ev, upsampled,M_ref)
             end
 
             index_ref = sortperm(real.(reference.λ))[end - (i - 1)]
@@ -309,10 +323,29 @@ function testStaticLaplace()
     return result
 end
 
-function testStandardMap()
+function testStandardMap(whichgrids)
     tC = makeStandardMapTestCase()
-    referenceCtx = regularP2TriangularGrid( (300,300), tC.LL,tC.UR)
+    referenceCtx = regularP2TriangularGrid( (400,400), tC.LL,tC.UR)
     reference = experimentResult(tC,referenceCtx,:CG)
-    result =  accuracyTest(tC, reference)
+    result =  accuracyTest(tC, reference,whichgrids)
     return result
+end
+
+
+function loglogleastsquareslines(xs_nonlog,ys_nonlog,gridtypes)
+    xs = log10.(xs_nonlog)
+    ys = log10.(ys_nonlog)
+
+    for g in unique(gridtypes)
+        indices = find(x->x==g,gridtypes)
+        xs_cur = xs[indices]
+        ys_cur = ys[indices]
+        xs_cur_nonlog = xs_nonlog[indices]
+
+        A = hcat(xs_cur,ones(length(xs_cur)))
+        G = A'*A
+        res  = G \ A'*ys_cur
+        legendlabel = [@sprintf("Slope %.2f line", res[1]) for x in xs_cur]
+        Plots.display(Plots.plot!(xs_cur_nonlog, 10.^(res[1] .* xs_cur + res[2]),group=legendlabel))
+    end
 end

@@ -4,10 +4,59 @@ using CoherentStructures
 include("numericalExperiments.jl")
 
 
+LL = Vec{2}([0.0,0.0])
+UR=Vec{2}([2π,2π])
+bdata_predicate = (x,y) -> (CoherentStructures.distmod(x[1],y[1],2π) < 1e-9 && CoherentStructures.distmod(x[2],y[2],2π)<1e-9)
 tC = makeStandardMapTestCase()
-referenceCtx = regularP2TriangularGrid((100,100),tC.LL,tC.UR)
+tC = makeOceanFlowTestCase()
+ctx = regularTriangularGrid((20,20),tC.LL,tC.UR,quadrature_order=2)
+eR = experimentResult(tC, ctx, :naTO)
+runExperiment!(eR)
+plotExperiment(eR)
+plot_u(ctx,ones(ctx.n),400,400,color=:rainbow,colorbar=true,clim=(1-1e-16,1))
+Plots.savefig("/tmp/output.svg")
+inv_flow_map = CoherentStructures.standardMapInv
+plot_u_eulerian(ctx, -1*eR.V[:,3],inv_flow_map,
+   LL,UR,300,300,
+   bdata=eR.bdata,color=:rainbow)
+
+
+
+
+
+
+tC = makeStandardMapTestCase()
+referenceCtx = regularP2TriangularGrid((200,200),tC.LL,tC.UR)
 reference = experimentResult(tC,referenceCtx, :CG)
 runExperiment!(reference)
+inv_flow_map = CoherentStructures.standardMapInv
+
+
+results[1].ctx.numberOfPointsInEachDirection
+plot_u(results[1].ctx, -1.0*results[1].V[:,2], bdata=results[1].bdata,300,300,color=:rainbow)
+plot_u_eulerian(results[1].ctx, -1.0*results[1].V[:,2],inv_flow_map,
+   results[1].ctx.spatialBounds[1], results[1].ctx.spatialBounds[2],300,300,
+   bdata=results[1].bdata,color=:rainbow)
+plot_real_spectrum(reference.λ)
+
+##### Test case for Standard map
+
+
+results2 = testStandardMap([109,108,107,106])
+buildStatistics!(results2,1)
+deleteat!(results2,1)
+append!(results,results2)
+
+results[42].ctx.numberOfPointsInEachDirection[1]
+deleteat!(results,42)
+length(results)-6
+
+results = testStandardMap(10:10:200)
+buildStatistics!(results,1)
+reference_index = 1
+fd = open("SM","w")
+serialize(fd,results)
+close(fd)
 
 dgTc = makeDoubleGyreTestCase(0.5)
 referenceCtx = regularP2TriangularGrid( (300,300), dgTc.LL,dgTc.UR)
@@ -27,6 +76,10 @@ close(fd)
 
 reference_index = 1
 results=open(deserialize,"DG025")
+
+
+reference_index = 1
+results=open(deserialize,"SM")
 
 reference_index = 21
 results=open(deserialize,"SL")
@@ -56,63 +109,57 @@ begin
 end
 
 for i in 1:21
-  Plots.display(plot_u(results[i].ctx,results[i].V[:,2],title="$i"))
+  #Plots.display(plot_u(results[i].ctx,results[i].V[:,2],title="$i",bdata=results[i].bdata))
+  Plots.display(plot_real_spectrum(results[i].λ))
   sleep(1)
 end
 
 
 whichev=2
 y = [(x.λ[whichev] - results[reference_index].λ[whichev])/(results[reference_index].λ[whichev])  for x in results[indexes_to_plot]]
-y
 begin
   whichev = 2
   x = [getH(x.ctx) for x in results[indexes_to_plot]]
   y = [-abs(x.λ[whichev] - results[reference_index].λ[whichev])/(results[reference_index].λ[whichev])  for x in results[indexes_to_plot]]
   gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
-  Plots.scatter(x,y,group=gridtypes,xlabel="Number of Basis Functions",ylabel="Absolute error",
+  Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Relative error",
     xscale=:log10,yscale=:log10,  legend=:bottomright,
-    title="Errors in second eigenvalue")
-  #slope 2 line
-  xl = collect(linspace(minimum(x), maximum(x),100))
-  yl = xl.^2*100
-  legendlabel = ["Slope 2 line" for x in xl]
-  Plots.plot!(xl,yl,group=legendlabel)
-
-  #Slope 4 line
-  xl = collect(linspace(minimum(x),maximum(x),100))
-  yl = xl.^4*500
-  legendlabel = ["Slope 4 line" for x in xl]
-  #Plots.plot!(xl,yl,group=legendlabel)
-  Plots.display()
+    title="Errors in eigenvalue $whichev")
+  loglogleastsquareslines(x,y,gridtypes)
 end
+begin
+
 
 
 Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/ev1errs.pdf")
 
 
+t = [1 - norm(x.statistics["E"][2:3,2:3]) for x in results[indexes_to_plot]]
 
 #Plot second eigenvector errors
 begin
-  whichev = 4
+  #whichev = 2
   x = [getH(x.ctx) for x in results[indexes_to_plot]]
-  y = [max(1e-10,sqrt(1 - abs(x.statistics["E"][whichev,whichev])))  for x in results[indexes_to_plot]]
+  #y = [max(1e-10,sqrt(1 - abs(x.statistics["E"][whichev,whichev])))  for x in results[indexes_to_plot]]
+  y = [max(1e-10,sqrt(abs(1 - norm(x.statistics["E"][2:3,2:3]))))  for x in results[indexes_to_plot]]
   gridtypes = [x.ctx.gridType for x in results[indexes_to_plot]]
   Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Eigenvector error",
     xscale=:log10, yscale=:log10, legend=:bottomright,
-    title="Error in Eigenfunction $whichev")
-
-  xl = collect(linspace(minimum(x), maximum(x),100))
-  yl = xl.^2*20
-  legendlabel = ["Slope 2 line" for x in xl]
-  Plots.plot!(xl,yl,group=legendlabel)
-
-  xl = collect(linspace(minimum(x), maximum(x),100))
-  yl = xl.^3*100
-  legendlabel = ["Slope 3 line" for x in xl]
-  Plots.plot!(xl,yl,group=legendlabel)
+    title="Error in First two eigenfunctions")
+  loglogleastsquareslines(x,y,gridtypes)
 end
-plot_u(results[1].ctx,results[1].V[:,3])
-results[1].ctx.numberOfPointsInEachDirection
+index = 32
+plot_u(results[index].ctx,results[index].V[:,3],bdata=results[index].bdata)
+plot_u(results[29].ctx,results[29].V[:,3],bdata=results[29].bdata)
+results[32].ctx.numberOfPointsInEachDirection
+1 - norm(results[30].statistics["E"][2:3,2:3])
+1 - norm(results[31].statistics["E"][2:3,2:3])
+1 - norm(results[32].statistics["E"][2:3,2:3])
+1 - norm(results[33].statistics["E"][2:3,2:3])
+results[31].statistics["E"][2:3,2:3]
 
 
 Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/evec2errs.pdf")
+
+plot_u_eulerian(results[index].ctx,results[index].V[:,2],CoherentStructures.standardMapInv,
+    [0.,0.0],[2π,2π],200,200, bdata=results[index].bdata)
