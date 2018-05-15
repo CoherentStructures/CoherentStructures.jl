@@ -20,6 +20,8 @@ export
 	#dynamicmetrics
 	PEuclidean,
 	peuclidean,
+	STmetric,
+	stmetric,
 	meanmetric,
 
 	#FEMassembly.jl

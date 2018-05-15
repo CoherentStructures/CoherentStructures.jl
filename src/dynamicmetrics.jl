@@ -10,7 +10,7 @@ end
 
 """
     PEuclidean([L])
-Create a Euclidean metric on a periodic domain.
+Create a Euclidean metric on a rectangular periodic domain.
 Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 """
@@ -87,6 +87,52 @@ end
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = evaluate(PEuclidean(), a, b)
 
+########## spatiotemporal metrics ##############
+
+struct STmetric <: Dists.Metric
+    Smetric::Dists.Metric
+    p::Real
+end
+
+STmetric()          = STmetric(Dists.Euclidean(),1)
+STmetric(p::Real)   = STmetric(Dists.Euclidean(),p)
+
+# Specialized for Arrays and avoids a branch on the size
+@inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+    sa = size(a)
+    sb = size(b)
+    @boundscheck if size(a) != size(b)
+        throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
+    end
+    if length(a) == 0
+        return zero(result_type(d, a, b))
+    end
+    s = eval_start(d, a, b)
+    s = eval_reduce(d, eval_op(d, a, b))
+    return eval_end(d, s)
+end
+
+function evaluate(dist::STmetric, a::T, b::T) where {T <: Number}
+    eval_end(dist, evaluate(dist.Smetric, a, b))
+end
+function result_type(dist::STmetric, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
+    typeof(evaluate(dist, one(T1), one(T2)))
+end
+@inline function eval_start(d::STmetric,a::AbstractArray,b::AbstractArray)
+    zero(result_type(d,a,b))
+end
+@inline function eval_op(d::STmetric, a::AbstractArray, b::AbstractArray)
+    Dists.colwise(d.Smetric, a, b)
+end
+@inline function eval_reduce(d::STmetric, s)
+    vecnorm(s, d.p)/length(s)
+end
+@inline eval_end(::STmetric, s) = s
+
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::AbstractArray) = evaluate(STmetric(d,p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(STmetric(p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray) = evaluate(STmetric(), a, b)
+
 """
         meanmetric(F, av, metric)
 
@@ -119,21 +165,20 @@ function meanmetric(F::AbstractArray{T,3},
 
     entries = div(N*(N+1),2)
 
-    # linear storage of triangular matrix
+    # allocate distance matrix
     R = SharedArray{T,2}(N,N)
 
-    # enumerate the entries linearly to distribute them evenly across the workers
+    # allocate `dists` and make it known on all workers
     dists = Vector{Distances.result_type(metric,F[:,1,1],F[:,1,1])}(t)
     @everywhere @eval dists = $(dists)
 
-    @sync @parallel for n = 1:entries
-        @async begin
+    # enumerate the entries linearly to distribute them evenly across the workers
+    @views @sync @parallel for n = 1:entries
+    # Threads.@threads for n = 1:entries
             i, j = tri_indices(n)
             # fill_distances!(dists, F[:,:,i], F[:,:,j], metric, t)
             Dists.colwise!(dists, metric, F[:,:,i], F[:,:,j])
             R[i,j] = av(dists)
-            # R[i,j] = av(Dists.colwise(metric, view(F,:,:,i), view(F,:,:,j)))
-        end
     end
     Symmetric(R,:L)
 end
