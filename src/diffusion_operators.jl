@@ -204,17 +204,18 @@ function wLap_normalize!(A::AbstractMatrix)
 
      N = LinAlg.checksquare(P)
 
-     @time π = stationary_distribution(transpose(P))
+     π = stationary_distribution(transpose(P))
 
      # Compute relevant SVD info for P by computing eigendecomposition of P*P'
-     @time L = L_mul_Lt(P, π)
-     @time E = eigs(L; nev=n_coords, which=:LM)
-     Σ       = sqrt.(real.(E[1]))
-     Ψ       = real(E[2])
+     L = L_mul_Lt(P, π)
+     E = eigs(L; nev=n_coords, which=:LM)
+     Σ = sqrt.(real.(E[1]))
+     Ψ = real(E[2])
 
      # Compute diffusion map Ψ and extract the diffusion coordinates
-     @time scale!(Ψ,Σ)
-     @time scale!(1./sqrt.(π),Ψ)
+     scale!(Ψ,Σ)
+     @. π = 1/sqrt(π)
+     scale!(π,Ψ)
      return Σ, Ψ
  end
 
