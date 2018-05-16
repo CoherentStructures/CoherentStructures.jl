@@ -87,50 +87,78 @@ end
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = evaluate(PEuclidean(), a, b)
 
-########## spatiotemporal metrics ##############
+########## spatiotemporal, time averaged metrics ##############
+
+```
+    STmetric(Smetric, dim, p)
+
+Creates a spatiotemporal, averaged in time metric.
+
+## Properties
+   * `Smetric` is a metric as defined in the `Distances` package, e.g.,
+     `Euclidean`, `PEuclidean`, or `Haversine`
+   * `dim` corresponds to the spatial dimension
+   * `p` corresponds to the kind of average applied to the vector of spatial distances:
+     - `p = Inf`: maximum
+     - `p = 2`: mean squared average
+     - `p = 1`: arithmetic mean
+     - `p = -1`: harmonic mean (does not yield a metric!)
+     - `p = -Inf`: minimum (does not yield a metric!)
+```
 
 struct STmetric <: Dists.Metric
     Smetric::Dists.Metric
+    dim::Int
     p::Real
 end
 
-STmetric()          = STmetric(Dists.Euclidean(),1)
-STmetric(p::Real)   = STmetric(Dists.Euclidean(),p)
+STmetric()          = STmetric(Dists.Euclidean(), 2, 1)
+STmetric(p::Real)   = STmetric(Dists.Euclidean(), 2, p)
 
 # Specialized for Arrays and avoids a branch on the size
 @inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
-    sa = size(a)
-    sb = size(b)
-    @boundscheck if size(a) != size(b)
+    la = length(a)
+    lb = length(b)
+    @boundscheck if la != lb
         throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
     end
-    if length(a) == 0
+    if la == 0
         return zero(result_type(d, a, b))
     end
-    s = eval_start(d, a, b)
-    s = eval_reduce(d, eval_op(d, a, b))
+    q = div(la,d.dim)
+    # s = eval_start(d, a, b, sm)
+    s = eval_reduce(d, eval_op(d, a, b, d.Smetric, d.dim, q), d.p, q)
     return eval_end(d, s)
 end
 
-function evaluate(dist::STmetric, a::T, b::T) where {T <: Number}
-    eval_end(dist, evaluate(dist.Smetric, a, b))
+# this version is needed for NearestNeighbors `NNTree`
+@inline function evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
+    la = length(a)
+    lb = length(b)
+    @boundscheck if la != lb
+        throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
+    end
+    if la == 0
+        return zero(result_type(d, a, b))
+    end
+    # number of time steps
+    q = div(la,d.dim)
+    return eval_reduce(d, eval_op(d, a, b, d.Smetric, d.dim, q), d.p, q)
 end
-function result_type(dist::STmetric, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
-    typeof(evaluate(dist, one(T1), one(T2)))
+
+function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
+    result_type(d.Smetric, a, b)
 end
-@inline function eval_start(d::STmetric,a::AbstractArray,b::AbstractArray)
-    zero(result_type(d,a,b))
-end
-@inline function eval_op(d::STmetric, a::AbstractArray, b::AbstractArray)
-    Dists.colwise(d.Smetric, a, b)
-end
-@inline function eval_reduce(d::STmetric, s)
-    vecnorm(s, d.p)/length(s)
-end
+
+@inline eval_op(::STmetric, a::AbstractArray, b::AbstractArray, sm::Dists.Metric, dim::Int, q::Int) = Dists.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
+
+@inline eval_reduce(::STmetric, s, p, q) = q^(-inv(p))*vecnorm(s, p)
+
 @inline eval_end(::STmetric, s) = s
 
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::AbstractArray) = evaluate(STmetric(d,p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(STmetric(p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, 2, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, p::Real) = evaluate(STmetric(p), a, b)
 stmetric(a::AbstractArray, b::AbstractArray) = evaluate(STmetric(), a, b)
 
 """

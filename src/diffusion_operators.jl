@@ -4,27 +4,31 @@ NN = NearestNeighbors
 Dists = Distances
 
 doc"""
-    sparse_diff_op(sol, k, ε; metric)
+    sparse_diff_op(sol, [dim], k, ε; metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
-   * `sol`: 2D or 3D array of trajectories of size `(dim,N)` and `(dim,q,N)`, resp.,
-     where `dim` is the spatial dimension, `q` is the number of time steps,
-   and `N` is the number of trajectories;
+
+## Arguments
+   * `sol`: 2D array with columns correspdonding to data points;
+   * if `dim` is given, the columns are interpreted as concatenations of `dim`-
+     dimensional points, to which `metric` is applied individually;
    * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function sparse_diff_op( sols::AbstractArray{T, 3},
+function sparse_diff_op( sols::AbstractArray{T, 2},
+                            dim::Int,
                             kernel::Function,
                             ε::T;
                             # mapper::Function = pmap,
                             metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
-    dim, q, N = size(sols)
+    q, N = size(sols)
+    @assert q % dim == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = pmap(1:q) do t
         # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
-        @time Pₜ = sparse_diff_op( sols[:,t,:], kernel, ε; metric = metric )
+        @time Pₜ = sparse_diff_op( sols[(t-1)*dim+1:t*dim,:], kernel, ε; metric = metric )
         println("Timestep $t/$q done")
         Pₜ
     end
@@ -62,31 +66,6 @@ function sparseaffinitykernel( A::AbstractArray{T, 2},
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     Vs::Vector{T} = kernel.(Dists.colwise(metric, view(A,:,Is), view(A,:,Js)))
     return sparse(Is,Js,Vs,N,N)
-
-    # ################ Alvaro's version for comparison #####################
-    # dim, N = size(A)
-    #
-    # balltree = NN.BallTree(A, metric)
-    #
-    # # Get a Vector of tuples (I,J,V), one for each column i.
-    # # We hardcode the type because the compiler can't infer it (function barrier
-    # # and list comprehension don't help) -> check every once in a while, if this
-    # # has changed. (24.04.18)
-    # matrix_data_chunks = Array{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}(N)
-    # matrix_data_chunks[:] = @views map(1:N) do i
-    #     Js = NN.inrange(balltree, A[:,i], ε)
-    #     Vs = kernel.([Dists.evaluate(metric, A[:,i], A[:,j]) for j in Js])
-    #     Is = fill(i,length(Js))
-    #     # return the resulting I,J,V for the sparse matrix
-    #     Is, Js, Vs
-    # end
-    #
-    # # concatenate the lists of collected indices and values
-    # # reduce((x,y)-> vcat.(x,y), matrix_data) would do the same, but much slower
-    # Is, Js, Vs = collect_entries(matrix_data_chunks)
-    #
-    # return sparse(Is, Js, Vs, N, N)
-    # ################ end of Alvaro's version ################
 end
 
 doc"""
@@ -130,41 +109,3 @@ function wLap_normalize!(A::DenseMatrix)
     scale!(dᵅ,A)
     return A
  end
-
-# `collect_entries` is currently replaced by `vcat(idxs...)`
-
-# given a collection of Tuple{Vector, Vector, Vector },
-# return a single Tuple{Vector, Vector, Vector}, concatenating
-# entrywise.
-# function collect_entries(entry_lists::Vector{Tuple{Vector{Int}, Vector{Int}, Vector{T}}}) where T
-#
-#     # check if each tuple has entries of matching lengths
-#     isdiag(tup) = (tup[1] == tup[2] == tup[3])
-#     isvalid(tup) = isdiag(length.(tup))
-#     @assert all(isvalid.(entry_lists))  "entry_lists contains a tuple with mismatching index counts"
-#
-#     # get total number of entries
-#     counter = (lengths, tup) -> lengths .+ length.(tup)
-#     nI, nJ, nV = reduce(counter, (0,0,0), entry_lists)
-#
-#     # allocate index and value lists
-#     I, J, V = zeros(Int, nI), zeros(Int, nJ), zeros(T, nV)
-#
-#     # traverse the collection of Tuples while
-#     # filling the (linear) lists I,J and V
-#
-#     k = 1 # current index in entry_lists
-#     offset = 1 # current index in entry_lists[k]
-#     for i = 1:nI
-#         tuple = entry_lists[k]
-#         I[i], J[i], V[i] = tuple[1][offset], tuple[2][offset], tuple[3][offset]
-#         offset += 1
-#
-#         # move to the next entry of entry_lists
-#         if offset > length(tuple[1])
-#             offset = 1
-#             k += 1
-#         end
-#     end
-#     return I, J, V
-# end
