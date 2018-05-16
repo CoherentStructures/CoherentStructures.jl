@@ -23,8 +23,9 @@ function sparse_diff_op( sols::AbstractArray{T, 2},
                             ε::T;
                             # mapper::Function = pmap,
                             metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
-    q, N = size(sols)
-    @assert q % dim == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
+    dimt, N = size(sols)
+    (q, r) = divrem(dimt,dim)
+    @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = pmap(1:q) do t
         # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
@@ -39,7 +40,7 @@ function sparse_diff_op(sols::AbstractArray{T, 2},
                         ε::T;
                         metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
 
-    P = sparseaffinitykernel( sols, kernel, metric, ε )
+    P = sparseaffinitykernel(collect(sols), kernel, metric, ε)
     α_normalize!(P, 1)
     wLap_normalize!(P)
     return P
@@ -54,7 +55,7 @@ only calculated for pairs where ``metric(x_i, x_j)≦ε``.
 Default metric is `Euclidean()`, default `ε` is 1e-3.
 """
 
-function sparseaffinitykernel( A::AbstractArray{T, 2},
+function sparseaffinitykernel( A::Array{T, 2},
                                kernel::F,
                                metric::Dists.PreMetric = Dists.Euclidean(),
                                ε::S = convert(S,1e-3) ) where T <: Number where S <: Number where F <:Function

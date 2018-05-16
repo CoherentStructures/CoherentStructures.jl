@@ -89,12 +89,13 @@ peuclidean(a::AbstractArray, b::AbstractArray) = evaluate(PEuclidean(), a, b)
 
 ########## spatiotemporal, time averaged metrics ##############
 
-```
+"""
     STmetric(Smetric, dim, p)
 
 Creates a spatiotemporal, averaged in time metric.
 
-## Properties
+# Properties
+
    * `Smetric` is a metric as defined in the `Distances` package, e.g.,
      `Euclidean`, `PEuclidean`, or `Haversine`
    * `dim` corresponds to the spatial dimension
@@ -104,7 +105,7 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = 1`: arithmetic mean
      - `p = -1`: harmonic mean (does not yield a metric!)
      - `p = -Inf`: minimum (does not yield a metric!)
-```
+"""
 
 struct STmetric <: Dists.Metric
     Smetric::Dists.Metric
