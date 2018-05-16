@@ -16,6 +16,9 @@ export
 	sparseaffinitykernel,
 	α_normalize!,
 	wlap_normalize!,
+	stationary_distribution,
+	diffusion_coordinates,
+	diffusion_distance,
 
 	#dynamicmetrics
 	PEuclidean,
