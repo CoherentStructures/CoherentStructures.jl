@@ -81,7 +81,7 @@ end
     zero(result_type(d, a, b))
 end
 @inline eval_end(::PEuclidean, s) = sqrt(s)
-@inline eval_op(::PEuclidean, ai, bi, pi) = begin d = abs(ai - bi); d = mod(d, pi); d = min(d, pi-d); abs2(d) end
+@inline eval_op(::PEuclidean, ai, bi, pi) = begin d = abs(ai - bi); d = mod(d, pi); d = min(d, abs(pi-d)); abs2(d) end
 @inline eval_reduce(::PEuclidean, s1, s2) = s1 + s2
 
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
