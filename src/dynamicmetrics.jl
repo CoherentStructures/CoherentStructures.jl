@@ -146,7 +146,7 @@ end
     if la == 0
         return zero(result_type(d, a, b))
     end
-    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p, q)
+    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p)
 end
 
 function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
