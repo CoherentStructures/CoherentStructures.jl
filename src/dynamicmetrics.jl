@@ -15,7 +15,7 @@ Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 """
 
-PEuclidean() = PEuclidean(fill(Inf,2))
+PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
 @inline Base.@propagate_inbounds function evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
