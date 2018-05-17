@@ -166,28 +166,44 @@ stmetric(a::AbstractArray, b::AbstractArray) = evaluate(STmetric(), a, b)
 ########### parallel pairwise computation #################
 
 function pairwise!(r::SharedMatrix{T}, metric::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
-    na = size(a, 2)
-    nb = size(b, 2)
+    ma, na = size(a)
+    mb, nb = size(b)
     size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
+    ma == mb || throw(DimensionMismatch("First and second array have different numbers of time instances."))
+    q, s = divrem(ma, d.dim)
+    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+    dists = Vector{T}(q)
+    @everywhere @eval dists = $(dists)
     @inbounds @sync @parallel for j = 1:nb
-        bj = view(b, :, j)
         for i = 1:na
-            r[i, j] = evaluate(metric, view(a, :, i), bj)
+            dists .= eval_space(d, view(a, :, i), view(b, :, j), d.Smetric, d.dim, q)
+            r[i, j] = reduce_time(d, dists, d.p)
         end
     end
     r
 end
 
-function pairwise!(r::SharedMatrix{T}, metric::STmetric, a::AbstractMatrix) where T <: Real
-    n = size(a, 2)
+function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+    m, n = size(a)
     size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
+    q, s = divrem(m, d.dim)
+    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
     entries = div(n*(n+1),2)
-    @everywhere @eval dist = $(zero(T))
-    @inbounds @sync @parallel for n = 1:entries
-        i, j = tri_indices(n)
-        dist = i == j ? zero(T) : evaluate(metric, view(a, :, i), view(a, :, j))
-        r[i, j] = dist
-        r[j, i] = dist
+    dists = Vector{T}(q)
+    @everywhere @eval dists = $(dists)
+    @inbounds @sync @parallel for k = 1:entries
+        i, j = tri_indices(k)
+        if i == j
+            r[i, i] = zero(T)
+        else
+            dists .= eval_space(d, view(a, :, i), view(a, :, j), d.Smetric, d.dim, q)
+            r[i, j] = reduce_time(d, dists, d.p)
+        end
+    end
+    for j = 1:n
+        for i=1:(j-1)
+            r[i, j] = r[j, i]
+        end
     end
     r
 end
