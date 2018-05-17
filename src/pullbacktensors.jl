@@ -139,17 +139,25 @@ Apply the `flow_fun` to each element in `P` in parallel, if possible. Returns
 a 3D array with dimensions (space dim x no. of time instances x no. of trajectories).
 """
 function parallel_flow(flow_fun,P::AbstractArray)
-    dim = length(P[1])
+    dim::Int = length(P[1])
     T = eltype(P[1])
     dummy = flow_fun(P[1])
-    q = length(dummy)
+    q::Int = length(dummy)
 
+<<<<<<< HEAD
     sol_shared = SharedArray{T}(dim,q,length(P));
+=======
+    sol = SharedArray{T}(dim*q,length(P));
+>>>>>>> a91ddd5c1d53efb2f12959e19872c06488a104c2
     @sync @parallel for index in eachindex(P)
         # @async begin
             u = flow_fun(P[index])
             for t=1:q, d=1:dim
+<<<<<<< HEAD
                 sol_shared[d,t,index] = u[t][d]
+=======
+                sol[(t-1)*dim+d,index] = u[t][d]
+>>>>>>> a91ddd5c1d53efb2f12959e19872c06488a104c2
             end
         # end
     end
