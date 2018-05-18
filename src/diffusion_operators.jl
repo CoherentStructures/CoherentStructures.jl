@@ -20,6 +20,7 @@ function sparse_diff_op( sols::AbstractArray{T, 2},
                             dim::Int,
                             kernel::Function,
                             ε::T;
+                            α=1.0,
                             # mapper::Function = pmap,
                             metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
     dimt, N = size(sols)
@@ -28,21 +29,23 @@ function sparse_diff_op( sols::AbstractArray{T, 2},
 
     P = pmap(1:q) do t
         # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
-        @time Pₜ = sparse_diff_op( sols[(t-1)*dim+1:t*dim,:], kernel, ε; metric = metric )
+        @time Pₜ = sparse_diff_op( sols[(t-1)*dim+1:t*dim,:], kernel, ε; α=α, metric = metric )
         println("Timestep $t/$q done")
         Pₜ
     end
+    return prod(LinearMaps.LinearMap,reverse(P))
 end
 
 function sparse_diff_op(sols::AbstractArray{T, 2},
                         kernel::Function,
                         ε::T;
+                        α=1.0,
                         metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
 
-    P = sparseaffinitykernel(collect(sols), kernel, metric, ε)
-    α_normalize!(P, 1)
+    P = sparseaffinitykernel(sols, kernel, metric, ε)
+    α_normalize!(P, α)
     wLap_normalize!(P)
-    return P
+    return LinearMaps.LinearMap(P)
 end
 
 """
@@ -75,7 +78,7 @@ i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
 $ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
 """
 
-function α_normalize!(A::AbstractMatrix{T}, α::S = 0.5) where T <: Real where S <: Real
+function α_normalize!(A::T, α::S = 0.5) where T <: AbstractMatrix where S <: Real
     LinAlg.checksquare(A)
     qₑ = 1./squeeze(sum(A, 2),2).^α
     scale!(A,qₑ)
@@ -89,51 +92,11 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 $ a_{ij}:=a_{ij}/q_i$.
 """
 
-function wLap_normalize!(A::AbstractMatrix)
+function wLap_normalize!(A::T) where T <: AbstractMatrix
     LinAlg.checksquare(A)
     dᵅ = 1./squeeze(sum(A, 2),2)
     scale!(dᵅ,A)
     return A
- end
-
- """
-     multiply_diffusion!(v, Pt)
-
- Overwrite `v` with `Pt[n] * Pt[n-1] * ... * Pt[1] * v`.
- """
- function multiply_diffusion!(v,Pt)
-     efficient_linalg_reduce!(v, Pt, A_mul_B!)
- end
-
- """
-     multiply_markov!(v,Pt)
-
- Overwrite `v` with  `(Pt[n] * Pt[n-1] * ... * Pt[1])' * v`.
- """
- function multiply_markov!(v, Pt)
-     efficient_linalg_reduce!(v, reverse(Pt), At_mul_B!)
- end
-
- function multiply_diffusion(v,Pt)
-    multiply_diffusion!(copy(v), Pt)
- end
-
- function multiply_markov(v, Pt)
-     multiply_markov!(copy(v), Pt)
- end
-
- function efficient_linalg_reduce!(v, As, la_func!::T) where T<:Function
- # take e.g. la_func! = A_mul_B!
- # --> v is overwritten with A[n] * ... * A[1] * v
-     w1 = copy(v)
-     w2 = copy(v)
-
-     for A in As
-         la_func!(w1, A, w2)
-         # swap pointers
-         tmp = w1; w1 = w2; w2 = tmp
-     end
-      v .= w1
  end
 
  """
@@ -146,7 +109,7 @@ function wLap_normalize!(A::AbstractMatrix)
 
  function stationary_distribution(P::Union{SparseMatrixCSC{T,Int64},LinearMaps.LinearMap{T},DenseMatrix{T}}) where T <: Real
 
-     E   = eigs(P; nev=1, which=:LM)
+     E   = eigs(P; nev=1, maxiter=1000, which=:LM)
      π   = squeeze(real(E[2]),2) # stationary distribution
      ext = extrema(π)
      prod(ext) < zero(eltype(ext)) && throw(error("Both signs in stationary distribution"))
@@ -182,24 +145,6 @@ function wLap_normalize!(A::AbstractMatrix)
  to be computed.
  """
 
- function diffusion_coordinates(Pᵗ::AbstractVector{SparseMatrixCSC{T,Int64}},n_coords::Int) where T <: Real
-
-     Nt = unique(LinAlg.checksquare(Pᵗ...))
-     length(Nt) == 1 ? N = Nt[1] : throw(error("List of matrices contains nonsquare or incompatible matrices."))
-     function fDiff!(w,v)
-         w .= v
-         multiply_diffusion!(w,Pᵗ)
-     end
-
-     function fMarkov!(w,v)
-         w .= v
-         multiply_markov!(w,Pᵗ)
-     end
-
-     P = LinearMaps.LinearMap(fDiff!,fMarkov!,N)
-     return diffusion_coordinates(P,n_coords)
- end
-
  function diffusion_coordinates(P::S,n_coords::Int) where S <: Union{SparseMatrixCSC,LinearMaps.LinearMap,DenseMatrix}
 
      N = LinAlg.checksquare(P)
@@ -208,7 +153,7 @@ function wLap_normalize!(A::AbstractMatrix)
 
      # Compute relevant SVD info for P by computing eigendecomposition of P*P'
      L = L_mul_Lt(P, π)
-     E = eigs(L; nev=n_coords, which=:LM)
+     E = eigs(L; nev=n_coords, maxiter=1000, which=:LM)
      Σ = sqrt.(real.(E[1]))
      Ψ = real(E[2])
 
