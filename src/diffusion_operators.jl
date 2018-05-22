@@ -2,8 +2,24 @@
 
 Dists = Distances
 
+function diff_op(sol::AbstractArray{T, 2},
+                    kernel::Function,
+                    ε::T;
+                    α=1.0,
+                    metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
+
+    N = size(sol, 2)
+    D = Dists.pairwise(metric,sol)
+    Is, Js = findn(D .< ε)
+    Vs = kernel.(D[D .< ε])
+    P = sparse(Is, Js, Vs, N, N)
+    α_normalize!(P, α)
+    wLap_normalize!(P)
+    return P
+end
+
 doc"""
-    sparse_diff_op(sol, [dim], k, ε; metric)
+    sparse_diff_op(sol[, dim], k, ε; metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -19,9 +35,9 @@ Return a list of sparse diffusion/Markov matrices `P`.
 function sparse_diff_op( sols::AbstractArray{T, 2},
                             dim::Int,
                             kernel::Function,
-                            ε::T;
+                            ε::T,
+                            op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P));
                             α=1.0,
-                            # mapper::Function = pmap,
                             metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
     dimt, N = size(sols)
     (q, r) = divrem(dimt,dim)
@@ -33,19 +49,20 @@ function sparse_diff_op( sols::AbstractArray{T, 2},
         println("Timestep $t/$q done")
         Pₜ
     end
-    return prod(LinearMaps.LinearMap,reverse(P))
+    return op_reduce(P)
 end
 
-function sparse_diff_op(sols::AbstractArray{T, 2},
+function sparse_diff_op(sol::AbstractArray{T, 2},
                         kernel::Function,
                         ε::T;
                         α=1.0,
                         metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
 
-    P = sparseaffinitykernel(sols, kernel, metric, ε)
+    typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
+    P = sparseaffinitykernel(sol, kernel, metric, ε)
     α_normalize!(P, α)
     wLap_normalize!(P)
-    return LinearMaps.LinearMap(P)
+    return P
 end
 
 """
