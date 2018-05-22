@@ -2,6 +2,20 @@
 
 Dists = Distances
 
+doc"""
+    diff_op(sol, kernel, ε; α, metric)
+
+Return a diffusion/Markov matrix `P`.
+
+## Arguments
+   * `sol`: 2D array with columns correspdonding to data points;
+   * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
+   * `ε`: distance threshold;
+   * `α`: exponent in diffusion-map normalization;
+   * `metric`: distance function w.r.t. which the kernel is computed, however,
+     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+"""
+
 function diff_op(sol::AbstractArray{T, 2},
                     kernel::Function,
                     ε::T;
@@ -19,23 +33,26 @@ function diff_op(sol::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op(sol[, dim], k, ε; metric)
+    sparse_diff_op(sol, k, ε[, dim, op_reduce]; α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
    * `sol`: 2D array with columns correspdonding to data points;
+   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
+   * `ε`: distance threshold;
    * if `dim` is given, the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
-   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
+   * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or `P -> prod(LinearMaps.LinearMap,reverse(P))`
+   * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
 function sparse_diff_op( sols::AbstractArray{T, 2},
-                            dim::Int,
                             kernel::Function,
                             ε::T,
+                            dim::Int,
                             op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P));
                             α=1.0,
                             metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
