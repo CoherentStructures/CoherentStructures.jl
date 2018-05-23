@@ -34,16 +34,16 @@ function advect_serialized_quadpoints(ctx,t0,tf,odefun!,p=nothing,δ=1e-9;solver
 end
 
 
-function stiffnessMatrixTimeT(ctx,sol,t,δ=1e-9)
+function stiffnessMatrixTimeT(ctx,sol,t,δ=1e-9; bdata=bondaryData())
         if t < 0
-                return assembleStiffnessMatrix(ctx)
+                return assembleStiffnessMatrix(ctx,bdata=bdata)
         end
         p = sol(t)
         function Afun(x,index,p)
                 Df = Tensors.Tensor{2,2}((p[(8*(index-1) + 1):(8*(index-1) + 4)] - p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ))
                 return Tensors.dott(Tensors.inv(Df))
         end
-        return assembleStiffnessMatrix(ctx,Afun,p)
+        return assembleStiffnessMatrix(ctx,Afun,p,bdata=bdata)
 end
 
 
