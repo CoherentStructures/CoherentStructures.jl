@@ -67,7 +67,7 @@ function sparse_diff_op_family( data::AbstractArray{T, 2},
 
     P = pmap(1:q) do t
         # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
-        @time Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], kernel, ε; α=α, metric = metric )
+        @time Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], ε, kernel; α=α, metric = metric )
         println("Timestep $t/$q done")
         Pₜ
     end

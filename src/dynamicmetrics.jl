@@ -2,9 +2,9 @@
 
 import Distances: result_type, evaluate, eval_start, eval_op, eval_reduce, eval_end, pairwise, pairwise!
 
-Dists = Distances
+#const Dists = Distances
 
-struct PEuclidean{W <: Dists.RealAbstractArray} <: Dists.Metric
+struct PEuclidean{W <: Distances.RealAbstractArray} <: Distances.Metric
     periods::W
 end
 
@@ -15,10 +15,10 @@ Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 """
 
-PEuclidean() = Dists.Euclidean()
+PEuclidean() = Distances.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function evaluate(d::PEuclidean, a::Union{Array, Distances.ArraySlice}, b::Union{Array, Distances.ArraySlice})
     @boundscheck if length(a) != length(b)
         throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
     end
@@ -107,17 +107,17 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = -Inf`: minimum (does not yield a metric!)
 """
 
-struct STmetric <: Dists.Metric
-    Smetric::Dists.Metric
+struct STmetric{T <: Real, M <: Distances.Metric} <: Distances.Metric
+    Smetric::M
     dim::Int
-    p::Real
+    p::T
 end
 
-STmetric()          = STmetric(Dists.Euclidean(), 2, 1)
-STmetric(p::Real)   = STmetric(Dists.Euclidean(), 2, p)
+STmetric()          = STmetric(Distances.Euclidean(), 2, 1)
+STmetric(p::Real)   = STmetric(Distances.Euclidean(), 2, p)
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Distances.ArraySlice}, b::Union{Array, Distances.ArraySlice})
     la = length(a)
     lb = length(b)
     (q, r) = divrem(la,d.dim)
@@ -153,13 +153,13 @@ function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) wh
     result_type(d.Smetric, a, b)
 end
 
-@inline eval_space(::STmetric, a::AbstractArray, b::AbstractArray, sm::Dists.Metric, dim::Int, q::Int) = Dists.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
+@inline eval_space(::STmetric, a::AbstractArray, b::AbstractArray, sm::Distances.Metric, dim::Int, q::Int) = Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
 
 @inline reduce_time(::STmetric, s, p) = vecnorm(s, p)
 # @inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
 
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, 2, p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Distances.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, 2, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Distances.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
 stmetric(a::AbstractArray, b::AbstractArray, p::Real) = evaluate(STmetric(p), a, b)
 stmetric(a::AbstractArray, b::AbstractArray) = evaluate(STmetric(), a, b)
 
