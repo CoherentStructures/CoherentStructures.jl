@@ -86,7 +86,7 @@ function DstandardMap(u)
     ));
 end
 
-function abcFlow2(u,p,t)
+function abcFlow(u,p,t)
     A = sqrt(3)
     B = sqrt(2)
     C = 1

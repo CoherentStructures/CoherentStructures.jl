@@ -84,6 +84,7 @@ export
 	nonAdaptiveTO,
 	adaptiveTO,
 	L2GalerkinTO,
+	L2GalerkinTOFromInverse,
 
 	#util.jl
 	tensor_invariants,
