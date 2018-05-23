@@ -107,10 +107,10 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = -Inf`: minimum (does not yield a metric!)
 """
 
-struct STmetric <: Dists.Metric
+struct STmetric{T <: Real} <: Dists.Metric
     Smetric::Dists.Metric
     dim::Int
-    p::Real
+    p::T
 end
 
 STmetric()          = STmetric(Dists.Euclidean(), 2, 1)
