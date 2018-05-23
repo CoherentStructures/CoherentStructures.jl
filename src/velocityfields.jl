@@ -97,6 +97,21 @@ function abcFlow(u,p,t)
         )
 end
 
+function cylinder_flow(u,p,t)
+    const c = 0.5
+    const ν = 0.25
+    const ϵ = 0.25
+    A(t) = 1 + 0.125*sin(2*sqrt(5.)*t)
+    G(ψ) = 1./(ψ^2 + 1)^2
+    g(x,y,t) = sin(x-ν*t)*sin(y) + y/2 - π/4
+    const x = u[1]
+    const y = u[2]
+    return StaticArrays.SVector{2,Float64}(
+        c - A(t)*sin(x - ν*t)*cos(y) + ϵ*G(g(x,y,t))+sin(t/2),
+        A(t)*cos(x - ν*t)*sin(y)
+        )
+end
+
 #The function below is taken from Oliver Junge's main_rot_gyre.jl
 # function rot_double_gyre!(du::AbstractVector{T},u::AbstractVector{T},p,t::T) where {T <: Real}
 # #function rot_double_gyre2(t::Float64,x,dx)
