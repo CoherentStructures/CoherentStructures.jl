@@ -17,7 +17,7 @@ function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
         jdof = (ctx.node_to_dof)[j]
         try
             #TODO: Is using the Vec{2} type here slower than using Arrays?
-            pointPullback = Vec{2}(min.(UR - 1e-10one2D, max.(LL + 1e-10*one2D, inverse_flow_map(current_point))))
+            pointPullback = Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
             #TODO: Don't doo this pointwise, but pass whole vector to locatePoint
             #TODO: can't I use evaluate_function here?
             local_coords, nodelist = locatePoint(ctx,pointPullback)
@@ -75,7 +75,7 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function)
         #Iterate over all quadrature points in the cell
         for q in 1:getnquadpoints(cv) # loop over quadrature points
             const dΩ::Float64 = getdetJdV(cv,q)
-            TQ::Vec{2,Float64} = flow_map(ctx.quadrature_points[index])
+            TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx.quadrature_points[index]))
             try
                 local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
                 for (shape_fun_num,j) in enumerate(nodes)
@@ -111,7 +111,7 @@ function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
         #Iterate over all quadrature points in the cell
         for q in 1:getnquadpoints(cv) # loop over quadrature points
             const dΩ::Float64 = getdetJdV(cv,q)
-            TQ::Vec{2,Float64} = flow_map(ctx.quadrature_points[index])
+            TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx.quadrature_points[index]))
             try
                 local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
                 for (shape_fun_num,i) in enumerate(nodes)
