@@ -2,50 +2,54 @@ using CoherentStructures, OrdinaryDiffEq, DiffEqOperators,Sundials
 
 
 ctx = regularTriangularGrid((25,25))
-u0 = CoherentStructures.setup_fd_quadpoints_serialized(ctx,δ=1e-9)
-
-p2 = Dict(
-        "ctx" => ctx,
-        "p"=>nothing,
-        )
-
-function large_rhs(du,u,p,t)
-    n_quadpoints = length(p["ctx"].quadrature_points)
-    @views CoherentStructures.arraymap!(du,u,p["p"],t,rot_double_gyre!,4*n_quadpoints,2)
-end
 
 function rot_double_gyre!(du,u,p,t)
         du .= rot_double_gyre(u,p,t)
 end
+sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!,
+        nothing,1e-9,tolerance=1e-4,solver=BS5())
 
-prob = ODEProblem(large_rhs, u0,(0.0,1.0),p2)
-sol = solve(prob,BS5())
 
-function stiffnessMatrixTimeT(ctx,sol,t,δ=1e-9)
-        if t < 0
-                return assembleStiffnessMatrix(ctx)
+using LinearMaps
+function implicitEulerStepFamily(ctx,sol,t0,tf,nt,ϵ)
+        M = assembleMassMatrix(ctx)
+        n = size(M)[1]
+        result = []
+        for i in 0:(nt-1)
+                dt = (tf - t0)/nt
+                t = t0 + dt*i
+                K = CoherentStructures.stiffnessMatrixTimeT(ctx,sol,t)
+
+                currentmap = LinearMap(
+                     x -> (M - dt*ϵ*K)\(M*x) ,n
+                        )
+                push!(result,currentmap)
         end
-        p = sol(t)
-        function Afun(x,index,p)
-                Df = Tensors.Tensor{2,2}((p[(8*(index-1) + 1):(8*(index-1) + 4)] - p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ))
-                return Tensors.dott(Tensors.inv(Df))
-        end
-        return assembleStiffnessMatrix(ctx,Afun,p)
+        return result
 end
 
+steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2)
+plot_u(ctx,prod(steps)*circ)
 
 
-K = stiffnessMatrixTimeT(ctx,sol,0) + stiffnessMatrixTimeT(ctx,sol,1)
+####### Stuff below is just testing, only partially related to stuff above ####
+
+
+
+@time K = stiffnessMatrixTimeT(ctx,sol,0.0) + stiffnessMatrixTimeT(ctx,sol,1)
+@code_warntype assembleStiffnessMatrix(ctx)
+@time assembleMassMatrix(ctx)
+
 M = assembleMassMatrix(ctx)
 λ,v = eigs(K,M,which=:SM)
-plot_u(ctx,v[:,6])
+plot_u(ctx,v[:,5])
 
 
 function circle(x)
         return ((x[1] - 0.5)^2 + (x[2] - 0.5)^2 < 0.1) ? 1.0 : 0.0
 end
 
-u0 = nodal_interpolation(ctx,circle)
+circ = nodal_interpolation(ctx,circle)
 
 ϵ=1e-2
 plot_u(ctx,u0)
@@ -100,14 +104,22 @@ function update_coeffs(K,u,p,t)
         ctx = p[3]
         δ = p[5]
         sol = p[4]
-        K .= ϵ*stiffnessMatrixTimeT(ctx,sol,0.0,δ)
+        K .= ϵ*stiffnessMatrixTimeT(ctx,sol,t,δ)
         return nothing
 end
 
+function linsolve!(::Type{Val{:init}},f,u0)
+  function _linsolve!(x,A,b,update_matrix=false)
+          x .= A \  b
+  end
+end
 
-L = DiffEqArrayOperator(ϵ*K,1.0,update_coeffs)
+
+
+
+L = DiffEqArrayOperator(ϵ*K0,1.0,update_coeffs)
 prob = ODEProblem(L, u0, (0.0,1.0),p,mass_matrix=M)
-u = solve(prob ,ImplicitEuler(autodiff=false),
+u = solve(prob ,ImplicitEuler(autodiff=false,linsolve=linsolve!),
         progress=true,dt=1e-2,adaptive=false)
 
 
@@ -125,3 +137,18 @@ end
 prob = ODEProblem(stiffrhs, [1.0], (0.0,10.0))
 sol = solve(prob,ImplicitEuler(autodiff=false),dt=1e-1,adaptive=false)
 Plots.plot(sol)
+
+fs = []
+
+for i in 1:10
+        push!(fs, x->i)
+        print(fs[1](1))
+end
+
+f(2)
+a = 4
+
+
+
+a=3
+f(2)
