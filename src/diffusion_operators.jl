@@ -2,9 +2,11 @@
 
 Dists = Distances
 
+gaussian_kernel = x -> exp(-abs2(x))
+
 # diffusion operator/graph Laplacian related functions
 doc"""
-    diff_op(data, kernel, ε; α, metric)
+    diff_op(data, ε, kernel = gaussian_kernel; α=1.0, metric=Euclidean())
 
 Return a diffusion/Markov matrix `P`.
 
@@ -18,10 +20,11 @@ Return a diffusion/Markov matrix `P`.
 """
 
 function diff_op(data::AbstractArray{T, 2},
-                    kernel::Function,
-                    ε::T;
+                    ε::T,
+                    kernel::F = gaussian_kernel;
                     α=1.0,
-                    metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
+                    metric::Dists.PreMetric = Dists.Euclidean()
+                ) where {T <: Number, F <: Function}
 
     N = size(data, 2)
     D = Dists.pairwise(metric,data)
@@ -34,7 +37,7 @@ function diff_op(data::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op_family(data, k, ε, dim, op_reduce; α, metric)
+    sparse_diff_op_family(data, ε, dim, kernel; op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -51,10 +54,10 @@ Return a list of sparse diffusion/Markov matrices `P`.
 """
 
 function sparse_diff_op_family( data::AbstractArray{T, 2},
-                                kernel::F,
                                 ε::S,
-                                dim::Int,
-                                op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P));
+                                dim::Int = 2,
+                                kernel::F = gaussian_kernel;
+                                op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P)),
                                 α=1.0,
                                 metric::Dists.PreMetric = Dists.Euclidean()
                                 ) where {T <: Number, S <: Real, F <: Function}
@@ -154,7 +157,7 @@ $ a_{ij}:=a_{ij}/q_i$.
 # adjacency-related functions
 
 doc"""
-    sparse_adjacency_family(data, k, ε, dim; α, metric)
+    sparse_adjacency_family(data, ε, dim=2; metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -169,7 +172,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 function sparse_adjacency_family(data::AbstractArray{T, 2},
                                     ε::S,
-                                    dim::Int;
+                                    dim::Int8 = 2;
                                     metric::Dists.PreMetric = Dists.Euclidean()
                                 ) where {T <: Real, S <: Real}
     dimt, N = size(data)
