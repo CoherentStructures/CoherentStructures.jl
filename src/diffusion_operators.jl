@@ -3,12 +3,12 @@
 Dists = Distances
 
 doc"""
-    diff_op(sol, kernel, ε; α, metric)
+    diff_op(data, kernel, ε; α, metric)
 
 Return a diffusion/Markov matrix `P`.
 
 ## Arguments
-   * `sol`: 2D array with columns correspdonding to data points;
+   * `data`: 2D array with columns correspdonding to data points;
    * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
    * `ε`: distance threshold;
    * `α`: exponent in diffusion-map normalization;
@@ -16,14 +16,14 @@ Return a diffusion/Markov matrix `P`.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function diff_op(sol::AbstractArray{T, 2},
+function diff_op(data::AbstractArray{T, 2},
                     kernel::Function,
                     ε::T;
                     α=1.0,
                     metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
 
-    N = size(sol, 2)
-    D = Dists.pairwise(metric,sol)
+    N = size(data, 2)
+    D = Dists.pairwise(metric,data)
     Is, Js = findn(D .< ε)
     Vs = kernel.(D[D .< ε])
     P = sparse(Is, Js, Vs, N, N)
@@ -33,12 +33,12 @@ function diff_op(sol::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op(sol, k, ε[, dim, op_reduce]; α, metric)
+    sparse_diff_op_family(data, k, ε, dim, op_reduce; α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
-   * `sol`: 2D array with columns correspdonding to data points;
+   * `data`: 2D array with columns correspdonding to data points;
    * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
    * `ε`: distance threshold;
    * if `dim` is given, the columns are interpreted as concatenations of `dim`-
@@ -49,60 +49,140 @@ Return a list of sparse diffusion/Markov matrices `P`.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function sparse_diff_op( sols::AbstractArray{T, 2},
-                            kernel::Function,
-                            ε::T,
-                            dim::Int,
-                            op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P));
-                            α=1.0,
-                            metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
-    dimt, N = size(sols)
+function sparse_diff_op_family( data::AbstractArray{T, 2},
+                                kernel::F,
+                                ε::S,
+                                dim::Int,
+                                op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P));
+                                α=1.0,
+                                metric::Dists.PreMetric = Dists.Euclidean()
+                                ) where {T <: Number, S <: Real, F <: Function}
+    dimt, N = size(data)
     (q, r) = divrem(dimt,dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = pmap(1:q) do t
         # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
-        @time Pₜ = sparse_diff_op( sols[(t-1)*dim+1:t*dim,:], kernel, ε; α=α, metric = metric )
+        @time Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], kernel, ε; α=α, metric = metric )
         println("Timestep $t/$q done")
         Pₜ
     end
     return op_reduce(P)
 end
 
-function sparse_diff_op(sol::AbstractArray{T, 2},
-                        kernel::Function,
-                        ε::T;
+doc"""
+    sparse_diff_op(data, k, ε; α=1.0, metric=Euclidean())
+
+Return a list of sparse diffusion/Markov matrices `P`.
+
+## Arguments
+   * `data`: 2D array with columns correspdonding to data points;
+   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
+   * `ε`: distance threshold;
+   * `α`: exponent in diffusion-map normalization;
+   * `metric`: distance function w.r.t. which the kernel is computed, however,
+     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+"""
+
+@inline function sparse_diff_op(data::AbstractArray{T, 2},
+                        kernel::F,
+                        ε::S;
                         α=1.0,
-                        metric::Dists.PreMetric = Dists.Euclidean()) where T <: Number
+                        metric::Dists.PreMetric = Dists.Euclidean()
+                        ) where {T <: Real, S <: Real, F <: Function}
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
-    P = sparseaffinitykernel(sol, kernel, metric, ε)
+    P = sparseaffinitykernel(data, kernel, ε, metric)
     α_normalize!(P, α)
     wLap_normalize!(P)
     return P
 end
 
 """
-    sparseaffinitykernel(A, k, metric=Euclidean(), ε=1e-3)
+    sparseaffinitykernel(A, k, ε, metric=Euclidean())
 
 Return a sparse matrix `K` where ``k_{ij} = k(x_i, x_j)``.
 The ``x_i`` are taken from the columns of `A`. Entries are
 only calculated for pairs where ``metric(x_i, x_j)≦ε``.
-Default metric is `Euclidean()`, default `ε` is 1e-3.
+Default metric is `Euclidean()`.
 """
 
-function sparseaffinitykernel( A::Array{T, 2},
+@inline function sparseaffinitykernel(data::Array{T, 2},
                                kernel::F,
-                               metric::Dists.PreMetric = Dists.Euclidean(),
-                               ε::S = convert(S,1e-3) ) where T <: Number where S <: Number where F <:Function
-    dim, N = size(A)
+                               ε::S,
+                               metric::Dists.PreMetric = Dists.Euclidean()
+                               ) where {T <: Real, S <: Number, F <:Function}
+    dim, N = size(data)
 
-    balltree = NearestNeighbors.BallTree(A, metric)
-    idxs = NearestNeighbors.inrange(balltree, A, ε, false)
+    balltree = NearestNeighbors.BallTree(data, metric)
+    idxs = NearestNeighbors.inrange(balltree, data, ε, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs::Vector{T} = kernel.(Dists.colwise(metric, view(A,:,Is), view(A,:,Js)))
+    Vs::Vector{T} = kernel.(Dists.colwise(metric, view(data,:,Is), view(data,:,Js)))
     return sparse(Is,Js,Vs,N,N)
+end
+
+doc"""
+    sparse_adjacency_family(data, k, ε, dim; α, metric)
+
+Return a list of sparse diffusion/Markov matrices `P`.
+
+## Arguments
+   * `data`: 2D array with columns correspdonding to data points;
+   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
+   * `ε`: distance threshold;
+   * if `dim` is given, the columns are interpreted as concatenations of `dim`-
+     dimensional points, to which `metric` is applied individually;
+   * `α`: exponent in diffusion-map normalization;
+   * `metric`: distance function w.r.t. which the kernel is computed, however,
+     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+"""
+
+function sparse_adjacency_family(data::AbstractArray{T, 2},
+                                    kernel::F,
+                                    ε::S,
+                                    dim::Int;
+                                    α=1.0,
+                                    metric::Dists.PreMetric = Dists.Euclidean()
+                                ) where {T <: Real, S <: Real, F <: Function}
+    dimt, N = size(data)
+    (q, r) = divrem(dimt,dim)
+    @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
+
+    As = pmap(1:q) do t
+        @time A = sparse_adjacency_list( data[(t-1)*dim+1:t*dim,:], kernel, ε; α=α, metric = metric )
+        println("Timestep $t/$q done")
+        A
+    end
+    IJ = unique(vcat(As...))
+    Is, Js = [ij[1] for ij in IJ], [ij[2] for ij in IJ]
+    Vs = fill(1,length(Is))
+    return sparse(Is,Js,Vs,N,N)
+end
+
+doc"""
+    sparse_adjacency_list(data, ε; metric=Euclidean()) -> idxs::Vector{Vector}
+
+Return two lists of indices of data points that are adjacent.
+
+## Arguments
+   * `data`: 2D array with columns correspdonding to data points;
+   * `ε`: distance threshold;
+   * `metric`: distance function w.r.t. which the kernel is computed, however,
+     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+"""
+
+@inline function sparse_adjacency_list(data::AbstractArray{T, 2},
+                                ε::S;
+                                metric::Dists.PreMetric = Dists.Euclidean()
+                               )::Vector{Vector{Int}} where {T <: Real, S <: Real}
+
+    typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
+    balltree = NearestNeighbors.BallTree(data, metric)
+    idxs = NearestNeighbors.inrange(balltree, data, ε, false)
+    Js::Vector{Int} = vcat(idxs...)
+    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    return vcat.(Is, Js)
 end
 
 doc"""
@@ -112,7 +192,7 @@ i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
 $ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
 """
 
-function α_normalize!(A::T, α::S = 0.5) where T <: AbstractMatrix where S <: Real
+@inline function α_normalize!(A::T, α::S = 0.5) where T <: AbstractMatrix where S <: Real
     LinAlg.checksquare(A)
     qₑ = 1./squeeze(sum(A, 2),2).^α
     scale!(A,qₑ)
@@ -126,7 +206,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 $ a_{ij}:=a_{ij}/q_i$.
 """
 
-function wLap_normalize!(A::T) where T <: AbstractMatrix
+@inline function wLap_normalize!(A::T) where T <: AbstractMatrix
     LinAlg.checksquare(A)
     dᵅ = 1./squeeze(sum(A, 2),2)
     scale!(dᵅ,A)
@@ -153,14 +233,14 @@ function wLap_normalize!(A::T) where T <: AbstractMatrix
      return π
  end
 
- function L_mul_Lt(L::LinearMaps.LinearMap{T},π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
      πsqrt  = Diagonal(sqrt.(π)) # alternavtive: Diagonal(sqrt.(π))
      πinv   = Diagonal(1./π) # alternative: Diagonal(inv.(π))
      return πsqrt * L * πinv * transpose(L) * πsqrt
  end
 
- function L_mul_Lt(L::AbstractArray{T},π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::AbstractArray{T},π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
      πsqrt = sqrt.(π)
      πinvsqrt = 1./πsqrt
