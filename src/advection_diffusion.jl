@@ -14,6 +14,39 @@ function ADimplicitEulerStep(ctx,u,edt, Afun,q=nothing,M=nothing,K=nothing)
     return (M - edt*K)\(M*u)
 end
 
+"""
+Single step with implicit Euler method, returns LinearOperator
+"""
+
+function getEulerStepOperator(K,M)
+
+end
+
+
+
+"""
+    setup_serialized_quadpoints(ctx,δ=1e-9)
+
+For each quadrature point in `ctx.quadrature_points`, setup a finite difference scheme around that point.
+Then write the resulting points into a (flat) array onto which arraymap can be applied.
+Only works in 2D at the moment
+"""
+function setup_fd_quadpoints_serialized(ctx;δ=1e-9)
+    n_quadpoints = length(ctx.quadrature_points)
+    u_full = zeros(8*n_quadpoints)
+    for i in 1:n_quadpoints
+            quadpoint = ctx.quadrature_points[i]
+            for j in 1:4
+                factor = (j>2)? -1 : 1
+                shift = (j % 2 == 0) ? 1 : 0
+                u_full[8*(i-1)+2(j-1) + 1] = quadpoint[1]
+                u_full[8*(i-1)+2(j-1) + 2] = quadpoint[2]
+                u_full[8*(i-1)+2(j-1) + 1 + shift] += factor*δ
+            end
+    end
+    return u_full
+end
+
 
 
 
