@@ -202,7 +202,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
 function sparse_adjacency(data::AbstractArray{T, 2},
                             ε::S;
                             metric::Dists.PreMetric = Dists.Euclidean()
-                            ) where {T <: Real, S <: Real, F <: Function}
+                            ) where {T <: Real, S <: Real}
     dimt, N = size(data)
     (q, r) = divrem(dimt,dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
