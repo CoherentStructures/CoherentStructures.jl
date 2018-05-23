@@ -11,25 +11,34 @@ sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!
 
 
 using LinearMaps
-function implicitEulerStepFamily(ctx,sol,t0,tf,nt,ϵ)
-        M = assembleMassMatrix(ctx)
+function implicitEulerStepFamily(ctx,sol,t0,tf,nt,ϵ; bdata=boundaryData())
+        M = assembleMassMatrix(ctx,bdata=bdata)
         n = size(M)[1]
-        result = []
+        result = LinearMap[]
         for i in 0:(nt-1)
                 dt = (tf - t0)/nt
                 t = t0 + dt*i
-                K = CoherentStructures.stiffnessMatrixTimeT(ctx,sol,t)
+                K = CoherentStructures.stiffnessMatrixTimeT(ctx,sol,t,bdata=bdata)
 
                 currentmap = LinearMap(
-                     x -> (M - dt*ϵ*K)\(M*x) ,n
+                     x -> (M - dt*ϵ*K)\(M*x) ,
+                     x -> (M*((M - dt*ϵ*K)\x))
+                     n
                         )
+
                 push!(result,currentmap)
         end
         return result
 end
 
-steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2)
-plot_u(ctx,prod(steps)*circ)
+plot_u(ctx,CoherentStructures.doBCS(ctx,circ,bdata),bdata=bdata)
+bdata = getHomDBCS(ctx,"all")
+steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2,bdata=bdata)
+steps[1]'*doBCS(ctx,circ,bdata)
+plot_u(ctx,prod(steps)*doBCS(ctx,circ,bdata),bdata=getHomDBCS(ctx,"all"))
+
+diffusion_coordinates(steps,6)
+
 
 
 ####### Stuff below is just testing, only partially related to stuff above ####
