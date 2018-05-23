@@ -14,4 +14,4 @@ See also examples/Laplace\_\{Bickley,DG\}\_interp.jl files for more examples
 *TODO*:
    * Write a function that takes as input a tensor-function and a point structure (vector, matrix, 3d array),
 and returns a---if necessary---time-dependent tensor field. (static case done)
-   * Add graph Laplacian-based codes (WIP)
+   * Speed up the spatiotemporal metric evaluation!!!

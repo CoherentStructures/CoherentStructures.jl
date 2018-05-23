@@ -12,15 +12,23 @@ export
 	ellipticLCS,
 
 	#diffusion_operators.jl
+	diff_op,
+	sparse_diff_op_family,
 	sparse_diff_op,
 	sparseaffinitykernel,
 	α_normalize!,
 	wlap_normalize!,
+	sparse_adjacency_family,
+	sparse_adjacency,
+	stationary_distribution,
+	diffusion_coordinates,
+	diffusion_distance,
 
 	#dynamicmetrics
 	PEuclidean,
 	peuclidean,
-	meanmetric,
+	STmetric,
+	stmetric,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,

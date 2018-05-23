@@ -1,6 +1,6 @@
 # (c) 2018 Alvaro de Diego & Daniel Karrasch
 
-import Distances: result_type, evaluate, eval_start, eval_op, eval_reduce, eval_end
+import Distances: result_type, evaluate, eval_start, eval_op, eval_reduce, eval_end, pairwise, pairwise!
 
 Dists = Distances
 
@@ -10,12 +10,12 @@ end
 
 """
     PEuclidean([L])
-Create a Euclidean metric on a periodic domain.
+Create a Euclidean metric on a rectangular periodic domain.
 Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 """
 
-PEuclidean() = PEuclidean(fill(Inf,2))
+PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
 @inline Base.@propagate_inbounds function evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
@@ -81,69 +81,147 @@ end
     zero(result_type(d, a, b))
 end
 @inline eval_end(::PEuclidean, s) = sqrt(s)
-@inline eval_op(::PEuclidean, ai, bi, pi) = begin d = abs(ai - bi); d = mod(d, pi); d = min(d, pi-d); abs2(d) end
+@inline eval_op(::PEuclidean, ai, bi, pi) = begin d = abs(ai - bi); d = mod(d, pi); d = min(d, abs(pi-d)); abs2(d) end
 @inline eval_reduce(::PEuclidean, s1, s2) = s1 + s2
 
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = evaluate(PEuclidean(), a, b)
 
+########## spatiotemporal, time averaged metrics ##############
+
 """
-        meanmetric(F, av, metric)
+    STmetric(Smetric, dim, p)
 
-For a set of trajectories ``x_i^t`` calculate an "averaged" distance matrix
-``K ∈ R^{N×N}`` where ``k_{ij} = av(metric(x_i^1, x_j^1), … , metric(x_i^T, x_j^T))``.
-# Arguments
-   * `F`: trajectory data with `size(F) = dim, T, N`
-   * `av`: time-averaging function, see below for examples
-   * `metric`: spatial distance function metric
+Creates a spatiotemporal, averaged in time metric.
 
-## Examples for metrics
-   * `Euclidean()`
-   * `Haversine(r)`: geodesic distance on a sphere of radius `r` in the
-        same units as `r`
-   * `PEuclidean(L)`: Euclidean distance on a periodic domain, periods
-        are contained in the vector `L`
+# Properties
 
-## Examples for time averages
-   * `av = mean`: arithmetic time-average, L¹ in time [Hadjighasem et al.]
-   * `av = x->1/mean(inv,x)`: harmonic time-average [de Diego et al.]
-   * `av = max`: sup/L\^infty in time [mentioned by Hadjighasem et al.]
-   * `av = x->min(x)<=ε`: encounter adjacency [Rypina et al., Padberg-Gehle & Schneide]
-   * `av = x->mean(abs2,x)`: Euclidean delay coordinate metric [cf. Froyland & Padberg-Gehle]
+   * `Smetric` is a metric as defined in the `Distances` package, e.g.,
+     `Euclidean`, `PEuclidean`, or `Haversine`
+   * `dim` corresponds to the spatial dimension
+   * `p` corresponds to the kind of average applied to the vector of spatial distances:
+     - `p = Inf`: maximum
+     - `p = 2`: mean squared average
+     - `p = 1`: arithmetic mean
+     - `p = -1`: harmonic mean (does not yield a metric!)
+     - `p = -Inf`: minimum (does not yield a metric!)
 """
-function meanmetric(F::AbstractArray{T,3}, av, metric::Dists.PreMetric) where T <: Real
-    dim, t, N = size(F)
 
-    entries = div(N*(N+1),2)
-
-    # linear storage of triangular matrix
-    R = SharedArray{T,2}(N,N)
-
-    # enumerate the entries linearily to distribute them
-    # evenly over the workers
-    dummy_value = av([evaluate(metric,F[:,1:1,1], F[:,1:1,1])])
-    @everywhere dists = $(repeat([dummy_value],inner =t))
-
-    @views @sync @parallel for n = 1:entries
-       i, j = tri_indices(n)
-       # fill_distances!(dists, F[:,:,i], F[:,:,j], metric, t)
-       Dists.colwise!(dists, metric, F[:,:,i], F[:,:,j])
-       R[i,j] = av(dists)
-    end
-    Symmetric(R,:L)
+struct STmetric <: Dists.Metric
+    Smetric::Dists.Metric
+    dim::Int
+    p::Real
 end
 
-# fill_distances! could be used instead of Distances.colwise! for "metrics"
-# that are not defined as a subtype of Distances.PreMetric
+STmetric()          = STmetric(Dists.Euclidean(), 2, 1)
+STmetric(p::Real)   = STmetric(Dists.Euclidean(), 2, p)
 
-# function fill_distances!(dists, xis, xjs, k, t)
-#     @views for l in 1:t
-#         dists[l] = k(xis[:,l], xjs[:,l])
-#     end
-#     return dists
-# end
+# Specialized for Arrays and avoids a branch on the size
+@inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+    la = length(a)
+    lb = length(b)
+    (q, r) = divrem(la,d.dim)
+    p = copy(d.p)
+    @boundscheck if la != lb
+        throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
+    elseif r!= 0
+        throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+    end
+    if la == 0
+        return zero(result_type(d, a, b))
+    end
+    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p)
+end
 
-function tri_indices(n::Int)
+# this version is needed for NearestNeighbors `NNTree`
+@inline function evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
+    la = length(a)
+    lb = length(b)
+    (q, r) = divrem(la,d.dim)
+    @boundscheck if la != lb
+        throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
+    elseif r!= 0
+        throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+    end
+    if la == 0
+        return zero(result_type(d, a, b))
+    end
+    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p)
+end
+
+function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
+    result_type(d.Smetric, a, b)
+end
+
+@inline eval_space(::STmetric, a::AbstractArray, b::AbstractArray, sm::Dists.Metric, dim::Int, q::Int) = Dists.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
+
+@inline reduce_time(::STmetric, s, p) = vecnorm(s, p)
+# @inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
+
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, 2, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, p::Real) = evaluate(STmetric(p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray) = evaluate(STmetric(), a, b)
+
+########### parallel pairwise computation #################
+
+function pairwise!(r::SharedMatrix{T}, metric::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
+    ma, na = size(a)
+    mb, nb = size(b)
+    size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
+    ma == mb || throw(DimensionMismatch("First and second array have different numbers of time instances."))
+    q, s = divrem(ma, d.dim)
+    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+    dists = Vector{T}(q)
+    @everywhere @eval dists = $(dists)
+    @inbounds @sync @parallel for j = 1:nb
+        for i = 1:na
+            dists .= eval_space(d, view(a, :, i), view(b, :, j), d.Smetric, d.dim, q)
+            r[i, j] = reduce_time(d, dists, d.p)
+        end
+    end
+    r
+end
+
+function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+    m, n = size(a)
+    size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
+    q, s = divrem(m, d.dim)
+    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+    entries = div(n*(n+1),2)
+    dists = Vector{T}(q)
+    @everywhere @eval dists = $(dists)
+    @inbounds @sync @parallel for k = 1:entries
+        i, j = tri_indices(k)
+        if i == j
+            r[i, i] = zero(T)
+        else
+            dists .= eval_space(d, view(a, :, i), view(a, :, j), d.Smetric, d.dim, q)
+            r[i, j] = reduce_time(d, dists, d.p)
+        end
+    end
+    for j = 1:n
+        for i=1:(j-1)
+            r[i, j] = r[j, i]
+        end
+    end
+    r
+end
+
+function pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
+    m = size(a, 2)
+    n = size(b, 2)
+    r = SharedMatrix{result_type(metric, a, b)}(m, n) #(uninitialized, m, n)
+    pairwise!(r, metric, a, b)
+end
+
+function pairwise(metric::STmetric, a::AbstractMatrix)
+    n = size(a, 2)
+    r = SharedMatrix{result_type(metric, a, a)}(n, n) #(uninitialized, n, n)
+    pairwise!(r, metric, a)
+end
+
+@inline function tri_indices(n::Int)
     i = floor(Int, 0.5*(1 + sqrt(8n-7)))
     j = n - div(i*(i-1),2)
     return i, j
