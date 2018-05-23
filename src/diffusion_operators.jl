@@ -2,7 +2,7 @@
 
 Dists = Distances
 
-gaussian_kernel = x -> exp(-abs2(x))
+const gaussian_kernel = x -> exp(-abs2(x))
 
 # diffusion operator/graph Laplacian related functions
 doc"""
@@ -89,8 +89,8 @@ Return a list of sparse diffusion/Markov matrices `P`.
 """
 
 @inline function sparse_diff_op(data::AbstractArray{T, 2},
-                        kernel::F,
-                        ε::S;
+                        ε::S,
+                        kernel::F = gaussian_kernel;
                         α=1.0,
                         metric::Dists.PreMetric = Dists.Euclidean()
                         ) where {T <: Real, S <: Real, F <: Function}
@@ -172,7 +172,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 function sparse_adjacency_family(data::AbstractArray{T, 2},
                                     ε::S,
-                                    dim::Int8 = 2;
+                                    dim::Int = 2;
                                     metric::Dists.PreMetric = Dists.Euclidean()
                                 ) where {T <: Real, S <: Real}
     dimt, N = size(data)
