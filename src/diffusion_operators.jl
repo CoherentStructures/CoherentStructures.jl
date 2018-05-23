@@ -2,6 +2,7 @@
 
 Dists = Distances
 
+# diffusion operator/graph Laplacian related functions
 doc"""
     diff_op(data, kernel, ε; α, metric)
 
@@ -123,26 +124,52 @@ Default metric is `Euclidean()`.
 end
 
 doc"""
+    α_normalize!(A, α = 0.5)
+Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
+i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
+$ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
+"""
+
+@inline function α_normalize!(A::T, α::S = 0.5) where T <: AbstractMatrix where S <: Real
+    LinAlg.checksquare(A)
+    qₑ = 1./squeeze(sum(A, 2),2).^α
+    scale!(A,qₑ)
+    scale!(qₑ,A)
+    return A
+end
+
+doc"""
+    wLap_normalize!(A)
+Normalize rows of `A` in-place with the respective row-sum; i.e., return
+$ a_{ij}:=a_{ij}/q_i$.
+"""
+
+@inline function wLap_normalize!(A::T) where T <: AbstractMatrix
+    LinAlg.checksquare(A)
+    dᵅ = 1./squeeze(sum(A, 2),2)
+    scale!(dᵅ,A)
+    return A
+ end
+
+# adjacency-related functions
+
+doc"""
     sparse_adjacency_family(data, k, ε, dim; α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
    * `data`: 2D array with columns correspdonding to data points;
-   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
    * `ε`: distance threshold;
-   * if `dim` is given, the columns are interpreted as concatenations of `dim`-
+   * `dim`: the columns of `data` are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
-   * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
 function sparse_adjacency_family(data::AbstractArray{T, 2},
-                                    kernel::F,
                                     ε::S,
                                     dim::Int;
-                                    α=1.0,
                                     metric::Dists.PreMetric = Dists.Euclidean()
                                 ) where {T <: Real, S <: Real, F <: Function}
     dimt, N = size(data)
@@ -150,12 +177,41 @@ function sparse_adjacency_family(data::AbstractArray{T, 2},
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     As = pmap(1:q) do t
-        @time A = sparse_adjacency_list( data[(t-1)*dim+1:t*dim,:], kernel, ε; α=α, metric = metric )
+        @time A = sparse_adjacency_list( data[(t-1)*dim+1:t*dim,:], ε; metric = metric )
         println("Timestep $t/$q done")
         A
     end
     IJ = unique(vcat(As...))
     Is, Js = [ij[1] for ij in IJ], [ij[2] for ij in IJ]
+    Vs = fill(1,length(Is))
+    return sparse(Is,Js,Vs,N,N)
+end
+
+doc"""
+    sparse_adjacency(data, k, ε, dim; α, metric)
+
+Return a list of sparse diffusion/Markov matrices `P`.
+
+## Arguments
+   * `data`: 2D array with columns correspdonding to data points;
+   * `ε`: distance threshold;
+   * `metric`: distance function w.r.t. which the kernel is computed, however,
+     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+"""
+
+function sparse_adjacency(data::AbstractArray{T, 2},
+                            ε::S;
+                            metric::Dists.PreMetric = Dists.Euclidean()
+                            ) where {T <: Real, S <: Real, F <: Function}
+    dimt, N = size(data)
+    (q, r) = divrem(dimt,dim)
+    @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
+    typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
+
+    balltree = NearestNeighbors.BallTree(data, metric)
+    idxs = NearestNeighbors.inrange(balltree, data, ε, false)
+    Js::Vector{Int} = vcat(idxs...)
+    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     Vs = fill(1,length(Is))
     return sparse(Is,Js,Vs,N,N)
 end
@@ -185,33 +241,7 @@ Return two lists of indices of data points that are adjacent.
     return vcat.(Is, Js)
 end
 
-doc"""
-    α_normalize!(A, α = 0.5)
-Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
-i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
-$ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
-"""
-
-@inline function α_normalize!(A::T, α::S = 0.5) where T <: AbstractMatrix where S <: Real
-    LinAlg.checksquare(A)
-    qₑ = 1./squeeze(sum(A, 2),2).^α
-    scale!(A,qₑ)
-    scale!(qₑ,A)
-    return A
-end
-
-doc"""
-    wLap_normalize!(A)
-Normalize rows of `A` in-place with the respective row-sum; i.e., return
-$ a_{ij}:=a_{ij}/q_i$.
-"""
-
-@inline function wLap_normalize!(A::T) where T <: AbstractMatrix
-    LinAlg.checksquare(A)
-    dᵅ = 1./squeeze(sum(A, 2),2)
-    scale!(dᵅ,A)
-    return A
- end
+# spectral clustering/diffusion map related functions
 
  """
      stationary_distribution(P,N)
