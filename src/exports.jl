@@ -1,4 +1,6 @@
 export
+
+	#TODO: Clean up this file
 	#advection_diffusion.jl
 	ADimplicitEulerStep,
 
@@ -47,6 +49,7 @@ export
 	locatePoint,
 	nodal_interpolation,
 	undoBCS,
+	doBCS,
 	applyBCS,
 	getHomDBCS,
 	boundaryData,
@@ -112,4 +115,5 @@ export
 	bickleyJetEqVari,
 	bickleyJetEqVari!,
 	interpolateVF,
-	interpolateVFPeriodic
+	interpolateVFPeriodic,
+	cylinder_flow

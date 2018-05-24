@@ -674,7 +674,7 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
     ul = n1 + (n2+1)*loc.nx
     ur = ul + 1
     assert(ur < (loc.nx * loc.ny))
-    if loc1 + loc2 <= 1.0 # ◺
+    if loc1 + loc2 < 1.0 # ◺
         return Tensors.Vec{2}([loc1,loc2]), [lr+1, ul+1,ll+1]
     else # ◹
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
@@ -1145,6 +1145,29 @@ Get the number of dofs that are left after the boundary conditions in `bdata` ha
 function nDofs{dim}(ctx::gridContext{dim},bdata::boundaryData)
     return length(unique(BCTable(ctx,bdata)))
 end
+
+"""
+    doBCS(ctx,u,bdata)
+
+Take a vector `u` in dof order and throw away uneccessary dofs.
+This is a left-inverse to undoBCS
+"""
+function doBCS(ctx,u::AbstractVector{T},bdata) where T
+    assert(length(u) == ctx.n)
+    result = T[]
+    for i in 1:ctx.n
+        if i in bdata.dbc_dofs
+            continue
+        end
+        if i in bdata.periodic_dofs_to
+            continue
+        end
+        push!(result,u[i])
+    end
+    return result
+end
+
+
 
 """
     applyBCS(ctx,K,bdata)

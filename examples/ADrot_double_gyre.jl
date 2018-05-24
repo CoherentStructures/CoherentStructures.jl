@@ -6,8 +6,6 @@ ctx = regularTriangularGrid((25,25))
 function rot_double_gyre!(du,u,p,t)
         du .= rot_double_gyre(u,p,t)
 end
-sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!,
-        nothing,1e-9,tolerance=1e-4,solver=BS5())
 
 
 using LinearMaps
@@ -22,23 +20,20 @@ function implicitEulerStepFamily(ctx,sol,t0,tf,nt,ϵ; bdata=boundaryData())
 
                 currentmap = LinearMap(
                      x -> (M - dt*ϵ*K)\(M*x) ,
-                     x -> (M*((M - dt*ϵ*K)\x))
+                     x -> (M*((M - dt*ϵ*K)\x)),
                      n
                         )
-
                 push!(result,currentmap)
         end
         return result
 end
 
-plot_u(ctx,CoherentStructures.doBCS(ctx,circ,bdata),bdata=bdata)
-bdata = getHomDBCS(ctx,"all")
+bdata = boundaryData()
+sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!,
+        nothing,1e-9,tolerance=1e-4,solver=BS5())
 steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2,bdata=bdata)
-steps[1]'*doBCS(ctx,circ,bdata)
-plot_u(ctx,prod(steps)*doBCS(ctx,circ,bdata),bdata=getHomDBCS(ctx,"all"))
-
-diffusion_coordinates(steps,6)
-
+λ, V = diffusion_coordinates(prod(reverse(steps)),6)
+plot_u(ctx,V[:,2])
 
 
 ####### Stuff below is just testing, only partially related to stuff above ####
