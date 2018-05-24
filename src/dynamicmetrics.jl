@@ -153,7 +153,12 @@ function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) wh
     result_type(d.Smetric, a, b)
 end
 
-@inline eval_space(::STmetric, a::AbstractArray, b::AbstractArray, sm::Distances.Metric, dim::Int, q::Int) = Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
+@inline eval_space(::STmetric, 
+                   a::AbstractArray, 
+                   b::AbstractArray, 
+                   sm::Distances.Metric, 
+                   dim::Int, q::Int) = 
+   Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
 
 @inline reduce_time(::STmetric, s, p) = vecnorm(s, p)
 # @inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
