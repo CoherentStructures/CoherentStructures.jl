@@ -1,8 +1,8 @@
 # (c) 2018 Alvaro de Diego & Daniel Karrasch
 
-Dists = Distances
-
 const gaussian_kernel = x -> exp(-abs2(x))
+
+const LinMaps{T} = Union{SparseMatrixCSC{T,Int64},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
 # diffusion operator/graph Laplacian related functions
 doc"""
@@ -23,11 +23,11 @@ function diff_op(data::AbstractArray{T, 2},
                     ε::T,
                     kernel::F = gaussian_kernel;
                     α=1.0,
-                    metric::Dists.PreMetric = Dists.Euclidean()
+                    metric::Distances.PreMetric = Distances.Euclidean()
                 ) where {T <: Number, F <: Function}
 
     N = size(data, 2)
-    D = Dists.pairwise(metric,data)
+    D = Distances.pairwise(metric,data)
     Is, Js = findn(D .< ε)
     Vs = kernel.(D[D .< ε])
     P = sparse(Is, Js, Vs, N, N)
@@ -47,7 +47,8 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `ε`: distance threshold;
    * if `dim` is given, the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
-   * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or `P -> prod(LinearMaps.LinearMap,reverse(P))`
+   * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
+     `P -> prod(LinearMaps.LinearMap,reverse(P))`
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
@@ -59,15 +60,15 @@ function sparse_diff_op_family( data::AbstractArray{T, 2},
                                 kernel::F = gaussian_kernel;
                                 op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P)),
                                 α=1.0,
-                                metric::Dists.PreMetric = Dists.Euclidean()
+                                metric::Distances.PreMetric = Distances.Euclidean()
                                 ) where {T <: Number, S <: Real, F <: Function}
     dimt, N = size(data)
     (q, r) = divrem(dimt,dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = pmap(1:q) do t
-        # @time Pₜ = sparse_diff_op( view(sols,:,t,:), kernel, ε; metric = metric )
-        @time Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], ε, kernel; α=α, metric = metric )
+        @time Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], ε, kernel;
+                                    α=α, metric = metric )
         println("Timestep $t/$q done")
         Pₜ
     end
@@ -92,7 +93,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
                         ε::S,
                         kernel::F = gaussian_kernel;
                         α=1.0,
-                        metric::Dists.PreMetric = Dists.Euclidean()
+                        metric::Distances.PreMetric = Distances.Euclidean()
                         ) where {T <: Real, S <: Real, F <: Function}
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
@@ -114,7 +115,7 @@ Default metric is `Euclidean()`.
 @inline function sparseaffinitykernel(data::Array{T, 2},
                                kernel::F,
                                ε::S,
-                               metric::Dists.PreMetric = Dists.Euclidean()
+                               metric::Distances.PreMetric = Distances.Euclidean()
                                ) where {T <: Real, S <: Number, F <:Function}
     dim, N = size(data)
 
@@ -122,7 +123,7 @@ Default metric is `Euclidean()`.
     idxs = NearestNeighbors.inrange(balltree, data, ε, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs::Vector{T} = kernel.(Dists.colwise(metric, view(data,:,Is), view(data,:,Js)))
+    Vs::Vector{T} = kernel.(Distances.colwise(metric, view(data,:,Is), view(data,:,Js)))
     return sparse(Is,Js,Vs,N,N)
 end
 
@@ -133,9 +134,9 @@ i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
 $ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
 """
 
-@inline function α_normalize!(A::T, α::S = 0.5) where T <: AbstractMatrix where S <: Real
+@inline function α_normalize!(A::T, α::S = 0.5) where {T <: AbstractMatrix, S <: Real}
     LinAlg.checksquare(A)
-    qₑ = 1./squeeze(sum(A, 2),2).^α
+    qₑ = 1./squeeze(sum(A,2), 2).^α
     scale!(A,qₑ)
     scale!(qₑ,A)
     return A
@@ -149,7 +150,7 @@ $ a_{ij}:=a_{ij}/q_i$.
 
 @inline function wLap_normalize!(A::T) where T <: AbstractMatrix
     LinAlg.checksquare(A)
-    dᵅ = 1./squeeze(sum(A, 2),2)
+    dᵅ = 1./squeeze(sum(A,2), 2)
     scale!(dᵅ,A)
     return A
  end
@@ -173,7 +174,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
 function sparse_adjacency_family(data::AbstractArray{T, 2},
                                     ε::S,
                                     dim::Int = 2;
-                                    metric::Dists.PreMetric = Dists.Euclidean()
+                                    metric::Distances.PreMetric = Distances.Euclidean()
                                 ) where {T <: Real, S <: Real}
     dimt, N = size(data)
     (q, r) = divrem(dimt,dim)
@@ -204,7 +205,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 function sparse_adjacency(data::AbstractArray{T, 2},
                             ε::S;
-                            metric::Dists.PreMetric = Dists.Euclidean()
+                            metric::Distances.PreMetric = Distances.Euclidean()
                             ) where {T <: Real, S <: Real}
     dimt, N = size(data)
     (q, r) = divrem(dimt,dim)
@@ -233,7 +234,7 @@ Return two lists of indices of data points that are adjacent.
 
 @inline function sparse_adjacency_list(data::AbstractArray{T, 2},
                                 ε::S;
-                                metric::Dists.PreMetric = Dists.Euclidean()
+                                metric::Distances.PreMetric = Distances.Euclidean()
                                )::Vector{Vector{Int}} where {T <: Real, S <: Real}
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
@@ -254,7 +255,7 @@ end
  is given by a function.
  """
 
- function stationary_distribution(P::Union{SparseMatrixCSC{T,Int64},LinearMaps.LinearMap{T},DenseMatrix{T}}) where T <: Real
+ function stationary_distribution(P::LinMaps)
 
      E   = eigs(P; nev=1, maxiter=1000, which=:LM)
      π   = squeeze(real(E[2]),2) # stationary distribution
@@ -292,7 +293,7 @@ end
  to be computed.
  """
 
- function diffusion_coordinates(P::S,n_coords::Int) where S <: Union{SparseMatrixCSC,LinearMaps.LinearMap,DenseMatrix}
+ function diffusion_coordinates(P::LinMaps,n_coords::Int)
 
      N = LinAlg.checksquare(P)
 
@@ -318,6 +319,6 @@ end
  correspond to the diffusion coordinates given by `diff_coord`.
  """
  function diffusion_distance(Ψ::AbstractArray{T,2})::Symmetric{T,Array{T,2}} where T
-     D = Dists.pairwise(Dists.Euclidean(),Ψ)
+     D = Distances.pairwise(Distances.Euclidean(),Ψ)
      return Symmetric(D)
  end

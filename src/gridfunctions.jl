@@ -4,8 +4,8 @@
 #on the code in FEMDL.jl
 #There are also functions for evaluating functions on the grid
 
-GP = GeometricalPredicates
-VD = VoronoiDelaunay
+const GP = GeometricalPredicates
+const VD = VoronoiDelaunay
 
 #JuAFEM has no functions for determining which cell a point is in.
 

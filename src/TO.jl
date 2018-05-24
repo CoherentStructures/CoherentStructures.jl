@@ -2,9 +2,9 @@
 #Implementation of TO methods from Froyland & Junge's FEM paper
 #And L2-Galerkin approximation of TO
 
-using JuAFEM
-zero2D = zero(Vec{2})
-one2D = e1 + e2
+using JuAFEM # TODO: remove this and make package usage explicit!
+# zero2D = zero(Vec{2}) # seems unused currently
+const one2D = e1 + e2
 
 #Currently only works on a rectangular grid that must be specified in advance
 function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
@@ -46,13 +46,18 @@ function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=defa
 
     new_ctx = gridContext{2}(Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
     #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
-    I,J,V = findnz(assembleStiffnessMatrix(new_ctx))
-    l = length(I)
-    result = spzeros(n,n)
-    for i in 1:l
-        #The node-ordering of the grid in new_ctx is the dof-ordering of the grid in ctx
-        result[new_ctx.dof_to_node[I[i]],new_ctx.dof_to_node[J[i]]] = V[i]
-    end
+    I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
+    # Nate's version
+    # result = spzeros(n,n)
+    # for i in eachindex(I,J,V)
+    #     #The node-ordering of the grid in new_ctx is the dof-ordering of the grid in ctx
+    #     result[new_ctx.dof_to_node[I[i]],new_ctx.dof_to_node[J[i]]] = V[i]
+    # end
+    # end of Nate's version
+    # Daniel's version
+    I .= new_ctx.dof_to_node[I]
+    J .= new_ctx.dof_to_node[J]
+    result = sparse(I,J,V,n,n)
     return result
 end
 
@@ -74,7 +79,7 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function)
         celldofs!(dofs,ctx.dh,cellnumber)
         #Iterate over all quadrature points in the cell
         for q in 1:getnquadpoints(cv) # loop over quadrature points
-            const dΩ::Float64 = getdetJdV(cv,q)
+            dΩ::Float64 = getdetJdV(cv,q)
             TQ::Vec{2,Float64} = flow_map(ctx.quadrature_points[index])
             try
                 local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
@@ -110,7 +115,7 @@ function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
         celldofs!(dofs,ctx.dh,cellnumber)
         #Iterate over all quadrature points in the cell
         for q in 1:getnquadpoints(cv) # loop over quadrature points
-            const dΩ::Float64 = getdetJdV(cv,q)
+            dΩ::Float64 = getdetJdV(cv,q)
             TQ::Vec{2,Float64} = flow_map(ctx.quadrature_points[index])
             try
                 local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
