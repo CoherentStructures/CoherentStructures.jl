@@ -29,11 +29,11 @@ function implicitEulerStepFamily(ctx,sol,t0,tf,nt,ϵ; bdata=boundaryData())
 end
 
 bdata = boundaryData()
-sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!,
-        nothing,1e-9,tolerance=1e-4,solver=BS5())
-steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2,bdata=bdata)
-λ, V = diffusion_coordinates(prod(reverse(steps)),6)
-plot_u(ctx,V[:,2])
+@time sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!,
+        nothing,1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5())
+@time steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2,bdata=bdata)
+@time λ, V = diffusion_coordinates(prod(reverse(steps)),6)
+plot_u(ctx,V[:,6],200,200)
 
 
 ####### Stuff below is just testing, only partially related to stuff above ####
