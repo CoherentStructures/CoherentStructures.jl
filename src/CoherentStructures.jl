@@ -1,7 +1,11 @@
 module CoherentStructures
 
     import StaticArrays
+    
     import Tensors
+    using Tensors.dot
+    using Tensors.otimes
+
     import DiffEqBase, OrdinaryDiffEq
     import Contour, Distances, NearestNeighbors
     import Interpolations

@@ -5,6 +5,7 @@ const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
 
 
+
 """
     flow(odefun,  u0, tspan; tolerance, p, solver)
 
@@ -353,7 +354,7 @@ Derivatives are computed with finite differences.
             δ::Float64;
             kwargs...
         ) where T
-    return mean(dott.(inv.(linearized_flow(odefun,u,tspan,δ;kwargs...))))
+    return mean(Tensors.dott.(inv.(linearized_flow(odefun,u,tspan,δ;kwargs...))))
 end
 
 """
@@ -407,9 +408,9 @@ function pullback_tensors(
         DF = linearized_flow(odefun, u, tspan;    kwargs...) :
         DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
 
-    MT = [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
+    MT = [Tensors.symmetric(Tensors.transpose(df) ⋅ G ⋅ df) for df in DF]
     DF .= inv.(DF)
-    DT = [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
+    DT = [Tensors.symmetric(df ⋅ D ⋅ Tensors.transpose(df)) for df in DF]
     return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
 end
 

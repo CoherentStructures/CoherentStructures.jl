@@ -2,7 +2,6 @@
 #Implementation of TO methods from Froyland & Junge's FEM paper
 #And L2-Galerkin approximation of TO
 
-using JuAFEM # TODO: remove this and make package usage explicit!
 # zero2D = zero(Vec{2}) # seems unused currently
 const one2D = e1 + e2
 
@@ -17,7 +16,7 @@ function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
         jdof = (ctx.node_to_dof)[j]
         try
             #TODO: Is using the Vec{2} type here slower than using Arrays?
-            pointPullback = Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
+            pointPullback::Tensors.Vec{2,Float64} = Tensors.Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
             #TODO: Don't doo this pointwise, but pass whole vector to locatePoint
             #TODO: can't I use evaluate_function here?
             local_coords, nodelist = locatePoint(ctx,pointPullback)
@@ -42,9 +41,9 @@ end
 #Note that it seems like this function is broken somehow TODO: Fix this.
 function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=default_quadrature_order)
     n = ctx.n
-    new_nodes_in_dof_order = [ Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
+    new_nodes_in_dof_order = [ Tensors.Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
 
-    new_ctx = gridContext{2}(Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
+    new_ctx = gridContext{2}(JuAFEM.Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
     #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
     I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
     # Nate's version
@@ -68,24 +67,24 @@ end
 #TODO: Implement this for missing data
 function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function)
     DL2 = spzeros(ctx.n,ctx.n)
-    cv::CellScalarValues{2} = CellScalarValues(ctx.qr, ctx.ip)
-    nshapefuncs = getnbasefunctions(cv)         # number of basis functions
+    cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr, ctx.ip)
+    nshapefuncs = JuAFEM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nshapefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
 
     #TODO: allow for using a different ctx here, e.g. like in the adaptiveTO settings
-    @inbounds for (cellnumber, cell) in enumerate(CellIterator(ctx.dh))
+    @inbounds for (cellnumber, cell) in enumerate(JuAFEM.CellIterator(ctx.dh))
         JuAFEM.reinit!(cv,cell)
-        celldofs!(dofs,ctx.dh,cellnumber)
+        JuAFEM.celldofs!(dofs,ctx.dh,cellnumber)
         #Iterate over all quadrature points in the cell
-        for q in 1:getnquadpoints(cv) # loop over quadrature points
-            dΩ::Float64 = getdetJdV(cv,q)
-            TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx.quadrature_points[index]))
+        for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
+            dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
+            TQ::Tensors.Vec{2,Float64} = Tensors.Vec{2}(flow_map(ctx.quadrature_points[index]))
             try
-                local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
+                local_coords::Tensors.Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
                 for (shape_fun_num,j) in enumerate(nodes)
                     for i in 1:nshapefuncs
-                        φ::Float64 = shape_value(cv,q,i)
+                        φ::Float64 = JuAFEM.shape_value(cv,q,i)
                         ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
                         DL2[dofs[i],ctx.node_to_dof[j]] += dΩ*φ*ψ
                     end
@@ -104,24 +103,24 @@ end
 
 function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
     DL2 = spzeros(ctx.n,ctx.n)
-    cv::CellScalarValues{2} = CellScalarValues(ctx.qr, ctx.ip)
-    nshapefuncs = getnbasefunctions(cv)         # number of basis functions
+    cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr, ctx.ip)
+    nshapefuncs = JuAFEM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nshapefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
 
     #TODO: allow for using a different ctx here, e.g. like in the adaptiveTO settings
-    @inbounds for (cellnumber, cell) in enumerate(CellIterator(ctx.dh))
+    @inbounds for (cellnumber, cell) in enumerate(JuAFEM.CellIterator(ctx.dh))
         JuAFEM.reinit!(cv,cell)
-        celldofs!(dofs,ctx.dh,cellnumber)
+        JuAFEM.celldofs!(dofs,ctx.dh,cellnumber)
         #Iterate over all quadrature points in the cell
-        for q in 1:getnquadpoints(cv) # loop over quadrature points
-            dΩ::Float64 = getdetJdV(cv,q)
-            TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx.quadrature_points[index]))
+        for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
+            dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
+            TQ::Tensors.Vec{2,Float64} = Tensors.Vec{2}(flow_map(ctx.quadrature_points[index]))
             try
-                local_coords::Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
+                local_coords::Tensors.Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
                 for (shape_fun_num,i) in enumerate(nodes)
                     for j in 1:nshapefuncs
-                        φ::Float64 = shape_value(cv,q,j)
+                        φ::Float64 = JuAFEM.shape_value(cv,q,j)
                         ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
                         DL2[ctx.node_to_dof[i],dofs[j]] += dΩ*φ*ψ
                     end

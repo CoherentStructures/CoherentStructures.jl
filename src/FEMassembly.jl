@@ -3,8 +3,9 @@
 
 const JFM = JuAFEM
 
+#Works in n=2 and n=3
 function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
-        return one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
+        return one(Tensors.SymmetricTensor{2,dim,Float64,3*(dim-1)})
 end
 
 
@@ -73,7 +74,7 @@ function assembleStiffnessMatrixInternal(
     @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         fill!(Ke,0)
         JFM.reinit!(cv,cell)
-        for q in 1:getnquadpoints(cv) # loop over quadrature points
+        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
             if A_type == 0
                 Aqcoords = A(ctx.quadrature_points[index])
             elseif A_type == 1
@@ -81,7 +82,7 @@ function assembleStiffnessMatrixInternal(
             elseif A_type == 2
                 Aqcoords = A(Vector{Float64}(ctx.quadrature_points[index]))
             elseif A_type == 3
-                Aqcoords = one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
+                Aqcoords = one(Tensors.SymmetricTensor{2,dim,Float64,3*(dim-1)})
             end
             dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
