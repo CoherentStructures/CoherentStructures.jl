@@ -34,7 +34,3 @@ sparseaffinitykernel
 ```@docs
 wLap_normalize!
 ```
-
-```@docs
-meanmetric
-```
