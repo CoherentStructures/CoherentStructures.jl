@@ -13,7 +13,21 @@ cgfun = x-> mean_diff_tensor(CoherentStructures.abcFlow,x,[0.0,1.0], 1.e-10,tole
 
 plot_real_spectrum(λ)
 
+### Plotting in 2D
 
+u  = undoBCS(abcctx,V[:,2],bdata)
+u /= maximum(abs.(u))
+for z in linspace(0,2π,10)
+    xs = linspace(0,2π,50)
+    ys = linspace(0,2π,50)
+    Plots.display(
+        Plots.heatmap(xs,ys,
+        (x,y) -> evaluate_function_from_dofvals(abcctx,u, [x,y,z]),
+        title="z = $z",clim=(-1,1)
+    ))
+end
+
+### Plotting in 3D
 xs = linspace(0,2π,25)
 u = undoBCS(abcctx,V[:,5],bdata)
 vals = [evaluate_function_from_dofvals(
