@@ -7,6 +7,7 @@ function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
         return one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
 end
 
+
 doc"""
     assembleStiffnessMatrix{dim}(ctx,A,[p; bdata])
 
@@ -22,12 +23,31 @@ The integral is approximated using quadrature.
 
 The ordering of the result is in dof order, except that boundary conditions from `bdata` are applied. The default is natural boundary conditions.
 """
-function assembleStiffnessMatrix{dim}(
+function assembleStiffnessMatrix(
         ctx::gridContext{dim},
         A::Function=tensorIdentity,
         p=nothing;
         bdata=boundaryData() #Default to natural BCs
-        )
+        ) where  dim
+
+        Aqcoords = zero(Tensors.SymmetricTensor{2,dim,Float64})
+        CoherentStructures.assembleStiffnessMatrixInternal(ctx,A,p,Aqcoords,bdata=bdata)
+end
+
+"""
+    assembleStiffnessMatrixInternal(ctx,A,p,Aqcoords2; bdata=boundaryData())
+
+This function implements the functionality of `assembleStiffnessMatrix`.
+It is in a separate function for performance reasons to create a function barrier.
+"""
+function assembleStiffnessMatrixInternal(
+        ctx::gridContext{dim},
+        A::Function,
+        p,
+        Aqcoords2::T,
+        ;
+        bdata=boundaryData() #Default to natural BCs
+        ) where {T,dim}
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
     dh::JFM.DofHandler{dim} = ctx.dh
     K::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
@@ -49,9 +69,7 @@ function assembleStiffnessMatrix{dim}(
         fail("Function parameter A does not accept types supported by assembleStiffnessMatrix")
     end
 
-    #Note: the Float64,3*(dim-1) part below is important! otherwise the method becomes 30x slower
-    #This is a dirty, dirty hack that works only in dimensions 2 and 3.
-    Aqcoords::Tensors.SymmetricTensor{2,dim,Float64,3*(dim-1)} = zero(Tensors.SymmetricTensor{2,dim})
+    Aqcoords::T = zero(T)
     @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         fill!(Ke,0)
         JFM.reinit!(cv,cell)
@@ -67,9 +85,9 @@ function assembleStiffnessMatrix{dim}(
             end
             dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
-                ∇φ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,i)
+                ∇φ::Tensors.Vec{dim,Float64} = JFM.shape_gradient(cv,q,i)
                 for j in 1:(i-1)
-                    ∇ψ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,j)
+                    ∇ψ::Tensors.Vec{dim,Float64} = JFM.shape_gradient(cv,q,j)
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                 end
