@@ -118,8 +118,8 @@ end
 
 
 #Unit Vectors in R^2
-e1 = Tensors.basevec(Tensors.Vec{2},1)
-e2 = Tensors.basevec(Tensors.Vec{2},2)
+const e1 = Tensors.basevec(Tensors.Vec{2},1)
+const e2 = Tensors.basevec(Tensors.Vec{2},2)
 
 
 
