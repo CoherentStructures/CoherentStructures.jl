@@ -1,6 +1,6 @@
 # (c) 2018 Alvaro de Diego, Daniel Karrasch & Nathanael Schilling
 
-ITP = Interpolations
+const ITP = Interpolations
 
 #TODO: See if type specification actually helps, remove redundant vector fields,
 # rotating double gyre and Bickley jet can both be obtained from Alvaro's macro
@@ -94,6 +94,21 @@ function abcFlow(u,p,t)
         (A + 0.5*t*sin(π*t))*sin(u[3]) + C*cos(u[2]),
         B*sin(u[1]) + (A + 0.5*t*sin(π*t))*cos(u[3]),
         C*sin(u[2]) + B*cos(u[1])
+        )
+end
+
+function cylinder_flow(u,p,t)
+    const c = 0.5
+    const ν = 0.25
+    const ϵ = 0.25
+    A(t) = 1 + 0.125*sin(2*sqrt(5.)*t)
+    G(ψ) = 1./(ψ^2 + 1)^2
+    g(x,y,t) = sin(x-ν*t)*sin(y) + y/2 - π/4
+    const x = u[1]
+    const y = u[2]
+    return StaticArrays.SVector{2,Float64}(
+        c - A(t)*sin(x - ν*t)*cos(y) + ϵ*G(g(x,y,t))+sin(t/2),
+        A(t)*cos(x - ν*t)*sin(y)
         )
 end
 
