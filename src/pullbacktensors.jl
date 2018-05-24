@@ -408,9 +408,9 @@ function pullback_tensors(
         DF = linearized_flow(odefun, u, tspan;    kwargs...) :
         DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
 
-    MT = [Tensors.symmetric(Tensors.transpose(df) ⋅ G ⋅ df) for df in DF]
+    MT = [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
     DF .= inv.(DF)
-    DT = [Tensors.symmetric(df ⋅ D ⋅ Tensors.transpose(df)) for df in DF]
+    DT = [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
     return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
 end
 
@@ -444,7 +444,7 @@ Derivatives are computed with finite differences.
         DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
 
-    return [symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
+    return [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
 end
 
 """
@@ -475,7 +475,7 @@ Derivatives are computed with finite differences.
         DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
 
     DF .= inv.(DF)
-    return [symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
+    return [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
 end
 
 function pullback_diffusion_tensor_function(
@@ -498,7 +498,7 @@ function pullback_diffusion_tensor_function(
     result = Tensors.SymmetricTensor{2,2,Float64,3}[]
     sizehint!(result,tlen)
     for i in 1:tlen
-	    push!(result,symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i])))
+	    push!(result,Tensors.symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i])))
     end
     return result
 end
@@ -564,7 +564,7 @@ function av_weighted_CG_tensor(
         DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
         DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
 
-    return det(D)*mean([symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
+    return det(D)*mean([Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
 end
 
 function met2deg(u::AbstractVector{T}) where T <: Real
@@ -595,7 +595,7 @@ function pullback_tensors_geo(
 
     PBmet = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
     PBdiff = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
-    return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
+    return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
 end
 
 function pullback_metric_tensor_geo(
@@ -616,7 +616,7 @@ function pullback_metric_tensor_geo(
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
 
     PB = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
-    return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
+    return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
 
 function pullback_diffusion_tensor_geo(
@@ -636,7 +636,7 @@ function pullback_diffusion_tensor_geo(
         DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
 
     PB = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
-    return [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
+    return [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
 end
 
 function pullback_SDE_diffusion_tensor_geo(
