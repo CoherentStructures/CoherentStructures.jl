@@ -1,4 +1,7 @@
-JFM = JuAFEM
+# Strongly inspired by an example provided on JuAFEM's github page, modified and
+# extended by Nathanael Schilling
+
+const JFM = JuAFEM
 
 function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
         return one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
@@ -62,11 +65,11 @@ function assembleStiffnessMatrix{dim}(
             elseif A_type == 3
                 Aqcoords = one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
             end
-            const dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
+            dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
-                const ∇φ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,i)
+                ∇φ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,i)
                 for j in 1:(i-1)
-                    const ∇ψ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,j)
+                    ∇ψ::Tensors.Vec{dim} = JFM.shape_gradient(cv,q,j)
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                 end
@@ -120,12 +123,12 @@ function assembleMassMatrix{dim}(
         fill!(Me,0)
         JFM.reinit!(cv,cell)
         for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
-            const dΩ::Float64 = JFM.getdetJdV(cv,q)*ctx.mass_weights[index]
+            dΩ::Float64 = JFM.getdetJdV(cv,q)*ctx.mass_weights[index]
             for i in 1:n
-                const φ::Float64 = JFM.shape_value(cv,q,i)
+                φ::Float64 = JFM.shape_value(cv,q,i)
                 for j in 1:(i-1)
-                    const ψ::Float64 = JFM.shape_value(cv,q,j)
-                    const scalprod::Float64 = (φ ⋅ ψ) * dΩ
+                    ψ::Float64 = JFM.shape_value(cv,q,j)
+                    scalprod::Float64 = (φ ⋅ ψ) * dΩ
                     Me[i,j] += scalprod
                     Me[j,i] += scalprod
                 end
@@ -164,7 +167,7 @@ function getQuadPoints{dim}(ctx::gridContext{dim})
     dofs = zeros(Int, JFM.ndofs_per_cell(dh))
     result = Tensors.Vec{dim,Float64}[]
 
-    const n::Int = JFM.getnbasefunctions(cv)         # number of basis functions
+    n::Int = JFM.getnbasefunctions(cv)         # number of basis functions
     @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         JuAFEM.reinit!(cv,cell)
         for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points

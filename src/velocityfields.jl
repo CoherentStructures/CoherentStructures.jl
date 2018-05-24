@@ -1,6 +1,6 @@
 # (c) 2018 Alvaro de Diego, Daniel Karrasch & Nathanael Schilling
 
-ITP = Interpolations
+const ITP = Interpolations
 
 #TODO: See if type specification actually helps, remove redundant vector fields,
 # rotating double gyre and Bickley jet can both be obtained from Alvaro's macro

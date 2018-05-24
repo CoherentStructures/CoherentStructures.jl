@@ -1,6 +1,6 @@
 # (c) 2018 Daniel Karrasch
 
-ITP = Interpolations
+const ITP = Interpolations
 
 """
     singularity_location_detection(T,xspan,yspan)
