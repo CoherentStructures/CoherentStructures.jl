@@ -1,4 +1,4 @@
-using CoherentStructures, OrdinaryDiffEq, DiffEqOperators,Sundials
+using CoherentStructures, OrdinaryDiffEq, DiffEqOperators, Sundials
 
 
 ctx = regularTriangularGrid((25,25))
@@ -7,34 +7,9 @@ function rot_double_gyre!(du,u,p,t)
         du .= rot_double_gyre(u,p,t)
 end
 
-
-using LinearMaps
-function implicitEulerStepFamily(ctx,sol,t0,tf,nt,ϵ; bdata=boundaryData())
-        M = assembleMassMatrix(ctx,bdata=bdata)
-        n = size(M)[1]
-        result = LinearMap[]
-        for i in 0:(nt-1)
-                dt = (tf - t0)/nt
-                t = t0 + dt*i
-                K = CoherentStructures.stiffnessMatrixTimeT(ctx,sol,t,bdata=bdata)
-
-                currentmap = LinearMap(
-                     x -> (M - dt*ϵ*K)\(M*x) ,
-                     x -> (M*((M - dt*ϵ*K)\x)),
-                     n
-                        )
-                push!(result,currentmap)
-        end
-        return result
-end
-
-bdata = boundaryData()
-@time sol = CoherentStructures.advect_serialized_quadpoints(ctx,0.,1.,rot_double_gyre!,
-        nothing,1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5())
-@time steps = implicitEulerStepFamily(ctx,sol,0,1,10,1e-2,bdata=bdata)
-@time λ, V = diffusion_coordinates(prod(reverse(steps)),6)
-plot_u(ctx,V[:,6],200,200)
-
+@time U = FEM_heatflow(rot_double_gyre!,ctx,linspace(0.,1.,11),1e-3)
+@time λ, V = diffusion_coordinates(U,6)
+plot_u(ctx,V[:,4],200,200)
 
 ####### Stuff below is just testing, only partially related to stuff above ####
 
