@@ -4,6 +4,17 @@ const gaussian_kernel = x -> exp(-abs2(x))
 
 const LinMaps{T} = Union{SparseMatrixCSC{T,Int64},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
+# meta function
+
+function DM_heatflow(data::AbstractArray{T, 2},
+                        ε::S,
+                        dim::Int = 2;
+                        metric::Distances.PreMetric = Distances.Euclidean()
+                        ) where {T <: Number, S <: Real}
+
+    sparse_diff_op_family(data, ε, dim; metric=metric)
+end
+
 # diffusion operator/graph Laplacian related functions
 doc"""
     diff_op(data, ε, kernel = gaussian_kernel; α=1.0, metric=Euclidean())

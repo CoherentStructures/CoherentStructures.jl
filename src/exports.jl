@@ -2,6 +2,8 @@ export
 
 	#TODO: Clean up this file
 	#advection_diffusion.jl
+	FEM_heatflow,
+	implicitEulerStepFamily,
 	ADimplicitEulerStep,
 
 	#ellipticLCS.jl
@@ -14,6 +16,7 @@ export
 	ellipticLCS,
 
 	#diffusion_operators.jl
+	DM_heatflow,
 	diff_op,
 	sparse_diff_op_family,
 	sparse_diff_op,
