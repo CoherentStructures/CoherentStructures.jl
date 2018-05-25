@@ -6,12 +6,14 @@ const LinMaps{T} = Union{SparseMatrixCSC{T,Int64},LinearMaps.LinearMap{T},DenseM
 
 # meta function
 
-function DM_heatflow(data::AbstractArray{T, 2},
+function DM_heatflow(flow_fun::Function,
+                        p0,
                         ε::S,
                         dim::Int = 2;
                         metric::Distances.PreMetric = Distances.Euclidean()
-                        ) where {T <: Number, S <: Real}
+                        ) where {S <: Real}
 
+    data = parallel_flow(flow_fun,p0)
     sparse_diff_op_family(data, ε, dim; metric=metric)
 end
 
