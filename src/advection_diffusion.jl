@@ -1,7 +1,51 @@
-#(c) 2018 Nathanael Schilling
+#(c) 2018 Nathanael Schilling, with minor contributions by Daniel Karrasch
 #Routines for numerically solving the Advection-Diffusion Equation
 
+# meta function
 """
+    FEM_heatflow(velocity!,ctx,tspan, bdata = boundaryData(); kwargs...)
+
+Compute the heat flow operator for the time-dependent heat equation, which
+corresponds to the advection-diffusion equation in Lagrangian coordinates, by
+employing a spatial FEM discretization and temporal implicit-Euler time stepping.
+
+## Arguments
+   * `odefun!`: velocity field in inplace form, e.g.,
+     `odefun!(du,u,p,t) = du .= odefun(u,p,t)`;
+   * `ctx`: grid context for the FEM discretization;
+   * `tspan`: time span determining the temporal resolution at which the heat
+     flow is to be computed;
+   * `tmax`: final time;
+   * `kwargs`: are passed to `advect_serialized_quadpoints`.
+"""
+function FEM_heatflow(odefun!, ctx, tspan, ϵ, bdata = boundaryData(); kwargs...)
+
+    sol = advect_serialized_quadpoints(ctx, tspan, odefun!;
+                                            kwargs...)
+    return implicitEulerStepFamily(ctx, sol, tspan, ϵ; bdata=bdata)
+end
+
+function implicitEulerStepFamily(ctx, sol, tspan, ϵ; bdata=boundaryData())
+
+    M = assembleMassMatrix(ctx,bdata=bdata)
+    n = size(M)[1]
+    τ = step(tspan)
+    P = map(tspan[1:end-1]) do t
+        K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
+
+        Pₜ = LinearMaps.LinearMap(
+             x -> (M - τ*ϵ*K)\(M*x),
+             x -> (M*((M - τ*ϵ*K)\x)),
+             n)
+        println("Integration time $t done")
+        Pₜ
+    end
+    return prod(reverse(P))
+end
+
+"""
+    ADimplicitEulerStep(ctx,u,edt, Afun,q=nothing,M=nothing,K=nothing)
+
 Single step with implicit Euler method.
 """
 function ADimplicitEulerStep(ctx,u,edt, Afun,q=nothing,M=nothing,K=nothing)
@@ -22,14 +66,16 @@ Advect all quadrature points + finite difference stencils from t0
 to tf with ode rhs given by `odefun`
 Returns an ODE solution object
 """
-function advect_serialized_quadpoints(ctx,t0,tf,odefun!,p=nothing,δ=1e-9;solver=default_solver,tolerance=default_tolerance)
+function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
+                    solver=default_solver,tolerance=default_tolerance)
+
     u0 = setup_fd_quadpoints_serialized(ctx,δ)
     p2 = Dict(
         "ctx" => ctx,
         "p"=>p,
         )
 
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> large_rhs(odefun!,du,u,p,t), u0,(t0,tf),p2)
+    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> large_rhs(odefun!,du,u,p,t), u0,extrema(tspan),p2)
     return OrdinaryDiffEq.solve(prob,solver,abstol=tolerance,reltol=tolerance)
 end
 
