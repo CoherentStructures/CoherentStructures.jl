@@ -8,7 +8,7 @@ struct PEuclidean{W <: Dists.RealAbstractArray} <: Dists.Metric
 end
 
 """
-    PEuclidean([L])
+    PEuclidean(L)
 Create a Euclidean metric on a rectangular periodic domain.
 Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
@@ -32,8 +32,8 @@ PEuclidean() = Dists.Euclidean()
         @simd for I in eachindex(a, b, d.periods)
             ai = a[I]
             bi = b[I]
-            pi = d.periods[I]
-            s = eval_reduce(d, s, eval_op(d, ai, bi, pi))
+            li = d.periods[I]
+            s = eval_reduce(d, s, eval_op(d, ai, bi, li))
         end
         return eval_end(d, s)
     end
@@ -55,15 +55,15 @@ end
             @simd for I in eachindex(a, b, d.periods)
                 ai = a[I]
                 bi = b[I]
-                pi = d.periods[I]
-                s = eval_reduce(d, s, eval_op(d, ai, bi, pi))
+                li = d.periods[I]
+                s = eval_reduce(d, s, eval_op(d, ai, bi, li))
             end
         else
             for (Ia, Ib, Ip) in zip(eachindex(a), eachindex(b), eachindex(d.weights))
                 ai = a[Ia]
                 bi = b[Ib]
-                pi = d.periods[Ip]
-                s = eval_reduce(d, s, eval_op(d, ai, bi, pi))
+                li = d.periods[Ip]
+                s = eval_reduce(d, s, eval_op(d, ai, bi, li))
             end
         end
     end
@@ -79,12 +79,13 @@ end
 @inline function eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     zero(result_type(d, a, b))
 end
-@inline eval_end(::PEuclidean, s) = sqrt(s)
-@inline eval_op(::PEuclidean, ai, bi, pi) = begin d = abs(ai - bi); d = mod(d, pi); d = min(d, abs(pi-d)); abs2(d) end
+@inline eval_op(::PEuclidean, ai, bi, li) = begin d = mod(ai - bi, li); d = min(d, li-d); abs2(d) end
 @inline eval_reduce(::PEuclidean, s1, s2) = s1 + s2
+@inline eval_end(::PEuclidean, s) = sqrt(s)
 
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = evaluate(PEuclidean(), a, b)
+peuclidean(a::Number, b::Number, p::Number) = begin d = mod(a - b, p); d = min(d, p - d) end
 
 ########## spatiotemporal, time averaged metrics ##############
 
@@ -152,11 +153,11 @@ function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) wh
     result_type(d.Smetric, a, b)
 end
 
-@inline eval_space(::STmetric, 
-                   a::AbstractArray, 
-                   b::AbstractArray, 
-                   sm::Distances.Metric, 
-                   dim::Int, q::Int) = 
+@inline eval_space(::STmetric,
+                   a::AbstractArray,
+                   b::AbstractArray,
+                   sm::Distances.Metric,
+                   dim::Int, q::Int) =
    Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
 @inline reduce_time(::STmetric, s, p) = vecnorm(s, p)
 # @inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)

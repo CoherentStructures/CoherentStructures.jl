@@ -191,19 +191,10 @@ Calculate derivative of flow map by finite differences.
         @inbounds stencil[5:6] .= x .- dx
         @inbounds stencil[7:8] .= x .- dy
 
-        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun, 4,2)
+        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-
-        result = Tensors.Tensor{2,2,T,4}[]
-        sizehint!(result,num_tsteps)
-        @inbounds for i in 1:num_tsteps
-            #The ordering of the stencil vector was chosen so
-            #that  a:= stencil[1:4] - stencil[5:8] is a vector
-            #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensors.Tensor{2,2,T}( (sol[i][1:4] - sol[i][5:8])/2δ))
-        end
-        return result
+        return map(s->Tensors.Tensor{2,2,T,4}((s[1:4] - s[5:8])/2δ), sol)
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
@@ -211,16 +202,7 @@ Calculate derivative of flow map by finite differences.
         srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-
-        sresult = Tensors.Tensor{2,2,T,4}[]
-        sizehint!(sresult,num_tsteps)
-        @inbounds for i in 1:num_tsteps
-            #The ordering of the stencil vector was chosen so
-            #that  a:= stencil[1:4] - stencil[5:8] is a vector
-            #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(sresult,Tensors.Tensor{2,2,T}( (ssol[i][1:4] - ssol[i][5:8])/2δ))
-        end
-        return sresult
+        return map(s->Tensors.Tensor{2,2,T,4}((s[1:4] - s[5:8])/2δ), ssol)
     else
         error("odefun has invalid number of arguments")
     end
@@ -254,43 +236,25 @@ end
         @inbounds stencil3[13:15] .= x .- dy
         @inbounds stencil3[16:18] .= x .- dz
 
-        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun, 6,3)
+        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,6,3)
         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil3,(tspan[1],tspan[end]),p)
         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-
-        result = Tensors.Tensor{2,3,T,9}[]
-        sizehint!(result,num_tsteps)
-        @inbounds for i in 1:num_tsteps
-            #The ordering of the stencil vector was chosen so
-            #that  a:= stencil[1:4] - stencil[5:8] is a vector
-            #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(result,Tensors.Tensor{2,3,T}( (sol[i][1:9] - sol[i][10:18])/2δ) )
-        end
-        return result
+        return map(s->Tensors.Tensor{2,3,T,9}((s[1:9] - s[10:18])/2δ), sol)
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
         sstencil::StaticArrays.SVector{18,Float64} = SA.SVector{18,T}(
                 x[1] + δ, x[2], x[3],
-                x[1],x[2] + δ, x[3],
-                x[1],x[2], x[3] + δ,
+                x[1], x[2] + δ, x[3],
+                x[1], x[2], x[3] + δ,
                 x[1] - δ, x[2], x[3],
-                x[1],x[2] - δ, x[3],
-                x[1],x[2], x[3] - δ
+                x[1], x[2] - δ, x[3],
+                x[1], x[2], x[3] - δ
                 )
         srhs = (u,p,t) -> arraymap3(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-
-        sresult = Tensors.Tensor{2,3,T,9}[]
-        sizehint!(sresult,num_tsteps)
-        @inbounds for i in 1:num_tsteps
-            #The ordering of the stencil vector was chosen so
-            #that  a:= stencil[1:4] - stencil[5:8] is a vector
-            #so that Tensor{2,2}(a/2δ) approximates the Jacobi-Matrix
-        	push!(sresult,Tensors.Tensor{2,3,T}( (ssol[i][1:9] - ssol[i][10:18])/2δ) )
-        end
-        return sresult
+        return map(s->Tensors.Tensor{2,3,T,9}((s[1:9] - s[10:18])/2δ), ssol)
     else
         error("odefun has invalid number of arguments")
     end

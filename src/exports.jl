@@ -119,4 +119,8 @@ export
 	bickleyJetEqVari!,
 	interpolateVF,
 	interpolateVFPeriodic,
-	cylinder_flow
+	standardMap,
+	standardMapInv,
+	DstandardMap,
+	abcFlow,
+	cylinder_flow,
