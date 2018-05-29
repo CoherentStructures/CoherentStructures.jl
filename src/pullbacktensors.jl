@@ -194,7 +194,7 @@ Calculate derivative of flow map by finite differences.
         rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-        return map(s->Tensors.Tensor{2,2,T,4}((s[1:4] - s[5:8])/2δ), sol)
+        return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), sol)
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
@@ -202,7 +202,7 @@ Calculate derivative of flow map by finite differences.
         srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-        return map(s->Tensors.Tensor{2,2,T,4}((s[1:4] - s[5:8])/2δ), ssol)
+        return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), ssol)
     else
         error("odefun has invalid number of arguments")
     end
@@ -239,7 +239,7 @@ end
         rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,6,3)
         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil3,(tspan[1],tspan[end]),p)
         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-        return map(s->Tensors.Tensor{2,3,T,9}((s[1:9] - s[10:18])/2δ), sol)
+        return map(s->Tensors.Tensor{2,3}((s[1:9] - s[10:18])/2δ), sol)
     elseif num_args == 3
         #In order to solve only one ODE, write all the initial values
         #one after the other in one big vector
@@ -254,7 +254,7 @@ end
         srhs = (u,p,t) -> arraymap3(u,p,t,odefun)
         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-        return map(s->Tensors.Tensor{2,3,T,9}((s[1:9] - s[10:18])/2δ), ssol)
+        return map(s->Tensors.Tensor{2,3}((s[1:9] - s[10:18])/2δ), ssol)
     else
         error("odefun has invalid number of arguments")
     end
