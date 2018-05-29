@@ -73,7 +73,7 @@ julia> @define_stream Ψ_circular begin
 julia> f2 = @velo_from_stream Ψ_circular
 (::#5) (generic function with 1 method)
 
-julia> f2([1.0,1.0], nothing, 0)
+julia> f2([1.0,1.0], nothing, 0.0)
 2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
  -2.0
   2.0

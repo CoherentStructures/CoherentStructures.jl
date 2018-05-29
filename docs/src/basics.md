@@ -27,7 +27,7 @@ end
 ```
 Furthermore, there is a convenience macro to define two-dimensional velocity
 fields from stream functions.
-```@doc
+```@docs
 @define_stream
 @velo_from_stream
 ```
