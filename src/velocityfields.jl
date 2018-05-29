@@ -83,33 +83,34 @@ end
 
 function standardMap(u)
     a = 0.971635
-    return StaticArrays.SVector{2,Float64}(
+    return StaticArrays.SVector{2,Float64}((
         mod(u[1] + u[2] + a*sin(u[1]), 2π),
         mod(u[2] + a*sin(u[1]), 2π)
-        )
+        ))
 end
 
 function standardMapInv(Tu)
     a = 0.971635
-    return StaticArrays.SVector{2,Float64}(
-        mod(Tu[1] - Tu[2], 2π),
-        mod(Tu[2] - a*sin(Tu[1]-Tu[2]), 2π)
-        )
+    return StaticArrays.SVector{2,Float64}((
+        mod(Tu[1] - Tu[2]               , 2π),
+        mod(Tu[2] - a*sin(Tu[1]-Tu[2])  , 2π)
+        ))
 end
 
 function DstandardMap(u)
     a = 0.971635
-    return Tensors.Tensor{2,2}(
-        (1.0 + a*cos(u[1]),  a*cos(u[1]),
-        1.0,                1.0))
+    return Tensors.Tensor{2,2}((
+        1.0 + a*cos(u[1])   , a*cos(u[1]),
+        1.0                 , 1.0
+        ))
 end
 
 # ABC flow
 
 function abcFlow(u,p,t)
     A, B, C = p
-    return StaticArrays.SVector{3,Float64}(
-        (A + 0.5*t*sin(π*t))*sin(u[3]) + C*cos(u[2]),
+    return StaticArrays.SVector{3,Float64}((
+        A + 0.5*t*sin(π*t))*sin(u[3]) + C*cos(u[2]),
         B*sin(u[1]) + (A + 0.5*t*sin(π*t))*cos(u[3]),
         C*sin(u[2]) + B*cos(u[1])
         )
