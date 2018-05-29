@@ -39,13 +39,13 @@ rot_double_gyreEqVari   = @var_velo_from_stream Ψ_rot_dgyre
 
 # interpolated vector field components
 
-function interpolateVF(xspan::AbstractVector{S},
-                        yspan::AbstractVector{S},
-                        tspan::AbstractVector{S},
-                        u::AbstractArray{T,3},
-                        v::AbstractArray{T,3},
+function interpolateVF(xspan::AbstractVector{S1},
+                        yspan::AbstractVector{S1},
+                        tspan::AbstractVector{S1},
+                        u::AbstractArray{S2,3},
+                        v::AbstractArray{S2,3},
                         interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free()))
-                        ) where {S <: Real, T <: Real}
+                        ) where {S1 <: Real, S2 <: Real}
 
     # convert arrays into linspace-form for interpolation
     X = linspace(minimum(xspan),maximum(xspan),length(xspan))
@@ -59,13 +59,13 @@ function interpolateVF(xspan::AbstractVector{S},
     return UI, VI
 end
 
-function interpolateVFPeriodic(xspan::AbstractVector{S},
-                                yspan::AbstractVector{S},
-                                tspan::AbstractVector{S},
-                                u::AbstractArray{T,3},
-                                v::AbstractArray{T,3},
+function interpolateVFPeriodic(xspan::AbstractVector{S1},
+                                yspan::AbstractVector{S1},
+                                tspan::AbstractVector{S1},
+                                u::AbstractArray{S2,3},
+                                v::AbstractArray{S2,3},
                                 interpolation_type = ITP.BSpline(ITP.Linear())
-                                ) where {S <: Real, T <: Real}
+                                ) where {S1 <: Real, S2 <: Real}
 
     # convert arrays into linspace-form for interpolation
     X = linspace(minimum(xspan), maximum(xspan), length(xspan))
