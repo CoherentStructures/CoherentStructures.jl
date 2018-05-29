@@ -3,7 +3,7 @@ module CoherentStructures
     import StaticArrays
 
     import Tensors
-    using Tensors.otimes
+    using Tensors.otimes, Tensors.dot
 
     import DiffEqBase, OrdinaryDiffEq
     import Contour, Distances, NearestNeighbors
