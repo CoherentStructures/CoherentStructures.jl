@@ -4,15 +4,19 @@ These methods rely on the theory outlined by Froyland's [*Dynamical Laplacian*]
 (http://arxiv.org/pdf/1411.7186v4.pdf)
 and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrasch & Keller.
 
-The operators that appear can be discretized by Finite-Element based methods, see this [paper](https://arxiv.org/pdf/1705.03640.pdf) from Froyland & Junge.
+The Laplace-like operators are best discretized by finite-element-based methods,
+see this [paper](https://arxiv.org/pdf/1705.03640.pdf) by Froyland & Junge.
 
-This involves the discretization of an averaged heat_flow operator of the form:
+This involves the discretization of the average of a one-parameter family of
+Laplace operators of the form:
 
 $\Delta^{dyn} := \sum_{t \in \mathcal T} P_t^* \Delta P_t$
 
-for a finite series of times $\mathcal T$, where $P_t$ is the transfer-operator for the flow at time $t$ (in volume-preserving flows).
+for a finite series of times $\mathcal T$, where $P_t$ is the transfer-operator
+for the flow at time $t$ (in volume-preserving flows).
 
-The resulting operator is both symmetric and uniformly elliptic, and can be discretized using the finite-element method (FEM). Eigenfunctions of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
+The resulting operator is both symmetric and uniformly elliptic. Eigenfunctions
+of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 
 ## Example
 

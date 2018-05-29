@@ -1,22 +1,8 @@
 # API
-## Dynamical Systems Utilities
 
 ```@meta
 CurrentModule = CoherentStructures
 ```
-```@docs
-flow
-```
-
-```@docs
-parallel_flow
-```
-
-```@docs
-linearized_flow
-```
-
-TODO: add documentation for various pullback diffusion tensor functions, etc...
 
 ## FEM-API
 

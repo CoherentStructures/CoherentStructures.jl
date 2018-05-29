@@ -44,7 +44,7 @@ As we are using a periodic domain in one direction:
 ```@example 1
 LL = [0.0,-3.0]; UR=[6.371π,3.0]
 ctx = regularTriangularGrid((100,30),LL,UR,quadrature_order=1)
-predicate = (x,y) -> (abs(x[2] - y[2]) < 1e-10) && (peuclidean(x[1],y[1],6.371π) < 1e-10)
+predicate = (x,y) -> peuclidean(x,y,[6.371π,Inf]) < 1e-9
 bdata = CoherentStructures.boundaryData(ctx,predicate,[]);
 ```
 Next, we define the tensor field to be used in the weak Laplace operator
@@ -124,7 +124,8 @@ See also [Froyland & Junge (2015)](https://arxiv.org/abs/1505.05056), who calcul
 
 Below are some orbits of the standard map
 ```@example 1
-using CoherentStructures, Plots
+using CoherentStructures
+import Plots
 to_plot = []
 for i in 1:50
     srand(i)
@@ -141,9 +142,9 @@ Plots.scatter([x[1] for x in to_plot],[x[2] for x in to_plot],
 
 Approximating the Dynamical Laplacian by FEM methods is straightforward:
 ```@example 1
-using Tensors
+import Tensors
 ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
-pred  = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9) && (peuclidean(x[2],y[2],2π) < 1e-9)
+pred  = (x,y) -> (peuclidean(x,y,[2π,2π]) < 1e-9)
 bdata = boundaryData(ctx,pred) #Periodic boundary
 
 const id2 = one(Tensors.Tensor{2,2}) # 2D identity tensor
