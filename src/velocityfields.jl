@@ -99,9 +99,9 @@ end
 
 function DstandardMap(u)
     a = 0.971635
-    return Tensors.Tensor{2,2,Float64,4}(
-        1.0 + a*cos(u[1]),  a*cos(u[1]),
-        1.0,                1.0)
+    return Tensors.Tensor{2,2}(
+        (1.0 + a*cos(u[1]),  a*cos(u[1]),
+        1.0,                1.0))
 end
 
 # ABC flow
