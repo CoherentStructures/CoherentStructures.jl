@@ -37,7 +37,7 @@ function diff_op(data::AbstractArray{T, 2},
                     kernel::F = gaussian_kernel;
                     α=1.0,
                     metric::Distances.PreMetric = Distances.Euclidean()
-                ) where {T <: Number, F <: Function}
+                )::SparseMatrixCSC{T,Int} where {T <: Real, F <: Function}
 
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
@@ -50,7 +50,7 @@ function diff_op(data::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op_family(data, ε, dim, kernel; op_reduce, α, metric)
+    sparse_diff_op_family(data, ε, kernel=gaussian_kernel, dim=2; op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -61,7 +61,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * if `dim` is given, the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
    * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
-     `P -> prod(LinearMaps.LinearMap,reverse(P))`
+     `P -> prod(LinearMaps.LinearMap,reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
@@ -69,8 +69,8 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 function sparse_diff_op_family( data::AbstractArray{T, 2},
                                 ε::S,
-                                dim::Int = 2,
-                                kernel::F = gaussian_kernel;
+                                kernel::F = gaussian_kernel,
+                                dim::Int = 2;
                                 op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P)),
                                 α=1.0,
                                 metric::Distances.PreMetric = Distances.Euclidean()
@@ -89,14 +89,14 @@ function sparse_diff_op_family( data::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op(data, k, ε; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
+    sparse_diff_op(data, ε, k; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse diffusion/Markov matrix `P`.
 
 ## Arguments
    * `data`: 2D array with columns correspdonding to data points;
-   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
    * `ε`: distance threshold;
+   * `k`: diffusion kernel, e.g., `x -> exp(-x*x)` (default);
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
@@ -132,7 +132,7 @@ Default metric is `Euclidean()`.
                                ) where {T <: Real, S <: Number, F <:Function}
     dim, N = size(data)
 
-    balltree = NearestNeighbors.BallTree(data, metric)
+    balltree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
     idxs = NearestNeighbors.inrange(balltree, data, ε, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
@@ -293,7 +293,7 @@ end
  coordinates to be computed.
  """
 
- function diffusion_coordinates(P::LinMaps{T},n_coords::Int)::Tuple{Vector{Float64},Array{Float64}}
+ function diffusion_coordinates(P::LinMaps,n_coords::Int)::Tuple{Vector{Float64},Array{Float64}}
 
      N = LinAlg.checksquare(P)
 

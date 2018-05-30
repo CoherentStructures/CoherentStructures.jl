@@ -147,7 +147,7 @@ STmetric(p::Real)   = STmetric(Dists.Euclidean(), 2, p)
     if la == 0
         return zero(result_type(d, a, b))
     end
-    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p)
+    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p, q)
 end
 
 # this version is needed for NearestNeighbors `NNTree`
@@ -163,7 +163,7 @@ end
     if la == 0
         return zero(result_type(d, a, b))
     end
-    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p)
+    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p, q)
 end
 
 function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
@@ -176,8 +176,8 @@ end
                    sm::Distances.Metric,
                    dim::Int, q::Int) =
    Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
-@inline reduce_time(::STmetric, s, p) = vecnorm(s, p)
-# @inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
+
+@inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
 
 stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, dim, p), a, b)
 stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
