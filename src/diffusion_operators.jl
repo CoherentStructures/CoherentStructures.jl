@@ -4,8 +4,8 @@ const gaussian_kernel = x -> exp(-abs2(x))
 
 const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
-# meta function
 
+# meta function
 function DM_heatflow(flow_fun::Function,
                         p0,
                         ε::S,
@@ -318,7 +318,7 @@ end
  Returns the distance matrix of pairs of points whose diffusion distances
  correspond to the diffusion coordinates given by `diff_coord`.
  """
- function diffusion_distance(Ψ::AbstractArray{T,2})::Symmetric{T,Array{T,2}} where T
+ function diffusion_distance(Ψ::AbstractArray{T,2})::Symmetric{T,Array{T,2}} where {T}
      D = Distances.pairwise(Distances.Euclidean(),Ψ)
      return Symmetric(D)
  end
