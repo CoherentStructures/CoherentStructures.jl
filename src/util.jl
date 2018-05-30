@@ -48,7 +48,7 @@ end
 
 
 """
-    tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor}) -> λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+    tensor_invariants(T) -> λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 
 Returns pointwise invariants of the 2D symmetric tensor field `T`, i.e.,
 smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.

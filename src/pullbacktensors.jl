@@ -7,7 +7,7 @@ const default_solver = OrdinaryDiffEq.BS5()
 
 
 """
-    flow(odefun,  u0, tspan; tolerance, p, solver)
+    flow(odefun,  u0, tspan; tolerance, p, solver) -> Vector{Vector}
 
 Solve the ODE with right hand side given by `odefun` and initial value `u0`.
 `p` is a parameter passed to `odefun`.
@@ -134,10 +134,12 @@ function flow(
 end
 
 """
-    parallel_flow(flow_fun,P)
+    parallel_flow(flow_fun,P) -> Array
 
 Apply the `flow_fun` to each element in `P` in parallel, if possible. Returns
-a 3D array with dimensions (space dim x no. of time instances x no. of trajectories).
+a 2D array with dimensions ((space dim x no. of time instances) x no. of
+trajectories), in which each column corresponds to a concatenated trajectory,
+i.e., represented in delay coordinates.
 """
 function parallel_flow(flow_fun,P::AbstractArray)
     dim::Int = length(P[1])
@@ -162,9 +164,10 @@ function parallel_flow(flow_fun,P::AbstractArray)
 end
 
 """
-    linearized_flow(odefun, x, tspan,δ; ...)
+    linearized_flow(odefun, x, tspan,δ; ...) -> Vector{Tensor{2,2}}
 
-Calculate derivative of flow map by finite differences.
+Calculate derivative of flow map by finite differences. Return time-resolved
+linearized flow maps.
 """
 @inline function linearized_flow(
             odefun::Function,
@@ -279,7 +282,7 @@ end
 end
 
 """
-    parallel_tensor(tensor_fun,P)
+    parallel_tensor(tensor_fun,P) -> Array{SymmetricTensor}
 
 Computes a tensor field via `tensor_fun` for each element of `P`.
 `tensor_fun` is a function that takes initial conditions as input and returns
@@ -300,7 +303,7 @@ function parallel_tensor(tensor_fun::Function,P::AbstractArray{T,N}) where T whe
 end
 
 """
-    mean_diff_tensor(odefun, u, tspan, δ; kwargs...)
+    mean_diff_tensor(odefun, u, tspan, δ; kwargs...) -> SymmetricTensor
 
 Returns the averaged diffusion tensor at a point along a set of times.
 Derivatives are computed with finite differences.
@@ -322,7 +325,7 @@ Derivatives are computed with finite differences.
 end
 
 """
-    CG_tensor(odefun, u, tspan, δ; kwargs...)
+    CG_tensor(odefun, u, tspan, δ; kwargs...) -> SymmetricTensor
 
 Returns the classic right Cauchy--Green strain tensor. Derivatives are computed
 with finite differences.
@@ -344,7 +347,7 @@ with finite differences.
 end
 
 """
-    pullback_tensors(odefun, u, tspan, δ; D, kwargs...)
+    pullback_tensors(odefun, u, tspan, δ; D, kwargs...) -> Tuple(Vector{SymmetricTensor},Vector{SymmetricTensor})
 
 Returns the time-resolved pullback tensors of both the diffusion and
 the metric tensor along a trajectory. Derivatives are computed with finite differences.
@@ -379,7 +382,7 @@ function pullback_tensors(
 end
 
 """
-    pullback_metric_tensor(odefun, u, tspan, δ; G, kwargs...)
+    pullback_metric_tensor(odefun, u, tspan, δ; G, kwargs...) -> Vector{SymmetricTensor}
 
 Returns the time-resolved pullback tensors of the metric tensor along a trajectory,
 aka right Cauchy-Green strain tensor.
@@ -412,7 +415,7 @@ Derivatives are computed with finite differences.
 end
 
 """
-    pullback_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)
+    pullback_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...) -> Vector{SymmetricTensor}
 
 Returns the time-resolved pullback tensors of the diffusion tensor along a trajectory.
 Derivatives are computed with finite differences.
@@ -468,7 +471,7 @@ function pullback_diffusion_tensor_function(
 end
 
 """
-    pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...)
+    pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...) -> Vector{SymmetricTensor}
 
 Returns the time-resolved pullback tensors of the diffusion tensor in SDEs.
 Derivatives are computed with finite differences.
@@ -498,7 +501,7 @@ Derivatives are computed with finite differences.
 end
 
 """
-    av_weighted_CG_tensor(odefun, u, tspan, δ; G, kwargs...)
+    av_weighted_CG_tensor(odefun, u, tspan, δ; G, kwargs...) -> SymmetricTensor
 
 Returns the transport tensor of a trajectory, aka  time-averaged,
 di ffusivity-structure-weighted version of the classic right Cauchy–Green strain

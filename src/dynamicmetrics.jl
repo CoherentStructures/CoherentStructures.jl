@@ -12,6 +12,14 @@ end
 Create a Euclidean metric on a rectangular periodic domain.
 Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
+
+# Usage
+```@jldoctest
+julia> x, y, L = rand(2), rand(2), [0.5, Inf]
+([0.551552, 0.38173], [0.57283, 0.874754], [0.5, Inf])
+
+julia> Distances.evaluate(PEuclidean(L),x,y)
+0.49348274281688614
 """
 
 PEuclidean() = Dists.Euclidean()
@@ -79,7 +87,7 @@ end
 @inline function eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     zero(result_type(d, a, b))
 end
-@inline eval_op(::PEuclidean, ai, bi, li) = begin d = mod(ai - bi, li); d = min(d, li-d); abs2(d) end
+@inline eval_op(::PEuclidean, ai, bi, li) = begin d = mod(abs(ai - bi), li); d = min(d, li-d); abs2(d) end
 @inline eval_reduce(::PEuclidean, s1, s2) = s1 + s2
 @inline eval_end(::PEuclidean, s) = sqrt(s)
 
@@ -105,6 +113,15 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = 1`: arithmetic mean
      - `p = -1`: harmonic mean (does not yield a metric!)
      - `p = -Inf`: minimum (does not yield a metric!)
+
+# Usage
+```@jldoctest
+julia> x, y = rand(10), rand(10)
+([0.0645218, 0.824624, 0.723568, 0.786856, 0.529069, 0.666899, 0.956035, 0.960833, 0.753796, 0.319134], [0.372017, 0.838669, 0.873848, 0.253589, 0.724321, 0.862853, 0.958319, 0.0306237, 0.352692, 0.169052])
+
+julia> Distances.evaluate(STmetric(Distances.Euclidean(),2,1),x,y)
+2.4969539623437083
+```
 """
 
 struct STmetric{T <: Real, M <: Dists.Metric} <: Dists.Metric
