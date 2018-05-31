@@ -1,8 +1,7 @@
 # (c) 2018 Alvaro de Diego & Daniel Karrasch
 
-import Distances: result_type, evaluate, eval_start, eval_op, eval_reduce, eval_end, pairwise, pairwise!
-
 const Dists = Distances
+
 struct PEuclidean{W <: Dists.RealAbstractArray} <: Dists.Metric
     periods::W
 end
@@ -198,7 +197,7 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::Abstra
     @inbounds @sync @parallel for j = 1:nb
         for i = 1:na
             dists .= eval_space(d, view(a, :, i), view(b, :, j), d.Smetric, d.dim, q)
-            r[i, j] = reduce_time(d, dists, d.p)
+            r[i, j] = reduce_time(d, dists, d.p, q)
         end
     end
     r
@@ -211,14 +210,14 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <
     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
     entries = div(n*(n+1),2)
     dists = Vector{T}(q)
-    @everywhere @eval dists = $(dists)
+    @everywhere @eval dists, q = $(dists), $q
     @inbounds @sync @parallel for k = 1:entries
         i, j = tri_indices(k)
         if i == j
             r[i, i] = zero(T)
         else
             dists .= eval_space(d, view(a, :, i), view(a, :, j), d.Smetric, d.dim, q)
-            r[i, j] = reduce_time(d, dists, d.p)
+            r[i, j] = reduce_time(d, dists, d.p, q)
         end
     end
     for j = 1:n

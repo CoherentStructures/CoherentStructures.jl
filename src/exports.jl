@@ -16,6 +16,8 @@ export
 	ellipticLCS,
 
 	#diffusion_operators.jl
+	mutualKNN,
+	neighborhood,
 	DM_heatflow,
 	diff_op,
 	sparse_diff_op_family,

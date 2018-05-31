@@ -7,6 +7,8 @@ module CoherentStructures
 
     import DiffEqBase, OrdinaryDiffEq
     import Contour, Distances, NearestNeighbors
+    import Distances: result_type, evaluate, eval_start, eval_op
+    import Distances: eval_reduce, eval_end, pairwise, pairwise!
     import Interpolations
     import LinearMaps
 
@@ -20,16 +22,16 @@ module CoherentStructures
     #Contains a list of functions being exported
     include("exports.jl")
 
-
-    abstract type abstractGridContext{dim} end
-
     ##Diffusion operator related functions
+    abstract type SparsificationMethod end
+
     include("diffusion_operators.jl")
 
     ##Distances related functions and types
     include("dynamicmetrics.jl")
 
     ##Some small utility functions that are used throughout
+    abstract type abstractGridContext{dim} end
     include("util.jl")
 
     ##Functions related to pulling back tensors
@@ -52,7 +54,6 @@ module CoherentStructures
     #TODO: Find out the existence of such a function can be enforced by julia
 
     abstract type cellLocator end
-
     include("gridfunctions.jl")
 
     #Creation of Stiffness and Mass-matrices

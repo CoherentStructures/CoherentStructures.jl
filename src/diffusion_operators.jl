@@ -4,17 +4,24 @@ const gaussian_kernel = x -> exp(-abs2(x))
 
 const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
+struct mutualKNN <: SparsificationMethod
+    k::Int
+end
+struct neighborhood{T <: Real} <: SparsificationMethod
+    ϵ::T
+end
 
 # meta function
 function DM_heatflow(flow_fun::Function,
                         p0,
-                        ε::S,
+                        sp_method::S,
+                        k::F,
                         dim::Int = 2;
                         metric::Distances.PreMetric = Distances.Euclidean()
-                        ) where {S <: Real}
+                        ) where {F <: Function, S <: SparsificationMethod}
 
     data = parallel_flow(flow_fun,p0)
-    sparse_diff_op_family(data, ε, dim; metric=metric)
+    sparse_diff_op_family(data, sp_method, k, dim; metric=metric)
 end
 
 # diffusion operator/graph Laplacian related functions
@@ -50,7 +57,7 @@ function diff_op(data::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op_family(data, ε, kernel=gaussian_kernel, dim=2; op_reduce, α, metric)
+    sparse_diff_op_family(data, sp_method, kernel=gaussian_kernel, dim=2; op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -68,19 +75,19 @@ Return a list of sparse diffusion/Markov matrices `P`.
 """
 
 function sparse_diff_op_family( data::AbstractArray{T, 2},
-                                ε::S,
+                                sp_method::S,
                                 kernel::F = gaussian_kernel,
                                 dim::Int = 2;
                                 op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P)),
                                 α=1.0,
                                 metric::Distances.PreMetric = Distances.Euclidean()
-                                ) where {T <: Number, S <: Real, F <: Function}
+                                ) where {T <: Number, S <: SparsificationMethod, F <: Function}
     dimt, N = size(data)
     (q, r) = divrem(dimt,dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = pmap(1:q) do t
-        @time Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], ε, kernel;
+        Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
                                     α=α, metric = metric )
         println("Timestep $t/$q done")
         Pₜ
@@ -89,13 +96,13 @@ function sparse_diff_op_family( data::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op(data, ε, k; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
+    sparse_diff_op(data, sp_method, k; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse diffusion/Markov matrix `P`.
 
 ## Arguments
    * `data`: 2D array with columns correspdonding to data points;
-   * `ε`: distance threshold;
+   * `sp_method`: distance threshold;
    * `k`: diffusion kernel, e.g., `x -> exp(-x*x)` (default);
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
@@ -103,21 +110,21 @@ Return a sparse diffusion/Markov matrix `P`.
 """
 
 @inline function sparse_diff_op(data::AbstractArray{T, 2},
-                        ε::S,
+                        sp_method::S,
                         kernel::F = gaussian_kernel;
                         α=1.0,
                         metric::Distances.PreMetric = Distances.Euclidean()
-                        ) where {T <: Real, S <: Real, F <: Function}
+                        ) where {T <: Real, S <: SparsificationMethod, F <: Function}
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
-    P = sparseaffinitykernel(data, kernel, ε, metric)
+    P = sparseaffinitykernel(data, sp_method, kernel, metric)
     α_normalize!(P, α)
     wLap_normalize!(P)
     return P
 end
 
 """
-    sparseaffinitykernel(A, k, ε, metric=Euclidean()) -> SparseMatrixCSC
+    sparseaffinitykernel(A, sp_method, k, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse matrix `K` where ``k_{ij} = k(x_i, x_j)``.
 The ``x_i`` are taken from the columns of `A`. Entries are
@@ -126,14 +133,38 @@ Default metric is `Euclidean()`.
 """
 
 @inline function sparseaffinitykernel(data::Array{T, 2},
+                               sp_method::mutualKNN,
                                kernel::F,
-                               ε::S,
                                metric::Distances.PreMetric = Distances.Euclidean()
-                               ) where {T <: Real, S <: Number, F <:Function}
+                               ) where {T <: Real, F <:Function}
     dim, N = size(data)
 
-    balltree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
-    idxs = NearestNeighbors.inrange(balltree, data, ε, false)
+    if typeof(metric) <: NearestNeighbors.MinkowskiMetric
+        tree = NearestNeighbors.KDTree(data, metric;  leafsize = metric == STmetric ? 20 : 10)
+    else
+        tree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
+    end
+    idxs, dists = NearestNeighbors.knn(tree, data, sp_method.k, false)
+    J = vcat(idxs...)
+    I = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    V = kernel.(vcat(dists...))
+    W = sparse(I,J,V,N,N)
+    return min.(W, transpose(W))
+end
+
+@inline function sparseaffinitykernel(data::Array{T, 2},
+                               sp_method::neighborhood,
+                               kernel::F,
+                               metric::Distances.PreMetric = Distances.Euclidean()
+                               ) where {T <: Real, F <:Function}
+    dim, N = size(data)
+
+    if typeof(metric) <: NearestNeighbors.MinkowskiMetric
+        tree = NearestNeighbors.KDTree(data, metric;  leafsize = metric == STmetric ? 20 : 10)
+    else
+        tree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
+    end
+    idxs = NearestNeighbors.inrange(tree, data, sp_method.ϵ, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     Vs::Vector{T} = kernel.(Distances.colwise(metric, view(data,:,Is), view(data,:,Js)))
