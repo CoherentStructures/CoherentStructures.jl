@@ -15,22 +15,41 @@ In the LCS context, we have
    * [Rypina et al., 2017](https://dx.doi.org/10.5194/npg-24-189-2017)/[Padberg-Gehle & Schneide, 2018](https://dx.doi.org/10.5194/npg-24-661-2017)
    * De Diego et al., 2018
 
-## Examples
-
 ## Function documentation
 
+### Sparsification methods
+
+Two commonly used sparsification methods are implemented for use with various
+graph Laplacian methods, see below.
+
 ```@docs
+mutualKNN
+neighborhood
+```
+
+Other sparsification methods can be implemented by defining a corresponding [sparseaffinitykernel](@ref) instance.
+
+### Diffusion-maps type graph Laplacian methods
+
+```@docs
+diff_op
+sparse_diff_op_family
 sparse_diff_op
-```
-
-```@docs
 sparseaffinitykernel
-```
-
-```@docs
 α_normalize!
+wLap_normalize!
 ```
 
+### Adjancency-matrix-based graph Laplacian methods
+
 ```@docs
-wLap_normalize!
+sparse_adjacency
+sparse_adjacency_list
+```
+
+### Diffusion-coordinate-like functions
+
+```@docs
+diffusion_coordinates
+diffusion_distance
 ```

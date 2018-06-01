@@ -175,9 +175,17 @@ end
                    sm::Distances.Metric,
                    dim::Int, q::Int) =
    Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
-
 @inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
 
+# alternative for testing in future julia versions: caution, has an extra argument
+# @inline eval_space(::STmetric, a::AbstractVector, b::AbstractVector, sm::M, dim::Int, q::Int, p::T) where {M <: Distances.Metric, T <: Real} =
+#     mapreduce((a,b)->a+b^p,[1:q;]) do i
+#         i0 = (i-1)*dim+1
+#         i1 = i*dim
+#         Distances.evaluate(sm, view(a,i0:i1), view(b,i0:i1))
+#    end
+# @inline reduce_time(::STmetric, s, p, q) = (s/q)^(inv(p))
+# end of alternative
 stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, dim, p), a, b)
 stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
 stmetric(a::AbstractArray, b::AbstractArray, p::Real) = evaluate(STmetric(p), a, b)

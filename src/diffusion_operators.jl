@@ -4,9 +4,25 @@ const gaussian_kernel = x -> exp(-abs2(x))
 
 const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
+```
+    struct mutualKNN(k)
+
+Defines the mutual KNN (k-nearest neighbors) sparsification method. In this
+approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
+only those particle pairs are included which are mutually contained in each
+others k-neighborhood.
+```
 struct mutualKNN <: SparsificationMethod
     k::Int
 end
+
+```
+    struct neighborhood(ϵ)
+
+Defines the ϵ-neighborhood sparsification method. In the final graph Laplacian,
+only those particle pairs are included which have distance less than `ϵ`.
+```
+
 struct neighborhood{T <: Real} <: SparsificationMethod
     ϵ::T
 end
@@ -26,21 +42,21 @@ end
 
 # diffusion operator/graph Laplacian related functions
 doc"""
-    diff_op(data, ε, kernel = gaussian_kernel; α=1.0, metric=Euclidean())
+    diff_op(data, sp_method, kernel = gaussian_kernel; α=1.0, metric=Euclidean"()")
 
 Return a diffusion/Markov matrix `P`.
 
 ## Arguments
    * `data`: 2D array with columns correspdonding to data points;
+   * `sp_method`: employed sparsification method ([`neighborhood`](@ref) or [`mutualKNN`](@ref));
    * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
-   * `ε`: distance threshold;
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
 function diff_op(data::AbstractArray{T, 2},
-                    ε::T,
+                    sp_method::neighborhood,
                     kernel::F = gaussian_kernel;
                     α=1.0,
                     metric::Distances.PreMetric = Distances.Euclidean()
@@ -48,9 +64,37 @@ function diff_op(data::AbstractArray{T, 2},
 
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
-    Is, Js = findn(D .< ε)
-    Vs = kernel.(D[D .< ε])
+    Is, Js = findn(D .< sp_method.ϵ)
+    Vs = kernel.(D[D .< sp_method.ϵ])
     P = sparse(Is, Js, Vs, N, N)
+    α_normalize!(P, α)
+    wLap_normalize!(P)
+    return P
+end
+
+function diff_op(data::AbstractArray{T, 2},
+                    sp_method::mutualKNN,
+                    kernel::F = gaussian_kernel;
+                    α=1.0,
+                    metric::Distances.PreMetric = Distances.Euclidean()
+                )::SparseMatrixCSC{T,Int} where {T <: Real, F <: Function}
+
+    N, k = size(data, 2), sp_method.k
+    D = Distances.pairwise(metric,data)
+    Is = SharedArray{Int}(N*(k+1))
+    Js = SharedArray{Int}(N*(k+1))
+    Vs = SharedArray{T}(N*(k+1))
+    index = Vector{Int}(k+1)
+    @everywhere @eval index = $index
+    @inbounds @sync @parallel for i=1:N
+        di = view(D,i,:)
+        selectperm!(index, di, 1:(k+1))
+        Is[(i-1)*(k+1)+1:i*(k+1),1] = i
+        Js[(i-1)*(k+1)+1:i*(k+1),2] = index
+        Vs[(i-1)*(k+1)+1:i*(k+1),2] = kernel.(di[index])
+    end
+    P = sparse(Is, Js, Vs, N, N)
+    @. P = min(P, transpose(P))
     α_normalize!(P, α)
     wLap_normalize!(P)
     return P
@@ -96,7 +140,7 @@ function sparse_diff_op_family( data::AbstractArray{T, 2},
 end
 
 doc"""
-    sparse_diff_op(data, sp_method, k; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
+    sparse_diff_op(data, sp_method, kernel; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse diffusion/Markov matrix `P`.
 
@@ -124,11 +168,11 @@ Return a sparse diffusion/Markov matrix `P`.
 end
 
 """
-    sparseaffinitykernel(A, sp_method, k, metric=Euclidean()) -> SparseMatrixCSC
+    sparseaffinitykernel(data, sp_method, kernel, metric=Euclidean()) -> SparseMatrixCSC
 
-Return a sparse matrix `K` where ``k_{ij} = k(x_i, x_j)``.
-The ``x_i`` are taken from the columns of `A`. Entries are
-only calculated for pairs where ``metric(x_i, x_j)≦ε``.
+Return a sparse matrix `W` where ``w_{ij} = k(x_i, x_j)``.
+The ``x_i`` are taken from the columns of `data`. Entries are
+only calculated for pairs determined by the sparsification method `sp_method`.
 Default metric is `Euclidean()`.
 """
 
@@ -149,6 +193,7 @@ Default metric is `Euclidean()`.
     I = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     V = kernel.(vcat(dists...))
     W = sparse(I,J,V,N,N)
+    Base.SparseArrays.droptol!(W,eps(T))
     return min.(W, transpose(W))
 end
 
