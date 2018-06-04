@@ -2,7 +2,7 @@
 
 const Dists = Distances
 
-struct PEuclidean{W <: Dists.RealAbstractArray} <: Dists.Metric
+struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
     periods::W
 end
 
@@ -66,7 +66,7 @@ end
                 s = eval_reduce(d, s, eval_op(d, ai, bi, li))
             end
         else
-            for (Ia, Ib, Ip) in zip(eachindex(a), eachindex(b), eachindex(d.weights))
+            for (Ia, Ib, Ip) in zip(eachindex(a), eachindex(b), eachindex(d.periods))
                 ai = a[Ia]
                 bi = b[Ib]
                 li = d.periods[Ip]
@@ -78,11 +78,12 @@ end
 end
 
 function evaluate(dist::PEuclidean, a::T, b::T) where {T <: Number}
-    eval_end(dist, eval_op(dist, a, b, one(eltype(dist.periods))))
+    # eval_end(dist, eval_op(dist, a, b, dist.periods[1]))
+    peuclidean(a, b, dist.periods[1])
 end
-function result_type(dist::PEuclidean, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
-    typeof(evaluate(dist, one(T1), one(T2)))
-end
+# function result_type(dist::PEuclidean, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
+#     typeof(evaluate(dist, one(T1), one(T2)))
+# end
 @inline function eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     zero(result_type(d, a, b))
 end
@@ -91,8 +92,8 @@ end
 @inline eval_end(::PEuclidean, s) = sqrt(s)
 
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
-peuclidean(a::AbstractArray, b::AbstractArray) = evaluate(PEuclidean(), a, b)
-peuclidean(a::Number, b::Number, p::Number) = begin d = mod(a - b, p); d = min(d, p - d) end
+peuclidean(a::AbstractArray, b::AbstractArray) = euclidean(a, b)
+peuclidean(a::Number, b::Number, p::Number) = begin d = mod(abs(a - b), p); d = min(d, p - d) end
 
 ########## spatiotemporal, time averaged metrics ##############
 
