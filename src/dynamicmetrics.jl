@@ -13,7 +13,7 @@ Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 
 # Usage
-```@jldoctest
+```julia
 julia> x, y, L = rand(2), rand(2), [0.5, Inf]
 ([0.551552, 0.38173], [0.57283, 0.874754], [0.5, Inf])
 
@@ -115,7 +115,7 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = -Inf`: minimum (does not yield a metric!)
 
 # Usage
-```@jldoctest
+```julia
 julia> x, y = rand(10), rand(10)
 ([0.0645218, 0.824624, 0.723568, 0.786856, 0.529069, 0.666899, 0.956035, 0.960833, 0.753796, 0.319134], [0.372017, 0.838669, 0.873848, 0.253589, 0.724321, 0.862853, 0.958319, 0.0306237, 0.352692, 0.169052])
 
@@ -124,14 +124,17 @@ julia> Distances.evaluate(STmetric(Distances.Euclidean(),2,1),x,y)
 ```
 """
 
-struct STmetric{T <: Real, M <: Dists.Metric} <: Dists.Metric
+struct STmetric{M <: Dists.Metric, T <: Real} <: Dists.Metric
     Smetric::M
     dim::Int
     p::T
 end
 
-STmetric()          = STmetric(Dists.Euclidean(), 2, 1)
-STmetric(p::Real)   = STmetric(Dists.Euclidean(), 2, p)
+# defaults: metric = Euclidean(), dim = 2, p = 1
+STmetric()                          = STmetric(Dists.Euclidean(), 2, 1)
+STmetric(p::Real)                   = STmetric(Dists.Euclidean(), 2, p)
+STmetric(d::Dists.Metric)           = STmetric(d, 2, 1)
+STmetric(d::Dists.Metric, p::Real)  = STmetric(d, 2, p)
 
 # Specialized for Arrays and avoids a branch on the size
 @inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
@@ -147,7 +150,7 @@ STmetric(p::Real)   = STmetric(Dists.Euclidean(), 2, p)
     if la == 0
         return zero(result_type(d, a, b))
     end
-    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p, q)
+    return reduce_time(d, eval_space(d, a, b, q), q)
 end
 
 # this version is needed for NearestNeighbors `NNTree`
@@ -163,34 +166,27 @@ end
     if la == 0
         return zero(result_type(d, a, b))
     end
-    return reduce_time(d, eval_space(d, a, b, d.Smetric, d.dim, q), d.p, q)
+    return reduce_time(d, eval_space(d, a, b, q), q)
 end
 
 function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
     result_type(d.Smetric, a, b)
 end
 
-@inline eval_space(::STmetric,
-                   a::AbstractArray,
-                   b::AbstractArray,
-                   sm::Distances.Metric,
-                   dim::Int, q::Int) =
-   Distances.colwise(sm, reshape(a, dim, q), reshape(b, dim, q))
-@inline reduce_time(::STmetric, s, p, q) = q^(-inv(p)) * vecnorm(s, p)
+@inline eval_space(d::STmetric, a::AbstractArray, b::AbstractArray, q::Int) =
+        Distances.colwise(d.Smetric, reshape(a, d.dim, q), reshape(b, d.dim, q))
+@inline reduce_time(d::STmetric, s, q) = q^(-1 / d.p) * vecnorm(s, d.p)
 
-# alternative for testing in future julia versions: caution, has an extra argument
-# @inline eval_space(::STmetric, a::AbstractVector, b::AbstractVector, sm::M, dim::Int, q::Int, p::T) where {M <: Distances.Metric, T <: Real} =
-#     mapreduce((a,b)->a+b^p,[1:q;]) do i
-#         i0 = (i-1)*dim+1
-#         i1 = i*dim
-#         Distances.evaluate(sm, view(a,i0:i1), view(b,i0:i1))
-#    end
-# @inline reduce_time(::STmetric, s, p, q) = (s/q)^(inv(p))
-# end of alternative
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, dim::Int, p::Real) = evaluate(STmetric(d, dim, p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.PreMetric, p::Real) = evaluate(STmetric(d, 2, p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, p::Real) = evaluate(STmetric(p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray) = evaluate(STmetric(), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric, dim::Int, p::Real) =
+        evaluate(STmetric(d, dim, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric, p::Real) =
+        evaluate(STmetric(d, p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric) =
+        evaluate(STmetric(d), a, b)
+stmetric(a::AbstractArray, b::AbstractArray, p::Real) =
+        evaluate(STmetric(p), a, b)
+stmetric(a::AbstractArray, b::AbstractArray) =
+        evaluate(STmetric(), a, b)
 
 ########### parallel pairwise computation #################
 
@@ -205,8 +201,8 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::Abstra
     @everywhere @eval dists = $(dists)
     @inbounds @sync @parallel for j = 1:nb
         for i = 1:na
-            dists .= eval_space(d, view(a, :, i), view(b, :, j), d.Smetric, d.dim, q)
-            r[i, j] = reduce_time(d, dists, d.p, q)
+            dists .= eval_space(d, view(a, :, i), view(b, :, j), q)
+            r[i, j] = reduce_time(d, dists, q)
         end
     end
     r
@@ -225,8 +221,8 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <
         if i == j
             r[i, i] = zero(T)
         else
-            dists .= eval_space(d, view(a, :, i), view(a, :, j), d.Smetric, d.dim, q)
-            r[i, j] = reduce_time(d, dists, d.p, q)
+            dists .= eval_space(d, view(a, :, i), view(a, :, j), q)
+            r[i, j] = reduce_time(d, dists, q)
         end
     end
     for j = 1:n
