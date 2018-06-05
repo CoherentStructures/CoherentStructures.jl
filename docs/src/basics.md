@@ -106,7 +106,7 @@ to each time instance and reduces the vector of spatial distances by computing
 its ``l_p``-norm. Notably, `p` may be any "real" number, including `Inf` and
 `-Inf` for the maximum- and "minimum"-norm. The spatiotemporal metric is a
 mathematical metric only for ``p\geq 1``, in which case it smoothly operates
-with efficient sparsification methods like `BallTree()` and `inrange` as
+with efficient sparsification methods like `BallTree` and `inrange` as
 implemented in the [`NearestNeighbors.jl` ](https://github.com/KristofferC/NearestNeighbors.jl) package.
 
 ### Examples

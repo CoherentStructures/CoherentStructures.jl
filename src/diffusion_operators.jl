@@ -5,7 +5,7 @@ const gaussian_kernel = x -> exp(-abs2(x))
 const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
 """
-    struct mutualKNN(k)
+    mutualKNN(k)
 
 Defines the mutual KNN (k-nearest neighbors) sparsification method. In this
 approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
@@ -17,7 +17,7 @@ struct mutualKNN <: SparsificationMethod
 end
 
 """
-    struct neighborhood(ϵ)
+    neighborhood(ϵ)
 
 Defines the ϵ-neighborhood sparsification method. In the final graph Laplacian,
 only those particle pairs are included which have distance less than `ϵ`.
