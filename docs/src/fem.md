@@ -31,9 +31,16 @@ K = assembleStiffnessMatrix(ctx,A)
 M = assembleMassMatrix(ctx)
 λ, v = eigs(-K,M,which=:SM);
 ```
-Here we have a time-dependent velocity field that describes the [transitory double gyre](http://dx.doi.org/10.1137/100794110) dynamical system. This velocity field is given by the `rot_double_gyre` function. The second argument to `mean_diff_tensor` are the times at which we average the pullback diffusion tensors. The third parameter is the step size δ used for the finite-difference scheme, `tolerance` is passed to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)` approximates the mean diffusion tensor given by
+Here we have a time-dependent velocity field that describes the
+[rotating double gyre](http://dx.doi.org/10.1137/100794110) dynamical system.
+This velocity field is given by the `rot_double_gyre` function. The second
+argument to `mean_diff_tensor` are the times at which we average the pullback
+diffusion tensors. The third parameter is the step size δ used for the
+finite-difference scheme, `tolerance` is passed to the ODE solver from
+[DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)`
+approximates the mean diffusion tensor given by
 
-$A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}$
+$A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}.$
 
 The eigenfunctions saved in `v` approximate those of $\Delta^{dyn}$
 ```@example 4

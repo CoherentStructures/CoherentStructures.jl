@@ -31,10 +31,69 @@ which the methods were developed see the respective help page.
 
 ### Rotating Double Gyre
 
-### Bickley Jet
-TODO: Cite something here
+The rotating double gyre model was introduced by
+[Mosovsky & Meiss](https://dx.doi.org/10.1137/100794110). It can be derived from
+the stream function
+``
+\\psi(x,y,t)=(1−s(t))\\psi_P +s(t)\\psi_F,
+\\psi_P (x, y) = sin(2πx) sin(πy),
+\\psi_F (x, y) = sin(πx) sin(2πy),
+``
+where ``s`` is (usually taken to be) a cubic interpolating function satisfying
+``s(0) = 0`` and ``s(1) = 1``. It therefore interpolates two double gyre flow
+fields, from horizontal to vertically arranged gyres. The corresponding velocity
+field is provided by the package and callable as `rot_double_gyre`.
 
-The Bickley Jet is described by a time-dependent velocity field arising from a stream-function. The `bickleyJet` velocity field is already built in for convenience:
+#### FEM-based methods
+
+#### Geodesic vortices
+
+Here, we demonstrate how to calculate black-hole vortices, see
+[Geodesic elliptic material vortices](@ref) for references and details.
+```@example 1
+using CoherentStructures
+import Tensors, OrdinaryDiffEq
+
+const q = 51
+const tspan = collect(linspace(0.,1.,q))
+ny = 101
+nx = 101
+N = nx*ny
+xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
+xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
+P = vcat.(xspan,yspan')
+const δ = 1.e-6
+mCG_tensor = u -> CG_tensor(rot_double_gyre,u,tspan,δ,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
+
+C̅ = map(mCG_tensor,P)
+
+LCSparams = (.1, 0.5, 0.01, 0.2, 0.3, 60)
+vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams)
+```
+The results are then visualized as follows.
+```@example 1
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+# damp outliers
+l₁ = min.(λ₁,quantile(λ₁[:],0.999))
+l₁ = max.(λ₁,1e-2)
+l₂ = min.(λ₂,quantile(λ₂[:],0.995))
+
+fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
+            title="DBS-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
+for i in eachindex(orbits)
+    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
+end
+```
+
+### Bickley Jet
+
+The Bickley jet flow is a kinematic idealized model of a meandering zonal jet
+flanked above and below by counterrotating vortices. It was introduced by
+[Rypina et al.](https://dx.doi.org/10.1175/JAS4036.1); cf. also [del‐Castillo‐Negrete and Morrison](https://doi.org/10.1063/1.858639).
+
+The Bickley jet is described by a time-dependent velocity field arising from a
+stream-function. The corresponding velocity field is provided by the package and
+callable as `bickleyJet`.
 ```@example 1
 using CoherentStructures
 ```
@@ -73,7 +132,8 @@ We ran `kmeans` only once. To get better results, `kmeans` should be run several
 
 #### Geodesic vortices
 
-Here we briefly demonstrate how to find material barriers to diffusive transport.
+Here we briefly demonstrate how to find material barriers to diffusive transport;
+see [Geodesic elliptic material vortices](@ref) for references and details.
 ```@example 1
 using CoherentStructures
 import Tensors, OrdinaryDiffEq
@@ -114,9 +174,59 @@ Plots.plot(fig)
 
 ### Geostrophic Ocean Flow
 
+For a more realistic application, we consider an unsteady ocean surface velocity
+data set obtained from satellite altimetry measurements produced by SSALTO/DUACS
+and distributed by AVISO. The particular space-time window has been used several
+times in the literature.
+
+#### FEM-based Methods
+
+#### Geodesic vortices
+
+Here, we demonstrate how to detect material barriers to diffusive transport.
+```@example 1
+using CoherentStructures
+using JLD2
+###################### load and interpolate velocity data sets #############
+JLD2.@load("../../examples/Ocean_geostrophic_velocity.jld2")
+
+UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
+p = (UI,VI)
+
+############################ integration set up ################################
+q = 91
+t_initial = minimum(Time)
+t_final = t_initial + 90
+const tspan = linspace(t_initial,t_final,q)
+nx = 500
+ny = Int(floor(0.6*nx))
+N = nx*ny
+xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
+xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
+P = vcat.(xspan,yspan')
+const δ = 1.e-5
+mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs,u,tspan,δ,p = p,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
+
+C̅ = map(mCG_tensor,P)
+LCSparams = (.09, 0.5, 0.05, 0.5, 1.0, 60)
+vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams)
+```
+The result is visualized as follows:
+```@example 1
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+l₁ = min.(λ₁,quantile(λ₁[:],0.999))
+l₁ = max.(λ₁,1e-2)
+l₂ = min.(λ₂,quantile(λ₂[:],0.995))
+fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
+            title="DBS-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
+for i in eachindex(orbits)
+    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
+end
+```
+
 ### Standard Map
 
-The "standard map" with parameter ``a`` is defined on a 2-dimensional doubly 2π-periodic domain by ``f(x,y) = (x+ y+ a \sin(x),y + a\cos(x))``.
+The *standard map* with parameter ``a`` is defined on a 2-dimensional doubly 2π-periodic domain by ``f(x,y) = (x+ y+ a \sin(x),y + a\cos(x))``.
 
 For ``a = 0.971635``, the standard map is implemented in `standardMap`, its Jacobi-matrix in `DstandardMap`.
 
