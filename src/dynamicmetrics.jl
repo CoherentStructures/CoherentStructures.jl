@@ -15,10 +15,8 @@ For dimensions without periodicity put `Inf` in the respective component.
 # Usage
 ```julia
 julia> x, y, L = rand(2), rand(2), [0.5, Inf]
-([0.551552, 0.38173], [0.57283, 0.874754], [0.5, Inf])
 
 julia> Distances.evaluate(PEuclidean(L),x,y)
-0.49348274281688614
 """
 
 PEuclidean() = Dists.Euclidean()

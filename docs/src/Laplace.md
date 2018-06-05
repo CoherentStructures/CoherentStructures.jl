@@ -27,7 +27,7 @@ mutualKNN
 neighborhood
 ```
 
-Other sparsification methods can be implemented by defining a corresponding [sparseaffinitykernel](@ref) instance.
+Other sparsification methods can be implemented by defining a corresponding [`sparseaffinitykernel`](@ref) instance.
 
 ### Diffusion-maps type graph Laplacian methods
 
