@@ -343,7 +343,7 @@ with finite differences.
             δ::Float64;
             kwargs...
         ) where T
-    return tdot(linearized_flow(odefun,u,[tspan[1],tspan[end]],δ;kwargs...)[end])
+    return Tensors.tdot(linearized_flow(odefun,u,[tspan[1],tspan[end]],δ;kwargs...)[end])
 end
 
 """
