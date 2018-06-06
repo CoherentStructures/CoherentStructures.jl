@@ -39,6 +39,9 @@ rot_double_gyreEqVari   = @var_velo_from_stream Ψ_rot_dgyre
 
 # interpolated vector field components
 
+"""
+    interpolateVF(xspan,yspan,tspan,u,v,interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> UI, VI
+"""
 function interpolateVF(xspan::AbstractVector{S1},
                         yspan::AbstractVector{S1},
                         tspan::AbstractVector{S1},

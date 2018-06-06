@@ -21,7 +21,7 @@ of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 ## Example
 
 Here is an example of how one might use these methods.
-```@example 4
+```@example 5
 using CoherentStructures
 LL = [0.0,0.0]; UR = [1.0,1.0];
 ctx = regularTriangularGrid((50,50),LL,UR)
@@ -31,22 +31,29 @@ K = assembleStiffnessMatrix(ctx,A)
 M = assembleMassMatrix(ctx)
 λ, v = eigs(-K,M,which=:SM);
 ```
-Here we have a time-dependent velocity field that describes the [transitory double gyre](http://dx.doi.org/10.1137/100794110) dynamical system. This velocity field is given by the `rot_double_gyre` function. The second argument to `mean_diff_tensor` are the times at which we average the pullback diffusion tensors. The third parameter is the step size δ used for the finite-difference scheme, `tolerance` is passed to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)` approximates the mean diffusion tensor given by
+Here we have a time-dependent velocity field that describes the
+[rotating double gyre](http://dx.doi.org/10.1137/100794110) dynamical system.
+This velocity field is given by the `rot_double_gyre` function. The second
+argument to `mean_diff_tensor` are the times at which we average the pullback
+diffusion tensors. The third parameter is the step size δ used for the
+finite-difference scheme, `tolerance` is passed to the ODE solver from
+[DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)`
+approximates the mean diffusion tensor given by
 
-$A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}$
+$A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}.$
 
 The eigenfunctions saved in `v` approximate those of $\Delta^{dyn}$
-```@example 4
+```@example 5
 import Plots
 res = [plot_u(ctx, v[:,i],colorbar=:none,clim=(-3,3)) for i in 1:6];
 Plots.plot(res...,margin=-10Plots.px)
 ```
 Looking at the spectrum, there appears a gap after the third eigenvalue:
-```@example 4
+```@example 5
 Plots.scatter(range(1,6), real.(λ))
 ```
 We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package to compute coherent structures from the first two nontrivial eigenfunctions:
-```@example 4
+```@example 5
 using Clustering
 numclusters=2
 res = kmeans(v[:,2:numclusters+1]',numclusters+1)
@@ -86,7 +93,7 @@ See [Stiffness and Mass Matrices](@ref) from the [FEM-API](@ref) section.
 ## Evaluating Functions in the Approximation Space
 
 given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_nodevals` or `evaluate_function_from_dofvals` functions.
-```@example 4
+```@example 5
 ctx = regularP2TriangularGrid((10,10))
 u = zeros(ctx.n)
 u[45] = 1.0
@@ -121,7 +128,7 @@ For details, see [`boundaryData`](@ref)
 ### Example
 
 Here we apply Homogeneous DBC to top and bottom, and identify the left and right side:
-```@example 4
+```@example 5
 
 ctx = regularQuadrilateralGrid((10,10))
 predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%1.0) < 1e-10)

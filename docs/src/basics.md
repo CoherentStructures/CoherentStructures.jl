@@ -6,6 +6,7 @@
 CurrentModule = CoherentStructures
 ```
 ### Definition of vector fields
+
 CoherentStructures.jl is set up for handling two- and three-dimensional dynamical
 systems only. For such low-dimensional flows it is advantageous (for top
 performance) to obey the following syntax:
@@ -34,6 +35,17 @@ fields from stream functions.
 In fact, two of the predefined velocity fields, the rotating double gyre
 `rot_double_gyre`, and the Bickley jet flow `bickleyJet`, are generated from
 these macros.
+
+Another typical use case is when velocities are given as a data set. In this
+case, one first interpolates the velocity components with [`interpolateVF`](@ref)
+to obtain callable interpolation functions, say, `UI` and `VI`. The corresponding
+vector field is then [`interp_rhs`](@ref), which the velocity interpolants enter
+via the parameter argument `p`; see below for examples.
+
+```@docs
+interpolateVF
+interp_rhs
+```
 
 ### Flow maps
 
