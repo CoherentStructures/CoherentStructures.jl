@@ -65,28 +65,29 @@ nx = 101
 N = nx*ny
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
-P = vcat.(xspan,yspan')
+P = vcat.(xspan',yspan)
 const δ = 1.e-6
 mCG_tensor = u -> CG_tensor(rot_double_gyre,u,tspan,δ,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
 
-C̅ = map(mCG_tensor,P)
+C = map(mCG_tensor,P)
 
 LCSparams = (.1, 0.5, 0.01, 0.2, 0.3, 60)
-vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams)
+vals, signs, orbits = ellipticLCS(C,xspan,yspan,LCSparams)
 ```
 The results are then visualized as follows.
 ```@example 1
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C)
 # damp "outliers"
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
 l₂ = min.(λ₂,quantile(λ₂[:],0.995))
 
-fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
-            title="DBS-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
+fig = Plots.heatmap(xspan,yspan,log10.(l₂)',aspect_ratio=1,color=:viridis,
+            title="FTLE-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
 for i in eachindex(orbits)
     Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
 end
+Plots.plot(fig)
 ```
 
 ### Bickley Jet
@@ -149,7 +150,7 @@ nx = div(ny*24,6)
 N = nx*ny
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
-P = vcat.(xspan,yspan')
+P = vcat.(xspan',yspan)
 const δ = 1.e-6
 const DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])
 mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,
@@ -208,7 +209,7 @@ ny = Int(floor(0.6*nx))
 N = nx*ny
 xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
 xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
-P = vcat.(xspan,yspan')
+P = vcat.(xspan',yspan)
 const δ = 1.e-5
 mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs,u,tspan,δ,p = p,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
 
@@ -227,6 +228,7 @@ fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridi
 for i in eachindex(orbits)
     Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
 end
+Plots.plot(fig)
 ```
 
 ### Standard Map
