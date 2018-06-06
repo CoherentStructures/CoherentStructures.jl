@@ -8,6 +8,5 @@ makedocs(
         "FEM-based methods" => "fem.md"
         "Geodesic vortices" => "elliptic.md"
         "Graph Laplacian-based methods" => "Laplace.md"
-        "API" => "api.md"
     ]
     )

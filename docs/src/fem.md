@@ -81,7 +81,7 @@ When working with (non-natural) [Boundary Conditions](@ref), the ordering is fur
 
 ## Assembly
 
-See [Stiffness and Mass Matrices](@ref) from the [API](@ref) section.
+See [Stiffness and Mass Matrices](@ref) from the [FEM-API](@ref) section.
 
 ## Evaluating Functions in the Approximation Space
 
@@ -144,3 +144,93 @@ The simplest way to plot is using the [`plot_u`](@ref) function. Plots and video
 Many of the plotting functions support parallelism internally.
 Tensor fields can be constructed in parallel, and then passed to [`assembleStiffnessMatrix`](@ref). For an example that does this, see
 TODO: Add this example
+
+
+## FEM-API
+```@meta
+CurrentModule = CoherentStructures
+```
+
+
+### Stiffness and Mass Matrices
+```@docs
+assembleStiffnessMatrix
+assembleMassMatrix
+```
+
+### Constructing Grids
+
+There are several helper functions available for constructing grids. The simplest is:
+```@docs
+regular2DGrid
+```
+Supported values for the `gridType` argument are:
+```@example
+using CoherentStructures #hide
+CoherentStructures.regular2DGridTypes
+```
+The following functions are conceptually similar:
+```@docs
+regularTriangularGrid
+regularDelaunayGrid
+regularP2TriangularGrid
+regularP2DelaunayGrid
+regularQuadrilateralGrid
+regularP2QuadrilateralGrid
+```
+All of these methods return a `gridContext` object.
+```@docs
+CoherentStructures.gridContext
+```
+#### Irregular grids
+The constructors for `CoherentStructures.gridContext`, including one for irregular Delaunay grids, are not exported by default, the documentation is available through the REPL:
+
+``` #TODO: add @docs here once it works
+help?> (::Type{CoherentStructures.gridContext{2}})
+```
+
+### Boundary Conditions API
+```@docs
+boundaryData
+getHomDBCS
+undoBCS
+applyBCS
+```
+
+### Helper functions
+```@docs
+dof2node
+getDofCoordinates
+```
+
+```@docs
+evaluate_function_from_dofvals
+evaluate_function_from_nodevals
+```
+
+```@docs
+nodal_interpolation
+```
+
+```@docs
+getH
+```
+
+### Plotting API
+#### FEM
+```@docs
+plot_u
+plot_u_eulerian
+eulerian_videos
+eulerian_video
+```
+### Other plotting utilities
+```@docs
+plot_ftle
+```
+
+### Defaults
+```
+const default_quadrature_order=5
+const default_solver = OrdinaryDiffEq.BS5()
+```
