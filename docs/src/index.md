@@ -45,8 +45,9 @@ $$
 $$
 where ``s`` is (usually taken to be) a cubic interpolating function satisfying
 ``s(0) = 0`` and ``s(1) = 1``. It therefore interpolates two double gyre flow
-fields, from horizontal to vertically arranged gyres. The corresponding velocity
-field is provided by the package and callable as `rot_double_gyre`.
+fields, from horizontally to vertically arranged counter-rotating gyres. The
+corresponding velocity field is provided by the package and callable as
+`rot_double_gyre`.
 
 #### FEM-based methods
 
@@ -72,7 +73,7 @@ mCG_tensor = u -> CG_tensor(rot_double_gyre,u,tspan,δ,tolerance=1e-6,solver=Ord
 C = map(mCG_tensor,P)
 
 LCSparams = (.1, 0.5, 0.01, 0.2, 0.3, 60)
-vals, signs, orbits = ellipticLCS(C,xspan,yspan,LCSparams)
+vals, signs, orbits = ellipticLCS(C,xspan,yspan,LCSparams);
 ```
 The results are then visualized as follows.
 ```@example 1
@@ -82,7 +83,7 @@ l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
 l₂ = min.(λ₂,quantile(λ₂[:],0.995))
 
-fig = Plots.heatmap(xspan,yspan,log10.(l₂)',aspect_ratio=1,color=:viridis,
+fig = Plots.heatmap(xspan,yspan,log10.(l₂),aspect_ratio=1,color=:viridis,
             title="FTLE-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
 for i in eachindex(orbits)
     Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
@@ -169,7 +170,7 @@ l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
 l₂ = min.(λ₂,quantile(λ₂[:],0.995))
 begin
-    fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
+    fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
             title="DBS-field and transport barriers",xlims=(0., 6.371π),ylims=(-3., 3.),leg=true)
     for i in eachindex(orbits)
         Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
@@ -215,7 +216,7 @@ mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs,u,tspan,δ,p = p,tolerance=1e
 
 C̅ = map(mCG_tensor,P)
 LCSparams = (.09, 0.5, 0.05, 0.5, 1.0, 60)
-vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams)
+vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 ```
 The result is visualized as follows:
 ```@example 3
@@ -223,7 +224,7 @@ The result is visualized as follows:
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
 l₂ = min.(λ₂,quantile(λ₂[:],0.995))
-fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂)',aspect_ratio=1,color=:viridis,
+fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
             title="DBS-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
 for i in eachindex(orbits)
     Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
