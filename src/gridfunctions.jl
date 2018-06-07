@@ -593,7 +593,7 @@ function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVec
     end
     v1::Tensors.Vec{2} = grid.nodes[t._b.id].x - grid.nodes[t._a.id].x
     v2::Tensors.Vec{2} = grid.nodes[t._c.id].x - grid.nodes[t._a.id].x
-    J::Tensors.Tensor{2,2,Float64,4} = v1 ⊗ e1  + v2 ⊗ e2
+    J::Tensors.Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
     #TODO: rewrite this so that we actually find the cell in question and get the ids
     #From there (instead of from the tesselation). Then get rid of the permutation that
     #is implicit below (See also comment below in p2DelaunayCellLocator locatePoint())
@@ -639,7 +639,7 @@ function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::AbstractV
     const qTriangle = grid.cells[loc.inv_internal_triangles[t]]
     v1::Tensors.Vec{2} = grid.nodes[qTriangle.nodes[2]].x - grid.nodes[qTriangle.nodes[1]].x
     v2::Tensors.Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
-    J::Tensors.Tensor{2,2,Float64,4} = v1 ⊗ e1  + v2 ⊗ e2
+    J::Tensors.Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
     #TODO: Think about whether doing it like this (with the permutation) is sensible
     return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
 end
@@ -886,7 +886,7 @@ end
 
 
 
-
+using Tensors.otimes
 function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
     tess,m,scale_x,scale_y,minx,miny = delaunay2(nodes_in)
     nodes = JuAFEM.Node{2,Float64}[]
@@ -895,8 +895,8 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
     end
     cells = JuAFEM.Triangle[]
     for tri in tess
-        J = (nodes_in[tri._b.id] - nodes_in[tri._a.id]) ⊗ e1
-        J +=  (nodes_in[tri._c.id] - nodes_in[tri._a.id]) ⊗ e2
+        J = Tensors.otimes((nodes_in[tri._b.id] - nodes_in[tri._a.id]),e1)
+        J +=  Tensors.otimes((nodes_in[tri._c.id] - nodes_in[tri._a.id]) , e2)
         detJ = det(J)
         @assert det(J) != 0
         if detJ > 0
@@ -954,8 +954,8 @@ function JuAFEM.generate_grid(::Type{JuAFEM.QuadraticTriangle}, nodes_in::Vector
             push!(nodes,center)
         end
 
-        J = (nodes_in[tri._b.id] - nodes_in[tri._a.id]) ⊗ e1
-        J +=  (nodes_in[tri._c.id] - nodes_in[tri._a.id]) ⊗ e2
+        J = Tensors.otimes((nodes_in[tri._b.id] - nodes_in[tri._a.id]) , e1)
+        J +=  Tensors.otimes((nodes_in[tri._c.id] - nodes_in[tri._a.id]) , e2)
         detJ = det(J)
 
         @assert det(J) != 0
