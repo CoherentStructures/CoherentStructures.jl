@@ -27,15 +27,15 @@ struct neighborhood{T <: Real} <: SparsificationMethod
 end
 
 # meta function
-function DM_heatflow(flow_fun::Function,
+function DM_heatflow(flow_fun,
                         p0,
                         sp_method::S,
-                        k::F,
+                        k,
                         dim::Int = 2;
-                        metric::Distances.PreMetric = Distances.Euclidean()
-                        ) where {F <: Function, S <: SparsificationMethod}
+                        metric::Distances.Metric = Distances.Euclidean()
+                        ) where S <: SparsificationMethod
 
-    data = parallel_flow(flow_fun,p0)
+    data = parallel_flow(flow_fun, p0)
     sparse_diff_op_family(data, sp_method, k, dim; metric=metric)
 end
 
@@ -54,12 +54,12 @@ Return a diffusion/Markov matrix `P`.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function diff_op(data::AbstractArray{T, 2},
+function diff_op(data::AbstractMatrix{T},
                     sp_method::neighborhood,
-                    kernel::F = gaussian_kernel;
+                    kernel = gaussian_kernel;
                     α=1.0,
-                    metric::Distances.PreMetric = Distances.Euclidean()
-                )::SparseMatrixCSC{T,Int} where {T <: Real, F <: Function}
+                    metric::Distances.Metric = Distances.Euclidean()
+                )::SparseMatrixCSC{T,Int} where T <: Real
 
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
@@ -71,12 +71,12 @@ function diff_op(data::AbstractArray{T, 2},
     return P
 end
 
-function diff_op(data::AbstractArray{T, 2},
+function diff_op(data::AbstractMatrix{T},
                     sp_method::mutualKNN,
-                    kernel::F = gaussian_kernel;
+                    kernel = gaussian_kernel;
                     α=1.0,
-                    metric::Distances.PreMetric = Distances.Euclidean()
-                )::SparseMatrixCSC{T,Int} where {T <: Real, F <: Function}
+                    metric::Distances.Metric = Distances.Euclidean()
+                )::SparseMatrixCSC{T,Int} where T <: Real
 
     N, k = size(data, 2), sp_method.k
     D = Distances.pairwise(metric,data)
@@ -117,16 +117,16 @@ Return a list of sparse diffusion/Markov matrices `P`.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function sparse_diff_op_family( data::AbstractArray{T, 2},
+function sparse_diff_op_family( data::AbstractMatrix{T},
                                 sp_method::S,
-                                kernel::F = gaussian_kernel,
+                                kernel = gaussian_kernel,
                                 dim::Int = 2;
                                 op_reduce::Function = P -> prod(LinearMaps.LinearMap,reverse(P)),
                                 α=1.0,
-                                metric::Distances.PreMetric = Distances.Euclidean()
-                                ) where {T <: Number, S <: SparsificationMethod, F <: Function}
+                                metric::Distances.Metric = Distances.Euclidean()
+                                ) where {T <: Number, S <: SparsificationMethod}
     dimt, N = size(data)
-    (q, r) = divrem(dimt,dim)
+    q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = pmap(1:q) do t
@@ -152,12 +152,12 @@ Return a sparse diffusion/Markov matrix `P`.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-@inline function sparse_diff_op(data::AbstractArray{T, 2},
+@inline function sparse_diff_op(data::AbstractMatrix{T},
                         sp_method::S,
-                        kernel::F = gaussian_kernel;
+                        kernel = gaussian_kernel;
                         α=1.0,
-                        metric::Distances.PreMetric = Distances.Euclidean()
-                        ) where {T <: Real, S <: SparsificationMethod, F <: Function}
+                        metric::Distances.Metric = Distances.Euclidean()
+                        ) where {T <: Real, S <: SparsificationMethod}
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
     P = sparseaffinitykernel(data, sp_method, kernel, metric)
@@ -175,11 +175,11 @@ only calculated for pairs determined by the sparsification method `sp_method`.
 Default metric is `Euclidean()`.
 """
 
-@inline function sparseaffinitykernel(data::Array{T, 2},
+@inline function sparseaffinitykernel(data::AbstractMatrix{T},
                                sp_method::mutualKNN,
-                               kernel::F,
+                               kernel,
                                metric::Distances.PreMetric = Distances.Euclidean()
-                               ) where {T <: Real, F <:Function}
+                               ) where T <: Real
     dim, N = size(data)
 
     if typeof(metric) <: NearestNeighbors.MinkowskiMetric
@@ -191,16 +191,16 @@ Default metric is `Euclidean()`.
     J = vcat(idxs...)
     I = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     V = kernel.(vcat(dists...))
-    W = sparse(I,J,V,N,N)
+    W = sparse(I, J, V, N, N)
     Base.SparseArrays.droptol!(W,eps(T))
     return min.(W, transpose(W))
 end
 
-@inline function sparseaffinitykernel(data::Array{T, 2},
+@inline function sparseaffinitykernel(data::AbstractMatrix{T},
                                sp_method::neighborhood,
-                               kernel::F,
+                               kernel,
                                metric::Distances.PreMetric = Distances.Euclidean()
-                               ) where {T <: Real, F <:Function}
+                               ) where T <: Real
     dim, N = size(data)
 
     if typeof(metric) <: NearestNeighbors.MinkowskiMetric
@@ -209,10 +209,10 @@ end
         tree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
     end
     idxs = NearestNeighbors.inrange(tree, data, sp_method.ϵ, false)
-    Js::Vector{Int} = vcat(idxs...)
-    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs::Vector{T} = kernel.(Distances.colwise(metric, view(data,:,Is), view(data,:,Js)))
-    return sparse(Is,Js,Vs,N,N)
+    J = vcat(idxs...)
+    I = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    V = kernel.(Distances.colwise(metric, view(data,:,I), view(data,:,J)))
+    return sparse(I, J, V, N, N)
 end
 
 doc"""
@@ -222,11 +222,11 @@ i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
 $ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
 """
 
-@inline function α_normalize!(A::T, α::S = 0.5) where {T <: AbstractMatrix, S <: Real}
+@inline function α_normalize!(A::AbstractMatrix, α::S = 0.5) where S <: Real
     LinAlg.checksquare(A)
-    qₑ = 1./squeeze(sum(A,2), 2).^α
-    scale!(A,qₑ)
-    scale!(qₑ,A)
+    qₑ = 1 ./ squeeze(sum(A,2), 2) .^ α
+    scale!(A, qₑ)
+    scale!(qₑ, A)
     return A
 end
 
@@ -236,7 +236,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 $ a_{ij}:=a_{ij}/q_i$.
 """
 
-@inline function wLap_normalize!(A::T) where T <: AbstractMatrix
+@inline function wLap_normalize!(A::AbstractMatrix)
     LinAlg.checksquare(A)
     dᵅ = 1./squeeze(sum(A,2), 2)
     scale!(dᵅ,A)
@@ -262,13 +262,13 @@ metric is applied to the whole columns of `data`.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-function sparse_adjacency(data::AbstractArray{T, 2},
+function sparse_adjacency(data::AbstractMatrix{T},
                             ε::S,
                             dim::Int;
-                            metric::Distances.PreMetric = Distances.Euclidean()
+                            metric::Distances.Metric = Distances.Euclidean()
                         )::SparseMatrixCSC{Bool,Int} where {T <: Real, S <: Real}
     dimt, N = size(data)
-    (q, r) = divrem(dimt,dim)
+    q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     IJs = pmap(1:q) do t
@@ -279,21 +279,19 @@ function sparse_adjacency(data::AbstractArray{T, 2},
     I = vcat([ijs[1] for ijs in IJs]...)
     J = vcat([ijs[2] for ijs in IJs]...)
     V = fill(true,length(I))
-    # no need for unique indices: for Boolean-values, multiply occuring indices
-    # are reduced by |
-    return sparse(I,J,V,N,N)
+    return sparse(I, J, V, N, N)
 end
 
-function sparse_adjacency(data::AbstractArray{T, 2},
+function sparse_adjacency(data::AbstractMatrix{T},
                             ε::S;
-                            metric::Distances.PreMetric = Distances.Euclidean()
+                            metric::Distances.Metric = Distances.Euclidean()
                             )::SparseMatrixCSC{Bool,Int} where {T <: Real, S <: Real}
     dimt, N = size(data)
-    (q, r) = divrem(dimt,dim)
+    q, r = divrem(dimt,dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
     I, J = sparse_adjacency_list( data, ε; metric = metric )
     V = fill(true,length(I))
-    return sparse(I,J,V,N,N)
+    return sparse(I, J, V, N, N)
 end
 
 doc"""
@@ -308,9 +306,9 @@ Return two lists of indices of data points that are adjacent.
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
 
-@inline function sparse_adjacency_list(data::AbstractArray{T, 2},
+@inline function sparse_adjacency_list(data::AbstractMatrix{T},
                                 ε::S;
-                                metric::Distances.PreMetric = Distances.Euclidean()
+                                metric::Distances.Metric = Distances.Euclidean()
                                )::Tuple{Vector{Int},Vector{Int}} where {T <: Real, S <: Real}
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
@@ -334,7 +332,7 @@ end
  function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      E   = eigs(P; nev=1, maxiter=1000, which=:LM)
-     π   = squeeze(real(E[2]),2) # stationary distribution
+     π   = squeeze(real(E[2]), 2) # stationary distribution
      ext = extrema(π)
      prod(ext) < 0 && throw(error("Both signs in stationary distribution"))
      if any(ext .< 0)
@@ -343,19 +341,21 @@ end
      return π
  end
 
- @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},
+                            π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     πsqrt  = Diagonal(sqrt.(π)) # alternavtive: Diagonal(sqrt.(π))
-     πinv   = Diagonal(1./π) # alternative: Diagonal(inv.(π))
+     πsqrt  = Diagonal(sqrt.(π))
+     πinv   = Diagonal(1./π)
      return πsqrt * L * πinv * transpose(L) * πsqrt
  end
 
- @inline function L_mul_Lt(L::AbstractArray{T},π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::AbstractMatrix{T},
+                            π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
      πsqrt = sqrt.(π)
-     πinvsqrt = 1./πsqrt
-     scale!(πsqrt,L)
-     scale!(L,πinvsqrt)
+     πinvsqrt = 1 ./ πsqrt
+     scale!(πsqrt, L)
+     scale!(L, πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
      return LMap * transpose(LMap)
  end
@@ -368,7 +368,7 @@ end
  coordinates to be computed.
  """
 
- function diffusion_coordinates(P::LinMaps,n_coords::Int)::Tuple{Vector{Float64},Array{Float64}}
+ function diffusion_coordinates(P::LinMaps,n_coords::Int)
 
      N = LinAlg.checksquare(P)
 
@@ -382,8 +382,8 @@ end
 
      # Compute diffusion map Ψ and extract the diffusion coordinates
      scale!(Ψ,Σ)
-     @. π = 1/sqrt(π)
-     scale!(π,Ψ)
+     @. π = 1 / sqrt(π)
+     scale!(π, Ψ)
      return Σ, Ψ
  end
 
@@ -393,7 +393,7 @@ end
  Returns the distance matrix of pairs of points whose diffusion distances
  correspond to the diffusion coordinates given by `diff_coord`.
  """
- function diffusion_distance(Ψ::AbstractArray{T,2})::Symmetric{T,Array{T,2}} where {T}
-     D = Distances.pairwise(Distances.Euclidean(),Ψ)
+ function diffusion_distance(Ψ::AbstractMatrix{T})::Symmetric{T,Array{T,2}} where T
+     D = Distances.pairwise(Distances.Euclidean(), Ψ)
      return Symmetric(D)
  end
