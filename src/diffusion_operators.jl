@@ -377,7 +377,19 @@ end
      # Compute relevant SVD info for P by computing eigendecomposition of P*P'
      L = L_mul_Lt(P, π)
      E = eigs(L; nev=n_coords, maxiter=1000, which=:LM)
-     Σ = sqrt.(real.(E[1]))
+     
+     # eigenvalues close to zero can be negative even if they
+     # should be positive. 
+     drop_num_zeros(x) = abs(x) < eps(E[1][1]) ? zero(x) : x
+     egs = drop_num_zeros.(E[1])
+
+     if any(egs .< 0)
+       warn("Negative eigenvalue bigger than eps($(egs[1]))in $(egs)! "*
+            "Using absolute value instead.")
+     end 
+
+
+     Σ = sqrt.(real.(abs.(egs)))
      Ψ = real(E[2])
 
      # Compute diffusion map Ψ and extract the diffusion coordinates
