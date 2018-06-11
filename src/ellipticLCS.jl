@@ -1,7 +1,7 @@
 # (c) 2018 Daniel Karrasch
 
 const ITP = Interpolations
-
+# TODO: replace find -> findall
 """
     singularity_location_detection(T,xspan,yspan)
 

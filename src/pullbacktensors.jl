@@ -76,13 +76,13 @@ which is determined by `solver`.
 function flow(
             odefun::Function,
             u0::AbstractVector{T},
-            tspan::AbstractVector{Float64};
+            tspan::AbstractVector{S};
             tolerance = default_tolerance,
             p = nothing,
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where T <: Real
+        ) where {T <: Real, S <: Real}
     # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing
@@ -141,9 +141,9 @@ a 2D array with dimensions ((space dim x no. of time instances) x no. of
 trajectories), in which each column corresponds to a concatenated trajectory,
 i.e., represented in delay coordinates.
 """
-function parallel_flow(flow_fun,P::AbstractArray)
+function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
     dim::Int = length(P[1])
-    T = eltype(P[1])
+    T = eltype(S)
     dummy = flow_fun(P[1])
     q::Int = length(dummy)
 
@@ -359,7 +359,7 @@ function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
         T_shared[:,index] = tensor_fun(P[index])[idxs]
     end
 
-    Tfield = Array{Tensors.SymmetricTensor{2,dim,T,div(dim*(dim+1),2)}}(size(P))
+    Tfield = Array{Tensors.SymmetricTensor{2,dim,eltype(T),div(dim*(dim+1),2)}}(size(P))
     for index in eachindex(P)
         Tfield[index] = Tensors.SymmetricTensor{2,dim}(T_shared[:,index])
     end
@@ -380,7 +380,7 @@ Derivatives are computed with finite differences.
 """
 @inline function mean_diff_tensor(
             odefun,
-            u::T,
+            u::AbstractVector{T},
             tspan::AbstractVector{S},
             δ::Float64;
             kwargs...
@@ -402,7 +402,7 @@ with finite differences.
 """
 @inline function CG_tensor(
             odefun,
-            u::T,
+            u::AbstractVector{T},
             tspan::AbstractVector{S},
             δ::Float64;
             kwargs...
