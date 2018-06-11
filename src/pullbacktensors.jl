@@ -345,9 +345,10 @@ end
 """
     parallel_tensor(tensor_fun,P) -> Array{SymmetricTensor}
 
-Computes a tensor field via `tensor_fun` for each element of `P`.
-`tensor_fun` is a function that takes initial conditions as input and returns
-a *symmetric* tensor. The final tensor field array has the same size as `P`.
+Computes a tensor field via `tensor_fun` for each element of `P`, which is an
+array of vectors. `tensor_fun` is a function that takes initial conditions as
+input and returns a *symmetric* tensor. The final tensor field array has the
+same size as `P`.
 """
 function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
 
