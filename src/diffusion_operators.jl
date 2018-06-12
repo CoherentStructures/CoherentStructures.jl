@@ -1,9 +1,10 @@
 # (c) 2018 Alvaro de Diego & Daniel Karrasch
 
-const gaussian_kernel = x -> exp(-abs2(x))
+const gaussian_kernel = x::Number -> exp(-abs2(x))
 
 const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
 
+# TODO: replace sparse -> SparseArrays.sparse
 """
     mutualKNN(k)
 
@@ -65,6 +66,11 @@ function diff_op(data::AbstractMatrix{T},
     D = Distances.pairwise(metric,data)
     Is, Js = findn(D .< sp_method.ϵ)
     Vs = kernel.(D[D .< sp_method.ϵ])
+    # TODO: Julia 0.7+ version
+    # CIs = findall(D .< sp_method.ϵ)
+    # Is = [i[1] for i in CIs]
+    # Js = [i[2] for i in CIs]
+    # Vs = kernel.([D[i] for i in CIs])
     P = sparse(Is, Js, Vs, N, N)
     α_normalize!(P, α)
     wLap_normalize!(P)
@@ -88,12 +94,14 @@ function diff_op(data::AbstractMatrix{T},
     @inbounds @sync @parallel for i=1:N
         di = view(D,i,:)
         selectperm!(index, di, 1:(k+1))
-        Is[(i-1)*(k+1)+1:i*(k+1),1] = i
+        # TODO: replace by partialsortperm!(index, di, 1:(k+1))
+        Is[(i-1)*(k+1)+1:i*(k+1),1] .= i
         Js[(i-1)*(k+1)+1:i*(k+1),2] = index
         Vs[(i-1)*(k+1)+1:i*(k+1),2] = kernel.(di[index])
     end
     P = sparse(Is, Js, Vs, N, N)
     @. P = min(P, transpose(P))
+    # TODO: replace by @. P = min(P, PermutedDimsArray(P, (2,1)))
     α_normalize!(P, α)
     wLap_normalize!(P)
     return P
@@ -116,7 +124,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
-
+# TODO: check `reverse` in Julia 0.7!
 function sparse_diff_op_family( data::AbstractMatrix{T},
                                 sp_method::S,
                                 kernel = gaussian_kernel,
@@ -194,6 +202,7 @@ Default metric is `Euclidean()`.
     W = sparse(I, J, V, N, N)
     Base.SparseArrays.droptol!(W,eps(T))
     return min.(W, transpose(W))
+    # TODO: Replace by return min.(W, PermutedDimsArray(W, (2,1)))
 end
 
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
@@ -224,9 +233,12 @@ $ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
 
 @inline function α_normalize!(A::AbstractMatrix, α::S = 0.5) where S <: Real
     LinAlg.checksquare(A)
-    qₑ = 1 ./ squeeze(sum(A,2), 2) .^ α
+    qₑ = squeeze(sum(A,2), 2) .^-α
+    # TODO: replace by qₑ = squeeze(sum(A, dims=2), dims=2) .^-α
     scale!(A, qₑ)
+    # TODO: replace by LinearAlgebra.rmul!(A, qₑ)
     scale!(qₑ, A)
+    # TODO: replace by LinearAlgebra.lmul!(qₑ, A)
     return A
 end
 
@@ -238,8 +250,10 @@ $ a_{ij}:=a_{ij}/q_i$.
 
 @inline function wLap_normalize!(A::AbstractMatrix)
     LinAlg.checksquare(A)
-    dᵅ = 1./squeeze(sum(A,2), 2)
+    dᵅ = inv.(squeeze(sum(A,2), 2))
+    # TODO: replace by dᵅ = inv.(squeeze(sum(A, dims=2), dims=2))
     scale!(dᵅ,A)
+    # TODO: replace by LinearAlgebra.lmul!(dᵅ, A)
     return A
  end
 
@@ -276,10 +290,10 @@ function sparse_adjacency(data::AbstractMatrix{T},
         println("Timestep $t/$q done")
         I, J
     end
-    I = vcat([ijs[1] for ijs in IJs]...)
-    J = vcat([ijs[2] for ijs in IJs]...)
-    V = fill(true,length(I))
-    return sparse(I, J, V, N, N)
+    Is = vcat([ijs[1] for ijs in IJs]...)
+    Js = vcat([ijs[2] for ijs in IJs]...)
+    Vs = fill(true,length(Is))
+    return sparse(Is, Js, Vs, N, N)
 end
 
 function sparse_adjacency(data::AbstractMatrix{T},
@@ -314,8 +328,8 @@ Return two lists of indices of data points that are adjacent.
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
     balltree = NearestNeighbors.BallTree(data, metric)
     idxs = NearestNeighbors.inrange(balltree, data, ε, false)
-    Js::Vector{Int} = vcat(idxs...)
-    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Js = vcat(idxs...)
+    Is = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     return Is, Js
 end
 
@@ -332,32 +346,37 @@ end
  function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      E   = eigs(P; nev=1, maxiter=1000, which=:LM)
-     π   = squeeze(real(E[2]), 2) # stationary distribution
-     ext = extrema(π)
+     Π   = squeeze(real(E[2]), 2) # stationary distribution
+     # TODO: replace by: Π   = squeeze(real(E[2]), dims=2) # stationary distribution
+     ext = extrema(Π)
      prod(ext) < 0 && throw(error("Both signs in stationary distribution"))
      if any(ext .< 0)
-         π .= -π
+         Π .= -Π
      end
-     return π
+     return Π
  end
 
  @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},
-                            π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+                            Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     πsqrt  = Diagonal(sqrt.(π))
-     πinv   = Diagonal(1./π)
-     return πsqrt * L * πinv * transpose(L) * πsqrt
+     Πsqrt  = Diagonal(sqrt.(Π))
+     Πinv   = Diagonal(inv.(Π))
+     return LinearMaps.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
+                    issymmetric=true, ishermitian=true, isposdef=true)
  end
 
  @inline function L_mul_Lt(L::AbstractMatrix{T},
-                            π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+                            Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     πsqrt = sqrt.(π)
-     πinvsqrt = 1 ./ πsqrt
-     scale!(πsqrt, L)
-     scale!(L, πinvsqrt)
+     Πsqrt = sqrt.(Π)
+     Πinvsqrt = inv.(Πsqrt)
+     scale!(Πsqrt, L)
+     # TODO: replace by LinearAlgebra.lmul!(Πsqrt, L)
+     scale!(L, Πinvsqrt)
+     # TODO: replace by LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
-     return LMap * transpose(LMap)
+     return LinearMaps.LinearMap(LMap * transpose(LMap); issymmetric=true,
+                ishermitian=true, isposdef=true)
  end
 
  """
@@ -371,19 +390,34 @@ end
  function diffusion_coordinates(P::LinMaps,n_coords::Int)
 
      N = LinAlg.checksquare(P)
+     # TODO: replace by N = LinearAlgebra.checksquare(P)
 
-     π = stationary_distribution(transpose(P))
+     Π = stationary_distribution(transpose(P))
 
      # Compute relevant SVD info for P by computing eigendecomposition of P*P'
-     L = L_mul_Lt(P, π)
+     L = L_mul_Lt(P, Π)
      E = eigs(L; nev=n_coords, maxiter=1000, which=:LM)
-     Σ = sqrt.(real.(E[1]))
-     Ψ = real(E[2])
+     # TODO: replace by E = IterativeEigensolvers.eigs(L; nev=n_coords, maxiter=1000, which=:LM)
+
+     # eigenvalues close to zero can be negative even though they
+     # should be positive.
+     drop_num_zeros(x) = abs(x) < eps(E[1][1]) ? zero(x) : x
+     Σ = drop_num_zeros.(E[1])
+
+     if any(Σ .< 0)
+         warn("Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
+            "Using absolute value instead.")
+     end
+
+     Σ .= (sqrt∘abs).(Σ)
+     Ψ = E[2]
 
      # Compute diffusion map Ψ and extract the diffusion coordinates
      scale!(Ψ,Σ)
-     @. π = 1 / sqrt(π)
-     scale!(π, Ψ)
+     # TODO: replace by LinearAlgebra.rmul!(Ψ, Σ)
+     @. Π = 1 / sqrt(Π)
+     scale!(Π, Ψ)
+     # TODO: replace by LinearAlgebra.rmul!(Π, Ψ)
      return Σ, Ψ
  end
 

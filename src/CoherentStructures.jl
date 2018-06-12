@@ -11,7 +11,7 @@ module CoherentStructures
     import Distances: eval_reduce, eval_end, pairwise, pairwise!
     import Interpolations
     import LinearMaps
-
+    # TODO: import LinearAlgebra, SparseArrays
     import GeometricalPredicates
     import VoronoiDelaunay
 
