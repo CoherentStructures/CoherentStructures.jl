@@ -139,14 +139,10 @@ function compute_returning_orbit(calT::Float64,
     β = real.(sqrt.(Complex.((calT - λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
-    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
+    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid()),
                         yspan, xspan)
-    function ηfield(u,p,t)
-        field = ηitp[u[2], u[1]]
-        du1 = field[1]
-        du2 = field[2]
-        return StaticArrays.SVector{2, T}(du1, du2)
-    end
+    ηfield = (u,p,t) -> ηitp[u[2], u[1]]
+
     prob = OrdinaryDiffEq.ODEProblem(ηfield,
             StaticArrays.SVector{2, T}(seed[1], seed[2]),
             (0.,20.))
