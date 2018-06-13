@@ -273,18 +273,18 @@ end
 """
     plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
         δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-        inplace=true,existing_plot=nothing,flip_y=false, check_inbounds=always_true)
+        existing_plot=nothing,flip_y=false, check_inbounds=always_true)
 
 Make a heatmap of a FTLE field using finite differences.
-If `inplace==true`, plot using `heatmap!` on top of `existing_plot`. If `flip_y` is true, then
-flip the y-coordinate (needed sometimes due to a bug in Plots).
+If `existing_plot` is given a value, plot using `heatmap!` on top of it.
+If `flip_y` is true, then flip the y-coordinate (needed sometimes due to a bug in Plots).
 Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. transparent).
 """
 function plot_ftle(
 		   odefun, p,tspan,
 		   LL, UR, nx=50,ny=50;δ=1e-9,
 		   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-		   inplace=true,existing_plot=nothing,flip_y=false, check_inbounds=always_true,
+		   existing_plot=nothing,flip_y=false, check_inbounds=always_true,
 		   kwargs...)
     x1 = collect(linspace(LL[1] + 1.e-8, UR[1] - 1.e-8,nx))
     x2 = collect(linspace(LL[2] + 1.e-8, UR[2] - 1.e-8,ny))
@@ -293,34 +293,33 @@ function plot_ftle(
     end
     #Initialize FTLE-field with NaNs
     FTLE = SharedArray{Float64,2}(ny,nx)
-    for I in CartesianRange(size(FTLE))
-	    FTLE[I] = NaN
-    end
+    FTLE .= NaN
     nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in eachindex(x1)
         nancounter_local = 0
         nonancounter_local = 0
         for j in eachindex(x2)
             if check_inbounds(x1[i],x2[j],p)
                 try
-                    FTLE[j,i] = 1.0/(2*(tspan[end]-tspan[1]))*
-		                          log(eigvals(eigfact(dott(linearized_flow(odefun,[x1[i],x2[j]],tspan,δ,tolerance=tolerance,p=p,solver=solver)[end])))[1])
+                    FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                      log(eigvals(eigfact(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
+                            tolerance=tolerance, p=p, solver=solver)))[2])
                     nonancounter_local += 1
                 catch e
                     nancounter_local += 1
                 end
             end
         end
-        (nancounter_local,nonancounter_local)
-        end
+        (nancounter_local, nonancounter_local)
+    end
 
     print("plot_ftle ignored $nancounter NaN values ($nonancounter were good)")
     if flip_y == true
-            x2 = reverse(x2)
-        x2 *= -1.0
+        x2 = reverse(x2)
+        x2 *= -1
     end
-    if inplace
-        return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
-    else
+    if existing_plot == nothing
         return Plots.heatmap(x1,x2,FTLE; kwargs...)
+    else
+        return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
     end
 end
