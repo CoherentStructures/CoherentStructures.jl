@@ -102,35 +102,114 @@ function flow(
     #       [leftSide,rightSide,topSide,bottomSide])...)
    #end
     num_args = DiffEqBase.numargs(odefun)
+    dim = length(u0)
     if num_args == 3
-        if typeof(u0) <: SA.SVector
-            sprob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
-            ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
-                                  save_everystep=false, dense=false,
-                                  reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-            return ssol.u
-        elseif length(u0) == 2
-            prob2 = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{2,T}(u0[1],u0[2]), (tspan[1],tspan[end]), p)
-            sol2 = OrdinaryDiffEq.solve(prob2, solver, saveat=tspan,
-                                  save_everystep=false, dense=false,
-                                  reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-            return sol2.u
-        elseif length(u0) == 3
-            prob3 = OrdinaryDiffEq.ODEProblem(odefun, SA.SVector{3,T}(u0[1],u0[2],u0[3]), (tspan[1],tspan[end]), p)
-            sol3 = OrdinaryDiffEq.solve(prob3, solver, saveat=tspan,
-                                  save_everystep=false, dense=false,
-                                  reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-            return sol3.u
+        if dim == 2
+            _flow(Val{false}, Val{2}, odefun, SA.SVector{2,T}(u0[1], u0[2]), tspan;
+                    tolerance = tolerance, p = p, solver = solver,
+                    #ctx_for_boundscheck=nothing,
+                    force_dtmin=force_dtmin)
+        elseif dim == 3
+            _flow(Val{false}, Val{3}, odefun, SA.SVector{3,T}(u0[1], u0[2], u0[3]), tspan;
+                    tolerance = tolerance, p = p, solver = solver,
+                    #ctx_for_boundscheck=nothing,
+                    force_dtmin=force_dtmin)
+        else
+            error("length(u0) ∉ [2,3]")
         end
     elseif num_args == 4
-        prob! = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
-        sol! = OrdinaryDiffEq.solve(prob!, solver, saveat=tspan,
-                              save_everystep=false, dense=false,
-                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-        return sol!.u
+        if dim == 2
+            _flow(Val{true}, Val{2}, odefun, Vector{T}(u0), tspan;
+                    tolerance = tolerance, p = p, solver = solver,
+                    #ctx_for_boundscheck=nothing,
+                    force_dtmin=force_dtmin)
+        elseif dim == 3
+            _flow(Val{true}, Val{3}, odefun, Vector{T}(u0), tspan;
+                    tolerance = tolerance, p = p, solver = solver,
+                    #ctx_for_boundscheck=nothing,
+                    force_dtmin=force_dtmin)
+        else
+            error("length(u0) ∉ [2,3]")
+        end
     else
-        error("length(u0) ∉ [2,3]")
+        error("vector field has wrong number of arguments, must be 3 or 4")
     end
+end
+
+function _flow(
+            ::Type{Val{false}},
+            ::Type{Val{2}},
+            odefun::Function,
+            u0::SA.SVector{2,T},
+            tspan::AbstractVector{S};
+            tolerance = default_tolerance,
+            p = nothing,
+            solver = default_solver,
+            #ctx_for_boundscheck=nothing,
+            force_dtmin=false
+        ) where {T <: Real, S <: Real}
+    prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                          save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    return sol.u
+end
+
+function _flow(
+            ::Type{Val{false}},
+            ::Type{Val{3}},
+            odefun::Function,
+            u0::SA.SVector{3,T},
+            tspan::AbstractVector{S};
+            tolerance = default_tolerance,
+            p = nothing,
+            solver = default_solver,
+            #ctx_for_boundscheck=nothing,
+            force_dtmin=false
+        ) where {T <: Real, S <: Real}
+    prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                          save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    return sol.u
+end
+
+function _flow(
+            ::Type{Val{true}},
+            ::Type{Val{2}},
+            odefun::Function,
+            u0::AbstractVector{T},
+            tspan::AbstractVector{S};
+            tolerance = default_tolerance,
+            p = nothing,
+            solver = default_solver,
+            #ctx_for_boundscheck=nothing,
+            force_dtmin=false
+        ) where {T <: Real, S <: Real}
+    prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                          save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    return sol.u
+end
+
+function _flow(
+            ::Type{Val{false}},
+            ::Type{Val{3}},
+            odefun::Function,
+            u0::AbstractVector{T},
+            tspan::AbstractVector{S};
+            tolerance = default_tolerance,
+            p = nothing,
+            solver = default_solver,
+            #ctx_for_boundscheck=nothing,
+            force_dtmin=false
+        ) where {T <: Real, S <: Real}
+    prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                          save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    return sol.u
 end
 
 """
@@ -291,55 +370,157 @@ function linearized_flow(
                         p=nothing
                     ) where {T <: Real, S <: Real}
 
-    num_tsteps = length(tspan)
     num_args = DiffEqBase.numargs(odefun)
     dim = length(u0)
-    dimsq = dim*dim
     if num_args == 3
-        if dim == 2
-            stencil2 = SA.SVector{8}(u0[1]+δ, u0[2]  ,
-                                     u0[1]  , u0[2]+δ,
-                                     u0[1]-δ, u0[2]  ,
-                                     u0[1]  , u0[2]-δ)
-            rhs2 = (u,p,t) -> arraymap2(u,p,t,odefun)
-            prob2 = OrdinaryDiffEq.ODEProblem(rhs2,stencil2,(tspan[1],tspan[end]),p)
-            sol2 = OrdinaryDiffEq.solve(prob2,solver,saveat=tspan,
-                                        save_everystep=false,
-                                        dense=false,
-                                        reltol=tolerance,abstol=tolerance).u
-			return map(s -> Tensors.Tensor{2,2}((s[1:4] - s[5:8]) / 2δ), sol2)
-        elseif dim == 3
-            stencil3 = SA.SVector{18}(
-                    u0[1] + δ, u0[2]    , u0[3]    ,
-                    u0[1]    , u0[2] + δ, u0[3]    ,
-                    u0[1]    , u0[2]    , u0[3] + δ,
-                    u0[1] - δ, u0[2]    , u0[3]    ,
-                    u0[1]    , u0[2] - δ, u0[3]    ,
-                    u0[1]    , u0[2]    , u0[3] - δ)
-            rhs3 = (u,p,t) -> arraymap3(u,p,t,odefun)
-            prob3 = OrdinaryDiffEq.ODEProblem(rhs3,stencil3,(tspan[1],tspan[end]),p)
-            sol3 = OrdinaryDiffEq.solve(prob3,solver,saveat=tspan,
-                                        save_everystep=false,dense=false,
-                                        reltol=tolerance,abstol=tolerance).u
-            return map(s -> Tensors.Tensor{2,3}((s[1:9] - s[10:18]) / 2δ), sol3)
+        if iszero(δ)
+            if dim == 2
+                _linearized_flow(Val{false}, Val{2}, odefun, u0, tspan;
+                                tolerance = tolerance, p = p, solver = solver)
+            elseif dim == 3
+                _linearized_flow(Val{false}, Val{3}, odefun, u0, tspan;
+                                tolerance = tolerance, p = p, solver = solver)
+            else
+                error("length(u0) ∉ [2,3]")
+            end
         else
-            error("length(u0) ∉ [2,3]")
+            if dim == 2
+                _linearized_flow(Val{false}, Val{2}, odefun, u0, tspan, δ;
+                                tolerance = tolerance, p = p, solver = solver)
+            elseif dim == 3
+                _linearized_flow(Val{false}, Val{3}, odefun, u0, tspan, δ;
+                                tolerance = tolerance, p = p, solver = solver)
+            else
+                error("length(u0) ∉ [2,3]")
+            end
         end
     elseif num_args == 4
-        if (dim == 2) || (dim == 3)
-            stencil = [vec(u0 .+ delta*eye(dim)); vec(u0 .- delta*eye(dim))]
-            rhs! = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,2dim,dim)
-            prob! = OrdinaryDiffEq.ODEProblem(rhs!,stencil,(tspan[1],tspan[end]),p)
-            sol! = OrdinaryDiffEq.solve(prob!,solver,saveat=tspan,
-                                        save_everystep=false,dense=false,
-                                        reltol=tolerance,abstol=tolerance).u
-            return map(s -> Tensors.Tensor{2,dim}((s[1:dimsq] - s[dimsq+1:2dimsq]) / 2δ), sol!)
+        if iszero(δ)
+            if dim == 2
+                _linearized_flow(Val{true}, Val{2}, odefun, u0, tspan;
+                                tolerance = tolerance, p = p, solver = solver)
+            elseif dim == 3
+                _linearized_flow(Val{true}, Val{3}, odefun, u0, tspan;
+                                tolerance = tolerance, p = p, solver = solver)
+            else
+                error("length(u0) ∉ [2,3]")
+            end
         else
-            error("length(u0) ∉ [2,3]")
+            if dim == 2
+                _linearized_flow(Val{true}, Val{2}, odefun, u0, tspan, δ;
+                                tolerance = tolerance, p = p, solver = solver)
+            elseif dim == 3
+                _linearized_flow(Val{true}, Val{3}, odefun, u0, tspan, δ;
+                                tolerance = tolerance, p = p, solver = solver)
+            else
+                error("length(u0) ∉ [2,3]")
+            end
         end
     else
-        error("odefun has invalid number of arguments")
+        error("vector field has wrong number of arguments, must be 3 or 4")
     end
+end
+
+function _linearized_flow(
+                        ::Type{Val{false}},
+                        ::Type{Val{2}},
+                        odefun,
+                        u0::AbstractVector{T},
+                        tspan::AbstractVector{S},
+                        δ::Real;
+                        tolerance=default_tolerance,
+                        solver=default_solver,
+                        p=nothing
+                    )::Vector{Tensors.Tensor{2,2}} where {T <: Real, S <: Real}
+
+    stencil = SA.SVector{8}(u0[1]+δ, u0[2]  ,
+                             u0[1]  , u0[2]+δ,
+                             u0[1]-δ, u0[2]  ,
+                             u0[1]  , u0[2]-δ)
+    rhs = (u,p,t) -> arraymap2(u,p,t,odefun)
+    prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,
+                                save_everystep=false,
+                                dense=false,
+                                reltol=tolerance,abstol=tolerance).u
+    return map(s -> Tensors.Tensor{2,2}((s[1:4] - s[5:8]) / 2δ), sol)
+end
+
+function _linearized_flow(
+                        ::Type{Val{false}},
+                        ::Type{Val{3}},
+                        odefun,
+                        u0::AbstractVector{T},
+                        tspan::AbstractVector{S},
+                        δ::Real;
+                        tolerance=default_tolerance,
+                        solver=default_solver,
+                        p=nothing
+                    )::Vector{Tensors.Tensor{2,3}} where {T <: Real, S <: Real}
+
+    stencil = SA.SVector{18}(
+            u0[1] + δ, u0[2]    , u0[3]    ,
+            u0[1]    , u0[2] + δ, u0[3]    ,
+            u0[1]    , u0[2]    , u0[3] + δ,
+            u0[1] - δ, u0[2]    , u0[3]    ,
+            u0[1]    , u0[2] - δ, u0[3]    ,
+            u0[1]    , u0[2]    , u0[3] - δ)
+    rhs = (u,p,t) -> arraymap3(u,p,t,odefun)
+    prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,
+                                save_everystep=false,dense=false,
+                                reltol=tolerance,abstol=tolerance).u
+    return map(s -> Tensors.Tensor{2,3}((s[1:9] - s[10:18]) / 2δ), sol)
+end
+
+function _linearized_flow(
+                        ::Type{Val{true}},
+                        ::Type{Val{2}},
+                        odefun,
+                        u0::AbstractVector{T},
+                        tspan::AbstractVector{S},
+                        δ::Real;
+                        tolerance=default_tolerance,
+                        solver=default_solver,
+                        p=nothing
+                    )::Vector{Tensors.Tensor{2,2}} where {T <: Real, S <: Real}
+
+    stencil = [u0[1]+δ, u0[2], u0[1], u0[2]+δ, u0[1]-δ, u0[2], u0[1], u0[2]-δ]
+    rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
+    prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,
+                                save_everystep=false,
+                                dense=false,
+                                reltol=tolerance,abstol=tolerance).u
+    return map(s -> Tensors.Tensor{2,2}((s[1:4] - s[5:8]) / 2δ), sol)
+end
+
+function _linearized_flow(
+                        ::Type{Val{true}},
+                        ::Type{Val{3}},
+                        odefun,
+                        u0::AbstractVector{T},
+                        tspan::AbstractVector{S},
+                        δ::Real;
+                        tolerance=default_tolerance,
+                        solver=default_solver,
+                        p=nothing
+                    )::Vector{Tensors.Tensor{2,3}} where {T <: Real, S <: Real}
+
+    stencil = [
+                u0[1] + δ, u0[2]    , u0[3]    ,
+                u0[1]    , u0[2] + δ, u0[3]    ,
+                u0[1]    , u0[2]    , u0[3] + δ,
+                u0[1] - δ, u0[2]    , u0[3]    ,
+                u0[1]    , u0[2] - δ, u0[3]    ,
+                u0[1]    , u0[2]    , u0[3] - δ
+               ]
+    rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 6, 3)
+    prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
+    sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,
+                                save_everystep=false,dense=false,
+                                reltol=tolerance,abstol=tolerance).u
+    return map(s -> Tensors.Tensor{2,3}((s[1:9] - s[10:18]) / 2δ), sol)
 end
 
 """
@@ -435,11 +616,7 @@ function pullback_tensors(
         ) where {T <: Real, S <: Real, dim, N}
 
     G = inv(D)
-
-    iszero(δ) ?
-        DF = linearized_flow(odefun, u, tspan;    kwargs...) :
-        DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-
+    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     MT = [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
     DF .= inv.(DF)
     DT = [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
@@ -472,10 +649,7 @@ Derivatives are computed with finite differences.
             solver = OrdinaryDiffEq.BS5()
         ) where {T <: Real, S <: Real, dim, N}
 
-    iszero(δ) ?
-        DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
-
+    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     return [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
 end
 
@@ -502,14 +676,11 @@ Derivatives are computed with finite differences.
             kwargs...
         ) where {T <: Real, S <: Real, dim, N}
 
-    iszero(δ) ?
-        DF = linearized_flow(odefun,u,tspan;    kwargs...) :
-        DF = linearized_flow(odefun,u,tspan, δ; kwargs...)
-
-    DF .= inv.(DF)
-    return [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
+    DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...))
+    return [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DFinv]
 end
 
+# TODO: this function likely doesn't work, uses an unsupported give_back_position keyword argument
 function pullback_diffusion_tensor_function(
             odefun,
             u::AbstractVector{T},
@@ -556,11 +727,8 @@ Derivatives are computed with finite differences.
                 kwargs...
             ) where {T <: Real, S <: Real, dim, N}
 
-    iszero(δ) ?
-        DF = linearized_flow(odefun, u, tspan;    kwargs...) :
-        DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    DF .= inv.(DF)
-    return [df ⋅ B for df in DF]
+    DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...))
+    return [df ⋅ B for df in DFinv]
 end
 
 """
@@ -590,10 +758,7 @@ function av_weighted_CG_tensor(
         ) where {T <: Real, S <: Real, dim, N}
 
     G = inv(D)
-    iszero(δ) ?
-        DF = linearized_flow(odefun, u, tspan,    p=p, tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun, u, tspan, δ, p=p, tolerance=tolerance, solver=solver)
-
+    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     return det(D) * mean([Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
 end
 
@@ -619,10 +784,7 @@ function pullback_tensors_geo(
     G = inv(D)
     met2deg_init = met2deg(u)
     sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
-    iszero(δ) ?
-        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-
+    DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)
     PBmet = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
     PBdiff = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
@@ -640,12 +802,9 @@ function pullback_metric_tensor_geo(
         ) where {T<:Real, S <: Real, dim, N}
 
     met2deg_init = met2deg(u)
-    sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
-    iszero(δ) ?
-        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-
-    PB = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
+    sol = flow(odefun, u, tspan, solver=solver, tolerance=tolerance, p=p)
+    DF = linearized_flow(odefun, u, tspan, δ; p=p, tolerance=tolerance, solver=solver)
+    PB = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF, sol)]
     return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
 
@@ -661,10 +820,7 @@ function pullback_diffusion_tensor_geo(
             ) where {T<:Real, S <: Real, dim, N}
 
     sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
-    iszero(δ) ?
-        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-
+    DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)
     PB = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
 end
@@ -681,10 +837,7 @@ function pullback_SDE_diffusion_tensor_geo(
             ) where {T<:Real, S <: Real, dim, N}
 
     sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
-    iszero(δ) ?
-        DF = linearized_flow(odefun,u,tspan,    p=p,tolerance=tolerance, solver=solver) :
-        DF = linearized_flow(odefun,u,tspan, δ, p=p,tolerance=tolerance, solver=solver)
-
+    DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)
     B = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
     return B
 end
