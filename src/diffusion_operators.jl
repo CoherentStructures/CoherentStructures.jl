@@ -64,15 +64,17 @@ function diff_op(data::AbstractMatrix{T},
 
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
-    Is, Js = findn(D .< sp_method.ϵ)
-    Vs = kernel.(D[D .< sp_method.ϵ])
+    Is::Vector{Int}, Js::Vector{Int} = findn(D .< sp_method.ϵ)
+    Vs::Vector{T} = kernel.(D[D .< sp_method.ϵ])
     # TODO: Julia 0.7+ version
     # CIs = findall(D .< sp_method.ϵ)
-    # Is = [i[1] for i in CIs]
-    # Js = [i[2] for i in CIs]
-    # Vs = kernel.([D[i] for i in CIs])
+    # Is::Vector{Int} = [i[1] for i in CIs]
+    # Js::Vector{Int} = [i[2] for i in CIs]
+    # Vs::Vector{T} = kernel.([D[i] for i in CIs])
     P = sparse(Is, Js, Vs, N, N)
-    α_normalize!(P, α)
+    if α>0
+        α_normalize!(P, α)
+    end
     wLap_normalize!(P)
     return P
 end
@@ -102,7 +104,9 @@ function diff_op(data::AbstractMatrix{T},
     P = sparse(Is, Js, Vs, N, N)
     @. P = min(P, transpose(P))
     # TODO: replace by @. P = min(P, PermutedDimsArray(P, (2,1)))
-    α_normalize!(P, α)
+    if α>0
+        α_normalize!(P, α)
+    end
     wLap_normalize!(P)
     return P
 end
@@ -169,7 +173,9 @@ Return a sparse diffusion/Markov matrix `P`.
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
     P = sparseaffinitykernel(data, sp_method, kernel, metric)
-    α_normalize!(P, α)
+    if α>0
+        α_normalize!(P, α)
+    end
     wLap_normalize!(P)
     return P
 end
@@ -185,22 +191,22 @@ Default metric is `Euclidean()`.
 
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
                                sp_method::mutualKNN,
-                               kernel,
+                               kernel=gaussian_kernel,
                                metric::Distances.PreMetric = Distances.Euclidean()
                                ) where T <: Real
     dim, N = size(data)
 
     if typeof(metric) <: NearestNeighbors.MinkowskiMetric
-        tree = NearestNeighbors.KDTree(data, metric;  leafsize = metric == STmetric ? 20 : 10)
+        tree = NearestNeighbors.KDTree(data, metric;  leafsize = 10)
     else
-        tree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
+        tree = NearestNeighbors.BallTree(data, metric; leafsize = 10)
     end
-    idxs, dists = NearestNeighbors.knn(tree, data, sp_method.k, false)
-    J = vcat(idxs...)
-    I = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
-    V = kernel.(vcat(dists...))
-    W = sparse(I, J, V, N, N)
-    Base.SparseArrays.droptol!(W,eps(T))
+    idxs::Vector{Vector{Int}}, dists::Vector{Vector{T}} = NearestNeighbors.knn(tree, data, sp_method.k, false)
+    Js::Vector{Int} = vcat(idxs...)
+    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Vs::Vector{T} = kernel.(vcat(dists...))
+    W = sparse(Is, Js, Vs, N, N)
+    Base.SparseArrays.droptol!(W,eps(eltype(W)))
     return min.(W, transpose(W))
     # TODO: Replace by return min.(W, PermutedDimsArray(W, (2,1)))
 end
@@ -233,7 +239,7 @@ $ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
 
 @inline function α_normalize!(A::AbstractMatrix, α::S = 0.5) where S <: Real
     LinAlg.checksquare(A)
-    qₑ = squeeze(sum(A,2), 2) .^-α
+    qₑ = 1 ./ squeeze(sum(A,2), 2) .^ α
     # TODO: replace by qₑ = squeeze(sum(A, dims=2), dims=2) .^-α
     scale!(A, qₑ)
     # TODO: replace by LinearAlgebra.rmul!(A, qₑ)
@@ -290,9 +296,9 @@ function sparse_adjacency(data::AbstractMatrix{T},
         println("Timestep $t/$q done")
         I, J
     end
-    Is = vcat([ijs[1] for ijs in IJs]...)
-    Js = vcat([ijs[2] for ijs in IJs]...)
-    Vs = fill(true,length(Is))
+    Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
+    Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
+    Vs::Vector{Bool} = fill(true,length(Is))
     return sparse(Is, Js, Vs, N, N)
 end
 
@@ -328,8 +334,8 @@ Return two lists of indices of data points that are adjacent.
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
     balltree = NearestNeighbors.BallTree(data, metric)
     idxs = NearestNeighbors.inrange(balltree, data, ε, false)
-    Js = vcat(idxs...)
-    Is = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Js::Vector{Int} = vcat(idxs...)
+    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     return Is, Js
 end
 
