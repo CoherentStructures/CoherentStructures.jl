@@ -1,7 +1,7 @@
 # (c) 2018 Daniel Karrasch
 
 const ITP = Interpolations
-
+# TODO: replace find -> findall
 """
     singularity_location_detection(T,xspan,yspan)
 
@@ -139,22 +139,16 @@ function compute_returning_orbit(calT::Float64,
     β = real.(sqrt.(Complex.((calT - λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
-    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
+    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid()),
                         yspan, xspan)
-    function ηfield(u,p,t)
-        field = ηitp[u[2], u[1]]
-        du1 = field[1]
-        du2 = field[2]
-        return StaticArrays.SVector{2, T}(du1, du2)
-    end
-    prob = OrdinaryDiffEq.ODEProblem(ηfield,
-            StaticArrays.SVector{2, T}(seed[1], seed[2]),
-            (0.,20.))
-    condition(u,t,integrator) = u[2] - seed[2]#+10*eps(seed[2])
+    ηfield = (u,p,t) -> ηitp[u[2], u[1]]
+
+    prob = OrdinaryDiffEq.ODEProblem(ηfield, StaticArrays.SVector{2}(seed[1], seed[2]), (0.,20.))
+    condition(u,t,integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=2e3,
-            dense=false, reltol=1e-8, abstol=1e-8, callback=cb, verbose=false).u #,dtmin=1e-3
+            dense=false, reltol=1e-8, abstol=1e-8, callback=cb, verbose=false).u
 end
 
 function Poincaré_return_distance(calT::Float64,

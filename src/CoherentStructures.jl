@@ -3,7 +3,7 @@ module CoherentStructures
     import StaticArrays
 
     import Tensors
-    using Tensors.otimes, Tensors.dot
+    using Tensors: otimes, dot, ⊗, ⋅
 
     import DiffEqBase, OrdinaryDiffEq
     import Contour, Distances, NearestNeighbors
@@ -11,7 +11,7 @@ module CoherentStructures
     import Distances: eval_reduce, eval_end, pairwise, pairwise!
     import Interpolations
     import LinearMaps
-
+    # TODO: import LinearAlgebra, SparseArrays
     import GeometricalPredicates
     import VoronoiDelaunay
 
