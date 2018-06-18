@@ -1,9 +1,9 @@
 using CoherentStructures
 
 
-#ctx = regularP2QuadrilateralGrid((25,25))
+ctx = regularP2QuadrilateralGrid((25,25))
 
-begin
+@time begin
     cgfun = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx,lumped=false)

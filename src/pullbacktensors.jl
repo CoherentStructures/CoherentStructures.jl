@@ -248,179 +248,182 @@ end
 Calculate derivative of flow map by finite differences. Return time-resolved
 linearized flow maps.
 """
-# @inline function linearized_flow(
-#             odefun::Function,
-#             x::SA.SVector{2,T},
-#             tspan::AbstractVector{Float64},
-#             δ::Float64;
-#             tolerance=default_tolerance,
-#             solver=default_solver,
-#             p=nothing,
-#             kwargs...
-#         )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real}
-#
-#     num_tsteps = length(tspan)
-#     num_args = DiffEqBase.numargs(odefun)
-#     if num_args == 4
-#         dx = [δ, zero(δ)];
-#         dy = [zero(δ), δ];
-#
-#         #In order to solve only one ODE, write all the initial values
-#         #one after the other in one big vector
-#         stencil::Vector{T} = zeros(T, 8)
-#         @inbounds stencil[1:2] .= x .+ dx
-#         @inbounds stencil[3:4] .= x .+ dy
-#         @inbounds stencil[5:6] .= x .- dx
-#         @inbounds stencil[7:8] .= x .- dy
-#
-#         rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
-#         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
-#         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-#         return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), sol)
-#     elseif num_args == 3
-#         #In order to solve only one ODE, write all the initial values
-#         #one after the other in one big vector
-#         sstencil::SA.SVector{8,Float64} = SA.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
-#         srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
-#         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
-#         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-#         return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), ssol)
-#     else
-#         error("odefun has invalid number of arguments")
-#     end
-# end
-#
-# @inline function linearized_flow(
-#             odefun::Function,
-#             x::SA.SVector{3,T},
-#             tspan::AbstractVector{Float64},
-#             δ::Float64;
-#             tolerance=default_tolerance,
-#             solver=default_solver,
-#             p=nothing,
-#             kwargs...
-#         )::Vector{Tensors.Tensor{2,3,T,9}} where {T <: Real}
-#
-#     num_tsteps = length(tspan)
-#     num_args = DiffEqBase.numargs(odefun)
-#     if num_args == 4
-#         dx = [δ, zero(δ), zero(δ)]
-#         dy = [zero(δ), δ, zero(δ)]
-#         dz = [zero(δ), zero(δ), δ]
-#
-#         #In order to solve only one ODE, write all the initial values
-#         #one after the other in one big vector
-#         stencil3::Vector{T} = zeros(T, 18)
-#         @inbounds stencil3[1:3] .= x .+ dx
-#         @inbounds stencil3[4:6] .= x .+ dy
-#         @inbounds stencil3[7:9] .= x .+ dz
-#         @inbounds stencil3[10:12] .= x .- dx
-#         @inbounds stencil3[13:15] .= x .- dy
-#         @inbounds stencil3[16:18] .= x .- dz
-#
-#         rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,6,3)
-#         prob = OrdinaryDiffEq.ODEProblem(rhs,stencil3,(tspan[1],tspan[end]),p)
-#         sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-#         return map(s->Tensors.Tensor{2,3}((s[1:9] - s[10:18])/2δ), sol)
-#     elseif num_args == 3
-#         #In order to solve only one ODE, write all the initial values
-#         #one after the other in one big vector
-#         sstencil::StaticArrays.SVector{18,Float64} = SA.SVector{18,T}(
-#                 x[1] + δ, x[2], x[3],
-#                 x[1], x[2] + δ, x[3],
-#                 x[1], x[2], x[3] + δ,
-#                 x[1] - δ, x[2], x[3],
-#                 x[1], x[2] - δ, x[3],
-#                 x[1], x[2], x[3] - δ
-#                 )
-#         srhs = (u,p,t) -> arraymap3(u,p,t,odefun)
-#         sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
-#         ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-#         return map(s->Tensors.Tensor{2,3}((s[1:9] - s[10:18])/2δ), ssol)
-#     else
-#         error("odefun has invalid number of arguments")
-#     end
-# end
-#
-# @inline function linearized_flow(odefun::Function, u::Tensors.Vec{2,T},args...;kwargs...)::Vector{Tensors.Tensor{2,2,T,4}} where {T<:Real}
-#     return linearized_flow(odefun, SA.SVector{2,T}(u),args...;kwargs...)
-# end
-#
-# @inline function linearized_flow(odefun::Function, u::Tensors.Vec{3,T},args...;kwargs...)::Vector{Tensors.Tensor{2,3,T,9}} where {T<:Real}
-#     return linearized_flow(odefun, SA.SVector{3,T}(u),args...;kwargs...)
-# end
-#
-# @inline function linearized_flow(odefun::Function, u::AbstractVector{T},args...;kwargs...) where {T<:Real}
-#     if length(u) == 2
-#         return linearized_flow(odefun, SA.SVector{2,T}(u[1],u[2]),args...;kwargs...)
-#     elseif length(u) == 3
-#         return linearized_flow(odefun, SA.SVector{3,T}(u[1],u[2],u[3]),args...;kwargs...)
-#     else
-#         error("length(u) ∉ [2,3]")
-#     end
-# end
+@inline function linearized_flow(
+            odefun::Function,
+            x::SA.SVector{2,T},
+            tspan::AbstractVector{Float64},
+            δ::Float64;
+            tolerance=default_tolerance,
+            solver=default_solver,
+            p=nothing,
+            kwargs...
+        )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real}
 
-function linearized_flow(
-                        odefun,
-                        u0::AbstractVector{T},
-                        tspan::AbstractVector{S},
-                        δ::Real;
-                        tolerance=default_tolerance,
-                        solver=default_solver,
-                        p=nothing
-                    ) where {T <: Real, S <: Real}
-
+    num_tsteps = length(tspan)
     num_args = DiffEqBase.numargs(odefun)
-    dim = length(u0)
-    if num_args == 3
-        if iszero(δ)
-            if dim == 2
-                _linearized_flow(Val{false}, Val{2}, odefun, u0, tspan;
-                                tolerance = tolerance, p = p, solver = solver)
-            elseif dim == 3
-                _linearized_flow(Val{false}, Val{3}, odefun, u0, tspan;
-                                tolerance = tolerance, p = p, solver = solver)
-            else
-                error("length(u0) ∉ [2,3]")
-            end
-        else
-            if dim == 2
-                _linearized_flow(Val{false}, Val{2}, odefun, u0, tspan, δ;
-                                tolerance = tolerance, p = p, solver = solver)
-            elseif dim == 3
-                _linearized_flow(Val{false}, Val{3}, odefun, u0, tspan, δ;
-                                tolerance = tolerance, p = p, solver = solver)
-            else
-                error("length(u0) ∉ [2,3]")
-            end
-        end
-    elseif num_args == 4
-        if iszero(δ)
-            if dim == 2
-                _linearized_flow(Val{true}, Val{2}, odefun, u0, tspan;
-                                tolerance = tolerance, p = p, solver = solver)
-            elseif dim == 3
-                _linearized_flow(Val{true}, Val{3}, odefun, u0, tspan;
-                                tolerance = tolerance, p = p, solver = solver)
-            else
-                error("length(u0) ∉ [2,3]")
-            end
-        else
-            if dim == 2
-                _linearized_flow(Val{true}, Val{2}, odefun, u0, tspan, δ;
-                                tolerance = tolerance, p = p, solver = solver)
-            elseif dim == 3
-                _linearized_flow(Val{true}, Val{3}, odefun, u0, tspan, δ;
-                                tolerance = tolerance, p = p, solver = solver)
-            else
-                error("length(u0) ∉ [2,3]")
-            end
-        end
+    if num_args == 4
+        dx = [δ, zero(δ)];
+        dy = [zero(δ), δ];
+
+        #In order to solve only one ODE, write all the initial values
+        #one after the other in one big vector
+        stencil::Vector{T} = zeros(T, 8)
+        @inbounds stencil[1:2] .= x .+ dx
+        @inbounds stencil[3:4] .= x .+ dy
+        @inbounds stencil[5:6] .= x .- dx
+        @inbounds stencil[7:8] .= x .- dy
+
+        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
+        prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
+        sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+        return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), sol)
+    elseif num_args == 3
+        #In order to solve only one ODE, write all the initial values
+        #one after the other in one big vector
+        sstencil::SA.SVector{8,Float64} = SA.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
+        srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
+        sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
+        ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+        return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), ssol)
     else
-        error("vector field has wrong number of arguments, must be 3 or 4")
+        error("odefun has invalid number of arguments")
     end
 end
 
+@inline function linearized_flow(
+            odefun::Function,
+            x::SA.SVector{3,T},
+            tspan::AbstractVector{Float64},
+            δ::Float64;
+            tolerance=default_tolerance,
+            solver=default_solver,
+            p=nothing,
+            kwargs...
+        )::Vector{Tensors.Tensor{2,3,T,9}} where {T <: Real}
+
+    num_tsteps = length(tspan)
+    num_args = DiffEqBase.numargs(odefun)
+    if num_args == 4
+        dx = [δ, zero(δ), zero(δ)]
+        dy = [zero(δ), δ, zero(δ)]
+        dz = [zero(δ), zero(δ), δ]
+
+        #In order to solve only one ODE, write all the initial values
+        #one after the other in one big vector
+        stencil3::Vector{T} = zeros(T, 18)
+        @inbounds stencil3[1:3] .= x .+ dx
+        @inbounds stencil3[4:6] .= x .+ dy
+        @inbounds stencil3[7:9] .= x .+ dz
+        @inbounds stencil3[10:12] .= x .- dx
+        @inbounds stencil3[13:15] .= x .- dy
+        @inbounds stencil3[16:18] .= x .- dz
+
+        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,6,3)
+        prob = OrdinaryDiffEq.ODEProblem(rhs,stencil3,(tspan[1],tspan[end]),p)
+        sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+        return map(s->Tensors.Tensor{2,3}((s[1:9] - s[10:18])/2δ), sol)
+    elseif num_args == 3
+        #In order to solve only one ODE, write all the initial values
+        #one after the other in one big vector
+        sstencil::StaticArrays.SVector{18,Float64} = SA.SVector{18,T}(
+                x[1] + δ, x[2], x[3],
+                x[1], x[2] + δ, x[3],
+                x[1], x[2], x[3] + δ,
+                x[1] - δ, x[2], x[3],
+                x[1], x[2] - δ, x[3],
+                x[1], x[2], x[3] - δ
+                )
+        srhs = (u,p,t) -> arraymap3(u,p,t,odefun)
+        sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
+        ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+        return map(s->Tensors.Tensor{2,3}((s[1:9] - s[10:18])/2δ), ssol)
+    else
+        error("odefun has invalid number of arguments")
+    end
+end
+
+@inline function linearized_flow(odefun::Function, u::Tensors.Vec{2,T},args...;kwargs...)::Vector{Tensors.Tensor{2,2,T,4}} where {T<:Real}
+    return linearized_flow(odefun, SA.SVector{2,T}(u),args...;kwargs...)
+end
+
+@inline function linearized_flow(odefun::Function, u::Tensors.Vec{3,T},args...;kwargs...)::Vector{Tensors.Tensor{2,3,T,9}} where {T<:Real}
+    return linearized_flow(odefun, SA.SVector{3,T}(u),args...;kwargs...)
+end
+
+@inline function linearized_flow(odefun::Function, u::AbstractVector{T},args...;kwargs...) where {T<:Real}
+    if length(u) == 2
+        return linearized_flow(odefun, SA.SVector{2,T}(u[1],u[2]),args...;kwargs...)
+    elseif length(u) == 3
+        return linearized_flow(odefun, SA.SVector{3,T}(u[1],u[2],u[3]),args...;kwargs...)
+    else
+        error("length(u) ∉ [2,3]")
+    end
+end
+
+# function linearized_flow(
+#                         odefun,
+#                         u0::AbstractVector{T},
+#                         tspan::AbstractVector{S},
+#                         δ::Real;
+#                         tolerance=default_tolerance,
+#                         solver=default_solver,
+#                         p=nothing
+#                     ) where {T <: Real, S <: Real}
+#
+#     num_args = DiffEqBase.numargs(odefun)
+#     dim = length(u0)
+#     if num_args == 3
+#         if iszero(δ)
+#             if dim == 2
+#                 _linearized_flow(Val{false}, Val{2}, odefun, u0, tspan;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             elseif dim == 3
+#                 _linearized_flow(Val{false}, Val{3}, odefun, u0, tspan;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             else
+#                 error("length(u0) ∉ [2,3]")
+#             end
+#         else
+#             if dim == 2
+#                 _linearized_flow(Val{false}, Val{2}, odefun, u0, tspan, δ;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             elseif dim == 3
+#                 _linearized_flow(Val{false}, Val{3}, odefun, u0, tspan, δ;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             else
+#                 error("length(u0) ∉ [2,3]")
+#             end
+#         end
+#     elseif num_args == 4
+#         if iszero(δ)
+#             if dim == 2
+#                 _linearized_flow(Val{true}, Val{2}, odefun, u0, tspan;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             elseif dim == 3
+#                 _linearized_flow(Val{true}, Val{3}, odefun, u0, tspan;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             else
+#                 error("length(u0) ∉ [2,3]")
+#             end
+#         else
+#             if dim == 2
+#                 _linearized_flow(Val{true}, Val{2}, odefun, u0, tspan, δ;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             elseif dim == 3
+#                 _linearized_flow(Val{true}, Val{3}, odefun, u0, tspan, δ;
+#                                 tolerance = tolerance, p = p, solver = solver)
+#             else
+#                 error("length(u0) ∉ [2,3]")
+#             end
+#         end
+#     else
+#         error("vector field has wrong number of arguments, must be 3 or 4")
+#     end
+# end
+
+"""
+    _linearized_flow(Val{vector field is in-place::Bool}, Val{dimension::Int},args)
+"""
 function _linearized_flow(
                         ::Type{Val{false}},
                         ::Type{Val{2}},
@@ -431,9 +434,9 @@ function _linearized_flow(
                         tolerance=default_tolerance,
                         solver=default_solver,
                         p=nothing
-                    )::Vector{Tensors.Tensor{2,2}} where {T <: Real, S <: Real}
+                    )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real, S <: Real}
 
-    stencil = SA.SVector{8}(u0[1]+δ, u0[2]  ,
+    stencil = SA.SVector{8}( u0[1]+δ, u0[2]  ,
                              u0[1]  , u0[2]+δ,
                              u0[1]-δ, u0[2]  ,
                              u0[1]  , u0[2]-δ)
@@ -456,7 +459,7 @@ function _linearized_flow(
                         tolerance=default_tolerance,
                         solver=default_solver,
                         p=nothing
-                    )::Vector{Tensors.Tensor{2,3}} where {T <: Real, S <: Real}
+                    )::Vector{Tensors.Tensor{2,3,T,9}} where {T <: Real, S <: Real}
 
     stencil = SA.SVector{18}(
             u0[1] + δ, u0[2]    , u0[3]    ,
@@ -483,7 +486,7 @@ function _linearized_flow(
                         tolerance=default_tolerance,
                         solver=default_solver,
                         p=nothing
-                    )::Vector{Tensors.Tensor{2,2}} where {T <: Real, S <: Real}
+                    )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real, S <: Real}
 
     stencil = [u0[1]+δ, u0[2], u0[1], u0[2]+δ, u0[1]-δ, u0[2], u0[1], u0[2]-δ]
     rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
@@ -505,7 +508,7 @@ function _linearized_flow(
                         tolerance=default_tolerance,
                         solver=default_solver,
                         p=nothing
-                    )::Vector{Tensors.Tensor{2,3}} where {T <: Real, S <: Real}
+                    )::Vector{Tensors.Tensor{2,3,T,9}} where {T <: Real, S <: Real}
 
     stencil = [
                 u0[1] + δ, u0[2]    , u0[3]    ,
