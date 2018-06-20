@@ -150,12 +150,12 @@ function extendedRHSStiff!(A, u, p, t)
     ctx = p["ctx"]
     κ = p["κ"]
     K = assembleStiffnessMatrix(ctx, PCDiffTensors, invDiffTensors)
-    I, J, V = findnz(K)
+    Is, Js, Vs = findnz(K)
     M = assembleMassMatrix(ctx, lumped=true)
-    for index in eachindex(I, J, V)
-        i = I[index]
-        j = J[index]
-        A[i,j] = κ * V[index] / M[i,i]
+    for index in eachindex(Is, Js, Vs)
+        i = Is[index]
+        j = Js[index]
+        A[i,j] = κ * Vs[index] / M[i,i]
     end
     print("t = $t")
     return A

@@ -65,12 +65,12 @@ function diff_op(data::AbstractMatrix{T},
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
     Is::Vector{Int}, Js::Vector{Int} = findn(D .< sp_method.ε)
-    Vs::Vector{T} = kernel.(D[D .< sp_method.ε])
+    Vs::Vector{T} = kernel.(vec(D[Is, Js]))
     # TODO: Julia 0.7+ version
-    # CIs = findall(D .< sp_method.ε)
+    # CIs::Vector{CartesianIndex{2}} = findall(D .<= sp_method.ε)
     # Is::Vector{Int} = [i[1] for i in CIs]
     # Js::Vector{Int} = [i[2] for i in CIs]
-    # Vs::Vector{T} = kernel.([D[i] for i in CIs])
+    # Vs::Vector{T} = kernel.(D[CIs])
     P = sparse(Is, Js, Vs, N, N)
     if α>0
         α_normalize!(P, α)
