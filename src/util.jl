@@ -62,12 +62,14 @@ All variables have the same array arrangement as `T`; e.g., `λ₁` is a
 """
 
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
-    Efact = eigfact.(T)
-    λ₁ = [ev[1] for ev in eigvals.(Efact)]
-    λ₂ = [ev[2] for ev in eigvals.(Efact)]
-    ξ₁ = [ev[:,1] for ev in eigvecs.(Efact)]
-    ξ₂ = [ev[:,2] for ev in eigvecs.(Efact)]
+    E = eigfact.(T)
+    # TODO: replace by E = eigen.(T)
+    λ₁ = [ev[1] for ev in eigvals.(E)]
+    λ₂ = [ev[2] for ev in eigvals.(E)]
+    ξ₁ = [ev[:,1] for ev in eigvecs.(E)]
+    ξ₂ = [ev[:,2] for ev in eigvecs.(E)]
     traceT = trace.(T)
+    # TODO: replace by traceT = tr.(T)
     detT = det.(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
@@ -118,19 +120,19 @@ end
 
 
 #Unit Vectors in R^2
-const e1 = Tensors.basevec(Tensors.Vec{2},1)
-const e2 = Tensors.basevec(Tensors.Vec{2},2)
+const e1 = Tensors.basevec(Tensors.Vec{2}, 1)
+const e2 = Tensors.basevec(Tensors.Vec{2}, 2)
 
 
 
 
-function rawInvCGTensor(args...;kwargs...)
-    result = invCGTensor(args...;kwargs...)
+function rawInvCGTensor(args...; kwargs...)
+    result = invCGTensor(args...; kwargs...)
     return result[1,1], result[1,2], result[2,2]
 end
 
 
-function AFromPrecomputedRaw(x,index,q)
+function AFromPrecomputedRaw(x, index, q)
     @views return Tensors.SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
 end
 
@@ -139,13 +141,13 @@ end
 #The interpolant is passed via the p argument
 
 #TODO: think of adding @inbounds here
-function interp_rhs!(du::AbstractArray{T},u::AbstractArray{T},p,t::T) where {T <: Real}
-    du[1] = p[1][u[1],u[2],t]
-    du[2] = p[2][u[1],u[2],t]
+function interp_rhs!(du, u, p, t)
+    du[1] = p[1][u[1], u[2], t]
+    du[2] = p[2][u[1], u[2], t]
 end
 
 """
-    interp_rhs(u,p,t) -> StaticArrays.SVector{2}
+    interp_rhs(u, p, t) -> StaticArrays.SVector{2}
 
 Defines a 2D vector field that is readily usable for trajectory integration from
 vector field interpolants of the x- and y-direction, resp. It assumes that the
@@ -154,9 +156,9 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 field.
 """
 
-function interp_rhs(u,p,t)
-    du1 = p[1][u[1],u[2],t]
-    du2 = p[2][u[1],u[2],t]
+function interp_rhs(u, p, t)
+    du1 = p[1][u[1], u[2], t]
+    du2 = p[2][u[1], u[2], t]
     return StaticArrays.SVector{2}(du1, du2)
 end
 
@@ -189,12 +191,12 @@ function getH(ctx::abstractGridContext)
     return sqrt(hx^2 + hy^2)
 end
 
-"""
-    distmod(a,b,c)
-
-return the distance from a to b, where the distace is taken to be modulo
-"""
-function distmod(a,b,c)
-    diff = mod( (a -b),c)
-    return min(diff, c- diff)
-end
+# """
+#     distmod(a,b,c)
+#
+# return the distance from a to b, where the distace is taken to be modulo
+# """
+# function distmod(a,b,c)
+#     diff = mod( (a -b),c)
+#     return min(diff, c- diff)
+# end

@@ -18,13 +18,13 @@ struct mutualKNN <: SparsificationMethod
 end
 
 """
-    neighborhood(ϵ)
+    neighborhood(ε)
 
-Defines the ϵ-neighborhood sparsification method. In the final graph Laplacian,
-only those particle pairs are included which have distance less than `ϵ`.
+Defines the ε-neighborhood sparsification method. In the final graph Laplacian,
+only those particle pairs are included which have distance less than `ε`.
 """
 struct neighborhood{T <: Real} <: SparsificationMethod
-    ϵ::T
+    ε::T
 end
 
 # meta function
@@ -64,10 +64,10 @@ function diff_op(data::AbstractMatrix{T},
 
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
-    Is::Vector{Int}, Js::Vector{Int} = findn(D .< sp_method.ϵ)
-    Vs::Vector{T} = kernel.(D[D .< sp_method.ϵ])
+    Is::Vector{Int}, Js::Vector{Int} = findn(D .< sp_method.ε)
+    Vs::Vector{T} = kernel.(D[D .< sp_method.ε])
     # TODO: Julia 0.7+ version
-    # CIs = findall(D .< sp_method.ϵ)
+    # CIs = findall(D .< sp_method.ε)
     # Is::Vector{Int} = [i[1] for i in CIs]
     # Js::Vector{Int} = [i[2] for i in CIs]
     # Vs::Vector{T} = kernel.([D[i] for i in CIs])
@@ -118,9 +118,9 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
    * `data`: 2D array with columns correspdonding to data points;
-   * `k`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
-   * `ε`: distance threshold;
-   * if `dim` is given, the columns are interpreted as concatenations of `dim`-
+   * `sp_method`: sparsification method;
+   * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
+   * `dim`: the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
    * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
      `P -> prod(LinearMaps.LinearMap,reverse(P))` (default)
@@ -157,8 +157,8 @@ Return a sparse diffusion/Markov matrix `P`.
 
 ## Arguments
    * `data`: 2D array with columns correspdonding to data points;
-   * `sp_method`: distance threshold;
-   * `k`: diffusion kernel, e.g., `x -> exp(-x*x)` (default);
+   * `sp_method`: sparsification method;
+   * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x)` (default);
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
@@ -223,7 +223,7 @@ end
     else
         tree = NearestNeighbors.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
     end
-    idxs = NearestNeighbors.inrange(tree, data, sp_method.ϵ, false)
+    idxs = NearestNeighbors.inrange(tree, data, sp_method.ε, false)
     J = vcat(idxs...)
     I = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     V = kernel.(Distances.colwise(metric, view(data,:,I), view(data,:,J)))

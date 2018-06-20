@@ -1,9 +1,10 @@
 #(c) 2018 Nathanael Schilling, with minor contributions by Daniel Karrasch
-#Routines for numerically solving the Advection-Diffusion Equation
+# Routines for numerically solving the Advection-Diffusion Equation in Lagrangian
+# coordinates
 
 # meta function
 """
-    FEM_heatflow(velocity!,ctx,tspan, bdata = boundaryData(); kwargs...)
+    FEM_heatflow(velocity!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); kwargs...)
 
 Compute the heat flow operator for the time-dependent heat equation, which
 corresponds to the advection-diffusion equation in Lagrangian coordinates, by
@@ -14,27 +15,27 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
      `odefun!(du,u,p,t) = du .= odefun(u,p,t)`;
    * `ctx`: grid context for the FEM discretization;
    * `tspan`: time span determining the temporal resolution at which the heat
-     flow is to be computed;
-   * `tmax`: final time;
+     flow is to be computed internally;
+   * `κ`: diffusivity constant;
+   * `p`: parameter container for the vector field;
    * `kwargs`: are passed to `advect_serialized_quadpoints`.
 """
-function FEM_heatflow(odefun!, ctx, tspan, ϵ, bdata = boundaryData(); kwargs...)
+function FEM_heatflow(odefun!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); kwargs...)
 
-    sol = advect_serialized_quadpoints(ctx, tspan, odefun!;
-                                            kwargs...)
-    return implicitEulerStepFamily(ctx, sol, tspan, ϵ; bdata=bdata)
+    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; kwargs...)
+    return implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx, sol, tspan, ϵ; bdata=boundaryData())
+function implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
-    τ = step(tspan)
+    Δτ = step(tspan)
     P = map(tspan[1:end-1]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
         Pₜ = LinearMaps.LinearMap(
-             x -> (M - τ * ϵ * K) \ (M * x),
-             x -> ( M * ( (M - τ * ϵ * K) \ x ) ),
+             x -> (M - Δτ * κ * K) \ (M * x),
+             x -> ( M * ( (M - Δτ * κ * K) \ x ) ),
              n)
         println("Integration time $t done")
         Pₜ
@@ -59,11 +60,12 @@ end
 
 
 """
-    advect_serialized_quadpoints(ctx,t0,tf,odefun,δ=1e-9
+    advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
+            solver=default_solver, tolerance=default_tolerance)
 
-Advect all quadrature points + finite difference stencils from t0
-to tf with ode rhs given by `odefun`
-Returns an ODE solution object
+Advect all quadrature points + finite difference stencils of size `δ`,
+from `tspan[1]` to `tspan[end]` with ODE rhs given by `odefun!`, whose parameters
+are contained in `p`. Returns an ODE solution object.
 """
 function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
                     solver=default_solver,tolerance=default_tolerance)
@@ -74,8 +76,8 @@ function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
         "p"=>p,
         )
 
-    prob = OrdinaryDiffEq.ODEProblem((du,u,p,t) -> large_rhs(odefun!,du,u,p,t),
-                                        u0, (tspan[1], tspan[2]), p2)
+    prob = OrdinaryDiffEq.ODEProblem((du, u, p, t) -> large_rhs(odefun!, du, u, p, t),
+                                        u0, (tspan[1], tspan[end]), p2)
     return OrdinaryDiffEq.solve(prob, solver, abstol=tolerance, reltol=tolerance)
 end
 
@@ -91,7 +93,7 @@ function stiffnessMatrixTimeT(ctx,sol,t,δ=1e-9; bdata=bondaryData())
                     p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ) )
         return Tensors.dott(inv(Df))
     end
-    return assembleStiffnessMatrix(ctx,Afun,p,bdata=bdata)
+    return assembleStiffnessMatrix(ctx, Afun, p, bdata=bdata)
 end
 
 @inline function large_rhs(odefun!, du, u, p, t)
@@ -106,10 +108,10 @@ For each quadrature point in `ctx.quadrature_points`, setup a finite difference 
 Then write the resulting points into a (flat) array onto which arraymap can be applied.
 Only works in 2D at the moment
 """
-function setup_fd_quadpoints_serialized(ctx,δ=1e-9)
+function setup_fd_quadpoints_serialized(ctx, δ=1e-9)
     n_quadpoints = length(ctx.quadrature_points)
     u_full = zeros(8n_quadpoints)
-    for (i,q) in enumerate(ctx.quadrature_points)
+    @inbounds for (i,q) in enumerate(ctx.quadrature_points)
         for j in 1:4
             factor = j>2 ? -1 : 1
             shift = (j % 2 == 0) ? 1 : 0
@@ -146,14 +148,14 @@ function extendedRHSStiff!(A, u, p, t)
     end
     invDiffTensors = Tensors.dott.(inv.(DF))
     ctx = p["ctx"]
-    ϵ = p["ϵ"]
+    κ = p["κ"]
     K = assembleStiffnessMatrix(ctx, PCDiffTensors, invDiffTensors)
     I, J, V = findnz(K)
     M = assembleMassMatrix(ctx, lumped=true)
     for index in eachindex(I, J, V)
         i = I[index]
         j = J[index]
-        A[i,j] = ϵ * V[index] / M[i,i]
+        A[i,j] = κ * V[index] / M[i,i]
     end
     print("t = $t")
     return A
