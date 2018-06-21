@@ -6,6 +6,18 @@ const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMat
 
 # TODO: replace sparse -> SparseArrays.sparse
 """
+    KNN(k)
+
+Defines the KNN (k-nearest neighbors) sparsification method. In this
+approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
+only those particle pairs are included which are contained in either
+k-neighborhood.
+"""
+struct KNN <: SparsificationMethod
+    k::Int
+end
+
+"""
     mutualKNN(k)
 
 Defines the mutual KNN (k-nearest neighbors) sparsification method. In this
@@ -104,6 +116,38 @@ function diff_op(data::AbstractMatrix{T},
     end
     P = sparse(Is, Js, Vs, N, N)
     @. P = min(P, transpose(P))
+    # TODO: replace by @. P = min(P, PermutedDimsArray(P, (2,1)))
+    if α>0
+        α_normalize!(P, α)
+    end
+    wLap_normalize!(P)
+    return P
+end
+
+function diff_op(data::AbstractMatrix{T},
+                    sp_method::KNN,
+                    kernel = gaussian_kernel;
+                    α=1.0,
+                    metric::Distances.Metric = Distances.Euclidean()
+                )::SparseMatrixCSC{T,Int} where T <: Real
+
+    N, k = size(data, 2), sp_method.k
+    D = Distances.pairwise(metric,data)
+    Is = SharedArray{Int}(N*(k+1))
+    Js = SharedArray{Int}(N*(k+1))
+    Vs = SharedArray{T}(N*(k+1))
+    index = Vector{Int}(k+1)
+    @everywhere @eval index = $index
+    @inbounds @sync @parallel for i=1:N
+        di = view(D,i,:)
+        selectperm!(index, di, 1:(k+1))
+        # TODO: replace by partialsortperm!(index, di, 1:(k+1))
+        Is[(i-1)*(k+1)+1:i*(k+1),1] .= i
+        Js[(i-1)*(k+1)+1:i*(k+1),2] = index
+        Vs[(i-1)*(k+1)+1:i*(k+1),2] = kernel.(di[index])
+    end
+    P = sparse(Is, Js, Vs, N, N)
+    @. P = max(P, transpose(P))
     # TODO: replace by @. P = min(P, PermutedDimsArray(P, (2,1)))
     if α>0
         α_normalize!(P, α)
