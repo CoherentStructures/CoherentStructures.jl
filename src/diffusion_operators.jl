@@ -235,6 +235,28 @@ Default metric is `Euclidean()`.
 """
 
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
+                               sp_method::KNN,
+                               kernel=gaussian_kernel,
+                               metric::Distances.PreMetric = Distances.Euclidean()
+                               ) where T <: Real
+    dim, N = size(data)
+
+    if typeof(metric) <: NearestNeighbors.MinkowskiMetric
+        tree = NearestNeighbors.KDTree(data, metric;  leafsize = 10)
+    else
+        tree = NearestNeighbors.BallTree(data, metric; leafsize = 10)
+    end
+    idxs::Vector{Vector{Int}}, dists::Vector{Vector{T}} = NearestNeighbors.knn(tree, data, sp_method.k, false)
+    Js::Vector{Int} = vcat(idxs...)
+    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Vs::Vector{T} = kernel.(vcat(dists...))
+    W = sparse(Is, Js, Vs, N, N)
+    Base.SparseArrays.droptol!(W,eps(eltype(W)))
+    return max.(W, transpose(W))
+    # TODO: Replace by return max.(W, PermutedDimsArray(W, (2,1)))
+end
+
+@inline function sparseaffinitykernel(data::AbstractMatrix{T},
                                sp_method::mutualKNN,
                                kernel=gaussian_kernel,
                                metric::Distances.PreMetric = Distances.Euclidean()
