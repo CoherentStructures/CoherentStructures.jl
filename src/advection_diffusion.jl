@@ -71,7 +71,7 @@ from `tspan[1]` to `tspan[end]` with ODE rhs given by `odefun!`, whose parameter
 are contained in `p`. Returns an ODE solution object.
 """
 function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
-                    solver=default_solver,tolerance=default_tolerance)
+                    solver=default_solver, tolerance=default_tolerance)
 
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
     p2 = Dict(
@@ -85,12 +85,12 @@ function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
 end
 
 
-function stiffnessMatrixTimeT(ctx,sol,t,δ=1e-9; bdata=bondaryData())
+function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=bondaryData())
     if t < 0
-        return assembleStiffnessMatrix(ctx,bdata=bdata)
+        return assembleStiffnessMatrix(ctx, bdata=bdata)
     end
     p = sol(t)
-    function Afun(x,index,p)
+    function Afun(x, index, p)
         Df = Tensors.Tensor{2,2}(
             (p[(8*(index-1) + 1):(8*(index-1) + 4)] -
                     p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ) )
