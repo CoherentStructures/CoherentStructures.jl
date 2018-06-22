@@ -4,7 +4,7 @@
 
 # meta function
 """
-    FEM_heatflow(velocity!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); kwargs...)
+    FEM_heatflow(velocity!, ctx, tspan, κ, decomp=false, p=nothing, bdata=boundaryData(); kwargs...)
 
 Compute the heat flow operator for the time-dependent heat equation, which
 corresponds to the advection-diffusion equation in Lagrangian coordinates, by
@@ -20,22 +20,25 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
    * `p`: parameter container for the vector field;
    * `kwargs`: are passed to `advect_serialized_quadpoints`.
 """
-function FEM_heatflow(odefun!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); kwargs...)
+# TODO: Restrict tspan to be of Range/linspace type
+function FEM_heatflow(odefun!, ctx, tspan, κ, decomp::Bool=false, p = nothing, bdata = boundaryData(); kwargs...)
 
     sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; kwargs...)
     return implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=boundaryData())
+function implicitEulerStepFamily(ctx, sol, tspan, κ, decomp::Bool=false; bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
     Δτ = step(tspan)
     P = map(tspan[1:end-1]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
+        ΔM = decomp ? factorize(M - Δτ * κ * K) : M - Δτ * κ * K
+        # TODO: Think about in-place versions (u,v) -> u .= lin_map(v)
         Pₜ = LinearMaps.LinearMap(
-             x -> (M - Δτ * κ * K) \ (M * x),
-             x -> ( M * ( (M - Δτ * κ * K) \ x ) ),
+             x -> ΔM \ (M * x),
+             x -> M * (ΔM \ x),
              n)
         println("Integration time $t done")
         Pₜ
@@ -48,7 +51,7 @@ end
 
 Single step with implicit Euler method.
 """
-function ADimplicitEulerStep(ctx,u,edt, Afun,q=nothing,M=nothing,K=nothing)
+function ADimplicitEulerStep(ctx, u, edt, Afun, q=nothing, M=nothing, K=nothing)
     if M == nothing
         M = assembleMassMatrix(ctx)
     end
