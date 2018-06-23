@@ -4,15 +4,11 @@
 
 # meta function
 """
-    FEM_heatflow(velocity!, ctx, tspan, κ, decomp=true, p=nothing, bdata=boundaryData(); kwargs...)
+    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=boundaryData(); kwargs...)
 
 Compute the heat flow operator for the time-dependent heat equation, which
 corresponds to the advection-diffusion equation in Lagrangian coordinates, by
 employing a spatial FEM discretization and temporal implicit-Euler time stepping.
-The `decomp` argument states whether the sparse matrices should be factorized
-for the benefit of significantly faster calculations (especially in the context
-of eigendecompositions à la diffusion coordinates), at the expense of significant
-additional memory consumption. Recommendation: always try `decomp==true` first.
 
 ## Arguments
    * `odefun!`: velocity field in inplace form, e.g.,
@@ -21,30 +17,30 @@ additional memory consumption. Recommendation: always try `decomp==true` first.
    * `tspan`: time span determining the temporal resolution at which the heat
      flow is to be computed internally;
    * `κ`: diffusivity constant;
-   * `decomp`: use matrix factorizations instead of sparse matrices;
    * `p`: parameter container for the vector field;
    * `kwargs`: are passed to `advect_serialized_quadpoints`.
 """
 # TODO: Restrict tspan to be of Range/linspace type
-function FEM_heatflow(odefun!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); decomp::Bool=true, kwargs...)
+function FEM_heatflow(odefun!, ctx::gridContext, tspan, κ::Real, p=nothing, bdata=boundaryData();
+                        solver=default_solver, tolerance=default_tolerance)
 
-    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; kwargs...)
-    return implicitEulerStepFamily(ctx, sol, tspan, κ, decomp=decomp; bdata=bdata)
+    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; solver=solver, tolerance=tolerance)
+    return implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx, sol, tspan, κ; decomp::Bool=true, bdata=boundaryData())
+function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
     Δτ = step(tspan)
+    # TODO: think about pmap-parallelization
     # @everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
-    P = map(tspan[1:end-1]) do t
+    P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
-        ΔM = decomp ? factorize(M - Δτ * κ * K) : M - Δτ * κ * K
-        Pₜ = LinearMaps.LinearMap((u,v) -> u .= ΔM \ v, (u,v) -> u .= ΔM \ v, n) * M
-        # Pₜ = LinearMaps.LinearMap(x -> ΔM \ (M * x), x -> M * (ΔM \ x), n)
+        ΔM = factorize(M - Δτ * κ * K)
         println("Integration time $t done")
-        Pₜ
+        matmul = (u,v) -> u .= ΔM \ v
+        LinearMaps.LinearMap(matmul, matmul, n) * M
     end
     return prod(reverse(P))
 end
@@ -54,7 +50,7 @@ end
 
 Single step with implicit Euler method.
 """
-function ADimplicitEulerStep(ctx, u, edt, Afun, q=nothing, M=nothing, K=nothing)
+function ADimplicitEulerStep(ctx::gridContext, u::AbstractVector, edt::Real, Afun, q=nothing, M=nothing, K=nothing)
     if M == nothing
         M = assembleMassMatrix(ctx)
     end
@@ -73,7 +69,7 @@ Advect all quadrature points + finite difference stencils of size `δ`,
 from `tspan[1]` to `tspan[end]` with ODE rhs given by `odefun!`, whose parameters
 are contained in `p`. Returns an ODE solution object.
 """
-function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
+function advect_serialized_quadpoints(ctx::gridContext, tspan, odefun!, p=nothing, δ=1e-9;
                     solver=default_solver, tolerance=default_tolerance)
 
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
