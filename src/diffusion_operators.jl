@@ -400,7 +400,7 @@ end
      Π   = squeeze(real(E[2]), 2) # stationary distribution
      # TODO: replace by: Π   = squeeze(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
-     prod(ext) < 0 && throw(error("Both signs in stationary distribution"))
+     prod(ext) < 0 && throw(error("Both signs in stationary distribution (extrema are $ext)"))
      if any(ext .< 0)
          Π .= -Π
      end
