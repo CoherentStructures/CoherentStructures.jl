@@ -4,7 +4,7 @@ DiffEqBase
 Distances
 GeometricalPredicates
 Interpolations
-JuAFEM
+JuAFEM=8f826f0a 
 LinearMaps
 NearestNeighbors
 OrdinaryDiffEq
