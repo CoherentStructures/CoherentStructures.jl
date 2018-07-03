@@ -1,18 +1,20 @@
 using CoherentStructures
 
-LL = [0.0,-3.0]; UR=[6.371π,3.0]
-ctx = regularTriangularGrid((100,30),LL,UR,quadrature_order=1)
-predicate = (x,y) -> (abs(x[2] - y[2]) < 1e-10) && (peuclidean(x[1],y[1],6.371π)) < 1e-10)
-bdata = CoherentStructures.boundaryData(ctx,predicate,[])
+nx, ny = 100, 31
+LL = [0.0, -3.0]; UR=[6.371π, 3.0]
+ctx = regularTriangularGrid((nx, ny), LL, UR, quadrature_order=2)
+predicate = (x,y) -> (abs(x[2] - y[2]) < 1e-10) && (peuclidean(x[1],y[1],6.371π) < 1e-10)
+bdata = CoherentStructures.boundaryData(ctx, predicate, [])
 
 cgfun = (x -> mean_diff_tensor(bickleyJet, x, linspace(0.0,40*3600*24,81),
-     1.e-8, tolerance=1.e-5))
+     1.e-8, tolerance=1.e-6, solver=OrdinaryDiffEq.Tsit5()))
 
-@time K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
-@time M = assembleMassMatrix(ctx,bdata=bdata)
-@time λ, v = eigs(K,M,which=:SM, nev= 10)
+@time K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
+@time M = assembleMassMatrix(ctx, bdata=bdata)
+@time λ, v = eigs(K, M, which=:SM, nev= 10)
 
-plot_u(ctx,v[:,1],bdata=bdata)
+plot_u(ctx, v[:,1], 4nx, 4ny, bdata=bdata)
+plot_real_spectrum(λ)
 
 using Clustering
 n_partition = 7

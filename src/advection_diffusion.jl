@@ -4,7 +4,7 @@
 
 # meta function
 """
-    FEM_heatflow(velocity!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); kwargs...)
+    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=boundaryData(); kwargs...)
 
 Compute the heat flow operator for the time-dependent heat equation, which
 corresponds to the advection-diffusion equation in Lagrangian coordinates, by
@@ -20,25 +20,27 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
    * `p`: parameter container for the vector field;
    * `kwargs`: are passed to `advect_serialized_quadpoints`.
 """
-function FEM_heatflow(odefun!, ctx, tspan, κ, p = nothing, bdata = boundaryData(); kwargs...)
+# TODO: Restrict tspan to be of Range/linspace type
+function FEM_heatflow(odefun!, ctx::gridContext, tspan, κ::Real, p=nothing, bdata=boundaryData();
+                        solver=default_solver, tolerance=default_tolerance)
 
-    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; kwargs...)
+    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; solver=solver, tolerance=tolerance)
     return implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=boundaryData())
+function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
     Δτ = step(tspan)
-    P = map(tspan[1:end-1]) do t
+    # TODO: think about pmap-parallelization
+    # @everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
+    P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
-        Pₜ = LinearMaps.LinearMap(
-             x -> (M - Δτ * κ * K) \ (M * x),
-             x -> ( M * ( (M - Δτ * κ * K) \ x ) ),
-             n)
+        ΔM = factorize(M - Δτ * κ * K)
         println("Integration time $t done")
-        Pₜ
+        matmul = (u,v) -> u .= ΔM \ v
+        LinearMaps.LinearMap(matmul, matmul, n) * M
     end
     return prod(reverse(P))
 end
@@ -48,7 +50,7 @@ end
 
 Single step with implicit Euler method.
 """
-function ADimplicitEulerStep(ctx,u,edt, Afun,q=nothing,M=nothing,K=nothing)
+function ADimplicitEulerStep(ctx::gridContext, u::AbstractVector, edt::Real, Afun, q=nothing, M=nothing, K=nothing)
     if M == nothing
         M = assembleMassMatrix(ctx)
     end
@@ -67,8 +69,8 @@ Advect all quadrature points + finite difference stencils of size `δ`,
 from `tspan[1]` to `tspan[end]` with ODE rhs given by `odefun!`, whose parameters
 are contained in `p`. Returns an ODE solution object.
 """
-function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
-                    solver=default_solver,tolerance=default_tolerance)
+function advect_serialized_quadpoints(ctx::gridContext, tspan, odefun!, p=nothing, δ=1e-9;
+                    solver=default_solver, tolerance=default_tolerance)
 
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
     p2 = Dict(
@@ -82,12 +84,12 @@ function advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
 end
 
 
-function stiffnessMatrixTimeT(ctx,sol,t,δ=1e-9; bdata=bondaryData())
+function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=bondaryData())
     if t < 0
-        return assembleStiffnessMatrix(ctx,bdata=bdata)
+        return assembleStiffnessMatrix(ctx, bdata=bdata)
     end
     p = sol(t)
-    function Afun(x,index,p)
+    function Afun(x, index, p)
         Df = Tensors.Tensor{2,2}(
             (p[(8*(index-1) + 1):(8*(index-1) + 4)] -
                     p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ) )

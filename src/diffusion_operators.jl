@@ -93,7 +93,7 @@ function diff_op(data::AbstractMatrix{T},
 end
 
 function diff_op(data::AbstractMatrix{T},
-                    sp_method::mutualKNN,
+                    sp_method::Union{KNN,mutualKNN},
                     kernel = gaussian_kernel;
                     α=1.0,
                     metric::Distances.Metric = Distances.Euclidean()
@@ -115,39 +115,11 @@ function diff_op(data::AbstractMatrix{T},
         Vs[(i-1)*(k+1)+1:i*(k+1),2] = kernel.(di[index])
     end
     P = sparse(Is, Js, Vs, N, N)
-    @. P = min(P, transpose(P))
-    # TODO: replace by @. P = min(P, PermutedDimsArray(P, (2,1)))
-    if α>0
-        α_normalize!(P, α)
+    if sp_method <: KNN
+        @. P = max(P, transpose(P))
+    else
+        @. P = min(P, transpose(P))
     end
-    wLap_normalize!(P)
-    return P
-end
-
-function diff_op(data::AbstractMatrix{T},
-                    sp_method::KNN,
-                    kernel = gaussian_kernel;
-                    α=1.0,
-                    metric::Distances.Metric = Distances.Euclidean()
-                )::SparseMatrixCSC{T,Int} where T <: Real
-
-    N, k = size(data, 2), sp_method.k
-    D = Distances.pairwise(metric,data)
-    Is = SharedArray{Int}(N*(k+1))
-    Js = SharedArray{Int}(N*(k+1))
-    Vs = SharedArray{T}(N*(k+1))
-    index = Vector{Int}(k+1)
-    @everywhere @eval index = $index
-    @inbounds @sync @parallel for i=1:N
-        di = view(D,i,:)
-        selectperm!(index, di, 1:(k+1))
-        # TODO: replace by partialsortperm!(index, di, 1:(k+1))
-        Is[(i-1)*(k+1)+1:i*(k+1),1] .= i
-        Js[(i-1)*(k+1)+1:i*(k+1),2] = index
-        Vs[(i-1)*(k+1)+1:i*(k+1),2] = kernel.(di[index])
-    end
-    P = sparse(Is, Js, Vs, N, N)
-    @. P = max(P, transpose(P))
     # TODO: replace by @. P = min(P, PermutedDimsArray(P, (2,1)))
     if α>0
         α_normalize!(P, α)
@@ -235,7 +207,7 @@ Default metric is `Euclidean()`.
 """
 
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
-                               sp_method::mutualKNN,
+                               sp_method::Union{KNN,mutualKNN},
                                kernel=gaussian_kernel,
                                metric::Distances.PreMetric = Distances.Euclidean()
                                ) where T <: Real
@@ -252,8 +224,12 @@ Default metric is `Euclidean()`.
     Vs::Vector{T} = kernel.(vcat(dists...))
     W = sparse(Is, Js, Vs, N, N)
     Base.SparseArrays.droptol!(W,eps(eltype(W)))
-    return min.(W, transpose(W))
-    # TODO: Replace by return min.(W, PermutedDimsArray(W, (2,1)))
+    if sp_method <: KNN
+        return max.(W, transpose(W))
+    else
+        return min.(W, transpose(W))
+    end
+    # TODO: Replace by return max.(W, PermutedDimsArray(W, (2,1)))
 end
 
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
