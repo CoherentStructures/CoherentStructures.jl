@@ -17,12 +17,11 @@ const default_quadrature_order3D=2
 """
     struct gridContext<dim>
 
-Stores everything needed as "context" to be able to work on a FEM grid based on the `JuAFEM` package
-Adds a point-location API which makes it possible to plot functions defined on the grid within julia.
-Currently only `dim==2` is implemented
+Stores everything needed as "context" to be able to work on a FEM grid based on the `JuAFEM` package.
+Adds a point-locator API which facilitates plotting functions defined on the grid within Julia.
 
 # Fields
-- `grid::JuAFEM.Grid`,`ip::JuAFEM.Interpolation`,`qr::JuAFEM.QuadratureRule` - See the `JuAFEM` package
+- `grid::JuAFEM.Grid`, `ip::JuAFEM.Interpolation`, `qr::JuAFEM.QuadratureRule` - See the `JuAFEM` package
 - `loc::CellLocator` object used for point-location on the grid.
 - `node_to_dof::Vector{Int}`  lookup table for dof index of a node
 - `dof_to_node::Vector{Int}`  inverse of node_to_dof
@@ -168,7 +167,7 @@ function regularDelaunayGrid(
     X = linspace(LL[1], UR[1], numnodes[1])
     Y = linspace(LL[2], UR[2], numnodes[2])
     node_list = vec([Tensors.Vec{2}([x, y]) for y in Y, x in X])
-    result = gridContext{2}(JuAFEM.Triangle, node_list, quadrature_order=quadrature_order)
+    result = CoherentStructures.gridContext{2}(JuAFEM.Triangle, node_list, quadrature_order=quadrature_order)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular Delaunay grid"
@@ -199,7 +198,7 @@ end
 """
     regularP2DelaunayGrid(numnodes=(25,25),LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
 
-    Create a regular P2 triangular grid with numnodes being the number of (non-interior) nodes in each direction.
+Create a regular P2 triangular grid with `numnodes` being the number of (non-interior) nodes in each direction.
 """
 function regularP2DelaunayGrid(
             numnodes::Tuple{Int,Int}=(25, 25),
@@ -243,9 +242,9 @@ Create a regular triangular grid. Does not use Delaunay triangulation internally
 end
 
 """
-    regularTriangularGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
+    regularTriangularGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0], quadrature_order=default_quadrature_order)
 
-Create a regular P1 triangular grid on a Rectangle. Does not use Delaunay triangulation internally.
+Create a regular P1 triangular grid on a rectangle; it does not use Delaunay triangulation internally.
 """
 function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=[0.0,0.0], UR::AbstractVector=[1.0,1.0];
                                 quadrature_order::Int=default_quadrature_order)
@@ -536,24 +535,24 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
 
 function delaunay2(x::Vector{Tensors.Vec{2,Float64}})
     width = VD.max_coord - VD.min_coord
-    max_x = maximum(map(v->v[1],x))
-    minx = minimum(map(v->v[1],x))
-    max_y = maximum(map(v->v[2],x))
-    miny = minimum(map(v->v[2],x))
-    scale_x = 0.9*width/(max_x - minx)
-    scale_y = 0.9*width/(max_y - miny)
+    max_x = maximum(map(v->v[1], x))
+    min_x = minimum(map(v->v[1], x))
+    max_y = maximum(map(v->v[2], x))
+    min_y = minimum(map(v->v[2], x))
+    scale_x = 0.9*width/(max_x - min_x)
+    scale_y = 0.9*width/(max_y - min_y)
     n = length(x)
-    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - minx)*scale_x,VD.min_coord+(x[i][2]-miny)*scale_y,i) for i in 1:n]
+    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - min_x)*scale_x, VD.min_coord+(x[i][2]-min_y)*scale_y, i) for i in 1:n]
     for i in 1:n
         assert(!(GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord))
     end
     tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
-    push!(tess,a)
+    push!(tess, a)
     m = 0
     for i in tess
         m += 1
     end
-    return tess,m,scale_x,scale_y,minx,miny
+    return tess, m, scale_x, scale_y, min_x, min_y
 end
 
 #For delaunay triangulations, we can use the tesselation
@@ -869,25 +868,27 @@ function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.
 end
 
 function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
-    tess, m, scale_x, scale_y, minx, miny = delaunay2(nodes_in)
+    tess, m, scale_x, scale_y, min_x, min_y = delaunay2(nodes_in)
     nodes = map(JuAFEM.Node, nodes_in)
-    cells = map(tess) do tri
+    cells = JuAFEM.Triangle[]
+    for tri in tess
         J = Tensors.otimes((nodes_in[tri._b.id] - nodes_in[tri._a.id]), e1)
         J += Tensors.otimes((nodes_in[tri._c.id] - nodes_in[tri._a.id]), e2)
         detJ = det(J)
-        @assert det(J) != 0
+        @assert detJ != 0
         if detJ > 0
             new_tri = JuAFEM.Triangle((tri._a.id, tri._b.id, tri._c.id))
         else
             new_tri = JuAFEM.Triangle((tri._a.id, tri._c.id, tri._b.id))
         end
-        new_tri
+        push!(cells, new_tri)
     end
+
     #facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = JuAFEM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = delaunayCellLocator(m,scale_x,scale_y,minx,miny,tess)
+    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess)
     return grid, locator
 end
 
