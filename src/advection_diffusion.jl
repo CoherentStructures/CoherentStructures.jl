@@ -40,6 +40,7 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; bdata=b
         ΔM = factorize(M - Δτ * κ * K)
         println("Integration time $t done")
         matmul = (u,v) -> u .= ΔM \ v
+        # TODO: replace by LinearAlgebra.ldiv!(u, ΔM, v)
         LinearMaps.LinearMap(matmul, matmul, n) * M
     end
     return prod(reverse(P))

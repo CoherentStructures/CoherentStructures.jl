@@ -1,6 +1,5 @@
 export
 
-	#TODO: Clean up this file
 	#advection_diffusion.jl
 	FEM_heatflow,
 	implicitEulerStepFamily,

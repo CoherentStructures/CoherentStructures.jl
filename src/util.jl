@@ -1,49 +1,51 @@
 #(c) 2017 Nathanael Schilling
 #Various utility functions
 
-
+const SA = StaticArrays
 """
-    arraymap!(du,u,p,t,odefun,howmanytimes,basesize)
+    arraymap!(du, u, p, t, odefun, N, dim)
 
-Like `map', but operates on 1d-datastructures.
+Like `map`, but operates on 1d-datastructures.
+
 # Arguments
-Apply odefun(du,u,p,t) consecutively to `howmany` subarrays of size `basesize` of `u`, and stores
-the result in the relevant slice of `du`.
-This is so that a "diagonalized" ODE with several starting values can
+Apply `odefun` consecutively to `N` subarrays of size `dim` of `u`, and store
+the result in the corresponding slice of `du`.
+This is so that a decoupled ODE system with several initial values can
 be solved without having to call the ODE solver multiple times.
 """
-@inline function arraymap!(du::Array{Float64},u::Array{Float64},p,t::Float64, odefun::Function,howmanytimes::Int64,basesize::Int64)
-    @inbounds for i in 1:howmanytimes
-        @views @inbounds  odefun(du[1 + (i - 1)*basesize: i*basesize],u[ 1 + (i-1)*basesize:  i*basesize],p,t)
+@inline function arraymap!(du::Vector, u::Vector, p, t,
+                            odefun, N::Int, dim::Int)
+    @inbounds for i in 1:N
+        @views odefun(du[1+(i - 1)*dim:i*dim], u[1+(i-1)*dim:i*dim], p, t)
     end
 end
 
 """
-    arraymap2(u,p,t,odefun) -> StaticArrays.SVector{8}
-This function is like arraymap(u,p,t,odefun, 4,2),
-but du is returned as a StaticVector
+    arraymap2(u, p, t, odefun) -> SVector{8}
+This function is like `arraymap!(du, u, p, t, odefun, 4, 2)``,
+but `du` is returned as a StaticVector.
 """
-@inline function arraymap2(u::StaticArrays.SVector{8,T},p,t::Float64, odefun::Function)::StaticArrays.SVector{8,T} where T
-    p1::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[1], u[2]),p,t)
-    p2::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[3], u[4]),p,t)
-    p3::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[5], u[6]),p,t)
-    p4::StaticArrays.SVector{2,T} = odefun(StaticArrays.SVector{2,T}(u[7], u[8]),p,t)
-    return StaticArrays.SVector{8,T}(p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2])
+@inline function arraymap2(u::SA.SVector{8,T}, p, t, odefun)::SA.SVector{8,T} where T
+    p1::SA.SVector{2,T} = odefun(SA.SVector{2,T}(u[1], u[2]), p, t)
+    p2::SA.SVector{2,T} = odefun(SA.SVector{2,T}(u[3], u[4]), p, t)
+    p3::SA.SVector{2,T} = odefun(SA.SVector{2,T}(u[5], u[6]), p, t)
+    p4::SA.SVector{2,T} = odefun(SA.SVector{2,T}(u[7], u[8]), p, t)
+    return SA.SVector{8,T}(p1[1],p1[2],p2[1],p2[2],p3[1],p3[2],p4[1],p4[2])
 end
 
 """
-    arraymap3(u,p,t,odefun) -> StaticArrays.SVector{18}
-This function is like arraymap(u,pt,odefun,6,3)
-but du is returned as a StaticVector
+    arraymap3(u, p, t, odefun) -> SVector{18}
+This function is like `arraymap!(du, u, pt, odefun, 6, 3)
+but `du` is returned as a StaticVector.
 """
-@inline function arraymap3(u::StaticArrays.SVector{18,T},p,t::Float64, odefun::Function)::StaticArrays.SVector{18,T} where T
-    p1::StaticArrays.SVector{3,T} = odefun(StaticArrays.SVector{3,T}(u[1], u[2], u[3]),p,t)
-    p2::StaticArrays.SVector{3,T} = odefun(StaticArrays.SVector{3,T}(u[4], u[5], u[6]),p,t)
-    p3::StaticArrays.SVector{3,T} = odefun(StaticArrays.SVector{3,T}(u[7], u[8], u[9]),p,t)
-    p4::StaticArrays.SVector{3,T} = odefun(StaticArrays.SVector{3,T}(u[10], u[11], u[12]),p,t)
-    p5::StaticArrays.SVector{3,T} = odefun(StaticArrays.SVector{3,T}(u[13], u[14], u[15]),p,t)
-    p6::StaticArrays.SVector{3,T} = odefun(StaticArrays.SVector{3,T}(u[16], u[17], u[18]),p,t)
-    return StaticArrays.SVector{18,T}(p1[1],p1[2],p1[3],p2[1],p2[2],p2[3],p3[1],p3[2],p3[3],p4[1],p4[2],p4[3],p5[1],p5[2],p5[3],p6[1],p6[2],p6[3])
+@inline function arraymap3(u::SA.SVector{18,T}, p, t, odefun)::SA.SVector{18,T} where T
+    p1::SA.SVector{3,T} = odefun(SA.SVector{3}(u[1], u[2], u[3]), p, t)
+    p2::SA.SVector{3,T} = odefun(SA.SVector{3}(u[4], u[5], u[6]), p, t)
+    p3::SA.SVector{3,T} = odefun(SA.SVector{3}(u[7], u[8], u[9]), p, t)
+    p4::SA.SVector{3,T} = odefun(SA.SVector{3}(u[10], u[11], u[12]), p, t)
+    p5::SA.SVector{3,T} = odefun(SA.SVector{3}(u[13], u[14], u[15]), p, t)
+    p6::SA.SVector{3,T} = odefun(SA.SVector{3}(u[16], u[17], u[18]), p, t)
+    return SA.SVector{18,T}(p1[1],p1[2],p1[3],p2[1],p2[2],p2[3],p3[1],p3[2],p3[3],p4[1],p4[2],p4[3],p5[1],p5[2],p5[3],p6[1],p6[2],p6[3])
 end
 
 
@@ -57,7 +59,7 @@ smallest and largest eigenvalues, corresponding eigenvectors, trace and determin
 T = [Tensors.SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(T)
 ```
-All variables have the same array arrangement as `T`; e.g., `λ₁` is a
+All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
 
@@ -74,20 +76,20 @@ function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) w
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
 
-
 """
     dof2node(ctx,u)
 
 Interprets `u` as an array of coefficients ordered in dof order,
 and reorders them to be in node order.
 """
-function dof2node(ctx::abstractGridContext{dim} ,u::Vector) where {dim}
-   n = ctx.n
-   res = fill(0.0,JuAFEM.getnnodes(ctx.grid))
-   for node in 1:n
-           res[node] = u[ctx.node_to_dof[node]]
-      end
-  return res
+function dof2node(ctx::abstractGridContext{dim}, u::Vector) where {dim}
+   # n = ctx.n
+   # res = fill(0.0, JuAFEM.getnnodes(ctx.grid))
+   # for node in 1:n
+   #         res[node] = u[ctx.node_to_dof[node]]
+   #    end
+   # TODO: isn't this just reordering? ctx.n == getnnodes(ctx.grid) by construction
+  return u[ctx.node_to_dof[1:ctx.n]]
 end
 
 """
@@ -147,7 +149,7 @@ function interp_rhs!(du, u, p, t)
 end
 
 """
-    interp_rhs(u, p, t) -> StaticArrays.SVector{2}
+    interp_rhs(u, p, t) -> SA.SVector{2}
 
 Defines a 2D vector field that is readily usable for trajectory integration from
 vector field interpolants of the x- and y-direction, resp. It assumes that the
@@ -159,7 +161,7 @@ field.
 function interp_rhs(u, p, t)
     du1 = p[1][u[1], u[2], t]
     du2 = p[2][u[1], u[2], t]
-    return StaticArrays.SVector{2}(du1, du2)
+    return SA.SVector{2}(du1, du2)
 end
 
 #Returns true for all inputs. This is the default function for inbounds checking in plot_ftle

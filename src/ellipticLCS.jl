@@ -79,7 +79,7 @@ function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
     indWedges = find(singularity_types .== 1)
     wedgeDist = Distances.pairwise(Distances.Euclidean(), hcat(singularities[indWedges]...))
     idx = zeros(Int64, size(wedgeDist,1), 2)
-    pairs = Vector{Int64}[]
+    pairs = Vector{Int}[]
     for i=1:size(wedgeDist,1)
         idx = selectperm(wedgeDist[i,:], 2:3)
         if (wedgeDist[i,idx[1]] <= MaxWedgeDist &&

@@ -12,11 +12,14 @@ Create a Euclidean metric on a rectangular periodic domain.
 Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 
-# Usage
-```julia
-julia> x, y, L = rand(2), rand(2), [0.5, Inf]
+# Example
+```jldoctest
+julia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]
+([0.0, 0.0], [0.7, 0.0], [0.5, Inf])
 
 julia> Distances.evaluate(PEuclidean(L),x,y)
+0.19999999999999996
+```
 """
 
 PEuclidean() = Dists.Euclidean()
@@ -102,23 +105,21 @@ Creates a spatiotemporal, averaged in time metric.
 
 # Properties
 
-   * `Smetric` is a metric as defined in the `Dists` package, e.g.,
-     `Euclidean`, `PEuclidean`, or `Haversine`
-   * `dim` corresponds to the spatial dimension
-   * `p` corresponds to the kind of average applied to the vector of spatial Dists:
+   * `Smetric` is a metric as defined in the `Distances` package, e.g.,
+     `Euclidean`, `PEuclidean`, or `Haversine`;
+   * `dim` corresponds to the spatial dimension;
+   * `p` corresponds to the kind of average applied to the vector of spatial distances:
      - `p = Inf`: maximum
      - `p = 2`: mean squared average
      - `p = 1`: arithmetic mean
      - `p = -1`: harmonic mean (does not yield a metric!)
      - `p = -Inf`: minimum (does not yield a metric!)
 
-# Usage
+# Example
 ```julia
 julia> x, y = rand(10), rand(10)
-([0.0645218, 0.824624, 0.723568, 0.786856, 0.529069, 0.666899, 0.956035, 0.960833, 0.753796, 0.319134], [0.372017, 0.838669, 0.873848, 0.253589, 0.724321, 0.862853, 0.958319, 0.0306237, 0.352692, 0.169052])
 
 julia> Distances.evaluate(STmetric(Distances.Euclidean(),2,1),x,y)
-2.4969539623437083
 ```
 """
 
@@ -173,7 +174,7 @@ end
 
 @inline eval_space(d::STmetric, a::AbstractArray, b::AbstractArray, q::Int) =
         Distances.colwise(d.Smetric, reshape(a, d.dim, q), reshape(b, d.dim, q))
-@inline reduce_time(d::STmetric, s, q) = q^(-1 / d.p) * vecnorm(s, d.p)
+@inline reduce_time(d::STmetric, s, q) = q^(-1 / d.p) * norm(s, d.p)
 
 stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric, dim::Int, p::Real) =
         evaluate(STmetric(d, dim, p), a, b)
