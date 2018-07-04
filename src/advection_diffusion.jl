@@ -38,7 +38,7 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; bdata=b
     P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
         ΔM = factorize(M - Δτ * κ * K)
-        println("Integration time $t done")
+        # println("Integration time $t done")
         matmul = (u,v) -> u .= ΔM \ v
         # TODO: replace by LinearAlgebra.ldiv!(u, ΔM, v)
         LinearMaps.LinearMap(matmul, matmul, n) * M
