@@ -184,15 +184,15 @@ Create a P2 grid given a set of (non-interior) nodes using Delaunay Triangulatio
             node_list::Vector{Tensors.Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order) =
 begin
-        grid, loc = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, node_list)
-        ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
-        dh = JuAFEM.DofHandler(grid)
-        qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-        JuAFEM.close!(dh)
-        result = gridContext{2}(grid, ip, dh, qr, loc)
-        result.gridType = "irregular P2 Delaunay grid"
-        return result
+    grid, loc = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, node_list)
+    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result = gridContext{2}(grid, ip, dh, qr, loc)
+    result.gridType = "irregular P2 Delaunay grid"
+    return result
 end
 
 """
@@ -223,22 +223,23 @@ end
 
 Create a regular triangular grid. Does not use Delaunay triangulation internally.
 """
-( ::Type{gridContext{2}})(::Type{JuAFEM.Triangle},
+(::Type{gridContext{2}})(::Type{JuAFEM.Triangle},
                          numnodes::Tuple{Int,Int}=(25, 25), LL::AbstractVector=[0.0, 0.0], UR::AbstractVector=[1.0, 1.0];
-                         quadrature_order::Int=default_quadrature_order) = begin
-        #The -1 below is needed because JuAFEM internally then goes on to increment it
-        grid = JuAFEM.generate_grid(JuAFEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-        loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-        ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
-        dh = JuAFEM.DofHandler(grid)
-        qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-        JuAFEM.close!(dh)
-        result = gridContext{2}(grid, ip, dh, qr, loc)
-        result.spatialBounds = [LL, UR]
-        result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
-        result.gridType = "regular triangular grid"
-        return result
+                         quadrature_order::Int=default_quadrature_order) =
+ begin
+    # The -1 below is needed because JuAFEM internally then goes on to increment it
+    grid = JuAFEM.generate_grid(JuAFEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result = gridContext{2}(grid, ip, dh, qr, loc)
+    result.spatialBounds = [LL, UR]
+    result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
+    result.gridType = "regular triangular grid"
+    return result
 end
 
 """
@@ -258,8 +259,9 @@ Constructor for regular P2 triangular grids. Does not use Delaunay triangulation
 """
 (::Type{gridContext{2}})(::Type{JuAFEM.QuadraticTriangle},
                          numnodes::Tuple{Int,Int}=(25, 25), LL::AbstractVector=[0.0,0.0], UR::AbstractVector=[1.0,1.0];
-                         quadrature_order::Int=default_quadrature_order) = begin
-        #The -1 below is needed because JuAFEM internally then goes on to increment it
+                         quadrature_order::Int=default_quadrature_order) =
+begin
+    #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     loc = regular2DGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
@@ -360,7 +362,7 @@ end
 """
     regularP2QuadrilateralGrid(numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)
 
-Create a regular P2 quadrilateral grid on a Rectangle.
+Create a regular P2 quadrilateral grid on a rectangle.
 """
 function regularP2QuadrilateralGrid(
             numnodes::Tuple{Int,Int}=(25,25),
@@ -376,22 +378,23 @@ end
 
 Create a regular Tetrahedral Grid. Does not use Delaunay triangulation internally.
 """
-( ::Type{gridContext{3}})(::Type{JuAFEM.Tetrahedron},
+(::Type{gridContext{3}})(::Type{JuAFEM.Tetrahedron},
                          numnodes::Tuple{Int,Int,Int}=(10,10,10), LL::AbstractVector=[0.0,0.0,0.0], UR::AbstractVector=[1.0,1.0,1.0];
-                         quadrature_order::Int=default_quadrature_order3D) = begin
-        #The -1 below is needed because JuAFEM internally then goes on to increment it
-        grid = JuAFEM.generate_grid(JuAFEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
-        loc = regular3DGridLocator{JuAFEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
-        ip = JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 1}()
-        dh = JuAFEM.DofHandler(grid)
-        qr = JuAFEM.QuadratureRule{3, JuAFEM.RefTetrahedron}(quadrature_order)
-        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-        JuAFEM.close!(dh)
-        result =  gridContext{3}(grid, ip, dh, qr, loc)
-        result.spatialBounds = [LL, UR]
-        result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
-        result.gridType = "3D regular triangular grid"
-        return result
+                         quadrature_order::Int=default_quadrature_order3D) =
+begin
+    #The -1 below is needed because JuAFEM internally then goes on to increment it
+    grid = JuAFEM.generate_grid(JuAFEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
+    loc = regular3DGridLocator{JuAFEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
+    ip = JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 1}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{3, JuAFEM.RefTetrahedron}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result =  gridContext{3}(grid, ip, dh, qr, loc)
+    result.spatialBounds = [LL, UR]
+    result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
+    result.gridType = "3D regular triangular grid"
+    return result
 end
 
 """
@@ -465,7 +468,6 @@ function evaluate_function_from_nodevals{dim}(ctx::gridContext{dim}, nodevals::V
     return result
 end
 
-
 """
     evaluate_function_from_dofvals(ctx,dofvals,x_in; [outside_value=0,project_in=false])
 
@@ -525,11 +527,11 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
     NumberedPoint2D(x::Float64,y::Float64) = new(x, y, 0)
     NumberedPoint2D(p::VD.Point2D) = new(p.x, p.y, 0)
     NumberedPoint2D(p::Tensors.Vec{2,Float64}) = new(p[1], p[2], 0)
- end
- GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
- GP.Point2D(p::NumberedPoint2D) = Point2D(p.x,p.y)
- GP.gety(p::NumberedPoint2D) = p.y
- GP.getx(p::NumberedPoint2D) = p.x
+end
+GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
+GP.Point2D(p::NumberedPoint2D) = Point2D(p.x,p.y)
+GP.gety(p::NumberedPoint2D) = p.y
+GP.getx(p::NumberedPoint2D) = p.x
 
 #More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
 
