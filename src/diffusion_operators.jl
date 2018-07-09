@@ -108,9 +108,9 @@ function diff_op(data::AbstractMatrix{T},
         di = view(D,i,:)
         selectperm!(index, di, 1:(k+1))
         # TODO: replace by partialsortperm!(index, di, 1:(k+1))
-        Is[(i-1)*(k+1)+1:i*(k+1),1] .= i
-        Js[(i-1)*(k+1)+1:i*(k+1),2] = index
-        Vs[(i-1)*(k+1)+1:i*(k+1),2] = kernel.(di[index])
+        Is[(i-1)*(k+1)+1:i*(k+1)] .= i
+        Js[(i-1)*(k+1)+1:i*(k+1)] = index
+        Vs[(i-1)*(k+1)+1:i*(k+1)] = kernel.(di[index])
     end
     P = sparse(Is, Js, Vs, N, N)
     if typeof(sp_method) <: KNN
