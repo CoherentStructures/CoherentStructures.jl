@@ -1,15 +1,15 @@
 
 """
-    plot_u(ctx,dof_vals, nx,ny, bdata=nothing, kwargs...)
+    plot_u(ctx, dof_vals, nx, ny; bdata=nothing, kwargs...)
 
 Plot the function with coefficients (in dof order, possible boundary conditions in `bdata`) given by `dof_vals` on the grid `ctx`.
 The domain to be plotted on is given by `ctx.spatialBounds`.
 The function is evaluated on a regular `nx` by `ny` grid, the resulting plot is a heatmap.
 Keyword arguments are passed down to `plot_u_eulerian`, which this function calls internally.
 """
-function plot_u(ctx::gridContext,dof_vals::Vector{Float64},nx=50,ny=50;bdata=nothing,kwargs...)
+function plot_u(ctx::gridContext, dof_vals::Vector{Float64}, nx=50, ny=50; bdata=nothing, kwargs...)
     id = x -> x
-    plot_u_eulerian(ctx,dof_vals,id,ctx.spatialBounds[1],ctx.spatialBounds[2],nx,ny,bdata=bdata;kwargs...)
+    plot_u_eulerian(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
 end
 
 
