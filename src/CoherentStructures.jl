@@ -10,7 +10,7 @@ module CoherentStructures
     import Distances: result_type, evaluate, eval_start, eval_op
     import Distances: eval_reduce, eval_end, pairwise, pairwise!
     import Interpolations
-    import LinearMaps
+    import LinearMaps, IterativeSolvers
     # TODO: import LinearAlgebra, SparseArrays, Arpack, IterativeSolvers
     import GeometricalPredicates
     import VoronoiDelaunay

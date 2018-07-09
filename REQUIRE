@@ -4,6 +4,7 @@ DiffEqBase
 Distances
 GeometricalPredicates
 Interpolations
+IterativeSolvers
 LinearMaps
 NearestNeighbors
 OrdinaryDiffEq

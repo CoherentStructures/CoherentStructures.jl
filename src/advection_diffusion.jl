@@ -22,13 +22,13 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
 """
 # TODO: Restrict tspan to be of Range/linspace type
 function FEM_heatflow(odefun!, ctx::gridContext, tspan, κ::Real, p=nothing, bdata=boundaryData();
-                        solver=default_solver, tolerance=default_tolerance)
+                        factor = true, solver=default_solver, tolerance=default_tolerance)
 
     sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; solver=solver, tolerance=tolerance)
-    return implicitEulerStepFamily(ctx, sol, tspan, κ; bdata=bdata)
+    return implicitEulerStepFamily(ctx, sol, tspan, κ; factor = factor, bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; bdata=boundaryData())
+function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; factor = true, bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
@@ -37,9 +37,8 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; bdata=b
     # @everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
     P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
-        ΔM = factorize(M - Δτ * κ * K)
-        # println("Integration time $t done")
-        matmul = (u,v) -> u .= ΔM \ v
+        ΔM = M - Δτ * κ * K
+        matmul = (u, v) -> factor ? u .= factorize(ΔM) \ v : u .= IterativeSolvers.cg(ΔM, v)
         # TODO: replace by LinearAlgebra.ldiv!(u, ΔM, v)
         LinearMaps.LinearMap(matmul, matmul, n) * M
     end
