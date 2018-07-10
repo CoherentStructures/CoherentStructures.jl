@@ -4,7 +4,8 @@
 
 # meta function
 """
-    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=boundaryData(); kwargs...)
+    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=boundaryData();
+    factor=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
 Compute the heat flow operator for the time-dependent heat equation, which
 corresponds to the advection-diffusion equation in Lagrangian coordinates, by
@@ -18,17 +19,20 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
      flow is to be computed internally;
    * `κ`: diffusivity constant;
    * `p`: parameter container for the vector field;
-   * `kwargs`: are passed to `advect_serialized_quadpoints`.
+   * `bdata`: boundary conditions (defaults to homogeneous Neumann boundary condition);
+   * `factor`: compute and save sparse matrix factorizations (default) or use iterative solvers;
+   * `δ`: step size in finite differencing;
+   * `solver`, `tolerance`: are passed to `advect_serialized_quadpoints`.
 """
 # TODO: Restrict tspan to be of Range/linspace type
 function FEM_heatflow(odefun!, ctx::gridContext, tspan, κ::Real, p=nothing, bdata=boundaryData();
-                        factor = true, solver=default_solver, tolerance=default_tolerance)
+                        factor::Bool=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
-    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p; solver=solver, tolerance=tolerance)
-    return implicitEulerStepFamily(ctx, sol, tspan, κ; factor = factor, bdata=bdata)
+    sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p, δ; solver=solver, tolerance=tolerance)
+    return implicitEulerStepFamily(ctx, sol, tspan, κ, δ; factor=factor, bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; factor = true, bdata=boundaryData())
+function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=true, bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
@@ -36,11 +40,16 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ::Real; factor 
     # TODO: think about pmap-parallelization
     # @everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
     P = map(tspan[2:end]) do t
-        K = stiffnessMatrixTimeT(ctx, sol, t, bdata=bdata)
+        K = stiffnessMatrixTimeT(ctx, sol, t, δ; bdata=bdata)
         ΔM = M - Δτ * κ * K
-        matmul = (u, v) -> factor ? u .= factorize(ΔM) \ v : u .= IterativeSolvers.cg(ΔM, v)
-        # TODO: replace by LinearAlgebra.ldiv!(u, ΔM, v)
-        LinearMaps.LinearMap(matmul, matmul, n) * M
+        if factor
+            ΔM = factorize(ΔM)
+            matmul = (u,v) -> u .= ΔM \ v
+            # TODO: replace by LinearAlgebra.ldiv!(u, ΔM, v)
+        else
+            matmul = (u, v) -> u .= IterativeSolvers.cg(ΔM, v)
+        end
+        LinearMaps.LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
     end
     return prod(reverse(P))
 end

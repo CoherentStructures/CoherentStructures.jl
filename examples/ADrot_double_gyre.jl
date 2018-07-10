@@ -1,15 +1,15 @@
-using CoherentStructures, OrdinaryDiffEq, DiffEqOperators, Sundials
+using CoherentStructures, OrdinaryDiffEq#, DiffEqOperators, Sundials
 
 
-ctx = regularTriangularGrid((25,25))
+ctx = regularTriangularGrid((100,100))
 
 function rot_double_gyre!(du,u,p,t)
         du .= rot_double_gyre(u,p,t)
 end
 
-@time U = FEM_heatflow(rot_double_gyre!,ctx,linspace(0.,1.,11),1e-3)
-@time λ, V = diffusion_coordinates(U,6)
-plot_u(ctx,V[:,4],200,200)
+@time U = FEM_heatflow(rot_double_gyre!, ctx, linspace(0.,1.,11), 1e-3; factor=true)
+@time λ, V = diffusion_coordinates(U, 6)
+plot_u(ctx, V[:,4], 200, 200)
 
 ####### Stuff below is just testing, only partially related to stuff above ####
 
