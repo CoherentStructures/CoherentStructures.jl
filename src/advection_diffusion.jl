@@ -93,7 +93,7 @@ function advect_serialized_quadpoints(ctx::gridContext, tspan, odefun!, p=nothin
 end
 
 
-function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=bondaryData())
+function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=boundaryData())
     if t < 0
         return assembleStiffnessMatrix(ctx, bdata=bdata)
     end
