@@ -11,28 +11,58 @@ end
 @time λ, V = diffusion_coordinates(U, 6)
 plot_u(ctx, V[:,4], 200, 200)
 
-####### Stuff below is just testing, only partially related to stuff above ####
+####### Stuff below is just testing, don't delete yet
 
 
+###BEGIN EXAMPLE
 
-@time K = stiffnessMatrixTimeT(ctx,sol,0.0) + stiffnessMatrixTimeT(ctx,sol,1)
-@code_warntype assembleStiffnessMatrix(ctx)
-@time assembleMassMatrix(ctx)
-
-M = assembleMassMatrix(ctx)
-λ,v = eigs(K,M,which=:SM)
-plot_u(ctx,v[:,5])
+using CoherentStructures, OrdinaryDiffEq, DiffEqOperators
 
 
-function circle(x)
-        return ((x[1] - 0.5)^2 + (x[2] - 0.5)^2 < 0.1) ? 1.0 : 0.0
+function rot_double_gyre!(du,u,p,t)
+        du .= rot_double_gyre(u,p,t)
 end
 
-circ = nodal_interpolation(ctx,circle)
+δ = 1e-8
+ctx = regularTriangularGrid((25,25))
+sol = CoherentStructures.advect_serialized_quadpoints(ctx, (0.0,1.0), rot_double_gyre!, nothing, δ;
+        tolerance=1e-4)
+M = assembleMassMatrix(ctx)
 
+function update_coeffs(K,u,p,t)
+        print("t = $t\n")
+        ϵ = p[1]
+        ctx = p[3]
+        δ = p[5]
+        sol = p[4]
+        #Uncomment the line below
+        #K .= ϵ*CoherentStructures.stiffnessMatrixTimeT(ctx,sol,t,δ)
+        return nothing
+end
+
+L = DiffEqArrayOperator(ϵ*assembleStiffnessMatrix(ctx),1.0,update_coeffs)
+
+circleFun = x -> ((x[1] - 0.5)^2 + (x[2] - 0.5)^2 < 0.1) ? 1.0 : 0.0
 ϵ=1e-2
-plot_u(ctx,u0)
-p = (ϵ,M,ctx,sol,1e-9,K)
+p = (ϵ,M,ctx,sol,δ)
+prob = ODEProblem(L, nodal_interpolation(ctx,circleFun), (0.0,1.0),p,mass_matrix=M)
+
+
+function linsolve!(::Type{Val{:init}},f,u0)
+  function _linsolve!(x,A,b,update_matrix=false)
+          x .= A \  b
+  end
+end
+u = solve(prob ,ImplicitEuler(autodiff=false,linsolve=linsolve!),
+        progress=true,dt=1e-1,adaptive=false)
+
+for t in linspace(0,1,10)
+        Plots.display(plot_u(ctx,u(t)))
+end
+
+
+######## END EXAMPLE
+
 
 #See also http://docs.juliadiffeq.org/latest/solvers/ode_solve.html#Sundials.jl-1
 
@@ -77,29 +107,10 @@ prob = DAEProblem(compute_residual!,M\(ϵ*K0*u0),u0,(0.0,1.0),differential_vars=
 
 u = solve(prob,IDA(linear_solver=:Dense))
 
-function update_coeffs(K,u,p,t)
-        print("t = $t\n")
-        ϵ = p[1]
-        ctx = p[3]
-        δ = p[5]
-        sol = p[4]
-        K .= ϵ*stiffnessMatrixTimeT(ctx,sol,t,δ)
-        return nothing
-end
-
-function linsolve!(::Type{Val{:init}},f,u0)
-  function _linsolve!(x,A,b,update_matrix=false)
-          x .= A \  b
-  end
-end
 
 
 
 
-L = DiffEqArrayOperator(ϵ*K0,1.0,update_coeffs)
-prob = ODEProblem(L, u0, (0.0,1.0),p,mass_matrix=M)
-u = solve(prob ,ImplicitEuler(autodiff=false,linsolve=linsolve!),
-        progress=true,dt=1e-2,adaptive=false)
 
 
 for i in collect(linspace(0,1,20))
