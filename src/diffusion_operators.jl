@@ -370,7 +370,7 @@ end
 
  function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
-     E = eigs(P; nev=1, maxiter=1000, which=:LM)
+     E = eigs(P; nev=1, ncv=50)
      Π = squeeze(real(E[2]), 2) # stationary distribution
      # TODO: replace by: Π   = squeeze(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
@@ -421,7 +421,7 @@ end
 
      # Compute relevant SVD info for P by computing eigendecomposition of P*P'
      L = L_mul_Lt(P, Π)
-     E = eigs(L; nev=n_coords, maxiter=1000, which=:LM)
+     E = eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1))
      # TODO: replace by E = Arpack.eigs(L; nev=n_coords, maxiter=1000, which=:LM)
 
      # eigenvalues close to zero can be negative even though they
