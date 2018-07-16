@@ -8,11 +8,44 @@ LL = Vec{2}([0.0,0.0])
 UR=Vec{2}([2π,2π])
 bdata_predicate = (x,y) -> (CoherentStructures.distmod(x[1],y[1],2π) < 1e-9 && CoherentStructures.distmod(x[2],y[2],2π)<1e-9)
 tC = makeStandardMapTestCase()
-tC = makeOceanFlowTestCase()
-ctx = regularTriangularGrid((20,20),tC.LL,tC.UR,quadrature_order=2)
+
+
+#tC = makeStandardMapTestCase()
+tC = makeDoubleGyreTestCase(0.25)
+
+tC = makeCylinderFlowTestCase()
+ctx = regularTriangularGrid((10,10),tC.LL,tC.UR,quadrature_order=2)
 eR = experimentResult(tC, ctx, :naTO)
 runExperiment!(eR)
 plotExperiment(eR)
+
+
+
+
+tC = makeOceanFlowTestCase()
+tC = makeStandardMapTestCase()
+
+tC = makeDoubleGyreTestCase(0.25)
+
+#ctx = regularP2TriangularGrid((10,10),tC.LL,tC.UR,quadrature_order=4)
+ctx = regularTriangularGrid((10,10),tC.LL,tC.UR,quadrature_order=2)
+M = assembleMassMatrix(ctx,bdata=eR.bdata)
+S = assembleStiffnessMatrix(ctx,bdata=eR.bdata)
+
+backwards_flow = u0->flow(tC.ode_fun, u0,[0.25,0.])[end]
+ALPHA = nonAdaptiveTO(ctx,backwards_flow)
+R = -0.5*(S + ALPHA'*S*ALPHA)
+R = 0.5(R + R')
+R = S + ALPHA'*S*ALPHA
+R = R + R'
+maximum(R - R')
+λ
+plot_u(ctx,v[:,6])
+
+eR = experimentResult(tC, ctx, :naTO)
+runExperiment!(eR)
+plotExperiment(eR)
+
 plot_u(ctx,ones(ctx.n),400,400,color=:rainbow,colorbar=true,clim=(1-1e-16,1))
 Plots.savefig("/tmp/output.svg")
 inv_flow_map = CoherentStructures.standardMapInv

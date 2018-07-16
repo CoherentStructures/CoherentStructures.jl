@@ -13,7 +13,7 @@ nprocs() == 1 && addprocs()
     UR = [6.0,-28.0]
     UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
     p = (UI,VI)
-    ctx = regularDelaunayGrid((100,60),LL,UR,quadrature_order=2)
+    ctx = regularP2TriangularGrid((100,60),LL,UR,quadrature_order=2)
 
     # ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
     times = [t_initial,t_final]
@@ -44,15 +44,14 @@ end
 #With CG-Method
 begin
     q = [mean_As]
-    #bdata = CoherentStructures.getHomDBCS(ctx)
-    bdata = CoherentStructures.boundaryData()
+    bdata = CoherentStructures.getHomDBCS(ctx)
     @time K2 = assembleStiffnessMatrix(ctx,mean_Afun,q,bdata=bdata)
     @time M2 = assembleMassMatrix(ctx,bdata=bdata)
-    @time λ2, v2 = eigs(K2,M2,which=:SM,nev=12)
+    @time λ2, v2 = eigs(K2,M2,which=:SM,nev=6)
 end
 plot_real_spectrum(λ2)
-plot_u(ctx,v2[:,4],200,200,bdata=bdata)
-
+plot_u(ctx,v2[:,6],200,200,bdata=bdata,color=:rainbow)
+length(bdata.dbc_dofs)
 using Clustering
 numclusters = 5
 res = kmeans(v2[:,1:numclusters]',numclusters+1)
@@ -76,6 +75,8 @@ res = CoherentStructures.eulerian_video(ctx,current_u,LL_big,UR_big,
 #Save it
 Plots.mp4(res,"/tmp/output.mp4")
 
+
+ctx = regularDelaunayGrid((100,60),LL,UR,quadrature_order=2)
 #With adaptive TO method
 begin
     ocean_flow_map = u0 -> flow(interp_rhs!,u0, [t_initial,t_final],p=(UI,VI))[end]
@@ -84,8 +85,19 @@ begin
     @time S2= adaptiveTO(ctx,ocean_flow_map)
     @time λ, v = eigs(S + S2,M,which=:SM)
 end
+Plots.spy(S2)
+Plots.gr()
+I, J, V = findnz(S)
+Plots.scatter(I,J,markersize=0.1)
+V .= 1 .- V
+S3 = sparse(I,J,V)
+Plots.heatmap(S3,clim=(0.0,1.0))
+Plots.pdf("/tmp/heatmap.pdf")
 
-plot_u(ctx,v[:,3],200,200,bdata=bdata)
+Plots.imshow(S2)
+Plots.heatmap(S2)
+plot_real_spectrum(λ)
+plot_u(ctx,v[:,2],200,200)
 
 
 plot_spectrum(λ)

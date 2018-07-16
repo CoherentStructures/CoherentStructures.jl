@@ -31,11 +31,14 @@ end
 
 ### Plotting in 3D
 xs = linspace(0,2π,25)
-u = undoBCS(abcctx,V[:,5],bdata)
+u = undoBCS(abcctx,V[:,3],bdata)
 vals = [evaluate_function_from_dofvals(
     abcctx,u,[x,y,z]) for x in xs, y in xs, z in xs]
+vals .-= minimum(vals)
+vals ./= maximum(vals)
+
 
 using Makie
 scene = Scene()
-volume(vals, algorithm = :iso,isovalue=0.5*maximum(vals))
+volume(vals, algorithm = :iso,isovalue=0.2)
 center!(scene)
