@@ -11,7 +11,7 @@ const NN = NearestNeighbors
 
 Defines the KNN (k-nearest neighbors) sparsification method. In this
 approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
-only those particle pairs are included which are contained in either
+only those particle pairs are included which are contained in some
 k-neighborhood.
 """
 struct KNN <: SparsificationMethod
@@ -248,8 +248,8 @@ end
 doc"""
     α_normalize!(A, α = 0.5)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
-i.e., return $ a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}$, where
-$ q_k = \\sum_{\\ell} a_{k\\ell}$. Default for `α` is 0.5.
+i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
+``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 0.5.
 """
 
 @inline function α_normalize!(A::AbstractMatrix, α=0.5)
