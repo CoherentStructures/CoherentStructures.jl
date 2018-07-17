@@ -120,5 +120,3 @@ its ``l_p``-norm. Notably, `p` may be any "real" number, including `Inf` and
 mathematical metric only for ``p\geq 1``, in which case it smoothly operates
 with efficient sparsification methods like `BallTree` and `inrange` as
 implemented in the [`NearestNeighbors.jl` ](https://github.com/KristofferC/NearestNeighbors.jl) package.
-
-### Examples

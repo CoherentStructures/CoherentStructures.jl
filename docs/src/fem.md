@@ -18,51 +18,35 @@ for the flow at time $t$ (in volume-preserving flows).
 The resulting operator is both symmetric and uniformly elliptic. Eigenfunctions
 of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 
-## Example
+See the [Examples](@ref) section for examples of how these methods can be used.
 
-Here is an example of how one might use these methods.
-```@example 5
-using CoherentStructures
-LL = [0.0,0.0]; UR = [1.0,1.0];
-ctx = regularTriangularGrid((50,50),LL,UR)
-
-A = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-4)
-K = assembleStiffnessMatrix(ctx,A)
-M = assembleMassMatrix(ctx)
-λ, v = eigs(-K,M,which=:SM);
-```
-Here we have a time-dependent velocity field that describes the
-[rotating double gyre](http://dx.doi.org/10.1137/100794110) dynamical system.
-This velocity field is given by the `rot_double_gyre` function. The second
-argument to `mean_diff_tensor` are the times at which we average the pullback
-diffusion tensors. The third parameter is the step size δ used for the
-finite-difference scheme, `tolerance` is passed to the ODE solver from
-[DifferentialEquations.jl](http://juliadiffeq.org/). In the above, `A(x)`
-approximates the mean diffusion tensor given by
-
-$A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}.$
-
-The eigenfunctions saved in `v` approximate those of $\Delta^{dyn}$
-```@example 5
-import Plots
-res = [plot_u(ctx, v[:,i],colorbar=:none,clim=(-3,3)) for i in 1:6];
-Plots.plot(res...,margin=-10Plots.px)
-```
-Looking at the spectrum, there appears a gap after the third eigenvalue:
-```@example 5
-Plots.scatter(range(1,6), real.(λ))
-```
-We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package to compute coherent structures from the first two nontrivial eigenfunctions:
-```@example 5
-using Clustering
-numclusters=2
-res = kmeans(v[:,2:numclusters+1]',numclusters+1)
-u = kmeansresult2LCS(res)
-Plots.plot([plot_u(ctx,u[:,i],200,200,color=:viridis) for i in [1,2,3]]...)
-
-```
 ## Features
-TODO: finish this, describe CG and TO-based approaches, supported elements and grids, etc...
+### CG and TO methods
+The standard Galerkin formulation of the weak dynamical Laplace is refered to as the CG-method here, due to the fact that the inverse Cauchy-Green tensor appears in the weak formulation. This gives a bilinear form
+$\overline a(u,v) := \sum_{t \in \mathcal T}a^t(P_t u, P_t v)$
+Here $P_t$ is the Transfer-Operator (or pushforward) to time-$t$, and $a^t$ is the weak-form of the Laplacian on the range of the time-$t$ map being considered.
+  There are also a range of Transfer-Operator based approaches implemented here. These approximate the weak form of the Dynamical-Laplace by a bilinear-form:
+
+$\tilde a_h(u,v) = \sum_{t \in \mathcal T} a^t(I_hP_t u, I_h P_t v)$
+
+where $I_h$ is a suitable interpolation operator depending on the mesh-width $h$. Options for $I_h$ implemented in this package are:
+- Collocation (pointwise interpolation)...
+    - Points used are mesh points from domain grid ("adaptive TO")
+    - Points usedare arbitrary("non-adaptive TO")
+- the $L^2$-orthogonal projection onto a FEM-space
+    - Using the forwards flow map (currently gives poor results)
+    - Using the inverse flow map
+Note that the $L^2$-Galerkin methods currently perform very poorly on larger problems.
+
+For more details, see [this paper](https://arxiv.org/pdf/1705.03640.pdf).
+
+### Grids
+Various types of regular and irregular meshes (with Delaunay triangulation using [VoronoiDelaunay.jl](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) and include:
+ - Triangular P1-Lagrange elements in 2D (all methods)
+ - Quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
+ - Triangular and Quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
+ - Tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)
+
 ## The `gridContext` Type
 
 The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
@@ -93,7 +77,9 @@ See [Stiffness and Mass Matrices](@ref) from the [FEM-API](@ref) section.
 ## Evaluating Functions in the Approximation Space
 
 given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_nodevals` or `evaluate_function_from_dofvals` functions.
-```@example 5
+```@example 6
+using CoherentStructures #hide
+using Plots
 ctx = regularP2TriangularGrid((10,10))
 u = zeros(ctx.n)
 u[45] = 1.0
@@ -128,10 +114,10 @@ For details, see [`boundaryData`](@ref)
 ### Example
 
 Here we apply Homogeneous DBC to top and bottom, and identify the left and right side:
-```@example 5
-
+```@example 6
+using CoherentStructures
 ctx = regularQuadrilateralGrid((10,10))
-predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%1.0) < 1e-10)
+predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1],p2[1],1.0) < 1e-10
 bdata = boundaryData(ctx,predicate,["top","bottom"])
 u = ones(nDofs(ctx,bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
