@@ -21,7 +21,6 @@ julia> Distances.evaluate(PEuclidean(L),x,y)
 0.19999999999999996
 ```
 """
-
 PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
@@ -122,7 +121,6 @@ julia> x, y = rand(10), rand(10)
 julia> Distances.evaluate(STmetric(Distances.Euclidean(),2,1),x,y)
 ```
 """
-
 struct STmetric{M <: Dists.Metric, T <: Real} <: Dists.Metric
     Smetric::M
     dim::Int
@@ -174,6 +172,9 @@ end
 
 @inline eval_space(d::STmetric, a::AbstractArray, b::AbstractArray, q::Int) =
         Distances.colwise(d.Smetric, reshape(a, d.dim, q), reshape(b, d.dim, q))
+@inline eval_space!(dist::AbstractVector, d::STmetric, a::AbstractArray, b::AbstractArray, q::Int) =
+        Distances.colwise!(dist, d.Smetric, reshape(a, d.dim, q), reshape(b, d.dim, q))
+
 @inline reduce_time(d::STmetric, s, q) = q^(-1 / d.p) * norm(s, d.p)
 
 stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric, dim::Int, p::Real) =
@@ -200,7 +201,7 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::Abstra
     @everywhere @eval dists = $(dists)
     @inbounds @sync @parallel for j = 1:nb
         for i = 1:na
-            dists .= eval_space(d, view(a, :, i), view(b, :, j), q)
+            eval_space!(dists, d, view(a, :, i), view(b, :, j), q)
             r[i, j] = reduce_time(d, dists, q)
         end
     end
@@ -214,13 +215,14 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <
     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
     entries = div(n*(n+1),2)
     dists = Vector{T}(q)
-    @everywhere @eval dists, q = $(dists), $q
+    i, j = 1, 1
+    @everywhere @eval dists, i, j = $(dists), $i, $j
     @inbounds @sync @parallel for k = 1:entries
-        i, j = tri_indices(k)
+        tri_indices!(i, j, k)
         if i == j
             r[i, i] = zero(T)
         else
-            dists .= eval_space(d, view(a, :, i), view(a, :, j), q)
+            eval_space!(dists, d, view(a, :, i), view(a, :, j), q)
             r[i, j] = reduce_time(d, dists, q)
         end
     end
@@ -245,7 +247,7 @@ function pairwise(metric::STmetric, a::AbstractMatrix)
     pairwise!(r, metric, a)
 end
 
-@inline function tri_indices(n::Int)
+@inline function tri_indices!(i::Int, j::Int, n::Int)
     i = floor(Int, 0.5*(1 + sqrt(8n-7)))
     j = n - div(i*(i-1),2)
     return i, j
