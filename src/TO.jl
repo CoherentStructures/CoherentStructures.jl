@@ -86,11 +86,13 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
     LL::Tensors.Vec{2,Float64} = Tensors.Vec{2}(ctx.spatialBounds[1])
     UR::Tensors.Vec{2,Float64} = Tensors.Vec{2}(ctx.spatialBounds[2])
 
-    DL2::SparseMatrixCSC{Float64,Int64} = spzeros(ctx.n,ctx.n)
     cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr, ctx.ip)
     nshapefuncs::Int = JuAFEM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nshapefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
+    DL2I = Vector{Int}()
+    DL2J = Vector{Int}()
+    DL2V = Vector{Float64}()
 
     #TODO: allow for using a different ctx here, e.g. like in the adaptiveTO settings
     @inbounds for (cellnumber, cell) in enumerate(JuAFEM.CellIterator(ctx.dh))
@@ -112,7 +114,10 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
                         for i in 1:nshapefuncs
                             φ::Float64 = JuAFEM.shape_value(cv,q,i)
                             ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
-                            DL2[dofs[i],ctx.node_to_dof[j]] += dΩ*φ*ψ*stencil_density
+                            push!(DL2I, dofs[i])
+                            push!(DL2J,ctx.node_to_dof[j])
+                            push!(DL2V, dΩ*φ*ψ*stencil_density)
+                            #DL2[dofs[i],ctx.node_to_dof[j]] += dΩ*φ*ψ*stencil_density
                         end
                     end
                 catch y
@@ -124,6 +129,11 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
             end
             index += 1
         end
+    end
+
+    DL2::SparseMatrixCSC{Float64,Int64} = sparse(DL2I,DL2J, 0.0*DL2I,ctx.n,ctx.n)
+    for (index, i) in enumerate(DL2I)
+        DL2[i,DL2J[index]] += DL2V[index]
     end
     return DL2
 end

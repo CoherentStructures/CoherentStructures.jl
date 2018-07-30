@@ -1190,15 +1190,12 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
                 if correspondsTo[row] == 0
                     continue
                 end
-                push!(I,correspondsTo[j])
-                push!(J,correspondsTo[row])
+                push!(I,correspondsTo[row])
+                push!(J,correspondsTo[j])
             end
         end
-        push!(I,new_n)
-        push!(J,new_n)
         V = zeros(length(I))
-        #TODO: Find out if pairs (I,J) need to be unique
-        Kres = sparse(I,J,V)
+        Kres = sparse(I,J,V,new_n,new_n)
 
         for j = 1:n
             if correspondsTo[j] == 0
