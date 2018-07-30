@@ -176,15 +176,15 @@ end
 
 
 #TODO: Think of moving helper functions like these to GridFunctions.jl
-function sampleTo(u::Vector{Float64}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext)
-    u_new::Vector{Float64} = zeros(ctx_new.n)*NaN
+function sampleTo(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext) where {T}
+    u_new::Vector{T} = zeros(T,ctx_new.n)*NaN
     for i in 1:ctx_new.n
         u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u,ctx_new.grid.nodes[i].x,NaN,true)
     end
     return u_new
 end
 
-function getnorm(u::Vector{Float64},ctx::CoherentStructures.gridContext,which="L∞", M=nothing)
+function getnorm(u::Vector{T},ctx::CoherentStructures.gridContext,which="L∞", M=nothing) where {T}
     if which == "L∞"
         return maximum(abs.(u))
     elseif which == "L2"
@@ -202,6 +202,16 @@ function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Float64
         end
         Mu1 = M*u1
         return  u2 ⋅ Mu1
+end
+
+function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Complex128},u2::Vector{Complex128},Min=nothing)
+        if Min == nothing
+            M = assembleMassMatrix(ctx)
+        else
+            M = Min
+        end
+        Mu1 = M*u1
+        return  conj(u2) ⋅ Mu1
 end
 
 function getDiscreteInnerProduct(ctx1::CoherentStructures.gridContext, u1::Vector{Float64}, ctx2::CoherentStructures.gridContext, u2::Vector{Float64},nx=400,ny=400)
@@ -261,7 +271,7 @@ function makeCylinderFlowTestCase()
     backwards_flow = u0->periodic_x(flow(cylinder_flow, u0,[tf,0.0],tolerance=1e-6)[end])
     forwards_flow = u0->periodic_x(flow(cylinder_flow, u0,[0.0,tf],tolerance=1e-6)[end])
 
-    bdata_predicate = (x,y) -> CoherentStructures.distmod(x[1],y[1],2π) < 1e-9 && abs(x[2] - y[2]) < 1e-9
+    bdata_predicate = (x,y) -> CoherentStructures.peuclidean(x[1],y[1],2π) < 1e-9 && abs(x[2] - y[2]) < 1e-9
     result = testCase("Cylinder Flow",LL,UR,bdata_predicate,[], true,0.0,tf, cylinder_flow,nothing,forwards_flow,nothing,backwards_flow)
     return result
 end
@@ -270,7 +280,7 @@ end
 function makeStandardMapTestCase()
     LL = Vec{2}([0.0,0.0])
     UR=Vec{2}([2π,2π])
-    bdata_predicate = (x,y) -> (CoherentStructures.distmod(x[1],y[1],2π) < 1e-9 && CoherentStructures.distmod(x[2],y[2],2π)<1e-9)
+    bdata_predicate = (x,y) -> (CoherentStructures.peuclidean(x[1],y[1],2π) < 1e-9 && CoherentStructures.peuclidean(x[2],y[2],2π)<1e-9)
     result = testCase("Standard Map",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap,CoherentStructures.DstandardMap,CoherentStructures.standardMapInv)
     return result
 end
@@ -282,7 +292,7 @@ end
 function makeStaticLaplaceTestCase()
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.5,1.0])
-    bdata_predicate = (x,y) -> (CoherentStructures.distmod(x[1],y[1],1.5) < 1e-9 && CoherentStructures.distmod(x[2],y[2],1.)<1e-9)
+    bdata_predicate = (x,y) -> (CoherentStructures.peuclidean(x[1],y[1],1.5) < 1e-9 && CoherentStructures.peuclidean(x[2],y[2],1.)<1e-9)
     result = testCase("Static Laplace",LL,UR,bdata_predicate,[], true,0.0,0.01, zeroRHS,nothing,nothing,nothing,nothing)
     return result
 end
@@ -368,7 +378,7 @@ function testDoubleGyre(whichgrids;quadrature_order=CoherentStructures.default_q
     tC = makeDoubleGyreTestCase(tf)
     result = experimentResult[]
     if run_reference
-        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=5)
+        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=quadrature_order)
         reference = experimentResult(tC,referenceCtx,:CG,tolerance=1e-5)
         runExperiment!(reference)
         push!(result,reference)
@@ -435,8 +445,8 @@ evec_slopes = Dict("regular P2 triangular grid CG" => 3.0,"regular triangular gr
                     )
 
 evec_slopes2 = Dict("regular P2 triangular grid CG" => 2.0,"regular triangular grid CG"=>1.0,
-                    "regular triangular grid naTO" => 2.0, "regular P2 triangular grid naTO" => 2.0,
-                    "regular triangular grid L2GTOb" => 2.0, "regular P2 triangular grid L2GTOb" => 2.0
+                    "regular triangular grid naTO" => 1.0, "regular P2 triangular grid naTO" => 1.0,
+                    "regular triangular grid L2GTOb" => 1.0, "regular P2 triangular grid L2GTOb" => 1.0
                     )
 method_colors = Dict("regular P2 triangular grid CG" => :green,"regular triangular grid CG"=>:green,
                     "regular triangular grid naTO" => :blue, "regular P2 triangular grid naTO" => :blue,
