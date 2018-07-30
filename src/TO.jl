@@ -65,7 +65,7 @@ end
 #TODO: Can this be written without any dependence on the dimension?
 #TODO: Implement this for multiple timesteps
 #TODO: Implement this for missing data
-function L2GalerkinTOFromInverse3(ctx::gridContext{2},flow_map::Function,ϵ::Float64=0.0;periodic_directions::Tuple{Bool,Bool}=(false,false),n_stencil_points::Int=10)
+function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Float64=0.0;periodic_directions::Tuple{Bool,Bool}=(false,false),n_stencil_points::Int=10)
 
     #See http://blog.marmakoide.org/?p=1
     stencil::Vector{Tensors.Vec{2,Float64}} = Tensors.Vec{2,Float64}[]
