@@ -23,6 +23,7 @@ Two commonly used sparsification methods are implemented for use with various
 graph Laplacian methods, see below.
 
 ```@docs
+KNN
 mutualKNN
 neighborhood
 ```
