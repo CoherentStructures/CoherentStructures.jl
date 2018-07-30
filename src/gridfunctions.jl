@@ -1181,22 +1181,9 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
         J = Int[]
         sizehint!(J,length(rows))
         vals = nonzeros(K)
-        for j in 1:n
-            if correspondsTo[j] == 0
-                continue
-            end
-            for i in nzrange(K,j)
-                row = rows[i]
-                if correspondsTo[row] == 0
-                    continue
-                end
-                push!(I,correspondsTo[row])
-                push!(J,correspondsTo[j])
-            end
-        end
+        V = Int[]
+        sizehint!(V,length(rows))
         V = zeros(length(I))
-        Kres = sparse(I,J,V,new_n,new_n)
-
         for j = 1:n
             if correspondsTo[j] == 0
                 continue
@@ -1206,9 +1193,12 @@ function applyBCS{dim}(ctx::gridContext{dim},K,bdata::boundaryData)
                 if correspondsTo[row] == 0
                     continue
                 end
-                @inbounds Kres[correspondsTo[row],correspondsTo[j]] += vals[i]
+                push!(I, correspondsTo[row])
+                push!(J, correspondsTo[j])
+                push!(V,vals[i])
             end
         end
+        Kres = sparse(I,J,V,new_n,new_n)
         return Kres
     else
         Kres = zeros(new_n,new_n)

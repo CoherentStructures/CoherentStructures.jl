@@ -72,7 +72,8 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
     stencil_density::Float64 = 0.0
     const φ = π*(3 - √5)
     if ϵ ≠ 0.0
-        stencil_density = 1./(π*ϵ^2*n_stencil_points)
+        stencil_density = 1./n_stencil_points
+        print(stencil_density)
         for i in 0:(n_stencil_points-1)
             θ::Float64 = i * φ
             r::Float64 = ϵ*(√i / √(n_stencil_points-1))
@@ -117,7 +118,6 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
                             push!(DL2I, dofs[i])
                             push!(DL2J,ctx.node_to_dof[j])
                             push!(DL2V, dΩ*φ*ψ*stencil_density)
-                            #DL2[dofs[i],ctx.node_to_dof[j]] += dΩ*φ*ψ*stencil_density
                         end
                     end
                 catch y
@@ -131,10 +131,7 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
         end
     end
 
-    DL2::SparseMatrixCSC{Float64,Int64} = sparse(DL2I,DL2J, 0.0*DL2I,ctx.n,ctx.n)
-    for (index, i) in enumerate(DL2I)
-        DL2[i,DL2J[index]] += DL2V[index]
-    end
+    DL2::SparseMatrixCSC{Float64,Int64} = sparse(DL2I,DL2J, DL2V,ctx.n,ctx.n)
     return DL2
 end
 
