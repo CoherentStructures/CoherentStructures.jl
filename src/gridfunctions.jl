@@ -416,6 +416,17 @@ And [nodes] is the list of corresponding node ids, ordered in the order of the
 corresponding shape functions from JuAFEM's interpolation.jl file.
 """#TODO: could this be more efficient, etc.. with multiple dispatch?
 function locatePoint(ctx::gridContext{dim}, x::AbstractVector) where dim
+    if length(x) == 2
+        return locatePoint(ctx.loc, ctx.grid, Tensors.Vec{2,Float64}(x))
+    elseif lenght(x) == 3
+        return locatePoint(ctx.loc, ctx.grid, Tensors.Vec{3,Float64}(x))
+    else
+        throw(DomainError("Wrong dimension"))
+    end
+end
+
+
+function locatePoint(ctx::gridContext{dim}, x::Tensors.Vec{dim,Float64}) where dim
     return locatePoint(ctx.loc, ctx.grid, x)
 end
 
@@ -568,7 +579,7 @@ struct delaunayCellLocator <: cellLocator
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
 end
 
-function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVector)
+function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
@@ -613,7 +624,7 @@ struct p2DelaunayCellLocator <: cellLocator
     end
 end
 
-function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError())
@@ -634,19 +645,21 @@ end
 struct regular2DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
     nx::Int
     ny::Int
-    LL::Tensors.Vec{2}
-    UR::Tensors.Vec{2}
+    LL::Tensors.Vec{2,Float64}
+    UR::Tensors.Vec{2,Float64}
 end
-function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
-    if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
+function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})::Tuple{Tensors.Vec{2},Vector{Int}}
+    const x1::Float64 = x[1]
+    const x2::Float64 = x[2]
+    if x1 > loc.UR[1]  || x2 >  loc.UR[2] || x1 < loc.LL[1] || x2 < loc.LL[2]
         throw(DomainError())
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1)
-    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1)
-    n1 = Int(n1f)
-    n2 = Int(n2f)
+    n1f::Float64, loc1::Float64 = divrem((x1 - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1)
+    n2f::Float64, loc2::Float64 = divrem((x2 - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1)
+    n1::Int = Int(n1f)
+    n2::Int = Int(n2f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
         n1 = loc.nx-2
         loc1 = 1.0
@@ -662,17 +675,17 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
     ur = ul + 1
     assert(ur < (loc.nx * loc.ny))
     if loc1 + loc2 < 1.0 # ◺
-        return Tensors.Vec{2}([loc1, loc2]), [lr+1, ul+1, ll+1]
+        return Tensors.Vec{2}((loc1, loc2)), [lr+1, ul+1, ll+1]
     else # ◹
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
         #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
         #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
-        return tM⋅Tensors.Vec{2}([loc1-1,loc2]), [ ur+1, ul+1, lr+1]
+        const tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
+        return tM⋅Tensors.Vec{2}((loc1-1,loc2)), [ ur+1, ul+1, lr+1]
     end
 end
 
-function locatePoint(loc::regular2DGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -700,7 +713,7 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Quadrilateral},grid::JuAFE
 end
 
 #Same principle as for Triangle type above
-function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -742,7 +755,7 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::J
 end
 
 
-function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticQuadrilateral},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticQuadrilateral},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError())
     end
@@ -779,8 +792,8 @@ struct regular3DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{3,M,N}
     nx::Int
     ny::Int
     nz::Int
-    LL::Tensors.Vec{3}
-    UR::Tensors.Vec{3}
+    LL::Tensors.Vec{3,Float64}
+    UR::Tensors.Vec{3,Float64}
 end
 
 
@@ -797,7 +810,7 @@ function in_tetrahedron(a,b,c,d,p)
     return (mydet(b-a,c-a,p-a) >= -my0) && (mydet(b-a,d-a,p-a) <= my0) && (mydet(d-b,c-b,p-b) >= -my0) && (mydet(d-a,c-a,p-a) <= my0)
 end
 
-function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.Grid,x::AbstractVector{Float64})
+function locatePoint(loc::regular3DGridLocator{JuAFEM.Tetrahedron},grid::JuAFEM.Grid,x::Tensors.Vec{3,Float64})
   if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[3] > loc.UR[3] || x[1] < loc.LL[1] || x[2] < loc.LL[2] || x[3] < loc.LL[3]
         throw(DomainError())
     end
