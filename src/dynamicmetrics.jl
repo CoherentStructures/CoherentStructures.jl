@@ -190,7 +190,7 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 
 ########### parallel pairwise computation #################
 
-function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
+function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
     ma, na = size(a)
     mb, nb = size(b)
     size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
@@ -208,7 +208,7 @@ function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::Abstra
     r
 end
 
-function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
     m, n = size(a)
     size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
     q, s = divrem(m, d.dim)
@@ -237,13 +237,13 @@ end
 function pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
     m = size(a, 2)
     n = size(b, 2)
-    r = SharedMatrix{result_type(metric, a, b)}(m, n) #(uninitialized, m, n)
+    r = SharedArrays.SharedMatrix{result_type(metric, a, b),2}(undef, m, n)
     pairwise!(r, metric, a, b)
 end
 
 function pairwise(metric::STmetric, a::AbstractMatrix)
     n = size(a, 2)
-    r = SharedMatrix{result_type(metric, a, a)}(n, n) #(uninitialized, n, n)
+    r = SharedArrays.SharedMatrix{result_type(metric, a, a),2}(undef, n, n)
     pairwise!(r, metric, a)
 end
 
