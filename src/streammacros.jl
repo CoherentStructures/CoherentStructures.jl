@@ -342,7 +342,7 @@ replace all occurences of `sym` in `expr` by `s_expr`
 """
 sym_subst(expr::Symbol, sym::Symbol, s_expr::Union{Symbol, Expr}) =
     begin
-        expr == sym ? s_expr: expr
+        expr == sym ? s_expr : expr
     end
 
 sym_subst(expr::Expr,   sym::Symbol, s_expr::Union{Symbol, Expr}) =

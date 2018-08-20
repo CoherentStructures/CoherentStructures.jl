@@ -226,8 +226,8 @@ function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
     dummy = flow_fun(P[1])
     q::Int = length(dummy)
 
-    sol_shared = SharedArray{T}(dim*q,length(P));
-    @inbounds @sync @parallel for index in eachindex(P)
+    sol_shared = SharedArrays.SharedArray{T,2}(dim*q, length(P))
+    @inbounds @sync Distributed.@parallel for index in eachindex(P)
         # @async begin
             u = flow_fun(P[index])
             for t=1:q, d=1:dim
@@ -537,14 +537,14 @@ same size as `P`.
 function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
 
     dim = length(P[1])
-    T_shared = SharedArray{Float64}(div(dim*(dim+1), 2), length(P))
+    T_shared = SharedArrays.SharedArray{T,2}(div(dim*(dim+1), 2), length(P))
     idxs = tril(ones(Bool,dim,dim))
-    @everywhere @eval idxs = $idxs
-    @sync @parallel for index in eachindex(P)
+    Distributed.@everywhere @eval idxs = $idxs
+    @sync Distributed.@parallel for index in eachindex(P)
         T_shared[:,index] = tensor_fun(P[index])[idxs]
     end
 
-    Tfield = Array{Tensors.SymmetricTensor{2,dim,eltype(T),div(dim*(dim+1),2)}}(size(P))
+    Tfield = Array{Tensors.SymmetricTensor{2,dim,eltype(T),div(dim*(dim+1),2)}}(undef, size(P))
     for index in eachindex(P)
         Tfield[index] = Tensors.SymmetricTensor{2,dim}(T_shared[:,index])
     end

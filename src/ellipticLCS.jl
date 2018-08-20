@@ -40,7 +40,6 @@ by querying the tensor eigenvector field of `T` in a circle of radius `radius`
 around the singularity. `xspan` and `yspan` correspond to the computational grid.
 Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
-
 function singularity_type_detection(singularity::AbstractVector{S},
                                     ξ::ITP.ScaledInterpolation,
                                     radius::Float64) where S
@@ -69,7 +68,6 @@ Determines candidate regions for closed tensor line orbits.
    * `Min2ndDist`: minimal distance to second closest wedge
 Returns a list of vortex centers.
 """
-
 function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
                                 singularity_types::AbstractVector{Int},
                                 MaxWedgeDist::Float64,
@@ -107,7 +105,6 @@ of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
 eastwards. All points are guaranteed to lie in the computational domain given
 by `xspan` and `yspan`.
 """
-
 function set_Poincaré_section(vc::AbstractVector{S},
                                 p_length::Float64,
                                 n_seeds::Int,
@@ -295,7 +292,6 @@ Returns a list of tuples, each tuple containing
    * the sign used in the η-formula,
    * the outermost closed orbit for the corresponding λ and sign.
 """
-
 function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
                         xspan::AbstractVector{S},
                         yspan::AbstractVector{S},
@@ -324,7 +320,7 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
         set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan)
     end
 
-    @everywhere @eval p_section = $p_section
+    Distributed.@everywhere @eval p_section = $p_section
     closedorbits = pmap(p_section) do ps
         compute_outermost_closed_orbit(ps,T,xspan,yspan)
     end

@@ -2,7 +2,7 @@
 
 const gaussian_kernel = x::Number -> exp(-abs2(x))
 
-const LinMaps{T} = Union{SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
+const LinMaps{T} = Union{SparseArrays.SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
 const NN = NearestNeighbors
 
 """
@@ -66,7 +66,6 @@ Return a diffusion/Markov matrix `P`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-
 function diff_op(data::AbstractMatrix{T},
                     sp_method::neighborhood,
                     kernel = gaussian_kernel;
@@ -99,8 +98,8 @@ function diff_op(data::AbstractMatrix{T},
     Js = SharedArray{Int}(N*(k+1))
     Vs = SharedArray{T}(N*(k+1))
     index = Vector{Int}(k+1)
-    @everywhere @eval index = $index
-    @inbounds @sync @parallel for i=1:N
+    Distributed.@everywhere @eval index = $index
+    @inbounds @sync Distributed.@distributed for i=1:N
         di = view(D,i,:)
         partialsortperm!(index, di, 1:(k+1))
         Is[(i-1)*(k+1)+1:i*(k+1)] .= i
@@ -118,7 +117,7 @@ function diff_op(data::AbstractMatrix{T},
     return P
 end
 
-doc"""
+@doc doc"""
     sparse_diff_op_family(data, sp_method, kernel=gaussian_kernel, dim=2; op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
@@ -135,12 +134,11 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
-# TODO: use `Iterators.reverse` to avoid copies!
 function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,reverse(P))),
+                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,reverse(P))),# TODO: use `Iterators.reverse` to avoid copies!
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -157,7 +155,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
     return op_reduce(P)
 end
 
-doc"""
+@doc doc"""
     sparse_diff_op(data, sp_method, kernel; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse diffusion/Markov matrix `P`.
@@ -170,7 +168,6 @@ Return a sparse diffusion/Markov matrix `P`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
-
 @inline function sparse_diff_op(data::AbstractMatrix,
                         sp_method::S,
                         kernel = gaussian_kernel;
@@ -193,7 +190,6 @@ The ``x_i`` are taken from the columns of `data`. Entries are
 only calculated for pairs determined by the sparsification method `sp_method`.
 Default metric is `Euclidean()`.
 """
-
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
                                sp_method::Union{KNN,mutualKNN},
                                kernel=gaussian_kernel,
@@ -238,13 +234,12 @@ end
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
-doc"""
+@doc doc"""
     α_normalize!(A, α = 0.5)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 0.5.
 """
-
 @inline function α_normalize!(A::AbstractMatrix, α=0.5)
     LinAlg.checksquare(A)
     qₑ = squeeze(sum(A, dims=2), dims=2) .^-α
@@ -253,12 +248,11 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     return A
 end
 
-doc"""
+@doc doc"""
     wLap_normalize!(A)
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 $ a_{ij}:=a_{ij}/q_i$.
 """
-
 @inline function wLap_normalize!(A::AbstractMatrix)
     LinAlg.checksquare(A)
     dᵅ = inv.(squeeze(sum(A, dims=2), dims=2))
@@ -268,7 +262,7 @@ $ a_{ij}:=a_{ij}/q_i$.
 
 # adjacency-related functions
 
-doc"""
+@doc doc"""
     sparse_adjacency(data, ε[, dim]; metric) -> SparseMatrixCSC
 
 Return a sparse adjacency matrix `A` with integer entries `0` or `1`. If the
@@ -284,7 +278,6 @@ metric is applied to the whole columns of `data`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
-
 function sparse_adjacency(data::AbstractMatrix{T},
                             ε::S,
                             dim::Int;
@@ -317,7 +310,7 @@ function sparse_adjacency(data::AbstractMatrix,
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
-doc"""
+@doc doc"""
     sparse_adjacency_list(data, ε; metric=Euclidean()) -> idxs::Vector{Vector}
 
 Return two lists of indices of data points that are adjacent.
@@ -328,7 +321,6 @@ Return two lists of indices of data points that are adjacent.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
 """
-
 @inline function sparse_adjacency_list(data::AbstractMatrix{T},
                                 ε::S;
                                 metric::Distances.Metric = Distances.Euclidean()
@@ -355,8 +347,7 @@ end
  `P` may be dense or sparse, or a `LinearMap` matrix-vector multiplication
  is given by a function.
  """
-
- function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
+function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      E = Arpack.eigs(P; nev=1, ncv=50)
      Π = squeeze(real(E[2]), dims=2) # stationary distribution
@@ -396,36 +387,34 @@ end
  `Σ` for a linear map `P`. `n_coords` determines the number of diffusion
  coordinates to be computed.
  """
+function diffusion_coordinates(P::LinMaps,n_coords::Int)
+    N = LinearAlgebra.checksquare(P)
 
- function diffusion_coordinates(P::LinMaps,n_coords::Int)
+    Π = stationary_distribution(transpose(P))
 
-     N = LinearAlgebra.checksquare(P)
+    # Compute relevant SVD info for P by computing eigendecomposition of P*P'
+    L = L_mul_Lt(P, Π)
+    E = Arpack.eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1))
 
-     Π = stationary_distribution(transpose(P))
+    # eigenvalues close to zero can be negative even though they
+    # should be positive.
+    drop_num_zeros(x) = abs(x) < eps(E[1][1]) ? zero(x) : x
+    Σ = drop_num_zeros.(E[1])
 
-     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
-     L = L_mul_Lt(P, Π)
-     E = Arpack.eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1))
+    if any(Σ .< 0)
+     warn("Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
+        "Using absolute value instead.")
+    end
 
-     # eigenvalues close to zero can be negative even though they
-     # should be positive.
-     drop_num_zeros(x) = abs(x) < eps(E[1][1]) ? zero(x) : x
-     Σ = drop_num_zeros.(E[1])
+    Σ .= (sqrt∘abs).(Σ)
+    Ψ = E[2]
 
-     if any(Σ .< 0)
-         warn("Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
-            "Using absolute value instead.")
-     end
-
-     Σ .= (sqrt∘abs).(Σ)
-     Ψ = E[2]
-
-     # Compute diffusion map Ψ and extract the diffusion coordinates
-     LinearAlgebra.rmul!(Ψ, Σ)
-     @. Π = 1 / sqrt(Π)
-     LinearAlgebra.rmul!(Π, Ψ)
-     return Σ, Ψ
- end
+    # Compute diffusion map Ψ and extract the diffusion coordinates
+    LinearAlgebra.rmul!(Ψ, Σ)
+    @. Π = 1 / sqrt(Π)
+    LinearAlgebra.rmul!(Π, Ψ)
+    return Σ, Ψ
+end
 
  """
      diffusion_distance(diff_coord) -> SymmetricMatrix

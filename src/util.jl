@@ -62,7 +62,6 @@ T = [Tensors.SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
 All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
-
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
     E = eigfact.(T)
     # TODO: replace by E = eigen.(T)
@@ -157,7 +156,6 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 `UI` and `VI` are the interpolants for the x- and y-components of the velocity
 field.
 """
-
 function interp_rhs(u, p, t)
     du1 = p[1][u[1], u[2], t]
     du2 = p[2][u[1], u[2], t]
