@@ -227,7 +227,7 @@ function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
     q::Int = length(dummy)
 
     sol_shared = SharedArrays.SharedArray{T,2}(dim*q, length(P))
-    @inbounds @sync Distributed.@parallel for index in eachindex(P)
+    @inbounds @sync Distributed.@distributed for index in eachindex(P)
         # @async begin
             u = flow_fun(P[index])
             for t=1:q, d=1:dim
@@ -540,7 +540,7 @@ function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
     T_shared = SharedArrays.SharedArray{T,2}(div(dim*(dim+1), 2), length(P))
     idxs = tril(ones(Bool,dim,dim))
     Distributed.@everywhere @eval idxs = $idxs
-    @sync Distributed.@parallel for index in eachindex(P)
+    @sync Distributed.@distributed for index in eachindex(P)
         T_shared[:,index] = tensor_fun(P[index])[idxs]
     end
 
@@ -608,7 +608,6 @@ the metric tensor along a trajectory. Derivatives are computed with finite diffe
    * `D`: (constant) diffusion tensor, metric tensor is computed via inversion; defaults to `eye(2)`
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 function pullback_tensors(
             odefun,
             u::AbstractVector{T},
@@ -640,7 +639,6 @@ Derivatives are computed with finite differences.
    * `G`: (constant) metric tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 @inline function pullback_metric_tensor(
             odefun,
             u::AbstractVector{T},
@@ -669,7 +667,6 @@ Derivatives are computed with finite differences.
    * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 @inline function pullback_diffusion_tensor(
             odefun,
             u::AbstractVector{T},
@@ -720,7 +717,6 @@ Derivatives are computed with finite differences.
    * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 @inline function pullback_SDE_diffusion_tensor(
                 odefun,
                 u::AbstractVector{T},
@@ -748,7 +744,6 @@ tensor. Derivatives are computed with finite differences.
    * `G`: (constant) metric tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 function av_weighted_CG_tensor(
             odefun,
             u::AbstractVector{T},

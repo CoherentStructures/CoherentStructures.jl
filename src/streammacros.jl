@@ -18,7 +18,6 @@ This is a convenience macro for the case where you want to use
 If you only use one, you might as well use `@velo_from_stream name code` or
 `@var_velo_from_stream` directly.
 """
-
 macro define_stream(name::Symbol, code::Expr)
     haskey(stream_dict, name) && warn("overwriting definition of stream $name")
     stream_dict[name] = code
