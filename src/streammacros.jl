@@ -79,26 +79,18 @@ julia> f2([1.0,1.0], nothing, 0.0)
 ```
 
 """
-macro velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined")
-    quote
-        @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
-    end
-end
-
-macro var_velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined")
-    quote
-        @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
-    end
-end
-
-
 macro velo_from_stream(H::Symbol, formulas::Expr)
     F, _ = streamline_derivatives(H, formulas)
     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
         (u,p,t) -> StaticArrays.SVector($(F[1]), $(F[2]))
+    end
+end
+
+macro velo_from_stream(name::Symbol)
+    haskey(stream_dict, name) || error("stream $name not defined")
+    quote
+        @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
     end
 end
 
@@ -128,6 +120,12 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     end
 end
 
+macro var_velo_from_stream(name::Symbol)
+    haskey(stream_dict, name) || error("stream $name not defined")
+    quote
+        @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
+    end
+end
 
 function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
