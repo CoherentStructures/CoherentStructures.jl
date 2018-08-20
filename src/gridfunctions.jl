@@ -135,11 +135,11 @@ end
 Create a P1-Lagrange grid based on Delaunay Triangulation.
 Uses `DelaunayVoronoi.jl` internally.
 """
-gridContext{Type{Val{2}}}(#Defined like this so julia doesn't complain that 2 is not a type
+gridContext{2}(#Defined like this so julia doesn't complain that 2 is not a type
             ::Type{JuAFEM.Triangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order) =
-begin
+    begin
         grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list)
         ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
         dh = JuAFEM.DofHandler(grid)
@@ -149,7 +149,7 @@ begin
         result =  gridContext{2}(grid, ip, dh, qr, loc)
         result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
         return result
-end
+    end
 
 
 """
