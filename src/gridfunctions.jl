@@ -114,7 +114,7 @@ end
 #Based on JuAFEM's WriteVTK.vtk_point_data
 function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
     dh::JuAFEM.DofHandler = ctx.dh
-    const n = ctx.n
+    n = ctx.n
     res = fill(-1,n)
     for cell in JuAFEM.CellIterator(dh)
         _celldofs = JuAFEM.celldofs(cell)
