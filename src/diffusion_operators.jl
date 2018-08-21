@@ -242,7 +242,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 """
 @inline function α_normalize!(A::AbstractMatrix, α=0.5)
     LinearAlgebra.checksquare(A)
-    qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
+    qₑ = Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     LinearAlgebra.rmul!(A, qₑ)
     LinearAlgebra.lmul!(qₑ, A)
     return A
@@ -255,7 +255,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 """
 @inline function wLap_normalize!(A::AbstractMatrix)
     LinearAlgebra.checksquare(A)
-    dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
+    dᵅ = Diagaonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     LinearAlgebra.lmul!(dᵅ, A)
     return A
  end
