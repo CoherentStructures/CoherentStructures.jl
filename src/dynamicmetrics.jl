@@ -84,12 +84,12 @@ end
 # function result_type(dist::PEuclidean, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
 #     typeof(evaluate(dist, one(T1), one(T2)))
 # end
-@inline function eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
+@inline function Dists.eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     zero(result_type(d, a, b))
 end
-@inline eval_op(::PEuclidean, ai, bi, li) = begin d = mod(abs(ai - bi), li); d = min(d, li-d); abs2(d) end
-@inline eval_reduce(::PEuclidean, s1, s2) = s1 + s2
-@inline eval_end(::PEuclidean, s) = sqrt(s)
+@inline Dists.eval_op(::PEuclidean, ai, bi, li) = begin d = mod(abs(ai - bi), li); d = min(d, li-d); abs2(d) end
+@inline Dists.eval_reduce(::PEuclidean, s1, s2) = s1 + s2
+@inline Dists.eval_end(::PEuclidean, s) = sqrt(s)
 
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = euclidean(a, b)
