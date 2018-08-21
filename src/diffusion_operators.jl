@@ -117,7 +117,7 @@ function diff_op(data::AbstractMatrix{T},
     return P
 end
 
-@doc doc"""
+"""
     sparse_diff_op_family(data, sp_method, kernel=gaussian_kernel, dim=2; op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
@@ -155,7 +155,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
     return op_reduce(P)
 end
 
-@doc doc"""
+"""
     sparse_diff_op(data, sp_method, kernel; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse diffusion/Markov matrix `P`.
@@ -234,7 +234,7 @@ end
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
-@doc doc"""
+"""
     α_normalize!(A, α = 0.5)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
@@ -248,7 +248,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     return A
 end
 
-@doc doc"""
+"""
     wLap_normalize!(A)
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 $ a_{ij}:=a_{ij}/q_i$.
@@ -262,7 +262,7 @@ $ a_{ij}:=a_{ij}/q_i$.
 
 # adjacency-related functions
 
-@doc doc"""
+"""
     sparse_adjacency(data, ε[, dim]; metric) -> SparseMatrixCSC
 
 Return a sparse adjacency matrix `A` with integer entries `0` or `1`. If the
@@ -310,7 +310,7 @@ function sparse_adjacency(data::AbstractMatrix,
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
-@doc doc"""
+"""
     sparse_adjacency_list(data, ε; metric=Euclidean()) -> idxs::Vector{Vector}
 
 Return two lists of indices of data points that are adjacent.
