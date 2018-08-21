@@ -242,7 +242,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 """
 @inline function α_normalize!(A::AbstractMatrix, α=0.5)
     LinearAlgebra.checksquare(A)
-    qₑ = squeeze(sum(A, dims=2), dims=2) .^-α
+    qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
     LinearAlgebra.rmul!(A, qₑ)
     LinearAlgebra.lmul!(qₑ, A)
     return A
@@ -255,7 +255,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 """
 @inline function wLap_normalize!(A::AbstractMatrix)
     LinearAlgebra.checksquare(A)
-    dᵅ = inv.(squeeze(sum(A, dims=2), dims=2))
+    dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
     LinearAlgebra.lmul!(dᵅ, A)
     return A
  end
@@ -350,7 +350,7 @@ end
 function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      E = Arpack.eigs(P; nev=1, ncv=50)
-     Π = squeeze(real(E[2]), dims=2) # stationary distribution
+     Π = dropdims(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
      prod(ext) < 0 && throw(error("Both signs in stationary distribution (extrema are $ext)"))
      if (ext[1] < 0)
