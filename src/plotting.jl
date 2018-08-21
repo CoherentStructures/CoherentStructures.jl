@@ -136,8 +136,8 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
     return euler_to_lagrange_points_raw
 end
 
-function plot_spectrum(λ)
-    Plots.scatter(real.(λ),imag.(λ))
+function plot_spectrum(λ;kwargs...)
+    Plots.scatter(real.(λ),imag.(λ);kwargs...)
 end
 
 function plot_real_spectrum(λ)
