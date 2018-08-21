@@ -255,7 +255,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 """
 @inline function wLap_normalize!(A::AbstractMatrix)
     LinearAlgebra.checksquare(A)
-    dᵅ = Diagaonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+    dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     LinearAlgebra.lmul!(dᵅ, A)
     return A
  end
