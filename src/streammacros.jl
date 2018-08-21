@@ -19,7 +19,7 @@ If you only use one, you might as well use `@velo_from_stream name code` or
 `@var_velo_from_stream` directly.
 """
 macro define_stream(name::Symbol, code::Expr)
-    haskey(stream_dict, name) && warn("overwriting definition of stream $name")
+    haskey(stream_dict, name) && (@warn "overwriting definition of stream $name")
     stream_dict[name] = code
     quote
         # do nothing, the actual work is done when @velo_from_stream name
@@ -88,7 +88,7 @@ macro velo_from_stream(H::Symbol, formulas::Expr)
 end
 
 macro velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined")
+    haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
         @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
     end
@@ -121,7 +121,7 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
 end
 
 macro var_velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined")
+    haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
         @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
     end
@@ -288,7 +288,7 @@ substitutions(variable::Symbol, code::Expr, knowns = []) = begin
         count = count + 1
     end
     if has_free_symb(ex, knowns)
-        warn("$(remove_blocks(ex)) still has free variables that are not bound by $knowns")
+        @warn "$(remove_blocks(ex)) still has free variables that are not bound by $knowns"
     end
     return ex
 end
