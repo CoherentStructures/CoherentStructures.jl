@@ -1,23 +1,23 @@
 module CoherentStructures
 
-    import StaticArrays
+    using StaticArrays
 
-    import Tensors
-    using Tensors: otimes, dot, ⊗, ⋅
+    using Tensors
+    # using Tensors: otimes, dot, ⊗, ⋅
 
-    import DiffEqBase, OrdinaryDiffEq
-    import Contour, Distances, NearestNeighbors
-    import Distances: result_type, evaluate, eval_start, eval_op
-    import Distances: eval_reduce, eval_end, pairwise, pairwise!
-    import Interpolations
-    import LinearMaps, IterativeSolvers
-    import LinearAlgebra, SparseArrays, Arpack, IterativeSolvers, Distributed, SharedArrays
-    import GeometricalPredicates
-    import VoronoiDelaunay
+    using DiffEqBase, OrdinaryDiffEq
+    using Contour, Distances, NearestNeighbors
+    using Distances: result_type, evaluate, eval_start, eval_op
+    using Distances: eval_reduce, eval_end, pairwise, pairwise!
+    using Interpolations
+    using LinearMaps, IterativeSolvers
+    using LinearAlgebra, SparseArrays, Arpack, IterativeSolvers, Distributed, SharedArrays
+    using GeometricalPredicates
+    using VoronoiDelaunay
 
-    import JuAFEM
-    import Plots
-    import SymEngine
+    using JuAFEM
+    using Plots
+    using SymEngine
 
     #Contains a list of functions being exported
     include("exports.jl")
