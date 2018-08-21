@@ -207,7 +207,7 @@ Default metric is `Euclidean()`.
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     Vs::Vector{T} = kernel.(vcat(dists...))
     W = SparseArrays.sparse(Is, Js, Vs, N, N)
-    Base.SparseArrays.droptol!(W,eps(eltype(W)))
+    SparseArrays.droptol!(W,eps(eltype(W)))
     if typeof(sp_method) <: KNN
         return max.(W, PermutedDimsArray(W, (2,1)))
     else
