@@ -5,13 +5,22 @@ module CoherentStructures
     using Tensors
     # using Tensors: otimes, dot, ⊗, ⋅
 
-    using DiffEqBase, OrdinaryDiffEq
-    using Contour, Distances, NearestNeighbors
+    using DiffEqBase
+    using OrdinaryDiffEq
+    using Contour
+    using Distances
     using Distances: result_type, evaluate, eval_start, eval_op
     using Distances: eval_reduce, eval_end, pairwise, pairwise!
+    using NearestNeighbors
     using Interpolations
-    using LinearMaps, IterativeSolvers
-    using LinearAlgebra, SparseArrays, Arpack, IterativeSolvers, Distributed, SharedArrays
+    using LinearMaps
+    using IterativeSolvers
+    using LinearAlgebra
+    using SparseArrays
+    using Distributed
+    using SharedArrays
+    using Markdown
+    using Arpack
     using GeometricalPredicates
     using VoronoiDelaunay
 
