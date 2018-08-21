@@ -132,7 +132,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
      `P -> prod(LinearMaps.LinearMap,reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+     only for point pairs where ``metric(x_i, x_j)\leq \varepsilon``.
 """
 function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
@@ -166,7 +166,7 @@ Return a sparse diffusion/Markov matrix `P`.
    * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x)` (default);
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+     only for point pairs where ``metric(x_i, x_j)\leq \varepsilon``.
 """
 @inline function sparse_diff_op(data::AbstractMatrix,
                         sp_method::S,
@@ -251,7 +251,7 @@ end
 """
     wLap_normalize!(A)
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
-$ a_{ij}:=a_{ij}/q_i$.
+``a_{ij}:=a_{ij}/q_i``.
 """
 @inline function wLap_normalize!(A::AbstractMatrix)
     LinAlg.checksquare(A)
@@ -276,7 +276,7 @@ metric is applied to the whole columns of `data`.
    * `dim`: the columns of `data` are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+     only for point pairs where ``metric(x_i, x_j)\leq \varepsilon``.
 """
 function sparse_adjacency(data::AbstractMatrix{T},
                             ε::S,
@@ -319,7 +319,7 @@ Return two lists of indices of data points that are adjacent.
    * `data`: 2D array with columns correspdonding to data points;
    * `ε`: distance threshold;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where $ metric(x_i, x_j)\leq \varepsilon$.
+     only for point pairs where ``metric(x_i, x_j)\leq \varepsilon``.
 """
 @inline function sparse_adjacency_list(data::AbstractMatrix{T},
                                 ε::S;
