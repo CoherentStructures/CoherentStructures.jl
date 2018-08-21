@@ -227,8 +227,7 @@ function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
     q::Int = length(dummy)
 
     sol_shared = SharedArrays.SharedArray{T,2}(dim*q, length(P))
-    # @inbounds
-    @sync Distributed.@distributed for index in eachindex(P)
+    @inbounds @sync Distributed.@distributed for index in eachindex(P)
             u = flow_fun(P[index])
             for t=1:q
                 sol_shared[(t-1)*dim+1:t*dim,index] = u[t]
