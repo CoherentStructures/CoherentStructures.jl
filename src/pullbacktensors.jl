@@ -14,64 +14,6 @@ Solve the ODE with right hand side given by `odefun` and initial value `u0`.
 `tolerance` is passed as both relative and absolute tolerance to the solver,
 which is determined by `solver`.
 """
-# function flow(
-#             odefun::Function,
-#             u0::SA.SVector{dim,T},
-#             tspan::AbstractVector{Float64};
-#             tolerance = default_tolerance,
-#             p = nothing,
-#             solver = default_solver,
-#             #ctx_for_boundscheck=nothing,
-#             force_dtmin=false
-#         ) where {T<:Real,dim}
-#     #callback = nothing
-#     #if ctx_for_boundscheck != nothing
-#     #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
-#     #   LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
-#     #   UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
-#     #   UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
-#     #   leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
-#     #   bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
-#     #   rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
-#     #   topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
-#     #   function affect!(integrator)
-#     #           return terminate!(integrator)#
-#     #   end
-#     #   callback = OrdinaryDiffEq.CallbackSet(
-#     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
-#     #       [leftSide,rightSide,topSide,bottomSide])...)
-#    #end
-#    num_args = DiffEqBase.numargs(odefun)
-#    if num_args == 4
-#        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
-#        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-#                              save_everystep=false, dense=false,
-#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-#        return sol.u
-#    elseif num_args == 3
-#        sprob = OrdinaryDiffEq.ODEProblem(odefun,u0, (tspan[1],tspan[end]), p)
-#        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
-#                              save_everystep=false, dense=false,
-#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-#        return ssol.u
-#    else
-#        error("Invalid format of odefun")
-#    end
-# end
-#
-# function flow(odefun::Function,u0::Tensors.Vec{dim,Float64},args...;kwargs...) where dim
-#     return flow(odefun,SA.SVector{dim}(u0),args...;kwargs...)
-# end
-#
-# function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
-#     if length(u0) == 2
-#         return flow(rhs,SA.SVector{2}(u0[1],u0[2]),args...;kwargs...)
-#     elseif length(u0) == 3
-#         return flow(rhs,SA.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
-#     else
-#         error("length(u0) ∉ [2,3]")
-#     end
-# end
 function flow(
             odefun::Function,
             u0::AbstractVector{T},
@@ -210,6 +152,65 @@ function _flow(
                           reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
     return sol.u
 end
+
+# function flow(
+#             odefun::Function,
+#             u0::SA.SVector{dim,T},
+#             tspan::AbstractVector{Float64};
+#             tolerance = default_tolerance,
+#             p = nothing,
+#             solver = default_solver,
+#             #ctx_for_boundscheck=nothing,
+#             force_dtmin=false
+#         ) where {T<:Real,dim}
+#     #callback = nothing
+#     #if ctx_for_boundscheck != nothing
+#     #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
+#     #   LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
+#     #   UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
+#     #   UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
+#     #   leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
+#     #   bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
+#     #   rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
+#     #   topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
+#     #   function affect!(integrator)
+#     #           return terminate!(integrator)#
+#     #   end
+#     #   callback = OrdinaryDiffEq.CallbackSet(
+#     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
+#     #       [leftSide,rightSide,topSide,bottomSide])...)
+#    #end
+#    num_args = DiffEqBase.numargs(odefun)
+#    if num_args == 4
+#        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+#        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+#                              save_everystep=false, dense=false,
+#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+#        return sol.u
+#    elseif num_args == 3
+#        sprob = OrdinaryDiffEq.ODEProblem(odefun,u0, (tspan[1],tspan[end]), p)
+#        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
+#                              save_everystep=false, dense=false,
+#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+#        return ssol.u
+#    else
+#        error("Invalid format of odefun")
+#    end
+# end
+#
+# function flow(odefun::Function,u0::Tensors.Vec{dim,Float64},args...;kwargs...) where dim
+#     return flow(odefun,SA.SVector{dim}(u0),args...;kwargs...)
+# end
+#
+# function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
+#     if length(u0) == 2
+#         return flow(rhs,SA.SVector{2}(u0[1],u0[2]),args...;kwargs...)
+#     elseif length(u0) == 3
+#         return flow(rhs,SA.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
+#     else
+#         error("length(u0) ∉ [2,3]")
+#     end
+# end
 
 """
     parallel_flow(flow_fun,P) -> Array
