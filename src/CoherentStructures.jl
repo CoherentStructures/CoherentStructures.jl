@@ -11,10 +11,9 @@ module CoherentStructures
     import Distances: eval_reduce, eval_end, pairwise, pairwise!
     import Interpolations
     import LinearMaps, IterativeSolvers
-    # TODO: import LinearAlgebra, SparseArrays, Arpack, IterativeSolvers, Distributed, SharedArrays
     import GeometricalPredicates
     import VoronoiDelaunay
-    # Pkg.checkout("JuAFEM","efa2eff")
+    # Pkg.checkout("JuAFEM", "release-0.3")
     import JuAFEM
     import Plots
     import SymEngine
