@@ -53,7 +53,7 @@ module CoherentStructures
     include("streammacros.jl")
 
     ##Definitions of velocity fields
-    # include("velocityfields.jl")
+    include("velocityfields.jl")
 
     ##Extensions to JuAFEM dealing with non-curved grids
     ##Support for evaluating functions at grid points, delaunay Triangulations
