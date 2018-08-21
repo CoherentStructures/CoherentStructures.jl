@@ -54,21 +54,21 @@ module CoherentStructures
     #TODO: Find out the existence of such a function can be enforced by julia
 
     abstract type cellLocator end
-    include("gridfunctions.jl")
+    # include("gridfunctions.jl")
 
     #Creation of Stiffness and Mass-matrices
-    include("FEMassembly.jl")
+    # include("FEMassembly.jl")
 
     #TO-approach based methods
-    include("TO.jl")
+    # include("TO.jl")
 
 
-   #Some test cases, similar to velocityFields.jl
-   # include("numericalExperiments.jl")
+    #Some test cases, similar to velocityFields.jl
+    # include("numericalExperiments.jl")
 
-   #Plotting
-   include("plotting.jl")
+    #Plotting
+    # include("plotting.jl")
 
-   #Solving Advection/Diffusion Equation
-   include("advection_diffusion.jl")
+    #Solving Advection/Diffusion Equation
+    # include("advection_diffusion.jl")
 end
