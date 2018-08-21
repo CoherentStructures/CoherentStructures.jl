@@ -21,8 +21,8 @@ module CoherentStructures
     using SharedArrays
     using Markdown
     using Arpack
-    using GeometricalPredicates
-    using VoronoiDelaunay
+    # using GeometricalPredicates
+    # using VoronoiDelaunay
 
     using JuAFEM
     using Plots
