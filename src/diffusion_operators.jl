@@ -410,9 +410,9 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
     Ψ = E[2]
 
     # Compute diffusion map Ψ and extract the diffusion coordinates
-    LinearAlgebra.rmul!(Ψ, Σ)
+    LinearAlgebra.rmul!(Ψ, Diagonal(Σ))
     @. Π = 1 / sqrt(Π)
-    LinearAlgebra.rmul!(Π, Ψ)
+    LinearAlgebra.rmul!(Diagonal(Π), Ψ)
     return Σ, Ψ
 end
 
