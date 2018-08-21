@@ -107,7 +107,11 @@ function diff_op(data::AbstractMatrix{T},
         Vs[(i-1)*(k+1)+1:i*(k+1)] = kernel.(di[index])
     end
     P = SparseArrays.sparse(Is, Js, Vs, N, N)
-    typeof(sp_method) <: KNN ? @. P = max(P, PermutedDimsArray(P, (2,1))) : @. P = min(P, PermutedDimsArray(P, (2,1)))
+    if typeof(sp_method) <: KNN
+        @. P = max(P, PermutedDimsArray(P, (2,1)))
+    else
+        @. P = min(P, PermutedDimsArray(P, (2,1)))
+    end
     α>0 && α_normalize!(P, α)
     wLap_normalize!(P)
     return P
