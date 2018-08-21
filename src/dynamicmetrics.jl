@@ -198,7 +198,7 @@ function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatr
     q, s = divrem(ma, d.dim)
     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
     dists = Vector{T}(q)
-    Distributed.@everywhere @eval dists = $(dists)
+    Distributed.@everywhere dists = $dists
     @inbounds @sync Distributed.@distributed for j = 1:nb
         for i = 1:na
             eval_space!(dists, d, view(a, :, i), view(b, :, j), q)
@@ -216,7 +216,7 @@ function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatr
     entries = div(n*(n+1),2)
     dists = Vector{T}(undef, q)
     i, j = 1, 1
-    Distributed.@everywhere @eval dists, i, j = $(dists), $i, $j
+    Distributed.@everywhere dists, i, j = $dists, $i, $j
     @inbounds @sync Distributed.@distributed for k = 1:entries
         tri_indices!(i, j, k)
         if i == j

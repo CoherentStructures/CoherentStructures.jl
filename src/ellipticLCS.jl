@@ -320,7 +320,7 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
         set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan)
     end
 
-    Distributed.@everywhere @eval p_section = $p_section
+    Distributed.@everywhere p_section = $p_section
     closedorbits = pmap(p_section) do ps
         compute_outermost_closed_orbit(ps,T,xspan,yspan)
     end

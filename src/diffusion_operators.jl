@@ -97,8 +97,8 @@ function diff_op(data::AbstractMatrix{T},
     Is = SharedArray{Int}(N*(k+1))
     Js = SharedArray{Int}(N*(k+1))
     Vs = SharedArray{T}(N*(k+1))
-    index = Vector{Int}(k+1)
-    Distributed.@everywhere @eval index = $index
+    index = Vector{Int}(undef, k+1)
+    Distributed.@everywhere index = $index
     @inbounds @sync Distributed.@distributed for i=1:N
         di = view(D,i,:)
         partialsortperm!(index, di, 1:(k+1))
@@ -107,11 +107,7 @@ function diff_op(data::AbstractMatrix{T},
         Vs[(i-1)*(k+1)+1:i*(k+1)] = kernel.(di[index])
     end
     P = SparseArrays.sparse(Is, Js, Vs, N, N)
-    if typeof(sp_method) <: KNN
-        @. P = max(P, PermutedDimsArray(P, (2,1)))
-    else
-        @. P = min(P, PermutedDimsArray(P, (2,1)))
-    end
+    typeof(sp_method) <: KNN ? @. P = max(P, PermutedDimsArray(P, (2,1))) : @. P = min(P, PermutedDimsArray(P, (2,1)))
     α>0 && α_normalize!(P, α)
     wLap_normalize!(P)
     return P
