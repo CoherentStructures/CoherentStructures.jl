@@ -14,7 +14,7 @@ module CoherentStructures
     # TODO: import LinearAlgebra, SparseArrays, Arpack, IterativeSolvers, Distributed, SharedArrays
     import GeometricalPredicates
     import VoronoiDelaunay
-
+    # Pkg.checkout("JuAFEM","efa2eff")
     import JuAFEM
     import Plots
     import SymEngine
