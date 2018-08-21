@@ -24,7 +24,7 @@ julia> Distances.evaluate(PEuclidean(L),x,y)
 PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function Dists.evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
     @boundscheck if length(a) != length(b)
         throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
     end
@@ -46,7 +46,7 @@ PEuclidean() = Dists.Euclidean()
     end
 end
 
-@inline function evaluate(d::PEuclidean, a::AbstractArray, b::AbstractArray)
+@inline function Dists.evaluate(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     @boundscheck if length(a) != length(b)
         throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
     end
@@ -77,7 +77,7 @@ end
     return eval_end(d, s)
 end
 
-function evaluate(dist::PEuclidean, a::T, b::T) where {T <: Number}
+function Dists.evaluate(dist::PEuclidean, a::T, b::T) where {T <: Number}
     # eval_end(dist, eval_op(dist, a, b, dist.periods[1]))
     peuclidean(a, b, dist.periods[1])
 end
@@ -134,7 +134,7 @@ STmetric(d::Dists.Metric)           = STmetric(d, 2, 1)
 STmetric(d::Dists.Metric, p::Real)  = STmetric(d, 2, p)
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function Dists.evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
     la = length(a)
     lb = length(b)
     (q, r) = divrem(la,d.dim)
@@ -151,7 +151,7 @@ STmetric(d::Dists.Metric, p::Real)  = STmetric(d, 2, p)
 end
 
 # this version is needed for NearestNeighbors `NNTree`
-@inline function evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
+@inline function Dists.evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
     la = length(a)
     lb = length(b)
     (q, r) = divrem(la,d.dim)
@@ -166,7 +166,7 @@ end
     return reduce_time(d, eval_space(d, a, b, q), q)
 end
 
-function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
+function Dists.result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
     result_type(d.Smetric, a, b)
 end
 
@@ -190,7 +190,7 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 
 ########### parallel pairwise computation #################
 
-function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
+function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
     ma, na = size(a)
     mb, nb = size(b)
     size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
@@ -208,7 +208,7 @@ function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatr
     r
 end
 
-function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
     m, n = size(a)
     size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
     q, s = divrem(m, d.dim)
@@ -234,14 +234,14 @@ function pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatr
     r
 end
 
-function pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
+function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
     m = size(a, 2)
     n = size(b, 2)
     r = SharedArrays.SharedMatrix{result_type(metric, a, b),2}(undef, m, n)
     pairwise!(r, metric, a, b)
 end
 
-function pairwise(metric::STmetric, a::AbstractMatrix)
+function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
     n = size(a, 2)
     r = SharedArrays.SharedMatrix{result_type(metric, a, a),2}(undef, n, n)
     pairwise!(r, metric, a)
