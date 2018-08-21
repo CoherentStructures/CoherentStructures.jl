@@ -364,7 +364,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      Πsqrt = Diagonal(sqrt.(Π))
      Πinv  = Diagonal(inv.(Π))
-     return LinearMaps.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
+     return LinearMaps.LinearMap(Πsqrt * L * Πinv * LinearAlgebra.transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
 
@@ -376,7 +376,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
      LinearAlgebra.lmul!(Πsqrt, L)
      LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
-     return LinearMaps.LinearMap(LMap * transpose(LMap); issymmetric=true,
+     return LinearMaps.LinearMap(LMap * LinearAlgebra.transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
  end
 
@@ -390,7 +390,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 function diffusion_coordinates(P::LinMaps,n_coords::Int)
     N = LinearAlgebra.checksquare(P)
 
-    Π = stationary_distribution(transpose(P))
+    Π = stationary_distribution(LinearAlgebra.transpose(P))
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
