@@ -228,12 +228,10 @@ function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
 
     sol_shared = SharedArray{T}(dim*q,length(P));
     @inbounds @sync @parallel for index in eachindex(P)
-        # @async begin
-            u = flow_fun(P[index])
-            for t=1:q, d=1:dim
-                sol_shared[(t-1)*dim+d:t*dim,index] = u[t][d]
-            end
-        # end
+        u = flow_fun(P[index])
+        for t=1:q
+            sol_shared[(t-1)*dim+1:t*dim,index] = u[t]
+        end
     end
     # sol = Array{Array{Float64,2}}(length(P))
     # for index in eachindex(P)
