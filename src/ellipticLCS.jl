@@ -45,13 +45,13 @@ function singularity_type_detection(singularity::AbstractVector{S},
                                     radius::Float64) where S
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
-    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in linspace(-π,π,Ntheta)]
+    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
     pnts = [singularity + c for c in circle]
     radVals = [ξ[p[2], p[1]] for p in pnts]
     singularity_type = 0
     if (sum(diff(radVals) .< 0) / Ntheta > 0.62)
         singularity_type = -1  # trisector
-    elseif (sum(diff(radVals) .>0) / Ntheta > 0.62)
+    elseif (sum(diff(radVals) .> 0) / Ntheta > 0.62)
         singularity_type = 1  # wedge
     end
     return singularity_type
@@ -79,22 +79,15 @@ function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
     idx = zeros(Int64, size(wedgeDist,1), 2)
     pairs = Vector{Int}[]
     for i=1:size(wedgeDist,1)
-        idx = selectperm(wedgeDist[i,:], 2:3)
+        idx = partialsortperm(wedgeDist[i,:], 2:3)
         if (wedgeDist[i,idx[1]] <= MaxWedgeDist &&
             wedgeDist[i,idx[1]] >= MinWedgeDist &&
             wedgeDist[i,idx[2]]>=Min2ndDist)
             push!(pairs,[i, idx[1]])
         end
     end
-    pairind = indexin(pairs, flipdim.(pairs,1))
-    vortexcenters = Vector{S}[]
-    sizehint!(vortexcenters, length(pairind))
-    for p in pairind
-        if p!=0
-            push!(vortexcenters, mean(singularities[indWedges[pairs[p]]]))
-        end
-    end
-    return unique(vortexcenters)
+    pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
+    return [Statistics.mean(singularities[indWedges[p]]) for p in pairind]
 end
 
 """
@@ -115,7 +108,7 @@ function set_Poincaré_section(vc::AbstractVector{S},
     ymin, ymax = extrema(yspan)
     p_section::Vector{Vector{S}} = [vc]
     eₓ = [1., 0.]
-    pspan = linspace(vc + .2p_length*eₓ, vc + p_length*eₓ, n_seeds)
+    pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
     idxs = [all(p .<= [xmax, ymax]) && all(p .>= [xmin, ymin]) for p in pspan]
     append!(p_section, pspan[idxs])
     return p_section
@@ -132,8 +125,8 @@ function compute_returning_orbit(calT::Float64,
                                  yspan::AbstractVector{T}) where T <: Real
 
     Δλ = λ₂ - λ₁
-    α = real.(sqrt.(Complex.((λ₂ - calT) ./ Δλ)))
-    β = real.(sqrt.(Complex.((calT - λ₁) ./ Δλ)))
+    α = real.(sqrt.(Complex.((λ₂ .- calT) ./ Δλ)))
+    β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
     ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid()),
@@ -221,7 +214,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
     # first, define a nonlinear root finding problem
     Tval = zeros(length(pSection)-1)
     s = zeros(Int,length(pSection)-1)
-    orbits = Vector{Vector{Vector{Float64}}}(length(pSection)-1)
+    orbits = Vector{Vector{Vector{Float64}}}(undef, length(pSection)-1)
     for i in eachindex(pSection[2:end])
         # println(i)
         Tsol = zero(Float64)
@@ -267,7 +260,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
             end
         end
     end
-    outerInd = findlast(Tval)
+    outerInd = findlast(!iszero, Tval)
     if outerInd>0
         return Tval[outerInd], s[outerInd], orbits[outerInd]
     else
