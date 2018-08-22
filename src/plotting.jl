@@ -62,12 +62,12 @@ function plot_u_eulerian(
     # x1 = Float64[]
     # x2 = Float64[]
     # values = Float64[]
-    const u_values =  dof2node(ctx,dof_values)
+    u_values =  dof2node(ctx,dof_values)
     x1 = linspace(LL[1],UR[1],nx)
     x2 = linspace(LL[2],UR[2],ny)
     if euler_to_lagrange_points == nothing
         # euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
-        # @sync @parallel for i in eachindex(x1)
+        # @sync @distributed for i in eachindex(x1)
         #     for j in eachindex(x2)
         #         point = StaticArrays.SVector{2}(x1[i],x2[j])
         #         try
@@ -116,7 +116,7 @@ end
 
 function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
     euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
-    @sync @parallel for i in eachindex(x1)
+    @sync @distributed for i in eachindex(x1)
         for j in eachindex(x2)
             point = StaticArrays.SVector{2}(x1[i],x2[j])
             try
@@ -243,7 +243,7 @@ function eulerian_video_fast(ctx, u::Function,
     #
     res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
         xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
-        marker=:square,markersize=300./nx,markerstrokewidth=0;kwargs...)]
+        marker=:square,markersize=300.0 /nx,markerstrokewidth=0;kwargs...)]
     if display_inplace
         Plots.display(res[end])
     end
@@ -257,7 +257,7 @@ function eulerian_video_fast(ctx, u::Function,
         push!(res,
             Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
                 xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
-                marker=:square,markersize=70./nx,markerstrokewidth=0;kwargs...)
+                marker=:square,markersize=70. /nx,markerstrokewidth=0;kwargs...)
                 )
 		#
 	if display_inplace
@@ -294,7 +294,7 @@ function plot_ftle(
     #Initialize FTLE-field with NaNs
     FTLE = SharedArray{Float64,2}(ny,nx)
     FTLE .= NaN
-    nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in eachindex(x1)
+    nancounter, nonancounter = @sync @distributed ((x,y)->x.+y) for i in eachindex(x1)
         nancounter_local = 0
         nonancounter_local = 0
         for j in eachindex(x2)

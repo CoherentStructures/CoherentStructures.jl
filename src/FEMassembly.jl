@@ -124,11 +124,11 @@ ctx.mass_weights = map(f, ctx.quadrature_points)
 M = assembleMassMatrix(ctx)
 ```
 """
-function assembleMassMatrix{dim}(
+function assembleMassMatrix(
         ctx::gridContext{dim};
         bdata=boundaryData(),
         lumped=false,
-        )
+        ) where dim
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
     dh::JFM.DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
@@ -179,7 +179,7 @@ end
 Compute the coordinates of all quadrature points on a grid.
 Helper function.
 """
-function getQuadPoints{dim}(ctx::gridContext{dim})
+function getQuadPoints(ctx::gridContext{dim}) where dim
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
     dh::JFM.DofHandler{dim} = ctx.dh
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))

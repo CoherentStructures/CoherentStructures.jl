@@ -23,7 +23,7 @@ module CoherentStructures
     # using GeometricalPredicates
     # using VoronoiDelaunay
 
-    using JuAFEM
+    import JuAFEM
     using Plots
     using SymEngine
 
@@ -52,7 +52,8 @@ module CoherentStructures
     include("streammacros.jl")
 
     ##Definitions of velocity fields
-    # include("velocityfields.jl")
+    #TODO 1.0
+    #include("velocityfields.jl")
 
     ##Extensions to JuAFEM dealing with non-curved grids
     ##Support for evaluating functions at grid points, delaunay Triangulations
@@ -62,21 +63,18 @@ module CoherentStructures
     #TODO: Find out the existence of such a function can be enforced by julia
 
     abstract type cellLocator end
-    # include("gridfunctions.jl")
+    include("gridfunctions.jl")
 
     #Creation of Stiffness and Mass-matrices
-    # include("FEMassembly.jl")
+    include("FEMassembly.jl")
 
     #TO-approach based methods
-    # include("TO.jl")
+    include("TO.jl")
 
-
-    #Some test cases, similar to velocityFields.jl
-    # include("numericalExperiments.jl")
 
     #Plotting
-    # include("plotting.jl")
+    include("plotting.jl")
 
     #Solving Advection/Diffusion Equation
-    # include("advection_diffusion.jl")
+    include("advection_diffusion.jl")
 end
