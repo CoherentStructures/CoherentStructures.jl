@@ -45,13 +45,13 @@ function singularity_type_detection(singularity::AbstractVector{S},
                                     radius::Float64) where S
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
-    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in linspace(-π,π,Ntheta)]
+    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
     pnts = [singularity + c for c in circle]
     radVals = [ξ[p[2], p[1]] for p in pnts]
     singularity_type = 0
     if (sum(diff(radVals) .< 0) / Ntheta > 0.62)
         singularity_type = -1  # trisector
-    elseif (sum(diff(radVals) .>0) / Ntheta > 0.62)
+    elseif (sum(diff(radVals) .> 0) / Ntheta > 0.62)
         singularity_type = 1  # wedge
     end
     return singularity_type
@@ -115,7 +115,7 @@ function set_Poincaré_section(vc::AbstractVector{S},
     ymin, ymax = extrema(yspan)
     p_section::Vector{Vector{S}} = [vc]
     eₓ = [1., 0.]
-    pspan = linspace(vc + .2p_length*eₓ, vc + p_length*eₓ, n_seeds)
+    pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
     idxs = [all(p .<= [xmax, ymax]) && all(p .>= [xmin, ymin]) for p in pspan]
     append!(p_section, pspan[idxs])
     return p_section
