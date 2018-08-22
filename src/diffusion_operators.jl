@@ -371,8 +371,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = sqrt.(Π)
-     Πinvsqrt = inv.(Πsqrt)
+     Πsqrt = Diagonal(sqrt.(Π))
+     Πinvsqrt = Diagonal(inv.(Πsqrt))
      LinearAlgebra.lmul!(Πsqrt, L)
      LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
