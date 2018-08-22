@@ -87,7 +87,7 @@ function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
         end
     end
     pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
-    return [Statistics.mean(singularities[indWedges[pairs[p]]]) for p in pairind]
+    return [Statistics.mean(singularities[indWedges[p]]) for p in pairind]
 end
 
 """
