@@ -261,7 +261,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
         end
     end
     outerInd = findlast(!iszero, Tval)
-    if outerInd>0
+    if outerInd != nothing
         return Tval[outerInd], s[outerInd], orbits[outerInd]
     else
         return nothing
