@@ -237,13 +237,13 @@ end
 function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
     m = size(a, 2)
     n = size(b, 2)
-    r = SharedArrays.SharedMatrix{result_type(metric, a, b),2}(undef, m, n)
+    r = SharedArrays.SharedArray{result_type(metric, a, b)}(m, n)
     pairwise!(r, metric, a, b)
 end
 
 function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
     n = size(a, 2)
-    r = SharedArrays.SharedMatrix{result_type(metric, a, a),2}(undef, n, n)
+    r = SharedArrays.SharedArray{result_type(metric, a, a)}(n, n)
     pairwise!(r, metric, a)
 end
 
