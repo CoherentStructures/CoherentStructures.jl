@@ -535,7 +535,7 @@ same size as `P`.
 function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
 
     dim = length(P[1])
-    T_shared = SharedArrays.SharedArray{T,2}(div(dim*(dim+1), 2), length(P))
+    T_shared = SharedArrays.SharedArray{eltype(T)}(div(dim*(dim+1), 2), length(P))
     idxs = tril(ones(Bool,dim,dim))
     Distributed.@everywhere @eval idxs = $idxs
     @sync Distributed.@distributed for index in eachindex(P)
