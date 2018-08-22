@@ -9,8 +9,6 @@ module CoherentStructures
     using OrdinaryDiffEq
     using Contour
     using Distances
-    using Distances: result_type, evaluate, eval_start, eval_op
-    using Distances: eval_reduce, eval_end, pairwise, pairwise!
     using NearestNeighbors
     using Interpolations
     using LinearMaps
@@ -20,6 +18,7 @@ module CoherentStructures
     using Distributed
     using SharedArrays
     using Markdown
+    using Statistics
     using Arpack
     # using GeometricalPredicates
     # using VoronoiDelaunay
