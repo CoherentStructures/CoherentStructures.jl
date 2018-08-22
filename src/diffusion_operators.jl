@@ -402,8 +402,8 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
     Σ = drop_num_zeros.(E[1])
 
     if any(Σ .< 0)
-     warn("Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
-        "Using absolute value instead.")
+     @warn "Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
+        "Using absolute value instead."
     end
 
     Σ .= (sqrt∘abs).(Σ)
