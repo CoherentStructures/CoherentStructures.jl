@@ -25,7 +25,7 @@ function singularity_location_detection(T::AbstractMatrix{Tensors.SymmetricTenso
         yL, xL = Contour.coordinates(line)
         zL = [sitp[yL[i], xL[i]] for i in eachindex(xL, yL)]
         ind = findall(zL[1:end-1] .* zL[2:end].<=0.)
-        zLind = -zL[ind] ./ (zL[ind+1] - zL[ind])
+        zLind = -zL[ind] ./ (zL[ind .+ 1] - zL[ind])
         Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
         Ys = append!(Ys, yL[ind] + (yL[ind .+ 1] - yL[ind]) .* zLind)
     end
