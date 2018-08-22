@@ -129,7 +129,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `dim`: the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
    * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
-     `P -> prod(LinearMaps.LinearMap,reverse(P))` (default)
+     `P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
@@ -138,7 +138,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,reverse(P))),# TODO: use `Iterators.reverse` to avoid copies!
+                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -146,7 +146,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
-    P = pmap(1:q) do t
+    P = Distributed.pmap(1:q) do t
         Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
                                     α=α, metric = metric )
         # println("Timestep $t/$q done")
@@ -287,7 +287,7 @@ function sparse_adjacency(data::AbstractMatrix{T},
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
-    IJs = pmap(1:q) do t
+    IJs = Distributed.pmap(1:q) do t
         I, J = sparse_adjacency_list( data[(t-1)*dim+1:t*dim,:], ε; metric = metric )
         # println("Timestep $t/$q done")
         # I, J
