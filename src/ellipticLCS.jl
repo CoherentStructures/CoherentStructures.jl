@@ -79,22 +79,15 @@ function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
     idx = zeros(Int64, size(wedgeDist,1), 2)
     pairs = Vector{Int}[]
     for i=1:size(wedgeDist,1)
-        idx = selectperm(wedgeDist[i,:], 2:3)
+        idx = partialsortperm(wedgeDist[i,:], 2:3)
         if (wedgeDist[i,idx[1]] <= MaxWedgeDist &&
             wedgeDist[i,idx[1]] >= MinWedgeDist &&
             wedgeDist[i,idx[2]]>=Min2ndDist)
             push!(pairs,[i, idx[1]])
         end
     end
-    pairind = indexin(pairs, flipdim.(pairs,1))
-    vortexcenters = Vector{S}[]
-    sizehint!(vortexcenters, length(pairind))
-    for p in pairind
-        if p!=0
-            push!(vortexcenters, mean(singularities[indWedges[pairs[p]]]))
-        end
-    end
-    return unique(vortexcenters)
+    pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
+    return [Statistics.mean(singularities[indWedges[pairs[p]]]) for p in pairind]
 end
 
 """
