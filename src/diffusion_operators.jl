@@ -2,7 +2,7 @@
 
 const gaussian_kernel = x::Number -> exp(-abs2(x))
 
-const LinMaps{T} = Union{SparseArrays.SparseMatrixCSC{T,Int},LinearMaps.LinearMap{T},DenseMatrix{T}}
+const LinMaps{T} = Union{LinearMaps.LinearMap{T}, AbstractMatrix{T}}
 const NN = NearestNeighbors
 
 """
@@ -129,7 +129,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `dim`: the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
    * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
-     `P -> prod(LinearMaps.LinearMap,reverse(P))` (default)
+     `P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
@@ -138,7 +138,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,reverse(P))),# TODO: use `Iterators.reverse` to avoid copies!
+                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -146,7 +146,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
-    P = pmap(1:q) do t
+    P = Distributed.pmap(1:q) do t
         Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
                                     α=α, metric = metric )
         # println("Timestep $t/$q done")
@@ -207,7 +207,7 @@ Default metric is `Euclidean()`.
     Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
     Vs::Vector{T} = kernel.(vcat(dists...))
     W = SparseArrays.sparse(Is, Js, Vs, N, N)
-    Base.SparseArrays.droptol!(W,eps(eltype(W)))
+    SparseArrays.droptol!(W,eps(eltype(W)))
     if typeof(sp_method) <: KNN
         return max.(W, PermutedDimsArray(W, (2,1)))
     else
@@ -287,7 +287,7 @@ function sparse_adjacency(data::AbstractMatrix{T},
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
-    IJs = pmap(1:q) do t
+    IJs = Distributed.pmap(1:q) do t
         I, J = sparse_adjacency_list( data[(t-1)*dim+1:t*dim,:], ε; metric = metric )
         # println("Timestep $t/$q done")
         # I, J
@@ -364,19 +364,19 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      Πsqrt = Diagonal(sqrt.(Π))
      Πinv  = Diagonal(inv.(Π))
-     return LinearMaps.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
+     return LinearMaps.LinearMap(Πsqrt * L * Πinv * LinearAlgebra.transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
 
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = sqrt.(Π)
-     Πinvsqrt = inv.(Πsqrt)
+     Πsqrt = Diagonal(sqrt.(Π))
+     Πinvsqrt = Diagonal(inv.(Πsqrt))
      LinearAlgebra.lmul!(Πsqrt, L)
      LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
-     return LinearMaps.LinearMap(LMap * transpose(LMap); issymmetric=true,
+     return LinearMaps.LinearMap(LMap * LinearAlgebra.transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
  end
 
@@ -390,7 +390,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 function diffusion_coordinates(P::LinMaps,n_coords::Int)
     N = LinearAlgebra.checksquare(P)
 
-    Π = stationary_distribution(transpose(P))
+    Π = stationary_distribution(LinearAlgebra.transpose(P))
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
