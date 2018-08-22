@@ -125,8 +125,8 @@ function compute_returning_orbit(calT::Float64,
                                  yspan::AbstractVector{T}) where T <: Real
 
     Δλ = λ₂ - λ₁
-    α = real.(sqrt.(Complex.((λ₂ - calT) ./ Δλ)))
-    β = real.(sqrt.(Complex.((calT - λ₁) ./ Δλ)))
+    α = real.(sqrt.(Complex.((λ₂ .- calT) ./ Δλ)))
+    β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
     ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid()),
@@ -214,7 +214,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
     # first, define a nonlinear root finding problem
     Tval = zeros(length(pSection)-1)
     s = zeros(Int,length(pSection)-1)
-    orbits = Vector{Vector{Vector{Float64}}}(length(pSection)-1)
+    orbits = Vector{Vector{Vector{Float64}}}(undef, length(pSection)-1)
     for i in eachindex(pSection[2:end])
         # println(i)
         Tsol = zero(Float64)
@@ -260,7 +260,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
             end
         end
     end
-    outerInd = findlast(Tval)
+    outerInd = findlast(!iszero, Tval, start)
     if outerInd>0
         return Tval[outerInd], s[outerInd], orbits[outerInd]
     else
