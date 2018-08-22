@@ -63,15 +63,13 @@ All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
-    E = eigfact.(T)
-    # TODO: replace by E = eigen.(T)
-    λ₁ = [ev[1] for ev in eigvals.(E)]
-    λ₂ = [ev[2] for ev in eigvals.(E)]
-    ξ₁ = [ev[:,1] for ev in eigvecs.(E)]
-    ξ₂ = [ev[:,2] for ev in eigvecs.(E)]
-    traceT = trace.(T)
-    # TODO: replace by traceT = tr.(T)
-    detT = det.(T)
+    E = LinearAlgebra.eigen.(T)
+    λ₁ = [ev[1] for ev in LinearAlgebra.eigvals.(E)]
+    λ₂ = [ev[2] for ev in LinearAlgebra.eigvals.(E)]
+    ξ₁ = [ev[:,1] for ev in LinearAlgebra.eigvecs.(E)]
+    ξ₂ = [ev[:,2] for ev in LinearAlgebra.eigvecs.(E)]
+    traceT = LinearAlgebra.tr.(T)
+    detT = LinearAlgebra.det.(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
 
