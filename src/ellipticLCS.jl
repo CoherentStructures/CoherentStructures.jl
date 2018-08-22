@@ -23,11 +23,11 @@ function singularity_location_detection(T::AbstractMatrix{Tensors.SymmetricTenso
     Xs, Ys = Float64[], Float64[]
     for line in Contour.lines(cl)
         yL, xL = Contour.coordinates(line)
-        zL = [sitp[yL[i], xL[i]] for i in eachindex(xL,yL)]
+        zL = [sitp[yL[i], xL[i]] for i in eachindex(xL, yL)]
         ind = findall(zL[1:end-1] .* zL[2:end].<=0.)
         zLind = -zL[ind] ./ (zL[ind+1] - zL[ind])
-        Xs = append!(Xs, xL[ind] + (xL[ind+1] - xL[ind]) .* zLind)
-        Ys = append!(Ys, yL[ind] + (yL[ind+1] - yL[ind]) .* zLind)
+        Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
+        Ys = append!(Ys, yL[ind] + (yL[ind .+ 1] - yL[ind]) .* zLind)
     end
     return [[Xs[i], Ys[i]] for i in eachindex(Xs,Ys)]
 end
@@ -300,7 +300,7 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
     # unpack parameters
     radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, p_length, n_seeds = p
 
-    singularities = singularity_location_detection(T,xspan,yspan)
+    singularities = singularity_location_detection(T, xspan, yspan)
     println("Detected $(length(singularities)) singularity candidates...")
 
     ξ = [eigvecs(t)[:,1] for t in T]
@@ -309,20 +309,20 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
                         ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
                         yspan,xspan)
     singularitytypes = map(singularities) do s
-        singularity_type_detection(s,ξraditp,radius)
+        singularity_type_detection(s, ξraditp, radius)
     end
     println("Determined $(sum(abs.(singularitytypes))) nondegenerate singularities...")
 
-    vortexcenters = detect_elliptic_region(singularities,singularitytypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
+    vortexcenters = detect_elliptic_region(singularities, singularitytypes, MaxWedgeDist, MinWedgeDist, Min2ndDist)
     println("Defined $(length(vortexcenters)) Poincaré sections...")
 
     p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan)
+        set_Poincaré_section(vc, p_length, n_seeds, xspan, yspan)
     end
 
     Distributed.@everywhere p_section = $p_section
     closedorbits = pmap(p_section) do ps
-        compute_outermost_closed_orbit(ps,T,xspan,yspan)
+        compute_outermost_closed_orbit(ps, T, xspan, yspan)
     end
 
     # closed orbits extraction
