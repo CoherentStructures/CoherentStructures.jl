@@ -1,5 +1,8 @@
 # (c) 2018 Alvaro de Diego & Daniel Karrasch
 
+import Distances: result_type, evaluate, eval_start, eval_op
+import Distances: eval_reduce, eval_end, pairwise, pairwise!
+
 const Dists = Distances
 
 struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
