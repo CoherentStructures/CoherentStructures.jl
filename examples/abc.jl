@@ -1,4 +1,5 @@
 using CoherentStructures
+using Arpack
 
 abcctx = CoherentStructures.regularTriangularGrid3D((25,25,25),[0.0,0.0,0.0],
     [2π,2π,2π],quadrature_order=1 )
