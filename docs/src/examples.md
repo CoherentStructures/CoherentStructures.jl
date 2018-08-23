@@ -9,7 +9,7 @@ which the methods were developed see the respective help page.
 
 The following code-snippet shows how these methods can be used.
 ```@example 5
-using CoherentStructures
+using CoherentStructures,Arpack
 LL = [0.0,0.0]; UR = [1.0,1.0];
 ctx = regularTriangularGrid((50,50),LL,UR)
 
@@ -35,13 +35,13 @@ Plots.plot(res...,margin=-10Plots.px)
 ```
 Looking at the spectrum, there appears a gap after the third eigenvalue:
 ```@example 5
-Plots.scatter(range(1,6), real.(λ))
+Plots.scatter(1:6, real.(λ))
 ```
 We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package to compute coherent structures from the first two nontrivial eigenfunctions:
 ```@example 5
 using Clustering
 numclusters=2
-res = kmeans(v[:,2:numclusters+1]',numclusters+1)
+res = kmeans(permutedims(v[:,2:numclusters+1]),numclusters+1)
 u = kmeansresult2LCS(res)
 Plots.plot([plot_u(ctx,u[:,i],200,200,color=:viridis) for i in [1,2,3]]...)
 
@@ -84,6 +84,7 @@ vals, signs, orbits = ellipticLCS(C,xspan,yspan,LCSparams);
 ```
 The results are then visualized as follows.
 ```@example 1
+using Statistics
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C)
 # damp "outliers"
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
@@ -93,7 +94,7 @@ l₂ = min.(λ₂,quantile(λ₂[:],0.995))
 fig = Plots.heatmap(xspan,yspan,log10.(l₂),aspect_ratio=1,color=:viridis,
             title="FTLE-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
 for i in eachindex(orbits)
-    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
+    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],digits=2))")
 end
 Plots.plot(fig)
 ```
@@ -113,7 +114,7 @@ callable as `bickleyJet`.
 Here we briefly demonstrate how to find material barriers to diffusive transport;
 see [Geodesic elliptic material vortices](@ref) for references and details.
 ```@example 2
-using CoherentStructures
+using CoherentStructures, Arpack
 import Tensors, OrdinaryDiffEq
 
 const q = 81
@@ -137,6 +138,7 @@ vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 The result is visualized as follows:
 ```@example 2
 import Plots
+using Statistics
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
@@ -145,7 +147,7 @@ begin
     fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
             title="DBS-field and transport barriers",xlims=(0., 6.371π),ylims=(-3., 3.),leg=true)
     for i in eachindex(orbits)
-        Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
+        Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],digits=2))")
     end
 end
 Plots.plot(fig)
@@ -189,6 +191,7 @@ bdata = CoherentStructures.boundaryData(ctx,predicate,[]);
 ```
 Using a FEM-based method to compute coherent structures:
 ```@example 8
+using Arpack,Statistics
 cgfun = (x -> mean(pullback_diffusion_tensor(bickley, x,range(0.0,stop=40*3600*24,length=81),
      1.e-8,tolerance=1.e-5)))
 
@@ -201,7 +204,7 @@ K-means clustering gives something we can plot:
 ```@example 8
 using Clustering,Plots
 n_partition = 8
-res = kmeans(v[:,2:n_partition]',n_partition)
+res = kmeans(permutedims(v[:,2:n_partition]),n_partition)
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx, u_combined,200,200,bdata=bdata,
@@ -247,6 +250,7 @@ vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 ```
 The result is visualized as follows:
 ```@example 3
+using Statistics
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
 l₁ = max.(λ₁,1e-2)
@@ -254,7 +258,7 @@ l₂ = min.(λ₂,quantile(λ₂[:],0.995))
 fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
             title="DBS-field and transport barriers",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
 for i in eachindex(orbits)
-    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],2))")
+    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label="T = $(round(vals[i],digits=2))")
 end
 Plots.plot(fig)
 ```
@@ -269,9 +273,10 @@ See also [Froyland & Junge (2015)](https://arxiv.org/abs/1505.05056), who calcul
 
 Below are some orbits of the standard map
 ```@example 2
+using Random
 to_plot = []
 for i in 1:50
-    srand(i)
+    Random.seed!(i)
     x = rand(2)*2π
     for i in 1:500
         x = CoherentStructures.standardMap(x)
@@ -284,7 +289,7 @@ Plots.scatter([x[1] for x in to_plot],[x[2] for x in to_plot],
 Approximating the Dynamical Laplacian by FEM methods is straightforward:
 ```@example 7
 using CoherentStructures #hide
-using Tensors, Plots
+using Tensors, Plots, Arpack, Printf
 ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
 pred  = (x,y) -> ((x[1] - y[1]) % 2π) < 1e-9 && ((x[2] - y[2]) % 2π) < 1e-9
 bdata = boundaryData(ctx,pred) #Periodic boundary
