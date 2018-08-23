@@ -18,7 +18,7 @@ plot_real_spectrum(λ)
 
 using Clustering
 n_partition = 7
-res = kmeans(v[:,2:n_partition]',n_partition)
+res = kmeans(permutedims(v[:,2:n_partition]),n_partition)
 u = kmeansresult2LCS(res)
 
 sum([u[:,i]*i for i in 1:n_partition])

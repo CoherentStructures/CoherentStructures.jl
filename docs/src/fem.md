@@ -165,9 +165,9 @@ CoherentStructures.regular2DGridTypes
 The following functions are conceptually similar:
 ```@docs
 regularTriangularGrid
-regularDelaunayGrid
+#regularDelaunayGrid #TODO 1.0
 regularP2TriangularGrid
-regularP2DelaunayGrid
+#regularP2DelaunayGrid #TODO 1.0
 regularQuadrilateralGrid
 regularP2QuadrilateralGrid
 ```

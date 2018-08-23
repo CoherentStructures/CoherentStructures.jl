@@ -100,7 +100,7 @@ corresponding to (interpolated) indicator functions.
 ```
 v, λ = eigs(K,M)
 numclusters = 5
-res = kmeans(v[:,1:numclusters]',numclusters+1)
+res = kmeans(permutedims(v[:,1:numclusters]),numclusters+1)
 u = kmeansresult2LCS(res)
 plot_u(ctx,u)
 ```

@@ -9,12 +9,12 @@ function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
 end
 
 
-doc"""
-    assembleStiffnessMatrix{dim}(ctx,A,[p; bdata])
+"""
+    assembleStiffnessMatrix(ctx,A,[p; bdata])
 
 Assemble the stiffness-matrix for a symmetric bilinear form
 ```math
-a(u,v) = \int \nabla u(x)\cdot A(x)\nabla v(x)f(x) dx
+a(u,v) = \\int \\nabla u(x)\\cdot A(x)\\nabla v(x)f(x) dx
 ```
 The integral is approximated using quadrature.
 `A` is a function that returns a `Tensors.SymmetricTensor{2,dim}` and has one of the following forms:
@@ -103,12 +103,12 @@ function assembleStiffnessMatrixInternal(
 end
 
 
-doc"""
+"""
     assembleMassMatrix(ctx;[bdata,lumped=false])
 
 Assemble the mass matrix
 ```math
-M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d
+M_{i,j} = \\int \\varphi_j(x) \\varphi_i(x) f(x)d\\lambda^d
 ```
 The integral is approximated using numerical quadrature.
 The values of `f(x)` are taken from `ctx.mass_weights`, and should be ordered in the same way as `ctx.quadrature_points`

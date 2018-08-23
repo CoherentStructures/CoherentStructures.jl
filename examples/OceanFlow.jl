@@ -54,7 +54,7 @@ plot_u(ctx,v2[:,6],200,200,bdata=bdata,color=:rainbow)
 length(bdata.dbc_dofs)
 using Clustering
 numclusters = 5
-res = kmeans(v2[:,1:numclusters]',numclusters+1)
+res = kmeans(permutedims(v2[:,1:numclusters]),numclusters+1)
 u = kmeansresult2LCS(res)
 plot_u(ctx,u[:,3],200,200,color=:viridis)
 

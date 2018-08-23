@@ -13,22 +13,22 @@ function plot_u(ctx::gridContext, dof_vals::Vector{Float64}, nx=50, ny=50; bdata
 end
 
 
-doc"""
+"""
     plot_u_eulerian(ctx,dof_vals,inverse_flow_map,
         LL,UR,nx,ny,
         euler_to_lagrange_points=nothing, only_get_lagrange_points=false,
         postprocessor=nothing,  return_scalar_field=false,
         bdata=nothing, ....)
-Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of $f$. This is given by
-$f \circ \Phi^{-1}$, $f$ is a function defined on the grid `ctx`, represented by coefficients given by `dof_vals` (with possible boundary conditions given in `bdata`)
+Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of \$f\$. This is given by
+\$f \\circ \\Phi^{-1}\$, \$f\$ is a function defined on the grid `ctx`, represented by coefficients given by `dof_vals` (with possible boundary conditions given in `bdata`)
 
-The argument `inverse_flow_map` is $\Phi^{-1}$.
+The argument `inverse_flow_map` is \$\\Phi^{-1}\$.
 
 The resulting plot is on a regular `nx` by `ny` grid on the grid with lower left corner `LL` and upper right corner `UR`.
 
 Points that fall outside of the domain represented by `ctx` are plotted as `NaN`, which results in transparency.
 
-The arguments `euler_to_lagrange_points` and `only_get_lagrange_points` can be used to precompute $\Phi^{-1}(x)$,
+The arguments `euler_to_lagrange_points` and `only_get_lagrange_points` can be used to precompute \$\\Phi^{-1}(x)\$,
 `postprocessor` can further modify the values being plotted, `return_scalar_field` results in these values being returned.
  See the source code for further details.  Additional arguments are passed to `Plots.heatmap`
 
@@ -145,15 +145,15 @@ function plot_real_spectrum(λ)
 end
 
 
-doc"""
+"""
      eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
         extra_kwargs_fun=nothing, ...)
 
-Create `num_videos::Int` videos in eulerian coordinates, i.e. where the time $t$ is varied, plot $f_i \circ \Phi_t^0$ for $f_1, \dots$.
+Create `num_videos::Int` videos in eulerian coordinates, i.e. where the time \$t\$ is varied, plot \$f_i \\circ \\Phi_t^0\$ for \$f_1, \\dots\$.
 
 `us(i,t)` is a vector of dofs to be plotted at time `t` for the `i`th video.
 
-`inverse_flow_map_t(t,x)` is $\Phi_t^0(x)$
+`inverse_flow_map_t(t,x)` is \$\\Phi_t^0(x)\$
 
 `t0, tf`  are initial and final time. Spatial bounds are given by `LL,UR`
 
