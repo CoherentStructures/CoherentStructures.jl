@@ -1,7 +1,8 @@
 using CoherentStructures
-
+using Arpack
 
 ctx = regularP2QuadrilateralGrid((25,25))
+u = zeros(ctx.n)
 
 @time begin
     cgfun = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
@@ -10,7 +11,7 @@ ctx = regularP2QuadrilateralGrid((25,25))
     @time λ, v = eigs(-1*K,M,which=:SM)
 end
 
-plot_u(ctx,v[:,2])
+plot_u(ctx,v[:,3])
 
 
 @time assembleMassMatrix(ctx)

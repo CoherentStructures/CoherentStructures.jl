@@ -22,8 +22,8 @@ const ITP = Interpolations
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
 
-# bickleyJet          = @velo_from_stream Ψ_bickley
-# bickleyJetEqVari    = @var_velo_from_stream Ψ_bickley
+bickleyJet          = @velo_from_stream Ψ_bickley
+bickleyJetEqVari    = @var_velo_from_stream Ψ_bickley
 
 # rotating double gyre flow  [Mosovsky & Meiss, 2011]
 
@@ -34,9 +34,8 @@ end
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
 
-# rot_double_gyre         = @velo_from_stream Ψ_rot_dgyre
-# rot_double_gyreEqVari   = @var_velo_from_stream Ψ_rot_dgyre
-
+rot_double_gyre         = @velo_from_stream Ψ_rot_dgyre
+rot_double_gyreEqVari   = @var_velo_from_stream Ψ_rot_dgyre
 # interpolated vector field components
 
 """

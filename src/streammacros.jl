@@ -90,7 +90,7 @@ end
 macro velo_from_stream(name::Symbol)
     haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
-        @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
+        @velo_from_stream $name $(stream_dict[name])
     end
 end
 
@@ -123,7 +123,7 @@ end
 macro var_velo_from_stream(name::Symbol)
     haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
-        @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
+        @var_velo_from_stream $(name) $(stream_dict[name])
     end
 end
 
@@ -135,8 +135,8 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
 
 
     # symbolic gradient
-     ∇H  = expr_diff.(H, [:x,:y])
-    ∇²H  = expr_diff.(∇H, [:x :y])
+    ∇H  = [expr_diff(H, :x),expr_diff(H,:y)]
+    ∇²H  = [expr_diff(∇H[1],:x) expr_diff(∇H[1],:y); expr_diff(∇H[2],:x) expr_diff(∇H[2],:y)];
 
     # streamlines
     F  = [:(-$(∇H[2])), ∇H[1]]
@@ -169,7 +169,7 @@ function expr_diff(expr::Expr, var::Symbol)
     # is broken.
     expr_sym = SymEngine.Basic(expr)
     d_expr_sym = SymEngine.diff(expr_sym, var)
-    d_expr = parse(SymEngine.toString.(d_expr_sym))
+    d_expr = Meta.parse(SymEngine.toString.(d_expr_sym))
 
     # resolve derivatives that SymEngine doesn't know using diff_dict
     d_expr = additional_derivatives(d_expr)
@@ -304,7 +304,7 @@ substitute_once(defns::Expr, target::Expr) = begin
         return ret
     end
     performer(part_comp, ex) = substitute_once(ex, part_comp)
-    reduce(performer, target, defns.args)
+    reduce(performer, defns.args,init=target)
 end
 substitute_once(defns::Expr, target::Symbol) = begin
     substitute_once(defns, Base.remove_linenums!(quote begin $target end end))
@@ -367,7 +367,7 @@ has_free_symb(ex::Expr, bound_vars) = begin
     !all((!).(has_free_symb.(ex.args, [bound_vars])))
 end
 has_free_symb(ex::Symbol, bound_vars) = begin
-    !(contains(==, bound_vars, ex) | isdefined(Base, ex))
+    !(any(y -> (ex==y), bound_vars) | isdefined(Base, ex))
 end
 has_free_symb(ex, bound_vars) = false
 
