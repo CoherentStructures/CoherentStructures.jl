@@ -19,9 +19,9 @@ plot_real_spectrum(λ)
 
 u  = undoBCS(abcctx,V[:,2],bdata)
 u /= maximum(abs.(u))
-for z in linspace(0,2π,10)
-    xs = linspace(0,2π,50)
-    ys = linspace(0,2π,50)
+for z in range(0,stop=2π,length=10)
+    xs = range(0,stop=2π,length=50)
+    ys = range(0,stop=2π,length=50)
     Plots.display(
         Plots.heatmap(xs,ys,
         (x,y) -> evaluate_function_from_dofvals(abcctx,u, [x,y,z]),
@@ -30,7 +30,7 @@ for z in linspace(0,2π,10)
 end
 
 ### Plotting in 3D
-xs = linspace(0,2π,25)
+xs = range(0,stop=2π,length=25)
 u = undoBCS(abcctx,V[:,3],bdata)
 vals = [evaluate_function_from_dofvals(
     abcctx,u,[x,y,z]) for x in xs, y in xs, z in xs]

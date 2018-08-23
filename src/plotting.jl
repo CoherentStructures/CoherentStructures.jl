@@ -63,8 +63,8 @@ function plot_u_eulerian(
     # x2 = Float64[]
     # values = Float64[]
     u_values =  dof2node(ctx,dof_values)
-    x1 = linspace(LL[1],UR[1],nx)
-    x2 = linspace(LL[2],UR[2],ny)
+    x1 = range(LL[1],stop=UR[1],length=nx)
+    x2 = range(LL[2],stop=UR[2],length=ny)
     if euler_to_lagrange_points == nothing
         # euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
         # @sync @distributed for i in eachindex(x1)
@@ -168,7 +168,7 @@ As much as possible is done in parallel.
 function eulerian_videos(ctx, us::Function,inverse_flow_map_t,t0,tf, nx, ny,nt, LL, UR,num_videos=1;extra_kwargs_fun=nothing,kwargs...)
     allvideos = [Plots.Animation() for i in 1:num_videos]
 
-    for (index,t) in enumerate(linspace(t0,tf,nt))
+    for (index,t) in enumerate(range(t0,stop=tf,length=nt))
     	print("Processing frame $index")
         if t != t0
         	current_inv_flow_map = x -> inverse_flow_map_t(t,x)
@@ -228,14 +228,14 @@ function eulerian_video_fast(ctx, u::Function,
         end
         return dof_values
     end
-    x1 = linspace(LL[1],UR[1],nx)
-    x2 = linspace(LL[2],UR[2],ny)
+    x1 = range(LL[1],stop=UR[1],length=nx)
+    x2 = range(LL[2],stop=UR[2],length=ny)
     allpoints = [
         Vec{2}((x,y)) for y in x2, x in x1
     ]
     allpoints_initial = copy(allpoints)
     #
-    times = linspace(t0,tf,nt)
+    times = range(t0,stop=tf,length=nt)
     x1p = [p[1] for p in allpoints]
     x2p = [p[2] for p in allpoints]
     ut = dof2node(ctx,corrected_u(t0))
@@ -286,8 +286,8 @@ function plot_ftle(
 		   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
 		   existing_plot=nothing,flip_y=false, check_inbounds=always_true,
 		   kwargs...)
-    x1 = collect(linspace(LL[1] + 1.e-8, UR[1] - 1.e-8,nx))
-    x2 = collect(linspace(LL[2] + 1.e-8, UR[2] - 1.e-8,ny))
+    x1 = collect(range(LL[1] + 1.e-8,stop= UR[1] - 1.e-8,length=nx))
+    x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8,length=ny))
     if flip_y
         x2 = reverse(x2)
     end

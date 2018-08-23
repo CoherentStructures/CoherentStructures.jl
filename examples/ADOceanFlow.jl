@@ -4,7 +4,7 @@ using Plots # For @animate
 
 
 tC = makeOceanFlowTestCase()
-times = linspace(tC.t_initial,tC.t_final,450)
+times = range(tC.t_initial,stop=tC.t_final,length=450)
 ctx = regularTriangularGrid((50,50),tC.LL,tC.UR)
 
 #Initial values

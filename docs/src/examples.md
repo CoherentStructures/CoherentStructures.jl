@@ -67,12 +67,12 @@ using CoherentStructures
 import Tensors, OrdinaryDiffEq, Plots
 
 const q = 51
-const tspan = collect(linspace(0.,1.,q))
+const tspan = collect(range(0.,stop=1.,length=q))
 ny = 101
 nx = 101
 N = nx*ny
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
-xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
+xspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)
 P = vcat.(xspan',yspan)
 const δ = 1.e-6
 mCG_tensor = u -> CG_tensor(rot_double_gyre,u,tspan,δ,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
@@ -117,12 +117,12 @@ using CoherentStructures
 import Tensors, OrdinaryDiffEq
 
 const q = 81
-const tspan = collect(linspace(0.,3456000.,q))
+const tspan = collect(range(0.,stop=3456000.,length=q))
 ny = 120
 nx = div(ny*24,6)
 N = nx*ny
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
+xspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)
 P = vcat.(xspan',yspan)
 const δ = 1.e-6
 const DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])
@@ -189,7 +189,7 @@ bdata = CoherentStructures.boundaryData(ctx,predicate,[]);
 ```
 Using a FEM-based method to compute coherent structures:
 ```@example 8
-cgfun = (x -> mean(pullback_diffusion_tensor(bickley, x,linspace(0.0,40*3600*24,81),
+cgfun = (x -> mean(pullback_diffusion_tensor(bickley, x,range(0.0,stop=40*3600*24,length=81),
      1.e-8,tolerance=1.e-5)))
 
 K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
@@ -231,12 +231,12 @@ p = (UI,VI)
 q = 91
 t_initial = minimum(Time)
 t_final = t_initial + 90
-const tspan = linspace(t_initial,t_final,q)
+const tspan = range(t_initial,stop=t_final,length=q)
 nx = 500
 ny = Int(floor(0.6*nx))
 N = nx*ny
 xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
-xspan, yspan = linspace(xmin,xmax,nx), linspace(ymin,ymax,ny)
+xspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)
 P = vcat.(xspan',yspan)
 const δ = 1.e-5
 mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs,u,tspan,δ,p = p,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())

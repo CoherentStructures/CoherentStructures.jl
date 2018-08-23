@@ -168,8 +168,8 @@ function regularDelaunayGrid(
             UR::AbstractVector=[1.0, 1.0];
             quadrature_order::Int=default_quadrature_order
         )
-    X = linspace(LL[1], UR[1], numnodes[1])
-    Y = linspace(LL[2], UR[2], numnodes[2])
+    X = range(LL[1],stop= UR[1],length= numnodes[1])
+    Y = range(LL[2], stop=UR[2], length=numnodes[2])
     node_list = vec([Tensors.Vec{2}([x, y]) for y in Y, x in X])
     result = CoherentStructures.gridContext{2}(JuAFEM.Triangle, node_list, quadrature_order=quadrature_order)
     result.spatialBounds = [LL, UR]
@@ -211,8 +211,8 @@ function regularP2DelaunayGrid(
             quadrature_order::Int=default_quadrature_order
         )
 
-    X = linspace(LL[1], UR[1], numnodes[1])
-    Y = linspace(LL[2], UR[2], numnodes[2])
+    X = range(LL[1], stop=UR[1], length=numnodes[1])
+    Y = range(LL[2], stop=UR[2], length=numnodes[2])
     node_list = vec([Tensors.Vec{2}([x, y]) for y in Y, x in X])
     result = gridContext{2}(JuAFEM.QuadraticTriangle, node_list, quadrature_order=quadrature_order)
     #TODO: Think about what values would be sensible for the two variables below

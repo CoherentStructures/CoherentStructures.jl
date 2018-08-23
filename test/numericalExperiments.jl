@@ -206,8 +206,8 @@ end
 
 function getDiscreteInnerProduct(ctx1::CoherentStructures.gridContext, u1::Vector{Float64}, ctx2::CoherentStructures.gridContext, u2::Vector{Float64},nx=400,ny=400)
     res = 0.0
-    for x in linspace(ctx1.spatialBounds[1][1],ctx1.spatialBounds[2][1],nx)
-        for y in linspace(ctx1.spatialBounds[1][2],ctx1.spatialBounds[2][2],ny)
+    for x in range(ctx1.spatialBounds[1][1],stop=ctx1.spatialBounds[2][1],length=nx)
+        for y in range(ctx1.spatialBounds[1][2],stop=ctx1.spatialBounds[2][2],length=ny)
             res += evaluate_function_from_dofvals(ctx1,u1,[x,y],NaN) * evaluate_function_from_dofvals(ctx2,u2,[x,y],NaN)
         end
     end
