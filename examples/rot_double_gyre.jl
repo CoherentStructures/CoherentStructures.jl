@@ -11,7 +11,7 @@ u = zeros(ctx.n)
     @time λ, v = eigs(-1*K,M,which=:SM)
 end
 
-plot_u(ctx,v[:,3])
+plot_u(ctx,v[:,2])
 
 
 @time assembleMassMatrix(ctx)

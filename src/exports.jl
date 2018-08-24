@@ -43,11 +43,13 @@ export
 
 	#gridfunctions.jl
 	regularTriangularGrid,
-	regularDelaunayGrid,
+	#regularDelaunayGrid, #TODO 1.0
 	regularP2TriangularGrid,
-	regularP2DelaunayGrid,
+	#regularP2DelaunayGrid, #TODO 1.0
 	regularQuadrilateralGrid,
 	regularP2QuadrilateralGrid,
+	regularTetrahedralGrid,
+	regularP2TetrahedralGrid,
 	regularGrid,
 	evaluate_function_from_dofvals,
 	evaluate_function_from_nodevals,
