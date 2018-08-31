@@ -193,62 +193,62 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 
 ########### parallel pairwise computation #################
 
-function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
-    ma, na = size(a)
-    mb, nb = size(b)
-    size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
-    ma == mb || throw(DimensionMismatch("First and second array have different numbers of time instances."))
-    q, s = divrem(ma, d.dim)
-    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
-    dists = Vector{T}(q)
-    Distributed.@everywhere dists = $dists
-    @inbounds @sync Distributed.@distributed for j = 1:nb
-        for i = 1:na
-            eval_space!(dists, d, view(a, :, i), view(b, :, j), q)
-            r[i, j] = reduce_time(d, dists, q)
-        end
-    end
-    r
-end
-
-function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
-    m, n = size(a)
-    size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
-    q, s = divrem(m, d.dim)
-    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
-    entries = div(n*(n+1),2)
-    dists = Vector{T}(undef, q)
-    i, j = 1, 1
-    Distributed.@everywhere dists, i, j = $dists, $i, $j
-    @inbounds @sync Distributed.@distributed for k = 1:entries
-        tri_indices!(i, j, k)
-        if i == j
-            r[i, i] = zero(T)
-        else
-            eval_space!(dists, d, view(a, :, i), view(a, :, j), q)
-            r[i, j] = reduce_time(d, dists, q)
-        end
-    end
-    for j = 1:n
-        for i=1:(j-1)
-            r[i, j] = r[j, i]
-        end
-    end
-    r
-end
-
-function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
-    m = size(a, 2)
-    n = size(b, 2)
-    r = SharedArrays.SharedArray{result_type(metric, a, b)}(m, n)
-    pairwise!(r, metric, a, b)
-end
-
-function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
-    n = size(a, 2)
-    r = SharedArrays.SharedArray{result_type(metric, a, a)}(n, n)
-    pairwise!(r, metric, a)
-end
+# function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
+#     ma, na = size(a)
+#     mb, nb = size(b)
+#     size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
+#     ma == mb || throw(DimensionMismatch("First and second array have different numbers of time instances."))
+#     q, s = divrem(ma, d.dim)
+#     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+#     dists = Vector{T}(q)
+#     Distributed.@everywhere dists = $dists
+#     @inbounds @sync Distributed.@distributed for j = 1:nb
+#         for i = 1:na
+#             eval_space!(dists, d, view(a, :, i), view(b, :, j), q)
+#             r[i, j] = reduce_time(d, dists, q)
+#         end
+#     end
+#     r
+# end
+#
+# function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+#     m, n = size(a)
+#     size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
+#     q, s = divrem(m, d.dim)
+#     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+#     entries = div(n*(n+1),2)
+#     dists = Vector{T}(undef, q)
+#     i, j = 1, 1
+#     Distributed.@everywhere dists, i, j = $dists, $i, $j
+#     @inbounds @sync Distributed.@distributed for k = 1:entries
+#         tri_indices!(i, j, k)
+#         if i == j
+#             r[i, i] = zero(T)
+#         else
+#             eval_space!(dists, d, view(a, :, i), view(a, :, j), q)
+#             r[i, j] = reduce_time(d, dists, q)
+#         end
+#     end
+#     for j = 1:n
+#         for i=1:(j-1)
+#             r[i, j] = r[j, i]
+#         end
+#     end
+#     r
+# end
+#
+# function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
+#     m = size(a, 2)
+#     n = size(b, 2)
+#     r = SharedArrays.SharedArray{result_type(metric, a, b)}(m, n)
+#     pairwise!(r, metric, a, b)
+# end
+#
+# function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
+#     n = size(a, 2)
+#     r = SharedArrays.SharedArray{result_type(metric, a, a)}(n, n)
+#     pairwise!(r, metric, a)
+# end
 
 @inline function tri_indices!(i::Int, j::Int, n::Int)
     i = floor(Int, 0.5*(1 + sqrt(8n-7)))
