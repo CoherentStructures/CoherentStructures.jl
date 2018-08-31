@@ -301,8 +301,8 @@ function plot_ftle(
             if check_inbounds(x1[i],x2[j],p)
                 try
                     FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
-                      log(eigvals(eigfact(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
-                            tolerance=tolerance, p=p, solver=solver)))[2])
+                      log(maximum(eigvals(eigen(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
+                            tolerance=tolerance, p=p, solver=solver)))))
                     nonancounter_local += 1
                 catch e
                     nancounter_local += 1
