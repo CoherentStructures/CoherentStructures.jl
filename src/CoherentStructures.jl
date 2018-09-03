@@ -24,7 +24,7 @@ module CoherentStructures
     # using VoronoiDelaunay
 
     import JuAFEM
-    using Plots
+    using RecipesBase
     using SymEngine
 
     #Contains a list of functions being exported
