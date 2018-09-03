@@ -204,14 +204,14 @@ Default metric is `Euclidean()`.
     end
     idxs::Vector{Vector{Int}}, dists::Vector{Vector{T}} = NN.knn(tree, data, sp_method.k, false)
     Js::Vector{Int} = vcat(idxs...)
-    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
     Vs::Vector{T} = kernel.(vcat(dists...))
     W = SparseArrays.sparse(Is, Js, Vs, N, N)
-    SparseArrays.droptol!(W,eps(eltype(W)))
+    SparseArrays.droptol!(W, eps(eltype(W)))
     if typeof(sp_method) <: KNN
-        return max.(W, PermutedDimsArray(W, (2,1)))
+        return max.(W, permutedims(W))
     else
-        return min.(W, PermutedDimsArray(W, (2,1)))
+        return min.(W, permutedims(W))
     end
 end
 
@@ -229,8 +229,8 @@ end
     end
     idxs = NN.inrange(tree, data, sp_method.ε, false)
     Js = vcat(idxs...)
-    Is = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs = kernel.(Distances.colwise(metric, view(data,:,Is), view(data,:,Js)))
+    Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
+    Vs = kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
@@ -294,8 +294,8 @@ function sparse_adjacency(data::AbstractMatrix{T},
     end
     Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
     Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
-    Vs::Vector{Bool} = fill(true,length(Is))
-    return SparseArrays.sparse(Is, Js, Vs, N, N)
+    Vs::Vector{Bool} = fill(1.0, length(Is))
+    return SparseArrays.sparse(Is, Js, Vs, N, N, *)
 end
 
 function sparse_adjacency(data::AbstractMatrix,
@@ -306,8 +306,8 @@ function sparse_adjacency(data::AbstractMatrix,
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
     Is, Js = sparse_adjacency_list(data, ε; metric=metric)
-    Vs = fill(true, length(I))
-    return SparseArrays.sparse(Is, Js, Vs, N, N)
+    Vs = fill(1.0, length(I))
+    return SparseArrays.sparse(Is, Js, Vs, N, N, *)
 end
 
 """
@@ -334,7 +334,7 @@ Return two lists of indices of data points that are adjacent.
     end
     idxs = NN.inrange(tree, data, ε, false)
     Js::Vector{Int} = vcat(idxs...)
-    Is::Vector{Int} = vcat([fill(i,length(idxs[i])) for i in eachindex(idxs)]...)
+    Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
     return Is, Js
 end
 
@@ -402,7 +402,7 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
     Σ = drop_num_zeros.(E[1])
 
     if any(Σ .< 0)
-     @warn "Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
+        @warn "Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! "*
         "Using absolute value instead."
     end
 
