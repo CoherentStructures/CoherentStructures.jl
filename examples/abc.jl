@@ -3,7 +3,7 @@ using Arpack
 using Plots
 
 
-abcctx = CoherentStructures.regularP2TetrahedralGrid((25,25,25),[0.0,0.0,0.0],
+abcctx = CoherentStructures.regularP2TetrahedralGrid((5,5,5),[0.0,0.0,0.0],
     [2π,2π,2π],quadrature_order=2 )
 bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 &&
                             peuclidean(x[2],y[2],2π) < 1e-9 &&
@@ -23,6 +23,8 @@ plot_real_spectrum(λ)
 u  = undoBCS(abcctx,V[:,2],bdata)
 u /= maximum(abs.(u))
 
+import Plots
+
 for z in range(0,stop=2π,length=10)
     xs = range(0,stop=2π,length=50)
     ys = range(0,stop=2π,length=50)
@@ -35,7 +37,7 @@ end
 
 ### Plotting in 3D
 xs = range(0,stop=2π,length=25)
-u = undoBCS(abcctx,V[:,3],bdata)
+u = undoBCS(abcctx,V[:,2],bdata)
 vals = [evaluate_function_from_dofvals(
     abcctx,u,[x,y,z]) for x in xs, y in xs, z in xs]
 vals .-= minimum(vals)
@@ -43,6 +45,8 @@ vals ./= maximum(vals)
 
 
 using Makie
+using Interact
 scene = Scene()
 volume(vals, algorithm = :iso,isovalue=0.2)
-center!(scene)
+volume!(vals, algorithm = :iso,isovalue=0.2,col="green")
+center!(scene);
