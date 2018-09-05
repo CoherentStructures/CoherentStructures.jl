@@ -171,6 +171,11 @@ regularP2TriangularGrid
 regularQuadrilateralGrid
 regularP2QuadrilateralGrid
 ```
+In 3D we have
+```@docs
+regularTetrahedralGrid
+regularP2TetrahedralGrid
+```
 All of these methods return a `gridContext` object.
 ```@docs
 CoherentStructures.gridContext
