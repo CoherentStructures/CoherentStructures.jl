@@ -99,13 +99,34 @@ function standardMapInv(Tu)
         ))
 end
 
+
 function DstandardMap(u)
     a = 0.971635
     return Tensors.Tensor{2,2}((
-        1.0 + a*cos(u[1])   , a*cos(u[1]),
-        1.0                 , 1.0
+        1.0 + a*cos(u[1])   , a*cos(u[1]), 1.0                 , 1.0
         ))
 end
+
+function standardMap8(u)
+    return StaticArrays.SVector{2,Float64}((
+        mod(u[1] + u[2],2π),
+        mod(u[2] + 8*sin(u[1] + u[2]),2π)
+        ))
+end
+
+function DstandardMap8(u)
+    return Tensors.Tensor{2,2}((
+        1., 8*cos(u[1] + u[2]), 1., 1. + 8*cos(u[1] + u[2])
+    ))
+end
+
+function standardMap8Inv(Tu)
+    return StaticArrays.SVector{2,Float64}((
+    mod(Tu[2] - 8*sin(Tu[1]),2π),
+    mod(Tu[1]  - Tu[2] - 8*sin(Tu[1]),2π)
+    ))
+end
+
 
 # ABC flow
 
