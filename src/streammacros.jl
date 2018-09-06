@@ -134,11 +134,11 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
     H = substitutions(H, formulas, bound_symbols)
 
 
-    # symbolic gradient
-    ∇H  = [expr_diff(H, :x),expr_diff(H,:y)]
-    ∇²H  = [expr_diff(∇H[1],:x) expr_diff(∇H[1],:y); expr_diff(∇H[2],:x) expr_diff(∇H[2],:y)];
+    # symbolic gradient and hessian (note the broadcast)
+     ∇H = expr_diff.([H],  [:x,:y])
+    ∇²H = expr_diff.(∇H,   [:x :y])
 
-    # streamlines
+    # formula for streamlines (perpendicular to gradient)
     F  = [:(-$(∇H[2])), ∇H[1]]
 
     # equation of variation for streamlines
