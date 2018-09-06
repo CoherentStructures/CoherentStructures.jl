@@ -188,13 +188,3 @@ function getH(ctx::abstractGridContext)
 
     return sqrt(hx^2 + hy^2)
 end
-
-# """
-#     distmod(a,b,c)
-#
-# return the distance from a to b, where the distace is taken to be modulo
-# """
-# function distmod(a,b,c)
-#     diff = mod( (a -b),c)
-#     return min(diff, c- diff)
-# end

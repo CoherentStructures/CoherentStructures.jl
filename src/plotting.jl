@@ -298,10 +298,11 @@ end
 
 @userplot Plot_FTLE
 @recipe function f(
-            as::Plot_FTLE,
+            as::Plot_FTLE;
     	   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
 		   #existing_plot=nothing, TODO 1.0
-           flip_y=false, check_inbounds=always_true
+           flip_y=false, check_inbounds=always_true,
+           vari=false
            )
    odefun=as.args[1]
    p = as.args[2]
@@ -337,11 +338,23 @@ end
         nonancounter_local = 0
         for j in eachindex(x2)
             if check_inbounds(x1[i],x2[j],p)
+
+                        FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                          log(maximum(eigvals(eigen(CG_tensor_vari(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]];
+                                tolerance=tolerance, p=p, solver=solver)))))
+                        nonancounter_local += 1
                 try
-                    FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
-                      log(maximum(eigvals(eigen(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
-                            tolerance=tolerance, p=p, solver=solver)))))
-                    nonancounter_local += 1
+                    if !vari
+                        FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                          log(maximum(eigvals(eigen(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
+                                tolerance=tolerance, p=p, solver=solver)))))
+                        nonancounter_local += 1
+                    else
+                        FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                          log(maximum(eigvals(eigen(CG_tensor_vari(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
+                                tolerance=tolerance, p=p, solver=solver)))))
+                        nonancounter_local += 1
+                    end
                 catch e
                     nancounter_local += 1
                 end
@@ -373,7 +386,7 @@ end
 """
     plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
         δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-        existing_plot=nothing,flip_y=false, check_inbounds=always_true)
+        existing_plot=nothing,flip_y=false, check_inbounds=always_true,vari=true)
 
 Make a heatmap of a FTLE field using finite differences.
 If `existing_plot` is given a value, plot using `heatmap!` on top of it.

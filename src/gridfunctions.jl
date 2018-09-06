@@ -693,10 +693,10 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1)
-    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1)
-    n1 = Int(n1f)
-    n2 = Int(n2f)
+    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
+    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1.0)
+    n1 = Base.unsafe_trunc(Int,n1f)
+    n2 = Base.unsafe_trunc(Int,n2f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
         n1 = loc.nx-2
         loc1 = 1.0
@@ -728,10 +728,10 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Quadrilateral},grid::JuAFE
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1)
-    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1)
-    n1 = Int(n1f)
-    n2 = Int(n2f)
+    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
+    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1.0)
+    n1 = Base.unsafe_trunc(Int,n1f)
+    n2 = Base.unsafe_trunc(Int,n2f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
         n1 = loc.nx-2
         loc1 = 1.0
@@ -756,10 +756,10 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::J
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
-    n1 = Int(n1f)
-    n2 = Int(n2f)
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
+    n1 = Base.unsafe_trunc(Int,n1f)
+    n2 = Base.unsafe_trunc(Int,n2f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
         n1 = loc.nx-2
         loc1 = 1.0
@@ -798,10 +798,10 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticQuadrilateral},gr
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
-    n1 = Int(n1f)
-    n2 = Int(n2f)
+    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
+    n1 = Base.unsafe_trunc(Int,n1f)
+    n2 = Base.unsafe_trunc(Int,n2f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
         n1 = loc.nx-2
         loc1 = 1.0
@@ -854,13 +854,13 @@ function locatePoint(loc::regular3DGridLocator{T},grid::JuAFEM.Grid,x::AbstractV
     #Get integer and fractional part of coordinates
     #This is the lower left corner
     #warning: all the coputation is done with zero-indexing
-    n1f,loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1)
-    n3f,loc3 = divrem((x[3] - loc.LL[3])/(loc.UR[3] - loc.LL[3]) * (loc.nz-1),1)
+    n1f,loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
+    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
+    n3f,loc3 = divrem((x[3] - loc.LL[3])/(loc.UR[3] - loc.LL[3]) * (loc.nz-1),1.0)
 
-    n1 = Int(n1f)
-    n2 = Int(n2f)
-    n3 = Int(n3f)
+    n1 = Base.unsafe_trunc(Int,n1f)
+    n2 = Base.unsafe_trunc(Int,n2f)
+    n3 = Base.unsafe_trunc(Int,n3f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
         n1 = loc.nx-2
         loc1 = 1.0
