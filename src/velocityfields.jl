@@ -122,8 +122,8 @@ end
 
 function standardMap8Inv(Tu)
     return StaticArrays.SVector{2,Float64}((
-    mod(Tu[2] - 8*sin(Tu[1]),2π),
-    mod(Tu[1]  - Tu[2] - 8*sin(Tu[1]),2π)
+    mod(Tu[1]  - Tu[2] + 8*sin(Tu[1]),2π),
+    mod(Tu[2] - 8*sin(Tu[1]),2π)
     ))
 end
 
