@@ -80,8 +80,8 @@ function diff_op(data::AbstractMatrix{T},
     Js::Vector{Int} = [j[2] for j in CIs]
     Vs::Vector{T} = kernel.(D[CIs])
     P = SparseArrays.sparse(Is, Js, Vs, N, N)
-    !iszero(α) && α_normalize!(P, α)
-    wLap_normalize!(P)
+    !iszero(α) && P = α_normalize(P, α) # α_normalize!(P, α)
+    P = wLap_normalize(P) # wLap_normalize!(P)
     return P
 end
 
@@ -112,8 +112,8 @@ function diff_op(data::AbstractMatrix{T},
     else
         @. P = min(P, PermutedDimsArray(P, (2,1)))
     end
-    α>0 && α_normalize!(P, α)
-    wLap_normalize!(P)
+    α>0 && P = α_normalize(P, α)# α_normalize!(P, α)
+    P = wLap_normalize(P)# wLap_normalize!(P)
     return P
 end
 
@@ -178,8 +178,8 @@ Return a sparse diffusion/Markov matrix `P`.
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
     P = sparseaffinitykernel(data, sp_method, kernel, metric)
-    α>0 && α_normalize!(P, α)
-    wLap_normalize!(P)
+    α>0 && P = α_normalize(P, α)#α_normalize!(P, α)
+    P = wLap_normalize(P)#wLap_normalize!(P)
     return P
 end
 
@@ -248,6 +248,13 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     LinearAlgebra.lmul!(qₑ, A)
     return A
 end
+@inline function α_normalize(A::TA, α=1.0) where {TA <: AbstractMatrix{T} where {T <: Real}}
+    LinearAlgebra.checksquare(A)
+    qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
+    A = A * qₑ
+    A = qₑ * A
+    return A
+end
 
 """
     wLap_normalize!(A)
@@ -258,6 +265,12 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
     LinearAlgebra.checksquare(A)
     dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     LinearAlgebra.lmul!(dᵅ, A)
+    return A
+ end
+@inline function wLap_normalize(A::TA) where {TA <: AbstractMatrix{T} where {T <: Real}}
+    LinearAlgebra.checksquare(A)
+    dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+    A = dᵅ * A
     return A
  end
 
