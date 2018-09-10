@@ -147,7 +147,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = Distributed.pmap(1:q) do t
-        @time Pₜ = sparse_diff_op(data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
+        Pₜ = sparse_diff_op(data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
                                     α=α, metric=metric)
         # println("Timestep $t/$q done")
         # Pₜ
@@ -279,11 +279,9 @@ metric is applied to the whole columns of `data`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-function sparse_adjacency(data::AbstractMatrix{T},
-                            ε::S,
-                            dim::Int;
+function sparse_adjacency(data::AbstractMatrix{T}, ε, dim::Int;
                             metric::Distances.Metric = Distances.Euclidean()
-                        )::SparseMatrixCSC{Bool,Int} where {T <: Real, S <: Real}
+                        )::SparseMatrixCSC{Float64,Int} where {T <: Real}
     dimt, N = size(data)
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
@@ -295,14 +293,13 @@ function sparse_adjacency(data::AbstractMatrix{T},
     end
     Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
     Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
-    Vs::Vector{Bool} = fill(1.0, length(Is))
+    Vs::Vector{Float64} = fill(1.0, length(Is))
     return SparseArrays.sparse(Is, Js, Vs, N, N, *)
 end
 
-function sparse_adjacency(data::AbstractMatrix,
-                            ε::S;
+function sparse_adjacency(data::AbstractMatrix, ε;
                             metric::Distances.Metric = Distances.Euclidean()
-                            )::SparseMatrixCSC{Bool,Int} where {S <: Real}
+                            )::SparseMatrixCSC{Float64,Int}
     dimt, N = size(data)
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
