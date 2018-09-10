@@ -138,7 +138,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))),
+                                op_reduce::Function = (P -> prod(reverse(P))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -147,8 +147,11 @@ function sparse_diff_op_family( data::AbstractMatrix,
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = Distributed.pmap(1:q) do t
-        Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
-                                    α=α, metric = metric )
+        Pₜ = LinearMaps.LinearMap( sparse_diff_op(data[(t-1)*dim+1:t*dim,:],
+                                                    sp_method, kernel;
+                                                    α=α, metric=metric
+                                                    )
+                                    )
         # println("Timestep $t/$q done")
         # Pₜ
     end
@@ -191,9 +194,9 @@ only calculated for pairs determined by the sparsification method `sp_method`.
 Default metric is `Euclidean()`.
 """
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
-                               sp_method::Union{KNN,mutualKNN},
+                               sp_method::Union{KNN, mutualKNN},
                                kernel=gaussian_kernel,
-                               metric::Distances.PreMetric = Distances.Euclidean()
+                               metric::Distances.PreMetric=Distances.Euclidean()
                                ) where T <: Real
     dim, N = size(data)
 
@@ -205,7 +208,7 @@ Default metric is `Euclidean()`.
     idxs::Vector{Vector{Int}}, dists::Vector{Vector{T}} = NN.knn(tree, data, sp_method.k, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs::Vector{T} = kernel.(vcat(dists...))
+    Vs = kernel.(vcat(dists...))
     W = SparseArrays.sparse(Is, Js, Vs, N, N)
     SparseArrays.droptol!(W, eps(eltype(W)))
     if typeof(sp_method) <: KNN
@@ -230,17 +233,17 @@ end
     idxs = NN.inrange(tree, data, sp_method.ε, false)
     Js = vcat(idxs...)
     Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs = kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
+    Vs .= kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
 """
-    α_normalize!(A, α = 0.5)
+    α_normalize!(A, α = 1.0)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
-``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 0.5.
+``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
-@inline function α_normalize!(A::AbstractMatrix, α=0.5)
+@inline function α_normalize!(A::AbstractMatrix, α=1.0)
     LinearAlgebra.checksquare(A)
     qₑ = Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     LinearAlgebra.rmul!(A, qₑ)
