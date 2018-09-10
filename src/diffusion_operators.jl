@@ -268,7 +268,7 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function wLap_normalize!(A::TA) where {TA <: AbstractMatrix{T} where {T <: Real}}
+@inline function wLap_normalize!(A::SparseMatrixCSC{T}) where {T <: Real}
     n = LinearAlgebra.checksquare(A)
     # dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
