@@ -152,7 +152,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
         # println("Timestep $t/$q done")
         # Pₜ
     end
-    @time P = op_reduce(P)
+    P = op_reduce(P)
     return P
 end
 
@@ -241,7 +241,21 @@ Normalize rows and columns of `A` in-place with the respective row-sum to the α
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
-@inline function α_normalize!(A::TA, α=1.0) where {TA <: AbstractMatrix{T} where {T <: Real}}
+@inline function α_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
+    n = LinearAlgebra.checksquare(A)
+    # qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
+    qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
+    # LinearAlgebra.rmul!(A, qₑ)
+    # LinearAlgebra.lmul!(qₑ, A)
+    Anzval = A.nzval
+    Arowval = A.rowval
+    for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
+        @inbounds Anzval[p] *= qₑ[col]
+        @inbounds Anzval[p] *= qₑ[Arowval[p]]
+    end
+    return A
+end
+@inline function α_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
     LinearAlgebra.checksquare(A)
     qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     LinearAlgebra.rmul!(A, qₑ)
@@ -254,12 +268,24 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function wLap_normalize!(A::TA) where {TA <: AbstractMatrix{T} where {T <: Real}}
-    LinearAlgebra.checksquare(A)
-    dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
-    LinearAlgebra.lmul!(dᵅ, A)
+@inline function wLap_normalize!(A::SparseMatrixCSC{T}) where {T <: Real}
+    n = LinearAlgebra.checksquare(A)
+    # dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+    dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
+    # LinearAlgebra.lmul!(dᵅ, A)
+    Anzval = A.nzval
+    Arowval = A.rowval
+    for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
+        @inbounds Anzval[p] *= dᵅ[Arowval[p]]
+    end
     return A
  end
+ @inline function wLap_normalize!(A::AbstractMatrix{T}) where {T <: Real}
+     LinearAlgebra.checksquare(A)
+     dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+     LinearAlgebra.lmul!(dᵅ, A)
+     return A
+  end
 
 # adjacency-related functions
 
@@ -371,8 +397,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
      Πinvsqrt = LinearAlgebra.Diagonal(inv.(Πsqrt))
-     LinearAlgebra.lmul!(Πsqrt, L)
-     LinearAlgebra.rmul!(L, Πinvsqrt)
+     LinearAlgebra.lmul!(Πsqrt, L) # TODO
+     LinearAlgebra.rmul!(L, Πinvsqrt) # TODO
      LMap = LinearMaps.LinearMap(L)
      return LinearMaps.LinearMap(LMap * LinearAlgebra.transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
