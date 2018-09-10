@@ -243,8 +243,10 @@ end
 """
     linearized_flow(odefun, x, tspan,δ; ...) -> Vector{Tensor{2,2}}
 
-Calculate derivative of flow map by finite differences. Return time-resolved
-linearized flow maps.
+Calculate derivative of flow map by finite differences if δ != 0.
+If δ==0, attempts to solve variational equation (odefun is assumed to be the rhs of
+variational equation in this case).
+Return time-resolved linearized flow maps.
 """
 @inline function linearized_flow(
             odefun::Function,
@@ -258,32 +260,45 @@ linearized flow maps.
 
     num_tsteps = length(tspan)
     num_args = DiffEqBase.numargs(odefun)
-    if num_args == 4
-        dx = [δ, zero(δ)];
-        dy = [zero(δ), δ];
+    if δ != 0 # Use finite differences
+        if num_args == 4
+            dx = [δ, zero(δ)];
+            dy = [zero(δ), δ];
 
-        #In order to solve only one ODE, write all the initial values
-        #one after the other in one big vector
-        stencil::Vector{T} = zeros(T, 8)
-        @inbounds stencil[1:2] .= x .+ dx
-        @inbounds stencil[3:4] .= x .+ dy
-        @inbounds stencil[5:6] .= x .- dx
-        @inbounds stencil[7:8] .= x .- dy
+            #In order to solve only one ODE, write all the initial values
+            #one after the other in one big vector
+            stencil::Vector{T} = zeros(T, 8)
+            @inbounds stencil[1:2] .= x .+ dx
+            @inbounds stencil[3:4] .= x .+ dy
+            @inbounds stencil[5:6] .= x .- dx
+            @inbounds stencil[7:8] .= x .- dy
 
-        rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
-        prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
-        sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-        return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), sol)
-    elseif num_args == 3
-        #In order to solve only one ODE, write all the initial values
-        #one after the other in one big vector
-        sstencil::SA.SVector{8,Float64} = SA.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
-        srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
-        sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
-        ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
-        return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), ssol)
+            rhs = (du,u,p,t) -> arraymap!(du,u,p,t,odefun,4,2)
+            prob = OrdinaryDiffEq.ODEProblem(rhs,stencil,(tspan[1],tspan[end]),p)
+            sol = OrdinaryDiffEq.solve(prob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+            return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), sol)
+        elseif num_args == 3
+            #In order to solve only one ODE, write all the initial values
+            #one after the other in one big vector
+            sstencil::SA.SVector{8,Float64} = SA.SVector{8}(x[1] + δ, x[2], x[1],x[2] + δ, x[1] - δ, x[2], x[1],x[2] - δ)
+            srhs = (u,p,t) -> arraymap2(u,p,t,odefun)
+            sprob = OrdinaryDiffEq.ODEProblem(srhs,sstencil,(tspan[1],tspan[end]),p)
+            ssol = OrdinaryDiffEq.solve(sprob,solver,saveat=tspan,save_everystep=false,dense=false,reltol=tolerance,abstol=tolerance).u
+            return map(s->Tensors.Tensor{2,2}((s[1:4] - s[5:8])/2δ), ssol)
+        else
+            error("odefun has invalid number of arguments")
+        end
     else
-        error("odefun has invalid number of arguments")
+        #Solve the variational equation
+        #TODO: Handle in-place versions of this.
+
+        u0 = StaticArrays.@SMatrix [x[1] 1. 0. ; x[2]  0. 1.]
+
+        prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
+        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                              save_everystep=false, dense=false,
+                              reltol=tolerance, abstol=tolerance)
+        return [Tensors.Tensor{2,2}((x[1,2], x[2,2], x[1,3],x[2,3])) for x in sol.u]
     end
 end
 
@@ -524,25 +539,6 @@ function _linearized_flow(
     return map(s -> Tensors.Tensor{2,3}((s[1:9] - s[10:18]) / 2δ), sol)
 end
 
-
-function linearized_flow_vari(
-        var_odefun::Function,
-        x::SA.SVector{2,T},
-        tspan::AbstractVector{S};
-        tolerance = default_tolerance,
-        p = nothing,
-        solver = default_solver,
-        force_dtmin = false
-    ) where {T <: Real, S <: Real}
-
-    u0 = StaticArrays.@SMatrix [x[1] 1. 0. ; x[2]  0. 1.]
-
-    prob = OrdinaryDiffEq.ODEProblem(var_odefun, u0, (tspan[1],tspan[end]), p)
-    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                          save_everystep=false, dense=false,
-                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-    return [Tensors.Tensor{2,2}((x[1,2], x[2,2], x[1,3],x[2,3])) for x in sol.u]
-end
 
 """
     parallel_tensor(tensor_fun,P) -> Array{SymmetricTensor}
