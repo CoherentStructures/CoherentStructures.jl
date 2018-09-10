@@ -233,7 +233,7 @@ end
     idxs = NN.inrange(tree, data, sp_method.ε, false)
     Js = vcat(idxs...)
     Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs .= kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
+    Vs = kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
     return SparseArrays.sparse(Is, Js, Vs, N, N)
 end
 
