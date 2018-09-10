@@ -147,7 +147,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = Distributed.pmap(1:q) do t
-        Pₜ = LinearMaps.LinearMap( sparse_diff_op(data[(t-1)*dim+1:t*dim,:],
+        @time Pₜ = LinearMaps.LinearMap( sparse_diff_op(data[(t-1)*dim+1:t*dim,:],
                                                     sp_method, kernel;
                                                     α=α, metric=metric
                                                     )
@@ -155,7 +155,8 @@ function sparse_diff_op_family( data::AbstractMatrix,
         # println("Timestep $t/$q done")
         # Pₜ
     end
-    return op_reduce(P)
+    @time P = op_reduce(P)
+    return P
 end
 
 """
