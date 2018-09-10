@@ -2,7 +2,6 @@
 #This file implements methods for working with JuAFEM grids
 #This includes methods for making grids from Delaunay Triangulations based
 #on the code in FEMDL.jl
-#There are also functions for evaluating functions on the grid
 
 ##TODO 1.0
 #const GP = GeometricalPredicates
