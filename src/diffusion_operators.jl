@@ -244,12 +244,12 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 @inline function α_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
     n = LinearAlgebra.checksquare(A)
     # qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
-    @time qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
+    qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
     # LinearAlgebra.rmul!(A, qₑ)
     # LinearAlgebra.lmul!(qₑ, A)
     Anzval = A.nzval
     Arowval = A.rowval
-    @time for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
+    for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
         @inbounds Anzval[p] *= qₑ[col]
         @inbounds Anzval[p] *= qₑ[Arowval[p]]
     end
@@ -397,8 +397,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
      Πinvsqrt = LinearAlgebra.Diagonal(inv.(Πsqrt))
-     LinearAlgebra.lmul!(Πsqrt, L)
-     LinearAlgebra.rmul!(L, Πinvsqrt)
+     LinearAlgebra.lmul!(Πsqrt, L) # TODO
+     LinearAlgebra.rmul!(L, Πinvsqrt) # TODO
      LMap = LinearMaps.LinearMap(L)
      return LinearMaps.LinearMap(LMap * LinearAlgebra.transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
