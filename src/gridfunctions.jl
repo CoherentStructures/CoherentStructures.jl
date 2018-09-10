@@ -728,7 +728,7 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
         #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
         #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
         #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        const tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
+        tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
         return tM⋅Tensors.Vec{2}((loc1-1,loc2)), [ ur+1, ul+1, lr+1]
     end
 end
