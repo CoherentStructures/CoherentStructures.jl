@@ -62,17 +62,14 @@ T = [Tensors.SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
 All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
-
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
-    E = eigfact.(T)
-    # TODO: replace by E = eigen.(T)
-    λ₁ = [ev[1] for ev in eigvals.(E)]
-    λ₂ = [ev[2] for ev in eigvals.(E)]
-    ξ₁ = [ev[:,1] for ev in eigvecs.(E)]
-    ξ₂ = [ev[:,2] for ev in eigvecs.(E)]
-    traceT = trace.(T)
-    # TODO: replace by traceT = tr.(T)
-    detT = det.(T)
+    E = LinearAlgebra.eigen.(T)
+    λ₁ = [ev[1] for ev in LinearAlgebra.eigvals.(E)]
+    λ₂ = [ev[2] for ev in LinearAlgebra.eigvals.(E)]
+    ξ₁ = [ev[:,1] for ev in LinearAlgebra.eigvecs.(E)]
+    ξ₂ = [ev[:,2] for ev in LinearAlgebra.eigvecs.(E)]
+    traceT = LinearAlgebra.tr.(T)
+    detT = LinearAlgebra.det.(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
 
@@ -103,7 +100,7 @@ corresponding to (interpolated) indicator functions.
 ```
 v, λ = eigs(K,M)
 numclusters = 5
-res = kmeans(v[:,1:numclusters]',numclusters+1)
+res = kmeans(permutedims(v[:,1:numclusters]),numclusters+1)
 u = kmeansresult2LCS(res)
 plot_u(ctx,u)
 ```
@@ -157,7 +154,6 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 `UI` and `VI` are the interpolants for the x- and y-components of the velocity
 field.
 """
-
 function interp_rhs(u, p, t)
     du1 = p[1][u[1], u[2], t]
     du2 = p[2][u[1], u[2], t]
@@ -192,13 +188,3 @@ function getH(ctx::abstractGridContext)
 
     return sqrt(hx^2 + hy^2)
 end
-
-# """
-#     distmod(a,b,c)
-#
-# return the distance from a to b, where the distace is taken to be modulo
-# """
-# function distmod(a,b,c)
-#     diff = mod( (a -b),c)
-#     return min(diff, c- diff)
-# end

@@ -14,65 +14,6 @@ Solve the ODE with right hand side given by `odefun` and initial value `u0`.
 `tolerance` is passed as both relative and absolute tolerance to the solver,
 which is determined by `solver`.
 """
-# function flow(
-#             odefun::Function,
-#             u0::SA.SVector{dim,T},
-#             tspan::AbstractVector{Float64};
-#             tolerance = default_tolerance,
-#             p = nothing,
-#             solver = default_solver,
-#             #ctx_for_boundscheck=nothing,
-#             force_dtmin=false
-#         ) where {T<:Real,dim}
-#     #callback = nothing
-#     #if ctx_for_boundscheck != nothing
-#     #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
-#     #   LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
-#     #   UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
-#     #   UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
-#     #   leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
-#     #   bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
-#     #   rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
-#     #   topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
-#     #   function affect!(integrator)
-#     #           return terminate!(integrator)#
-#     #   end
-#     #   callback = OrdinaryDiffEq.CallbackSet(
-#     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
-#     #       [leftSide,rightSide,topSide,bottomSide])...)
-#    #end
-#    num_args = DiffEqBase.numargs(odefun)
-#    if num_args == 4
-#        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
-#        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-#                              save_everystep=false, dense=false,
-#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-#        return sol.u
-#    elseif num_args == 3
-#        sprob = OrdinaryDiffEq.ODEProblem(odefun,u0, (tspan[1],tspan[end]), p)
-#        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
-#                              save_everystep=false, dense=false,
-#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
-#        return ssol.u
-#    else
-#        error("Invalid format of odefun")
-#    end
-# end
-#
-# function flow(odefun::Function,u0::Tensors.Vec{dim,Float64},args...;kwargs...) where dim
-#     return flow(odefun,SA.SVector{dim}(u0),args...;kwargs...)
-# end
-#
-# function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
-#     if length(u0) == 2
-#         return flow(rhs,SA.SVector{2}(u0[1],u0[2]),args...;kwargs...)
-#     elseif length(u0) == 3
-#         return flow(rhs,SA.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
-#     else
-#         error("length(u0) ∉ [2,3]")
-#     end
-# end
-
 function flow(
             odefun::Function,
             u0::AbstractVector{T},
@@ -212,6 +153,65 @@ function _flow(
     return sol.u
 end
 
+# function flow(
+#             odefun::Function,
+#             u0::SA.SVector{dim,T},
+#             tspan::AbstractVector{Float64};
+#             tolerance = default_tolerance,
+#             p = nothing,
+#             solver = default_solver,
+#             #ctx_for_boundscheck=nothing,
+#             force_dtmin=false
+#         ) where {T<:Real,dim}
+#     #callback = nothing
+#     #if ctx_for_boundscheck != nothing
+#     #   LL1::Float64 = ctx_for_boundscheck.spatialBounds[1][1]
+#     #   LL2::Float64 = ctx_for_boundscheck.spatialBounds[1][2]
+#     #   UR1::Float64 = ctx_for_boundscheck.spatialBounds[2][1]
+#     #   UR2::Float64 = ctx_for_boundscheck.spatialBounds[2][2]
+#     #   leftSide(x,y,integrator) = (x[1] - LL1) <= 0.0
+#     #   bottomSide(x,y,integrator) = (x[2] - LL2) <= 0.0
+#     #   rightSide(x,y,integrator) = (UR1 - x[1]) <= 0.0
+#     #   topSide(x,y,integrator) = (UR2 - x[2]) <= 0.0
+#     #   function affect!(integrator)
+#     #           return terminate!(integrator)#
+#     #   end
+#     #   callback = OrdinaryDiffEq.CallbackSet(
+#     #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
+#     #       [leftSide,rightSide,topSide,bottomSide])...)
+#    #end
+#    num_args = DiffEqBase.numargs(odefun)
+#    if num_args == 4
+#        prob = OrdinaryDiffEq.ODEProblem(odefun, Vector{T}(u0), (tspan[1],tspan[end]), p)
+#        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+#                              save_everystep=false, dense=false,
+#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+#        return sol.u
+#    elseif num_args == 3
+#        sprob = OrdinaryDiffEq.ODEProblem(odefun,u0, (tspan[1],tspan[end]), p)
+#        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
+#                              save_everystep=false, dense=false,
+#                              reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+#        return ssol.u
+#    else
+#        error("Invalid format of odefun")
+#    end
+# end
+#
+# function flow(odefun::Function,u0::Tensors.Vec{dim,Float64},args...;kwargs...) where dim
+#     return flow(odefun,SA.SVector{dim}(u0),args...;kwargs...)
+# end
+#
+# function flow(rhs::Function,u0::AbstractVector{Float64},args...;kwargs...)
+#     if length(u0) == 2
+#         return flow(rhs,SA.SVector{2}(u0[1],u0[2]),args...;kwargs...)
+#     elseif length(u0) == 3
+#         return flow(rhs,SA.SVector{3}(u0[1],u0[2],u0[3]),args...;kwargs...)
+#     else
+#         error("length(u0) ∉ [2,3]")
+#     end
+# end
+
 """
     parallel_flow(flow_fun,P) -> Array
 
@@ -226,12 +226,12 @@ function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
     dummy = flow_fun(P[1])
     q::Int = length(dummy)
 
-    sol_shared = SharedArray{T}(dim*q,length(P));
-    @inbounds @sync @parallel for index in eachindex(P)
-        u = flow_fun(P[index])
-        for t=1:q
-            sol_shared[(t-1)*dim+1:t*dim,index] = u[t]
-        end
+    sol_shared = SharedArrays.SharedArray{T,2}(dim*q, length(P))
+    @inbounds @sync Distributed.@distributed for index in eachindex(P)
+            u = flow_fun(P[index])
+            for t=1:q
+                sol_shared[(t-1)*dim+1:t*dim,index] = u[t]
+            end
     end
     # sol = Array{Array{Float64,2}}(length(P))
     # for index in eachindex(P)
@@ -524,6 +524,26 @@ function _linearized_flow(
     return map(s -> Tensors.Tensor{2,3}((s[1:9] - s[10:18]) / 2δ), sol)
 end
 
+
+function linearized_flow_vari(
+        var_odefun::Function,
+        x::SA.SVector{2,T},
+        tspan::AbstractVector{S};
+        tolerance = default_tolerance,
+        p = nothing,
+        solver = default_solver,
+        force_dtmin = false
+    ) where {T <: Real, S <: Real}
+
+    u0 = StaticArrays.@SMatrix [x[1] 1. 0. ; x[2]  0. 1.]
+
+    prob = OrdinaryDiffEq.ODEProblem(var_odefun, u0, (tspan[1],tspan[end]), p)
+    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
+                          save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    return [Tensors.Tensor{2,2}((x[1,2], x[2,2], x[1,3],x[2,3])) for x in sol.u]
+end
+
 """
     parallel_tensor(tensor_fun,P) -> Array{SymmetricTensor}
 
@@ -535,14 +555,14 @@ same size as `P`.
 function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
 
     dim = length(P[1])
-    T_shared = SharedArray{Float64}(div(dim*(dim+1), 2), length(P))
+    T_shared = SharedArrays.SharedArray{eltype(T)}(div(dim*(dim+1), 2), length(P))
     idxs = tril(ones(Bool,dim,dim))
-    @everywhere @eval idxs = $idxs
-    @sync @parallel for index in eachindex(P)
+    Distributed.@everywhere @eval idxs = $idxs
+    @sync Distributed.@distributed for index in eachindex(P)
         T_shared[:,index] = tensor_fun(P[index])[idxs]
     end
 
-    Tfield = Array{Tensors.SymmetricTensor{2,dim,eltype(T),div(dim*(dim+1),2)}}(size(P))
+    Tfield = Array{Tensors.SymmetricTensor{2,dim,eltype(T),div(dim*(dim+1),2)}}(undef, size(P))
     for index in eachindex(P)
         Tfield[index] = Tensors.SymmetricTensor{2,dim}(T_shared[:,index])
     end
@@ -593,6 +613,16 @@ with finite differences.
     return Tensors.tdot(linearized_flow(odefun, u, [tspan[1],tspan[end]], δ; kwargs...)[end])
 end
 
+#TODO: Document this
+@inline function CG_tensor_vari(
+            odefun,
+            u::AbstractVector{T},
+            tspan::AbstractVector{S};
+            kwargs...
+        ) where {T <: Real, S <: Real}
+    return Tensors.tdot(linearized_flow_vari(odefun, (@SVector T[u[1],u[2]]), [tspan[1],tspan[end]]; kwargs...)[end])
+end
+
 """
     pullback_tensors(odefun, u, tspan, δ; D, kwargs...) -> Tuple(Vector{SymmetricTensor},Vector{SymmetricTensor})
 
@@ -606,7 +636,6 @@ the metric tensor along a trajectory. Derivatives are computed with finite diffe
    * `D`: (constant) diffusion tensor, metric tensor is computed via inversion; defaults to `eye(2)`
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 function pullback_tensors(
             odefun,
             u::AbstractVector{T},
@@ -618,9 +647,9 @@ function pullback_tensors(
 
     G = inv(D)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    MT = [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
+    MT = [Tensors.symmetric(LinearAlgebra.transpose(df) ⋅ G ⋅ df) for df in DF]
     DF .= inv.(DF)
-    DT = [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
+    DT = [Tensors.symmetric(df ⋅ D ⋅ LinearAlgebra.transpose(df)) for df in DF]
     return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
 end
 
@@ -638,7 +667,6 @@ Derivatives are computed with finite differences.
    * `G`: (constant) metric tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 @inline function pullback_metric_tensor(
             odefun,
             u::AbstractVector{T},
@@ -651,7 +679,7 @@ Derivatives are computed with finite differences.
         ) where {T <: Real, S <: Real, dim, N}
 
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    return [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
+    return [Tensors.symmetric(LinearAlgebra.transpose(df) ⋅ G ⋅ df) for df in DF]
 end
 
 """
@@ -667,7 +695,6 @@ Derivatives are computed with finite differences.
    * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 @inline function pullback_diffusion_tensor(
             odefun,
             u::AbstractVector{T},
@@ -678,7 +705,7 @@ Derivatives are computed with finite differences.
         ) where {T <: Real, S <: Real, dim, N}
 
     DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...))
-    return [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DFinv]
+    return [Tensors.symmetric(df ⋅ D ⋅ LinearAlgebra.transpose(df)) for df in DFinv]
 end
 
 # TODO: this function likely doesn't work, uses an unsupported give_back_position keyword argument
@@ -700,7 +727,7 @@ function pullback_diffusion_tensor_function(
     DF .= inv.(DF)
     tlen = length(tspan)
     result = map(eachindex(DF, pos)) do i
-        Tensors.symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i]))
+        Tensors.symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ LinearAlgebra.transpose(DF[i]))
     end
     return result
 end
@@ -718,7 +745,6 @@ Derivatives are computed with finite differences.
    * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 @inline function pullback_SDE_diffusion_tensor(
                 odefun,
                 u::AbstractVector{T},
@@ -746,7 +772,6 @@ tensor. Derivatives are computed with finite differences.
    * `G`: (constant) metric tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-
 function av_weighted_CG_tensor(
             odefun,
             u::AbstractVector{T},
@@ -760,7 +785,7 @@ function av_weighted_CG_tensor(
 
     G = inv(D)
     DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)
-    return det(D) * mean([Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
+    return det(D) * Statistics.mean([Tensors.symmetric(LinearAlgebra.transpose(df) ⋅ G ⋅ df) for df in DF])
 end
 
 function met2deg(u::AbstractVector{T}) where T <: Real
@@ -788,7 +813,7 @@ function pullback_tensors_geo(
     DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)
     PBmet = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF,sol)]
     PBdiff = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
-    return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
+    return [Tensors.symmetric(LinearAlgebra.transpose(pb) ⋅ G ⋅ pb) for pb in PBmet], [Tensors.symmetric(pb ⋅ D ⋅ LinearAlgebra.transpose(pb)) for pb in PBdiff]
 end
 
 function pullback_metric_tensor_geo(
@@ -806,7 +831,7 @@ function pullback_metric_tensor_geo(
     sol = flow(odefun, u, tspan, solver=solver, tolerance=tolerance, p=p)
     DF = linearized_flow(odefun, u, tspan, δ; p=p, tolerance=tolerance, solver=solver)
     PB = [deg2met(sol[i]) ⋅ DF[i] ⋅ met2deg_init for i in eachindex(DF, sol)]
-    return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
+    return [Tensors.symmetric(LinearAlgebra.transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
 
 function pullback_diffusion_tensor_geo(
@@ -823,7 +848,7 @@ function pullback_diffusion_tensor_geo(
     sol = flow(odefun,u,tspan,solver=solver,tolerance=tolerance,p=p)
     DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)
     PB = [inv(deg2met(sol[i]) ⋅ DF[i]) for i in eachindex(DF,sol)]
-    return [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
+    return [Tensors.symmetric(pb ⋅ D ⋅ LinearAlgebra.transpose(pb)) for pb in PB]
 end
 
 function pullback_SDE_diffusion_tensor_geo(

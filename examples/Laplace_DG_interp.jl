@@ -8,10 +8,10 @@ using Tensors
 ############################### set up ##################################
 begin
     q = 2
-    tspan = collect(linspace(0.,1.,q))
+    tspan = collect(range(0.,stop=1.,length=q))
     ny = 100; nx = 100;
     xmin = 0.0; xmax = 1.0; ymin = 0.0; ymax = 1.0
-    xspace = linspace(xmin,xmax,nx); yspace = linspace(ymin,ymax,ny)
+    xspace = range(xmin,stop=xmax,length=nx); yspace = range(ymin,stop=ymax,length=ny)
     P = Array{Vec{2}}(nx,ny)
     for i in CartesianRange(size(P))
         P[i] = Vec{2}([xspace[i[1]], yspace[i[2]]])

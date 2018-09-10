@@ -83,7 +83,7 @@ using Plots
 ctx = regularP2TriangularGrid((10,10))
 u = zeros(ctx.n)
 u[45] = 1.0
-Plots.heatmap(linspace(0,1,200),linspace(0,1,200), (x,y)->evaluate_function_from_nodevals(ctx,u,[x,y]))
+Plots.heatmap(range(0,stop=1,length=200),range(0,stop=1,length=200), (x,y)->evaluate_function_from_nodevals(ctx,u,[x,y]))
 ```
 For more details, consult the API: [`evaluate_function_from_dofvals`](@ref), [`evaluate_function_from_nodevals`](@ref)
 
@@ -165,11 +165,16 @@ CoherentStructures.regular2DGridTypes
 The following functions are conceptually similar:
 ```@docs
 regularTriangularGrid
-regularDelaunayGrid
+#regularDelaunayGrid #TODO 1.0
 regularP2TriangularGrid
-regularP2DelaunayGrid
+#regularP2DelaunayGrid #TODO 1.0
 regularQuadrilateralGrid
 regularP2QuadrilateralGrid
+```
+In 3D we have
+```@docs
+regularTetrahedralGrid
+regularP2TetrahedralGrid
 ```
 All of these methods return a `gridContext` object.
 ```@docs

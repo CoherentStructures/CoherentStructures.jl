@@ -36,7 +36,6 @@ end
 
 rot_double_gyre         = @velo_from_stream Ψ_rot_dgyre
 rot_double_gyreEqVari   = @var_velo_from_stream Ψ_rot_dgyre
-
 # interpolated vector field components
 
 """
@@ -51,9 +50,9 @@ function interpolateVF(xspan::AbstractVector{S1},
                         ) where {S1 <: Real, S2 <: Real}
 
     # convert arrays into linspace-form for interpolation
-    X = linspace(minimum(xspan),maximum(xspan),length(xspan))
-    Y = linspace(minimum(yspan),maximum(yspan),length(yspan))
-    T = linspace(minimum(tspan),maximum(tspan),length(tspan))
+    X = range(minimum(xspan), stop=maximum(xspan), length=length(xspan))
+    Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
+    T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
 
     UI = ITP.scale(ITP.interpolate(u,interpolation_type,ITP.OnGrid()),X,Y,T)
     # UE = extrapolate(UI,(Linear(),Linear(),Flat()))
@@ -71,9 +70,9 @@ function interpolateVFPeriodic(xspan::AbstractVector{S1},
                                 ) where {S1 <: Real, S2 <: Real}
 
     # convert arrays into linspace-form for interpolation
-    X = linspace(minimum(xspan), maximum(xspan), length(xspan))
-    Y = linspace(minimum(yspan), maximum(yspan), length(yspan))
-    T = linspace(minimum(tspan), maximum(tspan), length(tspan))
+    X = range(minimum(xspan), stop=maximum(xspan), length=length(xspan))
+    Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
+    T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
 
     UI = ITP.scale(ITP.interpolate(u,interpolation_type,ITP.OnGrid()), X, Y, T)
     UE = ITP.extrapolate(UI, ITP.Periodic(),ITP.Periodic(),ITP.Flat())
@@ -100,13 +99,34 @@ function standardMapInv(Tu)
         ))
 end
 
+
 function DstandardMap(u)
     a = 0.971635
     return Tensors.Tensor{2,2}((
-        1.0 + a*cos(u[1])   , a*cos(u[1]),
-        1.0                 , 1.0
+        1.0 + a*cos(u[1])   , a*cos(u[1]), 1.0                 , 1.0
         ))
 end
+
+function standardMap8(u)
+    return StaticArrays.SVector{2,Float64}((
+        mod(u[1] + u[2],2π),
+        mod(u[2] + 8*sin(u[1] + u[2]),2π)
+        ))
+end
+
+function DstandardMap8(u)
+    return Tensors.Tensor{2,2}((
+        1., 8*cos(u[1] + u[2]), 1., 1. + 8*cos(u[1] + u[2])
+    ))
+end
+
+function standardMap8Inv(Tu)
+    return StaticArrays.SVector{2,Float64}((
+    mod(Tu[1]  - Tu[2] + 8*sin(Tu[1]),2π),
+    mod(Tu[2] - 8*sin(Tu[1]),2π)
+    ))
+end
+
 
 # ABC flow
 
@@ -122,7 +142,7 @@ end
 # cylinder flow [Froyland, Lloyd, and Santitissadeekorn, 2010]
 
 function cylinder_flow(u,p,t)
-    c, ν, ϵ = p
+    c, ν, ε = p
     # c = 0.5
     # ν = 0.25
     # ϵ = 0.25
@@ -132,7 +152,7 @@ function cylinder_flow(u,p,t)
     x = u[1]
     y = u[2]
     return StaticArrays.SVector{2,Float64}(
-        c - A(t)*sin(x - ν*t)*cos(y) + ϵ*G(g(x,y,t))+sin(t/2),
+        c - A(t)*sin(x - ν*t)*cos(y) + ε*G(g(x,y,t))+sin(t/2),
         A(t)*cos(x - ν*t)*sin(y)
         )
 end

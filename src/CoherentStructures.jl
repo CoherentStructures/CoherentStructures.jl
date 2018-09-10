@@ -1,22 +1,31 @@
 module CoherentStructures
 
-    import StaticArrays
+    using StaticArrays
 
-    import Tensors
-    using Tensors: otimes, dot, ⊗, ⋅
+    using Tensors
+    # using Tensors: otimes, dot, ⊗, ⋅
 
-    import DiffEqBase, OrdinaryDiffEq
-    import Contour, Distances, NearestNeighbors
-    import Distances: result_type, evaluate, eval_start, eval_op
-    import Distances: eval_reduce, eval_end, pairwise, pairwise!
-    import Interpolations
-    import LinearMaps, IterativeSolvers
-    import GeometricalPredicates
-    import VoronoiDelaunay
-    # Pkg.checkout("JuAFEM", "release-0.3")
+    using DiffEqBase
+    using OrdinaryDiffEq
+    using Contour
+    using Distances
+    using NearestNeighbors
+    using Interpolations
+    using LinearMaps
+    using IterativeSolvers
+    using LinearAlgebra
+    using SparseArrays
+    using Distributed
+    using SharedArrays
+    using Markdown
+    using Statistics
+    using Arpack
+    # using GeometricalPredicates
+    # using VoronoiDelaunay
+
     import JuAFEM
-    import Plots
-    import SymEngine
+    using RecipesBase
+    using SymEngine
 
     #Contains a list of functions being exported
     include("exports.jl")
@@ -62,12 +71,9 @@ module CoherentStructures
     include("TO.jl")
 
 
-   #Some test cases, similar to velocityFields.jl
-   # include("numericalExperiments.jl")
+    #Plotting
+    include("plotting.jl")
 
-   #Plotting
-   include("plotting.jl")
-
-   #Solving Advection/Diffusion Equation
-   include("advection_diffusion.jl")
+    #Solving Advection/Diffusion Equation
+    include("advection_diffusion.jl")
 end

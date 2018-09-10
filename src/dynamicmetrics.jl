@@ -1,5 +1,8 @@
 # (c) 2018 Alvaro de Diego & Daniel Karrasch
 
+import Distances: result_type, evaluate, eval_start, eval_op
+import Distances: eval_reduce, eval_end, pairwise, pairwise!
+
 const Dists = Distances
 
 struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
@@ -24,7 +27,7 @@ julia> Distances.evaluate(PEuclidean(L),x,y)
 PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function Dists.evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
     @boundscheck if length(a) != length(b)
         throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
     end
@@ -46,7 +49,7 @@ PEuclidean() = Dists.Euclidean()
     end
 end
 
-@inline function evaluate(d::PEuclidean, a::AbstractArray, b::AbstractArray)
+@inline function Dists.evaluate(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     @boundscheck if length(a) != length(b)
         throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
     end
@@ -77,19 +80,19 @@ end
     return eval_end(d, s)
 end
 
-function evaluate(dist::PEuclidean, a::T, b::T) where {T <: Number}
+function Dists.evaluate(dist::PEuclidean, a::T, b::T) where {T <: Number}
     # eval_end(dist, eval_op(dist, a, b, dist.periods[1]))
     peuclidean(a, b, dist.periods[1])
 end
 # function result_type(dist::PEuclidean, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
 #     typeof(evaluate(dist, one(T1), one(T2)))
 # end
-@inline function eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
+@inline function Dists.eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     zero(result_type(d, a, b))
 end
-@inline eval_op(::PEuclidean, ai, bi, li) = begin d = mod(abs(ai - bi), li); d = min(d, li-d); abs2(d) end
-@inline eval_reduce(::PEuclidean, s1, s2) = s1 + s2
-@inline eval_end(::PEuclidean, s) = sqrt(s)
+@inline Dists.eval_op(::PEuclidean, ai, bi, li) = begin d = mod(abs(ai - bi), li); d = min(d, li-d); abs2(d) end
+@inline Dists.eval_reduce(::PEuclidean, s1, s2) = s1 + s2
+@inline Dists.eval_end(::PEuclidean, s) = sqrt(s)
 
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = euclidean(a, b)
@@ -134,7 +137,7 @@ STmetric(d::Dists.Metric)           = STmetric(d, 2, 1)
 STmetric(d::Dists.Metric, p::Real)  = STmetric(d, 2, p)
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function Dists.evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
     la = length(a)
     lb = length(b)
     (q, r) = divrem(la,d.dim)
@@ -151,7 +154,7 @@ STmetric(d::Dists.Metric, p::Real)  = STmetric(d, 2, p)
 end
 
 # this version is needed for NearestNeighbors `NNTree`
-@inline function evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
+@inline function Dists.evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
     la = length(a)
     lb = length(b)
     (q, r) = divrem(la,d.dim)
@@ -166,7 +169,7 @@ end
     return reduce_time(d, eval_space(d, a, b, q), q)
 end
 
-function result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
+function Dists.result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
     result_type(d.Smetric, a, b)
 end
 
@@ -190,62 +193,62 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 
 ########### parallel pairwise computation #################
 
-function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
-    ma, na = size(a)
-    mb, nb = size(b)
-    size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
-    ma == mb || throw(DimensionMismatch("First and second array have different numbers of time instances."))
-    q, s = divrem(ma, d.dim)
-    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
-    dists = Vector{T}(q)
-    @everywhere @eval dists = $(dists)
-    @inbounds @sync @parallel for j = 1:nb
-        for i = 1:na
-            eval_space!(dists, d, view(a, :, i), view(b, :, j), q)
-            r[i, j] = reduce_time(d, dists, q)
-        end
-    end
-    r
-end
-
-function pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
-    m, n = size(a)
-    size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
-    q, s = divrem(m, d.dim)
-    s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
-    entries = div(n*(n+1),2)
-    dists = Vector{T}(q)
-    i, j = 1, 1
-    @everywhere @eval dists, i, j = $(dists), $i, $j
-    @inbounds @sync @parallel for k = 1:entries
-        tri_indices!(i, j, k)
-        if i == j
-            r[i, i] = zero(T)
-        else
-            eval_space!(dists, d, view(a, :, i), view(a, :, j), q)
-            r[i, j] = reduce_time(d, dists, q)
-        end
-    end
-    for j = 1:n
-        for i=1:(j-1)
-            r[i, j] = r[j, i]
-        end
-    end
-    r
-end
-
-function pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
-    m = size(a, 2)
-    n = size(b, 2)
-    r = SharedMatrix{result_type(metric, a, b)}(m, n) #(uninitialized, m, n)
-    pairwise!(r, metric, a, b)
-end
-
-function pairwise(metric::STmetric, a::AbstractMatrix)
-    n = size(a, 2)
-    r = SharedMatrix{result_type(metric, a, a)}(n, n) #(uninitialized, n, n)
-    pairwise!(r, metric, a)
-end
+# function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
+#     ma, na = size(a)
+#     mb, nb = size(b)
+#     size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
+#     ma == mb || throw(DimensionMismatch("First and second array have different numbers of time instances."))
+#     q, s = divrem(ma, d.dim)
+#     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+#     dists = Vector{T}(q)
+#     Distributed.@everywhere dists = $dists
+#     @inbounds @sync Distributed.@distributed for j = 1:nb
+#         for i = 1:na
+#             eval_space!(dists, d, view(a, :, i), view(b, :, j), q)
+#             r[i, j] = reduce_time(d, dists, q)
+#         end
+#     end
+#     r
+# end
+#
+# function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+#     m, n = size(a)
+#     size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
+#     q, s = divrem(m, d.dim)
+#     s == 0 || throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+#     entries = div(n*(n+1),2)
+#     dists = Vector{T}(undef, q)
+#     i, j = 1, 1
+#     Distributed.@everywhere dists, i, j = $dists, $i, $j
+#     @inbounds @sync Distributed.@distributed for k = 1:entries
+#         tri_indices!(i, j, k)
+#         if i == j
+#             r[i, i] = zero(T)
+#         else
+#             eval_space!(dists, d, view(a, :, i), view(a, :, j), q)
+#             r[i, j] = reduce_time(d, dists, q)
+#         end
+#     end
+#     for j = 1:n
+#         for i=1:(j-1)
+#             r[i, j] = r[j, i]
+#         end
+#     end
+#     r
+# end
+#
+# function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
+#     m = size(a, 2)
+#     n = size(b, 2)
+#     r = SharedArrays.SharedArray{result_type(metric, a, b)}(m, n)
+#     pairwise!(r, metric, a, b)
+# end
+#
+# function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
+#     n = size(a, 2)
+#     r = SharedArrays.SharedArray{result_type(metric, a, a)}(n, n)
+#     pairwise!(r, metric, a)
+# end
 
 @inline function tri_indices!(i::Int, j::Int, n::Int)
     i = floor(Int, 0.5*(1 + sqrt(8n-7)))

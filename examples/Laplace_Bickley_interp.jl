@@ -11,11 +11,11 @@ using PyPlot
 ############################### set up ##################################
 begin
     q = 81
-    tspan = collect(linspace(0,3456000,q))
+    tspan = collect(range(0,stop=3456000,length=q))
     ny = 120; nx = div(ny*20,6);
     xmin = 0.0; xmax = 6.371π; ymin = -3.; ymax = 3.0
     L = 6.371π; # period in x-direction
-    xspace = linspace(xmin,xmax,nx); yspace = linspace(ymin,ymax,ny)
+    xspace = range(xmin,stop=xmax,length=nx); yspace = range(ymin,stop=ymax,length=ny)
     P = Array{Vec{2}{Float64}}(nx,ny)
     for i in CartesianRange(size(P))
         P[i] = Vec{2}([xspace[i[1]], yspace[i[2]]])

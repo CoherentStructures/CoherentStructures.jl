@@ -1,7 +1,8 @@
 #(c) 2018 Nathanael Schilling
 #This file contains code for running numerical experiments with CoherentStructures.jl
 
-using JLD2,StaticArrays,Tensors, LinearMaps
+using JLD2,StaticArrays,Tensors, LinearMaps, Printf,Arpack
+
 
 #TODO: Replace Float64 with a more general type
 #TODO: Generalize to dim != 2
@@ -45,13 +46,13 @@ mutable struct experimentResult
     #Like below, but make boundary data first
     function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,mode;tolerance=CoherentStructures.default_tolerance,solver=CoherentStructures.default_solver)
         bdata = boundaryData(ctx,experiment.bdata_predicate, experiment.dbc_facesets)
-        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}(),solver,tolerance)
+        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance)
         return result
     end
 
     #Constructor from general CoherentStructures.gridContext object
     function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,bdata::CoherentStructures.boundaryData,mode;tolerance=CoherentStructures.default_tolerance,solver=CoherentStructures.default_solver)
-        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}(0),Array{Float64}(0,2),Dict{String,Any}(),solver,tolerance)
+        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance)
         return result
     end
     #For regular Grids:
@@ -73,7 +74,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         times = [eR.experiment.t_initial,eR.experiment.t_final]
         if eR.experiment.is_ode
             ode_fun = eR.experiment.ode_fun
-            #TODO: Think about varying the parameters below.
+            #TODO: Th10ink about varying the parameters below.
             cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=eR.tolerance,p=eR.experiment.p))
         else
             cgfun = x->0.5*(one(SymmetricTensor{2,2,Float64,4}) + dott(inv(eR.experiment.Df(x))))
@@ -81,6 +82,10 @@ function runExperiment!(eR::experimentResult,nev=6)
         eR.runtime += (@elapsed K = assembleStiffnessMatrix(eR.ctx,cgfun,bdata=eR.bdata))
         #TODO:Vary whether or not we lump the mass matrices or not
         eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,bdata=eR.bdata,lumped=false))
+        global Mglob = M
+        global ctxglob = eR.ctx
+        global Kglob = K#assembleStiffnessMatrix(eR.ctx,bdata=eR.bdata)
+        global bdata_glob = eR.bdata
         eR.runtime +=  (@elapsed λ, v = eigs(-1*K,M,which=:SM,nev=nev))
         eR.λ = λ
         eR.V = v
@@ -216,8 +221,8 @@ end
 
 function getDiscreteInnerProduct(ctx1::CoherentStructures.gridContext, u1::Vector{Float64}, ctx2::CoherentStructures.gridContext, u2::Vector{Float64},nx=400,ny=400)
     res = 0.0
-    for x in linspace(ctx1.spatialBounds[1][1],ctx1.spatialBounds[2][1],nx)
-        for y in linspace(ctx1.spatialBounds[1][2],ctx1.spatialBounds[2][2],ny)
+    for x in range(ctx1.spatialBounds[1][1],stop=ctx1.spatialBounds[2][1],length=nx)
+        for y in range(ctx1.spatialBounds[1][2],stop=ctx1.spatialBounds[2][2],length=ny)
             res += evaluate_function_from_dofvals(ctx1,u1,[x,y],NaN) * evaluate_function_from_dofvals(ctx2,u2,[x,y],NaN)
         end
     end
@@ -271,7 +276,7 @@ function makeCylinderFlowTestCase()
     backwards_flow = u0->periodic_x(flow(cylinder_flow, u0,[tf,0.0],tolerance=1e-6)[end])
     forwards_flow = u0->periodic_x(flow(cylinder_flow, u0,[0.0,tf],tolerance=1e-6)[end])
 
-    bdata_predicate = (x,y) -> CoherentStructures.peuclidean(x[1],y[1],2π) < 1e-9 && abs(x[2] - y[2]) < 1e-9
+    bdata_predicate = (x,y) -> peucliden(x[1],y[1],2π) < 1e-9 && abs(x[2] - y[2]) < 1e-9
     result = testCase("Cylinder Flow",LL,UR,bdata_predicate,[], true,0.0,tf, cylinder_flow,nothing,forwards_flow,nothing,backwards_flow)
     return result
 end
@@ -280,8 +285,17 @@ end
 function makeStandardMapTestCase()
     LL = Vec{2}([0.0,0.0])
     UR=Vec{2}([2π,2π])
-    bdata_predicate = (x,y) -> (CoherentStructures.peuclidean(x[1],y[1],2π) < 1e-9 && CoherentStructures.peuclidean(x[2],y[2],2π)<1e-9)
+    bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π)<1e-9)
     result = testCase("Standard Map",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap,CoherentStructures.DstandardMap,CoherentStructures.standardMapInv)
+    return result
+end
+
+
+function makeStandardMap8TestCase()
+    LL = Vec{2}([0.0,0.0])
+    UR=Vec{2}([2π,2π])
+    bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π)<1e-9)
+    result = testCase("Standard Map 8",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap8,CoherentStructures.DstandardMap8,CoherentStructures.standardMap8Inv)
     return result
 end
 
@@ -292,7 +306,7 @@ end
 function makeStaticLaplaceTestCase()
     LL=Vec{2}([0.0,0.0])
     UR=Vec{2}([1.5,1.0])
-    bdata_predicate = (x,y) -> (CoherentStructures.peuclidean(x[1],y[1],1.5) < 1e-9 && CoherentStructures.peuclidean(x[2],y[2],1.)<1e-9)
+    bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],1.5) < 1e-9 && peuclidean(x[2],y[2],1.)<1e-9)
     result = testCase("Static Laplace",LL,UR,bdata_predicate,[], true,0.0,0.01, zeroRHS,nothing,nothing,nothing,nothing)
     return result
 end
@@ -307,6 +321,9 @@ function accuracyTest(tC::testCase,whichgrids=20:20:200;quadrature_order=Coheren
     gridConstructorNames = ["regular triangular grid", "regular P2 triangular grid" ]
     for (gCindex,gC) in enumerate(gridConstructors)
         if mode ∈ [:aTO] && gCindex == 2
+            continue
+        end
+        if mode == :CG && gCindex == 2 && quadrature_order == 1
             continue
         end
         for width in collect(whichgrids)
@@ -335,10 +352,10 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
     end
     for (eRindex, eR) in enumerate(experimentResults)
         print("Building Statistics for run $eRindex/$n_experiments \n")
-        linftyerrors = Vector{Float64}(0)
-        l2errors = Vector{Float64}(0)
-        λerrors = Vector{Float64}(0)
-        errors = Array{Array{Float64}}(0)
+        linftyerrors = Vector{Float64}([])
+        l2errors = Vector{Float64}([])
+        λerrors = Vector{Float64}([])
+        errors = Array{Array{Float64}}([])
 
         E = zeros(6,6)
         B = zeros(6,6)
@@ -401,7 +418,11 @@ function testStaticLaplace(whichgrids;quadrature_order=CoherentStructures.defaul
     return result
 end
 
-function testStandardMap(whichgrids;quadrature_order=CoherentStructures.default_quadrature_order,run_reference=true,mode=:CG)
+function testStandardMap(
+    whichgrids;
+    quadrature_order=CoherentStructures.default_quadrature_order,run_reference=true,mode=:CG,
+    tolerance=CoherentStructures.default_tolerance
+    )
     tC = makeStandardMapTestCase()
     result = experimentResult[]
     if run_reference
@@ -410,7 +431,25 @@ function testStandardMap(whichgrids;quadrature_order=CoherentStructures.default_
         runExperiment!(reference)
         push!(result,reference)
     end
-    append!(result,accuracyTest(tC, whichgrids,quadrature_order=quadrature_order,mode=mode))
+    append!(result,accuracyTest(tC, whichgrids,quadrature_order=quadrature_order,mode=mode,tolerance=tolerance))
+    return result
+end
+
+
+function testStandardMap8(
+    whichgrids;
+    quadrature_order=CoherentStructures.default_quadrature_order,run_reference=true,mode=:CG,
+    tolerance=CoherentStructures.default_tolerance
+    )
+    tC = makeStandardMap8TestCase()
+    result = experimentResult[]
+    if run_reference
+        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=5)
+        reference = experimentResult(tC,referenceCtx,:CG)
+        runExperiment!(reference)
+        push!(result,reference)
+    end
+    append!(result,accuracyTest(tC, whichgrids,quadrature_order=quadrature_order,mode=mode,tolerance=tolerance))
     return result
 end
 
@@ -421,7 +460,7 @@ function loglogleastsquareslines(xs_nonlog,ys_nonlog,gridtypes)
     ys = log10.(ys_nonlog)
 
     for g in unique(gridtypes)
-        indices = find(x->x==g,gridtypes)
+        indices = findall(x->x==g,gridtypes)
         xs_cur = xs[indices]
         ys_cur = ys[indices]
         xs_cur_nonlog = xs_nonlog[indices]
@@ -430,7 +469,7 @@ function loglogleastsquareslines(xs_nonlog,ys_nonlog,gridtypes)
         G = A'*A
         res  = G \ A'*ys_cur
         legendlabel = [@sprintf("Slope %.2f line", res[1]) for x in xs_cur]
-        Plots.display(Plots.plot!(xs_cur_nonlog, 10.^(res[1] .* xs_cur + res[2]),group=legendlabel,color=method_colors[g],linecolor=:match))
+        Plots.display(Plots.plot!(xs_cur_nonlog, 10. .^(res[1] .* xs_cur .+ res[2]),group=legendlabel,color=method_colors[g],linecolor=:match))
     end
 end
 
@@ -453,23 +492,43 @@ method_colors = Dict("regular P2 triangular grid CG" => :green,"regular triangul
                     "regular triangular grid L2GTOb" => :orange, "regular P2 triangular grid L2GTOb" =>:orange
                     )
 
-function loglogslopeline(xs_nonlog,ys_nonlog,gridtypes,slopes)
+function loglogslopeline(xs_nonlog,ys_nonlog,gridtypes,slopes;lsq_c=true)
     xs = log10.(xs_nonlog)
     ys = log10.(ys_nonlog)
 
     for g in unique(gridtypes)
-        indices = find(x->x==g,gridtypes)
+        indices = findall(x->x==g,gridtypes)
         xs_cur = xs[indices]
         ys_cur = ys[indices]
         xs_cur_nonlog = xs_nonlog[indices]
         ys_cur_nonlog = ys_nonlog[indices]
 
-        minimal_index = sortperm(xs_cur)[1]
-        xs_minimal = xs_cur_nonlog[minimal_index]
-        ys_minimal = ys_cur_nonlog[minimal_index]
 
-        c = ys_cur[minimal_index] - slopes[g]*xs_cur[minimal_index]
+        if lsq_c
+            #Do least squares to get c:
+            err  =sum([slopes[g]*xs_cur[index] - ys_cur[index] for index in 1:length(xs_cur)])
+            c = -err/(length(xs_cur))
+        else
+            minimal_index = sortperm(xs_cur)[1]
+            xs_minimal = xs_cur_nonlog[minimal_index]
+            ys_minimal = ys_cur_nonlog[minimal_index]
+            c = ys_cur[minimal_index] - slopes[g]*xs_cur[minimal_index]
+        end
         legendlabels = ["" for x in xs_cur_nonlog]
-        Plots.display(Plots.plot!(xs_cur_nonlog, (10.^(xs_cur*slopes[g] + c)),color=method_colors[g],label=""))
+        Plots.display(Plots.plot!(xs_cur_nonlog, (10. .^(xs_cur*slopes[g] .+ c)),color=method_colors[g],label=""))
     end
+end
+
+
+using Clustering
+function iterated_kmeans(numiterations,args...)
+    best = kmeans(args...)
+    for i in 1:(numiterations-1)
+        cur = kmeans(args...)
+        if cur.totalcost < best.totalcost
+            print("Improved")
+            best = cur
+        end
+    end
+    return best
 end

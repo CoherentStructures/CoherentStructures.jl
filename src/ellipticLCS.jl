@@ -1,7 +1,7 @@
 # (c) 2018 Daniel Karrasch
 
 const ITP = Interpolations
-# TODO: replace find -> findall
+
 """
     singularity_location_detection(T,xspan,yspan)
 
@@ -23,11 +23,11 @@ function singularity_location_detection(T::AbstractMatrix{Tensors.SymmetricTenso
     Xs, Ys = Float64[], Float64[]
     for line in Contour.lines(cl)
         yL, xL = Contour.coordinates(line)
-        zL = [sitp[yL[i], xL[i]] for i in eachindex(xL,yL)]
-        ind = find(zL[1:end-1] .* zL[2:end].<=0.)
-        zLind = -zL[ind] ./ (zL[ind+1] - zL[ind])
-        Xs = append!(Xs, xL[ind] + (xL[ind+1] - xL[ind]) .* zLind)
-        Ys = append!(Ys, yL[ind] + (yL[ind+1] - yL[ind]) .* zLind)
+        zL = [sitp[yL[i], xL[i]] for i in eachindex(xL, yL)]
+        ind = findall(zL[1:end-1] .* zL[2:end].<=0.)
+        zLind = -zL[ind] ./ (zL[ind .+ 1] - zL[ind])
+        Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
+        Ys = append!(Ys, yL[ind] + (yL[ind .+ 1] - yL[ind]) .* zLind)
     end
     return [[Xs[i], Ys[i]] for i in eachindex(Xs,Ys)]
 end
@@ -40,19 +40,18 @@ by querying the tensor eigenvector field of `T` in a circle of radius `radius`
 around the singularity. `xspan` and `yspan` correspond to the computational grid.
 Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
-
 function singularity_type_detection(singularity::AbstractVector{S},
                                     ξ::ITP.ScaledInterpolation,
                                     radius::Float64) where S
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
-    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in linspace(-π,π,Ntheta)]
+    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
     pnts = [singularity + c for c in circle]
     radVals = [ξ[p[2], p[1]] for p in pnts]
     singularity_type = 0
     if (sum(diff(radVals) .< 0) / Ntheta > 0.62)
         singularity_type = -1  # trisector
-    elseif (sum(diff(radVals) .>0) / Ntheta > 0.62)
+    elseif (sum(diff(radVals) .> 0) / Ntheta > 0.62)
         singularity_type = 1  # wedge
     end
     return singularity_type
@@ -69,34 +68,26 @@ Determines candidate regions for closed tensor line orbits.
    * `Min2ndDist`: minimal distance to second closest wedge
 Returns a list of vortex centers.
 """
-
 function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
                                 singularity_types::AbstractVector{Int},
                                 MaxWedgeDist::Float64,
                                 MinWedgeDist::Float64,
                                 Min2ndDist::Float64) where S <: Number
 
-    indWedges = find(singularity_types .== 1)
+    indWedges = findall(singularity_types .== 1)
     wedgeDist = Distances.pairwise(Distances.Euclidean(), hcat(singularities[indWedges]...))
     idx = zeros(Int64, size(wedgeDist,1), 2)
     pairs = Vector{Int}[]
     for i=1:size(wedgeDist,1)
-        idx = selectperm(wedgeDist[i,:], 2:3)
+        idx = partialsortperm(wedgeDist[i,:], 2:3)
         if (wedgeDist[i,idx[1]] <= MaxWedgeDist &&
             wedgeDist[i,idx[1]] >= MinWedgeDist &&
             wedgeDist[i,idx[2]]>=Min2ndDist)
             push!(pairs,[i, idx[1]])
         end
     end
-    pairind = indexin(pairs, flipdim.(pairs,1))
-    vortexcenters = Vector{S}[]
-    sizehint!(vortexcenters, length(pairind))
-    for p in pairind
-        if p!=0
-            push!(vortexcenters, mean(singularities[indWedges[pairs[p]]]))
-        end
-    end
-    return unique(vortexcenters)
+    pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
+    return [Statistics.mean(singularities[indWedges[p]]) for p in pairind]
 end
 
 """
@@ -107,7 +98,6 @@ of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
 eastwards. All points are guaranteed to lie in the computational domain given
 by `xspan` and `yspan`.
 """
-
 function set_Poincaré_section(vc::AbstractVector{S},
                                 p_length::Float64,
                                 n_seeds::Int,
@@ -118,7 +108,7 @@ function set_Poincaré_section(vc::AbstractVector{S},
     ymin, ymax = extrema(yspan)
     p_section::Vector{Vector{S}} = [vc]
     eₓ = [1., 0.]
-    pspan = linspace(vc + .2p_length*eₓ, vc + p_length*eₓ, n_seeds)
+    pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
     idxs = [all(p .<= [xmax, ymax]) && all(p .>= [xmin, ymin]) for p in pspan]
     append!(p_section, pspan[idxs])
     return p_section
@@ -135,8 +125,8 @@ function compute_returning_orbit(calT::Float64,
                                  yspan::AbstractVector{T}) where T <: Real
 
     Δλ = λ₂ - λ₁
-    α = real.(sqrt.(Complex.((λ₂ - calT) ./ Δλ)))
-    β = real.(sqrt.(Complex.((calT - λ₁) ./ Δλ)))
+    α = real.(sqrt.(Complex.((λ₂ .- calT) ./ Δλ)))
+    β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
     ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid()),
@@ -224,7 +214,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
     # first, define a nonlinear root finding problem
     Tval = zeros(length(pSection)-1)
     s = zeros(Int,length(pSection)-1)
-    orbits = Vector{Vector{Vector{Float64}}}(length(pSection)-1)
+    orbits = Vector{Vector{Vector{Float64}}}(undef, length(pSection)-1)
     for i in eachindex(pSection[2:end])
         # println(i)
         Tsol = zero(Float64)
@@ -270,8 +260,8 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
             end
         end
     end
-    outerInd = findlast(Tval)
-    if outerInd>0
+    outerInd = findlast(!iszero, Tval)
+    if outerInd != nothing
         return Tval[outerInd], s[outerInd], orbits[outerInd]
     else
         return nothing
@@ -295,7 +285,6 @@ Returns a list of tuples, each tuple containing
    * the sign used in the η-formula,
    * the outermost closed orbit for the corresponding λ and sign.
 """
-
 function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
                         xspan::AbstractVector{S},
                         yspan::AbstractVector{S},
@@ -304,7 +293,7 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
     # unpack parameters
     radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, p_length, n_seeds = p
 
-    singularities = singularity_location_detection(T,xspan,yspan)
+    singularities = singularity_location_detection(T, xspan, yspan)
     println("Detected $(length(singularities)) singularity candidates...")
 
     ξ = [eigvecs(t)[:,1] for t in T]
@@ -313,20 +302,20 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
                         ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
                         yspan,xspan)
     singularitytypes = map(singularities) do s
-        singularity_type_detection(s,ξraditp,radius)
+        singularity_type_detection(s, ξraditp, radius)
     end
     println("Determined $(sum(abs.(singularitytypes))) nondegenerate singularities...")
 
-    vortexcenters = detect_elliptic_region(singularities,singularitytypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
+    vortexcenters = detect_elliptic_region(singularities, singularitytypes, MaxWedgeDist, MinWedgeDist, Min2ndDist)
     println("Defined $(length(vortexcenters)) Poincaré sections...")
 
     p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan)
+        set_Poincaré_section(vc, p_length, n_seeds, xspan, yspan)
     end
 
-    @everywhere @eval p_section = $p_section
+    Distributed.@everywhere p_section = $p_section
     closedorbits = pmap(p_section) do ps
-        compute_outermost_closed_orbit(ps,T,xspan,yspan)
+        compute_outermost_closed_orbit(ps, T, xspan, yspan)
     end
 
     # closed orbits extraction

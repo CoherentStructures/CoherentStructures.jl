@@ -7,7 +7,7 @@ function rot_double_gyre!(du,u,p,t)
         du .= rot_double_gyre(u,p,t)
 end
 
-@time U = FEM_heatflow(rot_double_gyre!, ctx, linspace(0.,1.,11), 1e-3; factor=true)
+@time U = FEM_heatflow(rot_double_gyre!, ctx, range(0.,stop=1.,length=11), 1e-3; factor=true)
 @time λ, V = diffusion_coordinates(U, 6)
 plot_u(ctx, V[:,4], 200, 200)
 
@@ -56,7 +56,7 @@ end
 u = solve(prob ,ImplicitEuler(autodiff=false,linsolve=linsolve!),
         progress=true,dt=1e-1,adaptive=false)
 
-for t in linspace(0,1,10)
+for t in range(0,stop=1,length=10)
         Plots.display(plot_u(ctx,u(t)))
 end
 
@@ -113,7 +113,7 @@ u = solve(prob,IDA(linear_solver=:Dense))
 
 
 
-for i in collect(linspace(0,1,20))
+for i in collect(range(0,stop=1,length=20))
   print(i)
   Plots.display(plot_u(ctx,u(i),clim=(-1,1),title="t=$i"))
 end

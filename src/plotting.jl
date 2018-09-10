@@ -12,41 +12,31 @@ function plot_u(ctx::gridContext, dof_vals::Vector{Float64}, nx=50, ny=50; bdata
     plot_u_eulerian(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
 end
 
+@userplot Plot_U_Eulerian
+@recipe function f(
+        as::Plot_U_Eulerian;
+        bdata=nothing,
+        euler_to_lagrange_points=nothing,
+        only_get_lagrange_points=false,
+        postprocessor=nothing,
+        return_scalar_field=false
+    )
+    ctx::gridContext = as.args[1]
+    dof_vals::Vector{Float64} = as.args[2]
+    inverse_flow_map::Function = as.args[3]
+    LL::AbstractVector{Float64} = as.args[4]
+    UR::AbstractVector{Float64} = as.args[5]
+    if length(as.args) >= 6
+        nx=as.args[6]
+    else
+        nx = 100
+    end
+    if length(as.args) >= 7
+        ny = as.args[7]
+    else
+        ny = 100
+    end
 
-doc"""
-    plot_u_eulerian(ctx,dof_vals,inverse_flow_map,
-        LL,UR,nx,ny,
-        euler_to_lagrange_points=nothing, only_get_lagrange_points=false,
-        postprocessor=nothing,  return_scalar_field=false,
-        bdata=nothing, ....)
-Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of $f$. This is given by
-$f \circ \Phi^{-1}$, $f$ is a function defined on the grid `ctx`, represented by coefficients given by `dof_vals` (with possible boundary conditions given in `bdata`)
-
-The argument `inverse_flow_map` is $\Phi^{-1}$.
-
-The resulting plot is on a regular `nx` by `ny` grid on the grid with lower left corner `LL` and upper right corner `UR`.
-
-Points that fall outside of the domain represented by `ctx` are plotted as `NaN`, which results in transparency.
-
-The arguments `euler_to_lagrange_points` and `only_get_lagrange_points` can be used to precompute $\Phi^{-1}(x)$,
-`postprocessor` can further modify the values being plotted, `return_scalar_field` results in these values being returned.
- See the source code for further details.  Additional arguments are passed to `Plots.heatmap`
-
-Inverse flow maps are computed in parallel if there are multiple workers.
-"""
-function plot_u_eulerian(
-                    ctx::gridContext,
-                    dof_vals::Vector{Float64},
-                    inverse_flow_map::Function,
-                    LL::AbstractVector{Float64},
-                    UR::AbstractVector{Float64},
-                    nx=50,
-                    ny=60;
-                    euler_to_lagrange_points=nothing,
-                    only_get_lagrange_points=false,postprocessor=nothing,
-                    return_scalar_field=false,
-                    bdata=nothing,
-                    kwargs...)
     if (bdata==nothing) && (ctx.n != length(dof_vals))
         dbcs = getHomDBCS(ctx)
         if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
@@ -62,12 +52,12 @@ function plot_u_eulerian(
     # x1 = Float64[]
     # x2 = Float64[]
     # values = Float64[]
-    const u_values =  dof2node(ctx,dof_values)
-    x1 = linspace(LL[1],UR[1],nx)
-    x2 = linspace(LL[2],UR[2],ny)
+    u_values =  dof2node(ctx,dof_values)
+    x1 = range(LL[1],stop=UR[1],length=nx)
+    x2 = range(LL[2],stop=UR[2],length=ny)
     if euler_to_lagrange_points == nothing
         # euler_to_lagrange_points_raw = SharedArray{Float64}(ny,nx,2)
-        # @sync @parallel for i in eachindex(x1)
+        # @sync @distributed for i in eachindex(x1)
         #     for j in eachindex(x2)
         #         point = StaticArrays.SVector{2}(x1[i],x2[j])
         #         try
@@ -106,17 +96,43 @@ function plot_u_eulerian(
     if postprocessor != nothing
        z =  postprocessor(z)
     end
-    result =  Plots.heatmap(x1,x2,z,fill=true,aspect_ratio=1,xlim=(LL[1],UR[1]),ylim=(LL[2],UR[2]);kwargs...)
 
-    if return_scalar_field
-        return result, z
-    end
-    return result
+    seriestype --> :heatmap
+    fill --> true
+    aspect_ratio --> 1
+    xlim --> (LL[1],UR[1])
+    ylim --> (LL[2],UR[2])
+    x1,x2,z
 end
+
+
+"""
+    plot_u_eulerian(ctx,dof_vals,inverse_flow_map,
+        LL,UR,nx,ny,
+        euler_to_lagrange_points=nothing, only_get_lagrange_points=false,
+        postprocessor=nothing,
+        bdata=nothing, ....)
+Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of \$f\$. This is given by
+\$f \\circ \\Phi^{-1}\$, \$f\$ is a function defined on the grid `ctx`, represented by coefficients given by `dof_vals` (with possible boundary conditions given in `bdata`)
+
+The argument `inverse_flow_map` is \$\\Phi^{-1}\$.
+
+The resulting plot is on a regular `nx` by `ny` grid on the grid with lower left corner `LL` and upper right corner `UR`.
+
+Points that fall outside of the domain represented by `ctx` are plotted as `NaN`, which results in transparency.
+
+The arguments `euler_to_lagrange_points` and `only_get_lagrange_points` can be used to precompute \$\\Phi^{-1}(x)\$,
+`postprocessor` can further modify the values being plotted, `return_scalar_field` results in these values being returned.
+ See the source code for further details.  Additional arguments are passed to `Plots.heatmap`
+
+Inverse flow maps are computed in parallel if there are multiple workers.
+"""
+plot_u_eulerian
+
 
 function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
     euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
-    @sync @parallel for i in eachindex(x1)
+    @sync @distributed for i in eachindex(x1)
         for j in eachindex(x2)
             point = StaticArrays.SVector{2}(x1[i],x2[j])
             try
@@ -136,24 +152,32 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
     return euler_to_lagrange_points_raw
 end
 
-function plot_spectrum(λ;kwargs...)
-    Plots.scatter(real.(λ),imag.(λ);kwargs...)
+
+@userplot Plot_Spectrum
+@recipe function  f(as::Plot_Spectrum)
+    λ = as.args[1]
+    seriestype --> :scatter
+    (real.(λ),imag.(λ))
 end
 
-function plot_real_spectrum(λ)
-    Plots.scatter(1:length(λ),real.(λ))
+
+@userplot Plot_Real_Spectrum
+@recipe function  f(as::Plot_Real_Spectrum)
+    λ = as.args[1]
+    seriestype --> :scatter
+    (1:length(λ),real.(λ))
 end
 
-
-doc"""
+#=
+"""
      eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
         extra_kwargs_fun=nothing, ...)
 
-Create `num_videos::Int` videos in eulerian coordinates, i.e. where the time $t$ is varied, plot $f_i \circ \Phi_t^0$ for $f_1, \dots$.
+Create `num_videos::Int` videos in eulerian coordinates, i.e. where the time \$t\$ is varied, plot \$f_i \\circ \\Phi_t^0\$ for \$f_1, \\dots\$.
 
 `us(i,t)` is a vector of dofs to be plotted at time `t` for the `i`th video.
 
-`inverse_flow_map_t(t,x)` is $\Phi_t^0(x)$
+`inverse_flow_map_t(t,x)` is \$\\Phi_t^0(x)\$
 
 `t0, tf`  are initial and final time. Spatial bounds are given by `LL,UR`
 
@@ -168,7 +192,7 @@ As much as possible is done in parallel.
 function eulerian_videos(ctx, us::Function,inverse_flow_map_t,t0,tf, nx, ny,nt, LL, UR,num_videos=1;extra_kwargs_fun=nothing,kwargs...)
     allvideos = [Plots.Animation() for i in 1:num_videos]
 
-    for (index,t) in enumerate(linspace(t0,tf,nt))
+    for (index,t) in enumerate(range(t0,stop=tf,length=nt))
     	print("Processing frame $index")
         if t != t0
         	current_inv_flow_map = x -> inverse_flow_map_t(t,x)
@@ -228,14 +252,14 @@ function eulerian_video_fast(ctx, u::Function,
         end
         return dof_values
     end
-    x1 = linspace(LL[1],UR[1],nx)
-    x2 = linspace(LL[2],UR[2],ny)
+    x1 = range(LL[1],stop=UR[1],length=nx)
+    x2 = range(LL[2],stop=UR[2],length=ny)
     allpoints = [
         Vec{2}((x,y)) for y in x2, x in x1
     ]
     allpoints_initial = copy(allpoints)
     #
-    times = linspace(t0,tf,nt)
+    times = range(t0,stop=tf,length=nt)
     x1p = [p[1] for p in allpoints]
     x2p = [p[2] for p in allpoints]
     ut = dof2node(ctx,corrected_u(t0))
@@ -243,7 +267,7 @@ function eulerian_video_fast(ctx, u::Function,
     #
     res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
         xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
-        marker=:square,markersize=300./nx,markerstrokewidth=0;kwargs...)]
+        marker=:square,markersize=300.0 /nx,markerstrokewidth=0;kwargs...)]
     if display_inplace
         Plots.display(res[end])
     end
@@ -257,7 +281,7 @@ function eulerian_video_fast(ctx, u::Function,
         push!(res,
             Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
                 xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
-                marker=:square,markersize=70./nx,markerstrokewidth=0;kwargs...)
+                marker=:square,markersize=70. /nx,markerstrokewidth=0;kwargs...)
                 )
 		#
 	if display_inplace
@@ -268,42 +292,68 @@ function eulerian_video_fast(ctx, u::Function,
         p
     end
 end
+=#
 
 
-"""
-    plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
-        δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-        existing_plot=nothing,flip_y=false, check_inbounds=always_true)
+@userplot Plot_FTLE
+@recipe function f(
+            as::Plot_FTLE;
+    	   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
+		   #existing_plot=nothing, TODO 1.0
+           flip_y=false, check_inbounds=always_true,
+           vari=false
+           )
+   odefun=as.args[1]
+   p = as.args[2]
+   tspan = as.args[3]
+   LL = as.args[4]
+   UR = as.args[5]
+   if length(as.args) >= 6
+       nx = as.args[6]
+   else
+       nx = 100
+   end
+   if length(as.args) >= 7
+       ny = as.args[7]
+   else
+       ny = 100
+   end
+   if length(as.args) >= 8
+       δ = as.args[8]
+   else
+       δ = 1e-9
+   end
 
-Make a heatmap of a FTLE field using finite differences.
-If `existing_plot` is given a value, plot using `heatmap!` on top of it.
-If `flip_y` is true, then flip the y-coordinate (needed sometimes due to a bug in Plots).
-Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. transparent).
-"""
-function plot_ftle(
-		   odefun, p,tspan,
-		   LL, UR, nx=50,ny=50;δ=1e-9,
-		   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-		   existing_plot=nothing,flip_y=false, check_inbounds=always_true,
-		   kwargs...)
-    x1 = collect(linspace(LL[1] + 1.e-8, UR[1] - 1.e-8,nx))
-    x2 = collect(linspace(LL[2] + 1.e-8, UR[2] - 1.e-8,ny))
+    x1 = collect(range(LL[1] + 1.e-8,stop= UR[1] - 1.e-8,length=nx))
+    x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8,length=ny))
     if flip_y
         x2 = reverse(x2)
     end
     #Initialize FTLE-field with NaNs
     FTLE = SharedArray{Float64,2}(ny,nx)
     FTLE .= NaN
-    nancounter, nonancounter = @sync @parallel ((x,y)->x.+y) for i in eachindex(x1)
+    nancounter, nonancounter = @sync @distributed ((x,y)->x.+y) for i in eachindex(x1)
         nancounter_local = 0
         nonancounter_local = 0
         for j in eachindex(x2)
             if check_inbounds(x1[i],x2[j],p)
+
+                        FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                          log(maximum(eigvals(eigen(CG_tensor_vari(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]];
+                                tolerance=tolerance, p=p, solver=solver)))))
+                        nonancounter_local += 1
                 try
-                    FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
-                      log(eigvals(eigfact(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
-                            tolerance=tolerance, p=p, solver=solver)))[2])
-                    nonancounter_local += 1
+                    if !vari
+                        FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                          log(maximum(eigvals(eigen(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
+                                tolerance=tolerance, p=p, solver=solver)))))
+                        nonancounter_local += 1
+                    else
+                        FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
+                          log(maximum(eigvals(eigen(CG_tensor_vari(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
+                                tolerance=tolerance, p=p, solver=solver)))))
+                        nonancounter_local += 1
+                    end
                 catch e
                     nancounter_local += 1
                 end
@@ -313,13 +363,33 @@ function plot_ftle(
     end
 
     print("plot_ftle ignored $nancounter NaN values ($nonancounter were good)")
+    seriestype --> :heatmap
+
     if flip_y == true
         x2 = reverse(x2)
         x2 *= -1
     end
+
+    x1,x2,FTLE
+
+    #= TODO
     if existing_plot == nothing
         return Plots.heatmap(x1,x2,FTLE; kwargs...)
     else
         return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
     end
+    =#
 end
+
+
+"""
+    plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
+        δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
+        existing_plot=nothing,flip_y=false, check_inbounds=always_true,vari=true)
+
+Make a heatmap of a FTLE field using finite differences.
+If `existing_plot` is given a value, plot using `heatmap!` on top of it.
+If `flip_y` is true, then flip the y-coordinate (needed sometimes due to a bug in Plots).
+Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. transparent).
+"""
+plot_ftle

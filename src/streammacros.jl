@@ -18,9 +18,8 @@ This is a convenience macro for the case where you want to use
 If you only use one, you might as well use `@velo_from_stream name code` or
 `@var_velo_from_stream` directly.
 """
-
 macro define_stream(name::Symbol, code::Expr)
-    haskey(stream_dict, name) && warn("overwriting definition of stream $name")
+    haskey(stream_dict, name) && (@warn "overwriting definition of stream $name")
     stream_dict[name] = code
     quote
         # do nothing, the actual work is done when @velo_from_stream name
@@ -51,7 +50,7 @@ julia> f = @velo_from_stream Ψ_ellipse begin
                a = t
                b = 3
            end
-(::#3) (generic function with 1 method)
+(#3) (generic function with 1 method)
 
 julia> f([1.0,1.0], nothing, 1.0)
 2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
@@ -71,7 +70,7 @@ julia> @define_stream Ψ_circular begin
        end
 
 julia> f2 = @velo_from_stream Ψ_circular
-(::#5) (generic function with 1 method)
+(#5) (generic function with 1 method)
 
 julia> f2([1.0,1.0], nothing, 0.0)
 2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
@@ -80,26 +79,18 @@ julia> f2([1.0,1.0], nothing, 0.0)
 ```
 
 """
-macro velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined")
-    quote
-        @velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
-    end
-end
-
-macro var_velo_from_stream(name::Symbol)
-    haskey(stream_dict, name) || error("stream $name not defined")
-    quote
-        @var_velo_from_stream $(esc(name)) $(esc(stream_dict[name]))
-    end
-end
-
-
 macro velo_from_stream(H::Symbol, formulas::Expr)
     F, _ = streamline_derivatives(H, formulas)
     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
         (u,p,t) -> StaticArrays.SVector($(F[1]), $(F[2]))
+    end
+end
+
+macro velo_from_stream(name::Symbol)
+    haskey(stream_dict, name) || (@error "stream $name not defined")
+    quote
+        @velo_from_stream $name $(stream_dict[name])
     end
 end
 
@@ -129,6 +120,12 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     end
 end
 
+macro var_velo_from_stream(name::Symbol)
+    haskey(stream_dict, name) || (@error "stream $name not defined")
+    quote
+        @var_velo_from_stream $(name) $(stream_dict[name])
+    end
+end
 
 function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
@@ -137,16 +134,16 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
     H = substitutions(H, formulas, bound_symbols)
 
 
-    # symbolic gradient
-     ∇H  = expr_diff.(H, [:x,:y])
-    ∇²H  = expr_diff.(∇H, [:x :y])
+    # symbolic gradient and hessian (note the broadcast)
+     ∇H = expr_diff.([H],  [:x,:y])
+    ∇²H = expr_diff.(∇H,   [:x :y])
 
-    # streamlines
+    # formula for streamlines (perpendicular to gradient)
     F  = [:(-$(∇H[2])), ∇H[1]]
 
     # equation of variation for streamlines
-    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[1,1]))
-               ∇²H[2,2]        ∇²H[1,2]  ]
+    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[2,2]))
+               ∇²H[1,1]        ∇²H[1,2]  ]
 
     return F,DF
 end
@@ -172,7 +169,7 @@ function expr_diff(expr::Expr, var::Symbol)
     # is broken.
     expr_sym = SymEngine.Basic(expr)
     d_expr_sym = SymEngine.diff(expr_sym, var)
-    d_expr = parse(SymEngine.toString.(d_expr_sym))
+    d_expr = Meta.parse(SymEngine.toString.(d_expr_sym))
 
     # resolve derivatives that SymEngine doesn't know using diff_dict
     d_expr = additional_derivatives(d_expr)
@@ -291,7 +288,7 @@ substitutions(variable::Symbol, code::Expr, knowns = []) = begin
         count = count + 1
     end
     if has_free_symb(ex, knowns)
-        warn("$(remove_blocks(ex)) still has free variables that are not bound by $knowns")
+        @warn "$(remove_blocks(ex)) still has free variables that are not bound by $knowns"
     end
     return ex
 end
@@ -307,7 +304,7 @@ substitute_once(defns::Expr, target::Expr) = begin
         return ret
     end
     performer(part_comp, ex) = substitute_once(ex, part_comp)
-    reduce(performer, target, defns.args)
+    reduce(performer, defns.args,init=target)
 end
 substitute_once(defns::Expr, target::Symbol) = begin
     substitute_once(defns, Base.remove_linenums!(quote begin $target end end))
@@ -342,7 +339,7 @@ replace all occurences of `sym` in `expr` by `s_expr`
 """
 sym_subst(expr::Symbol, sym::Symbol, s_expr::Union{Symbol, Expr}) =
     begin
-        expr == sym ? s_expr: expr
+        expr == sym ? s_expr : expr
     end
 
 sym_subst(expr::Expr,   sym::Symbol, s_expr::Union{Symbol, Expr}) =
@@ -370,7 +367,7 @@ has_free_symb(ex::Expr, bound_vars) = begin
     !all((!).(has_free_symb.(ex.args, [bound_vars])))
 end
 has_free_symb(ex::Symbol, bound_vars) = begin
-    !(contains(==, bound_vars, ex) | isdefined(Base, ex))
+    !(any(y -> (ex==y), bound_vars) | isdefined(Base, ex))
 end
 has_free_symb(ex, bound_vars) = false
 

@@ -1,16 +1,39 @@
 using CoherentStructures
+using Arpack
+
+import StaticArrays
+const SA = StaticArrays
+
+ctx = regularTriangularGrid((25,25),quadrature_order=5)
+u = zeros(ctx.n)
 
 
-ctx = regularP2QuadrilateralGrid((25,25))
+x0 = @SVector Float64[0.5, 0.5]
 
 @time begin
-    cgfun = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-3)
+    #cgfun = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-8,tolerance= 1.e-3)
+    cgfun = x -> mean(dott.(inv.(CoherentStructures.linearized_flow_vari(rot_double_gyreEqVari,SVector{2,Float64}(x),[0.0,1.0],tolerance=1e-10))))
+
     @time K = assembleStiffnessMatrix(ctx,cgfun)
     @time M = assembleMassMatrix(ctx,lumped=false)
-    @time λ, v = eigs(-1*K,M,which=:SM)
+    @time λ, v = eigs(-1*K,M,which=:SM,nev=6)
 end
 
-plot_u(ctx,v[:,2])
+using Plots
+plot_u(ctx,v[:,3]/maximum(abs.(v[:,3])),200,200,color=:rainbow,clim=(-1,1))
+
+
+function g(x,y)
+    return log(norm(cgfun(@SArray [x,y])))
+end
+
+Plots.heatmap(range(0,stop=1,length=200),range(0,stop=1,length=200),g)
+
+g(0.5,0.1)
+
+
+using Plots
+
 
 
 @time assembleMassMatrix(ctx)

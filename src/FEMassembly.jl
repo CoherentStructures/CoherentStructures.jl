@@ -9,12 +9,12 @@ function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
 end
 
 
-doc"""
-    assembleStiffnessMatrix{dim}(ctx,A,[p; bdata])
+"""
+    assembleStiffnessMatrix(ctx,A,[p; bdata])
 
 Assemble the stiffness-matrix for a symmetric bilinear form
 ```math
-a(u,v) = \int \nabla u(x)\cdot A(x)\nabla v(x)f(x) dx
+a(u,v) = \\int \\nabla u(x)\\cdot A(x)\\nabla v(x)f(x) dx
 ```
 The integral is approximated using quadrature.
 `A` is a function that returns a `Tensors.SymmetricTensor{2,dim}` and has one of the following forms:
@@ -103,12 +103,12 @@ function assembleStiffnessMatrixInternal(
 end
 
 
-doc"""
+"""
     assembleMassMatrix(ctx;[bdata,lumped=false])
 
 Assemble the mass matrix
 ```math
-M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d
+M_{i,j} = \\int \\varphi_j(x) \\varphi_i(x) f(x)d\\lambda^d
 ```
 The integral is approximated using numerical quadrature.
 The values of `f(x)` are taken from `ctx.mass_weights`, and should be ordered in the same way as `ctx.quadrature_points`
@@ -124,11 +124,11 @@ ctx.mass_weights = map(f, ctx.quadrature_points)
 M = assembleMassMatrix(ctx)
 ```
 """
-function assembleMassMatrix{dim}(
+function assembleMassMatrix(
         ctx::gridContext{dim};
         bdata=boundaryData(),
         lumped=false,
-        )
+        ) where dim
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
     dh::JFM.DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
@@ -179,7 +179,7 @@ end
 Compute the coordinates of all quadrature points on a grid.
 Helper function.
 """
-function getQuadPoints{dim}(ctx::gridContext{dim})
+function getQuadPoints(ctx::gridContext{dim}) where dim
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
     dh::JFM.DofHandler{dim} = ctx.dh
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))

@@ -6,7 +6,7 @@ ctx = regularTriangularGrid((nx, ny), LL, UR, quadrature_order=2)
 predicate = (x,y) -> (abs(x[2] - y[2]) < 1e-10) && (peuclidean(x[1],y[1],6.371π) < 1e-10)
 bdata = CoherentStructures.boundaryData(ctx, predicate, [])
 
-cgfun = (x -> mean_diff_tensor(bickleyJet, x, linspace(0.0,40*3600*24,81),
+cgfun = (x -> mean_diff_tensor(bickleyJet, x, range(0.0,stop=40*3600*24,length=81),
      1.e-8, tolerance=1.e-6, solver=OrdinaryDiffEq.Tsit5()))
 
 @time K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
@@ -18,7 +18,7 @@ plot_real_spectrum(λ)
 
 using Clustering
 n_partition = 7
-res = kmeans(v[:,2:n_partition]',n_partition)
+res = kmeans(permutedims(v[:,2:n_partition]),n_partition)
 u = kmeansresult2LCS(res)
 
 sum([u[:,i]*i for i in 1:n_partition])
