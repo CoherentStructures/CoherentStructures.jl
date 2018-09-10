@@ -142,8 +142,8 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
     F  = [:(-$(∇H[2])), ∇H[1]]
 
     # equation of variation for streamlines
-    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[1,1]))
-               ∇²H[2,2]        ∇²H[1,2]  ]
+    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[2,2]))
+               ∇²H[1,1]        ∇²H[1,2]  ]
 
     return F,DF
 end
