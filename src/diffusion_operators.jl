@@ -138,7 +138,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))),
+                                op_reduce::Function = (P -> prod(reverse(LinearMaps.LinearMap.(P)))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -147,12 +147,13 @@ function sparse_diff_op_family( data::AbstractMatrix,
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = Distributed.pmap(1:q) do t
-        Pₜ = sparse_diff_op( data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
-                                    α=α, metric = metric )
+        Pₜ = sparse_diff_op(data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
+                                    α=α, metric=metric)
         # println("Timestep $t/$q done")
         # Pₜ
     end
-    return op_reduce(P)
+    @time P = op_reduce(P)
+    return P
 end
 
 """
@@ -191,9 +192,9 @@ only calculated for pairs determined by the sparsification method `sp_method`.
 Default metric is `Euclidean()`.
 """
 @inline function sparseaffinitykernel(data::AbstractMatrix{T},
-                               sp_method::Union{KNN,mutualKNN},
+                               sp_method::Union{KNN, mutualKNN},
                                kernel=gaussian_kernel,
-                               metric::Distances.PreMetric = Distances.Euclidean()
+                               metric::Distances.PreMetric=Distances.Euclidean()
                                ) where T <: Real
     dim, N = size(data)
 
@@ -205,7 +206,7 @@ Default metric is `Euclidean()`.
     idxs::Vector{Vector{Int}}, dists::Vector{Vector{T}} = NN.knn(tree, data, sp_method.k, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs::Vector{T} = kernel.(vcat(dists...))
+    Vs = kernel.(vcat(dists...))
     W = SparseArrays.sparse(Is, Js, Vs, N, N)
     SparseArrays.droptol!(W, eps(eltype(W)))
     if typeof(sp_method) <: KNN
@@ -235,14 +236,14 @@ end
 end
 
 """
-    α_normalize!(A, α = 0.5)
+    α_normalize!(A, α = 1.0)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
-``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 0.5.
+``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
-@inline function α_normalize!(A::AbstractMatrix, α=0.5)
+@inline function α_normalize!(A::TA, α=1.0) where {TA <: AbstractMatrix{T} where {T <: Real}}
     LinearAlgebra.checksquare(A)
-    qₑ = Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
+    qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     LinearAlgebra.rmul!(A, qₑ)
     LinearAlgebra.lmul!(qₑ, A)
     return A
@@ -253,9 +254,9 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function wLap_normalize!(A::AbstractMatrix)
+@inline function wLap_normalize!(A::TA) where {TA <: AbstractMatrix{T} where {T <: Real}}
     LinearAlgebra.checksquare(A)
-    dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+    dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     LinearAlgebra.lmul!(dᵅ, A)
     return A
  end
@@ -278,11 +279,9 @@ metric is applied to the whole columns of `data`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-function sparse_adjacency(data::AbstractMatrix{T},
-                            ε::S,
-                            dim::Int;
+function sparse_adjacency(data::AbstractMatrix{T}, ε, dim::Int;
                             metric::Distances.Metric = Distances.Euclidean()
-                        )::SparseMatrixCSC{Bool,Int} where {T <: Real, S <: Real}
+                        )::SparseMatrixCSC{Float64,Int} where {T <: Real}
     dimt, N = size(data)
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
@@ -294,14 +293,13 @@ function sparse_adjacency(data::AbstractMatrix{T},
     end
     Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
     Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
-    Vs::Vector{Bool} = fill(1.0, length(Is))
+    Vs::Vector{Float64} = fill(1.0, length(Is))
     return SparseArrays.sparse(Is, Js, Vs, N, N, *)
 end
 
-function sparse_adjacency(data::AbstractMatrix,
-                            ε::S;
+function sparse_adjacency(data::AbstractMatrix, ε;
                             metric::Distances.Metric = Distances.Euclidean()
-                            )::SparseMatrixCSC{Bool,Int} where {S <: Real}
+                            )::SparseMatrixCSC{Float64,Int}
     dimt, N = size(data)
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
@@ -362,8 +360,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = Diagonal(sqrt.(Π))
-     Πinv  = Diagonal(inv.(Π))
+     Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
+     Πinv  = LinearAlgebra.Diagonal(inv.(Π))
      return LinearMaps.LinearMap(Πsqrt * L * Πinv * LinearAlgebra.transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
@@ -371,8 +369,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = Diagonal(sqrt.(Π))
-     Πinvsqrt = Diagonal(inv.(Πsqrt))
+     Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
+     Πinvsqrt = LinearAlgebra.Diagonal(inv.(Πsqrt))
      LinearAlgebra.lmul!(Πsqrt, L)
      LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
@@ -410,9 +408,9 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
     Ψ = E[2]
 
     # Compute diffusion map Ψ and extract the diffusion coordinates
-    LinearAlgebra.rmul!(Ψ, Diagonal(Σ))
+    LinearAlgebra.rmul!(Ψ, LinearAlgebra.Diagonal(Σ))
     @. Π = 1 / sqrt(Π)
-    LinearAlgebra.lmul!(Diagonal(Π), Ψ)
+    LinearAlgebra.lmul!(LinearAlgebra.Diagonal(Π), Ψ)
     return Σ, Ψ
 end
 
