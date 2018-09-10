@@ -138,7 +138,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(reverse(P))),
+                                op_reduce::Function = (P -> prod(reverse(LinearMaps.LinearMap.(P)))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -147,11 +147,8 @@ function sparse_diff_op_family( data::AbstractMatrix,
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
 
     P = Distributed.pmap(1:q) do t
-        @time Pₜ = LinearMaps.LinearMap( sparse_diff_op(data[(t-1)*dim+1:t*dim,:],
-                                                    sp_method, kernel;
-                                                    α=α, metric=metric
-                                                    )
-                                    )
+        @time Pₜ = sparse_diff_op(data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
+                                    α=α, metric=metric)
         # println("Timestep $t/$q done")
         # Pₜ
     end
