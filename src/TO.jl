@@ -70,9 +70,9 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
     #See http://blog.marmakoide.org/?p=1
     stencil::Vector{Tensors.Vec{2,Float64}} = Tensors.Vec{2,Float64}[]
     stencil_density::Float64 = 0.0
-    const φ = π*(3 - √5)
+    φ = π*(3 - √5)
     if ϵ ≠ 0.0
-        stencil_density = 1./n_stencil_points
+        stencil_density = 1. /n_stencil_points
         print(stencil_density)
         for i in 0:(n_stencil_points-1)
             θ::Float64 = i * φ
