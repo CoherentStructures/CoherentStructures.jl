@@ -243,7 +243,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 """
 @inline function α_normalize!(A::TA, α=1.0) where {TA <: AbstractMatrix{T} where {T <: Real}}
     LinearAlgebra.checksquare(A)
-    qₑ = Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
+    qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     LinearAlgebra.rmul!(A, qₑ)
     LinearAlgebra.lmul!(qₑ, A)
     return A
@@ -256,7 +256,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 """
 @inline function wLap_normalize!(A::TA) where {TA <: AbstractMatrix{T} where {T <: Real}}
     LinearAlgebra.checksquare(A)
-    dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+    dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     LinearAlgebra.lmul!(dᵅ, A)
     return A
  end
@@ -363,8 +363,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = Diagonal(sqrt.(Π))
-     Πinv  = Diagonal(inv.(Π))
+     Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
+     Πinv  = LinearAlgebra.Diagonal(inv.(Π))
      return LinearMaps.LinearMap(Πsqrt * L * Πinv * LinearAlgebra.transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
@@ -372,8 +372,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = Diagonal(sqrt.(Π))
-     Πinvsqrt = Diagonal(inv.(Πsqrt))
+     Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
+     Πinvsqrt = LinearAlgebra.Diagonal(inv.(Πsqrt))
      LinearAlgebra.lmul!(Πsqrt, L)
      LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
@@ -411,9 +411,9 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
     Ψ = E[2]
 
     # Compute diffusion map Ψ and extract the diffusion coordinates
-    LinearAlgebra.rmul!(Ψ, Diagonal(Σ))
+    LinearAlgebra.rmul!(Ψ, LinearAlgebra.Diagonal(Σ))
     @. Π = 1 / sqrt(Π)
-    LinearAlgebra.lmul!(Diagonal(Π), Ψ)
+    LinearAlgebra.lmul!(LinearAlgebra.Diagonal(Π), Ψ)
     return Σ, Ψ
 end
 
