@@ -285,7 +285,7 @@ function makeStandardMap8TestCase()
     LL = Vec{2}([0.0,0.0])
     UR=Vec{2}([2π,2π])
     bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π)<1e-9)
-    result = testCase("Standard Map 8",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap8,CoherentStructures.DstandardMap8,CoherentStructures.standardMapInv8)
+    result = testCase("Standard Map 8",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap8,CoherentStructures.DstandardMap8,CoherentStructures.standardMap8Inv)
     return result
 end
 

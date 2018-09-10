@@ -7,7 +7,6 @@ include("numericalExperiments.jl")
 
 experimentRange=Int.(round.(10*1.3.^range(1,stop=13)))
 experimentRangeSmall=Int.(round.(10*1.3.^range(0,stop=7)))
-experimentRange
 
 function runStandardMapTests()
   results0 = testStandardMap([],quadrature_order=5,run_reference=true)
@@ -24,8 +23,9 @@ function runStandardMapTests()
 
   myfd = open("SM","w")
   serialize(myfd,results)
-  close(fd)
+  close(myfd)
 end
+
 
 
 function runStandardMap8Tests()
@@ -43,9 +43,10 @@ function runStandardMap8Tests()
 
   myfd = open("SM8","w")
   serialize(myfd,results)
-  close(fd)
+  close(myfd)
 end
 
+runStandardMapTests()
 runStandardMap8Tests()
 
 
@@ -146,6 +147,84 @@ function standardMapPlots()
   end
 end
 
+
+function standardMap8Plots()
+  reference_index = 1
+  results=open(Serialization.deserialize,"SM8")
+  GC.gc()
+
+  for j in [1,2]
+    if j == 1
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
+    else
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode != :CG]
+    end
+    begin
+      whichev = 2
+      x = [getH(x.ctx) for x in results[indexes_to_plot]]
+      y = [abs(x.λ[whichev] - results[reference_index].λ[whichev])/(results[reference_index].λ[whichev])  for x in results[indexes_to_plot]]
+      gridtypes = [x.ctx.gridType * " $(x.mode)" for x in results[indexes_to_plot]]
+      if j == 2
+        legendlabels = [@sprintf("%s, %s ", occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements","$(x.mode)") for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf("(%.1f)",ev_slopes[gridtypes[i]] )
+        end
+      else
+        legendlabels = [occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements" for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",ev_slopes[gridtypes[i]] )
+        end
+      end
+      ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
+      colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
+      Plots.scatter(x,y,group=gridtypes,label=legendlabels,color=colors,xlabel="Mesh width",ylabel="Relative error",m=ms,
+        xscale=:log10,yscale=:log10,  legend=(0.40,0.20))
+        #ylim=(1e-10,1),xlim=(10^-1.8,1.03));
+      Plots.display(loglogslopeline(x,y,gridtypes,ev_slopes))
+      sleep(2)
+      #loglogleastsquareslines(x,y,gridtypes)
+    end
+    if j == 1
+      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMev$(whichev)errsCG.pdf")
+    else
+      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMev$(whichev)errsTO.pdf")
+    end
+
+    begin
+      x = [getH(x.ctx) for x in results[indexes_to_plot]]
+      matrices = [(inv(x.statistics["B"])*x.statistics["E"]*inv(results[reference_index].statistics["B"]))[2:3,2:3] for x in results[indexes_to_plot]]
+      y = [sqrt(abs(1 - maximum(eigvals(x'*x)))) for x in matrices]
+      gridtypes = [x.ctx.gridType * " $(x.mode)" for x in results[indexes_to_plot]]
+      mycolors = [method_colors[f] for f in gridtypes]
+      if j == 2
+        legendlabels = [@sprintf("%s, %s ", occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements","$(x.mode)") for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",evec_slopes[gridtypes[i]] )
+        end
+      else
+        legendlabels = [occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements" for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",evec_slopes[gridtypes[i]] )
+        end
+      end
+      ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
+      Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Eigenspace error",
+        xscale=:log10, yscale=:log10, legend=(0.55,0.25),color=mycolors,lab=legendlabels,m=ms)
+        ##ylim=(1.e-7,1e-1),xlim=(10^(-1.7),1.03))
+      Plots.display(loglogslopeline(x,y,gridtypes,evec_slopes))
+      sleep(2)
+    end
+
+    if j == 1
+      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMevec23errsCG.pdf")
+    else
+      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMevec23errsTO.pdf")
+    end
+  end
+end
+
+standardMap8Plots()
+
 standardMapPlots()
 
 
@@ -212,7 +291,7 @@ function standardMapQuadraturePlots()
         #ylim=(1.e-7,1e-1),xlim=(10^(-1.7),1.03))
       #Plots.display(loglogslopeline(x,y,gridtypes,evec_slopes))
       Plots.display(res)
-      sleep(2)
+      sleep(10)
     end
 
     if j == 1
