@@ -1,4 +1,5 @@
 Base.HOME_PROJECT[] = abspath(Base.HOME_PROJECT[]) # JuliaLang/julia/pull/28625
+ENV["GKSwstype"] = "100"
 
 using Documenter, CoherentStructures
 
