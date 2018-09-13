@@ -6,5 +6,5 @@ This package (and this page) are still under construction.
 [![][docs-latest-img]][docs-latest-url]
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
-[docs-latest-url]: http://kristofferc.github.io/JuAFEM.jl/latest/
+[docs-latest-url]: http://github.com/CoherentStructures/CoherentStructures.jl/latest/
 
