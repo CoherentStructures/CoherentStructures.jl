@@ -2,7 +2,6 @@ The CoherentStructures.jl package is liscensed under the GPL liscense version 3.
 
 >Copyright (c) 2018 by the authors
 
-
 >This program is free software: you can redistribute it and/or modify
 >it under the terms of the GNU General Public License as published by
 >the Free Software Foundation, either version 3 of the License, or
@@ -39,3 +38,5 @@ of functions from the JuAFEM.jl package, these are liscensed under the MIT "Expa
 > CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+The file examples/Ocean\_geostrophic\_velocity.jl2 is based on data from https://github.com/Hadjighasem/Elliptic\_LCS\_2D/tree/master/data and is therefore not considered part of this package. 
