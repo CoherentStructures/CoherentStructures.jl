@@ -1,2 +1,5 @@
 # ignore vim swap files
 *.swp
+
+docs/build/
+docs/site/
