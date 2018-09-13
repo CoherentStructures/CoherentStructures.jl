@@ -15,7 +15,7 @@ git:
 
 
 before_install:
-      - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git"));'
+      - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git"));'
 
 jobs:
   include:
