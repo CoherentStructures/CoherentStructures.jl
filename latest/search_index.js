@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "First install the JuAFEM.jl package.Then, run the following in the Julia REPL:     ]add https://github.com/CoherentStructures/CoherentStructures.jl.git"
+    "text": "First install the JuAFEM.jl package.Then, run the following in the Julia REPL:]add https://github.com/CoherentStructures/CoherentStructures.jl.git"
 },
 
 {
