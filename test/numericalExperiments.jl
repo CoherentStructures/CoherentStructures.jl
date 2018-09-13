@@ -42,24 +42,25 @@ mutable struct experimentResult
     statistics::Dict{String, Any} #Things we can calculate about this solution
     solver
     tolerance::Float64
+    δ::Float64
 
     #Like below, but make boundary data first
-    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,mode;tolerance=CoherentStructures.default_tolerance,solver=CoherentStructures.default_solver)
+    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,mode;tolerance=CoherentStructures.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
         bdata = boundaryData(ctx,experiment.bdata_predicate, experiment.dbc_facesets)
-        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance)
+        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance,δ)
         return result
     end
 
     #Constructor from general CoherentStructures.gridContext object
-    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,bdata::CoherentStructures.boundaryData,mode;tolerance=CoherentStructures.default_tolerance,solver=CoherentStructures.default_solver)
-        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance)
+    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,bdata::CoherentStructures.boundaryData,mode;tolerance=CoherentStructures.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
+        result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance,δ)
         return result
     end
     #For regular Grids:
-    function experimentResult(experiment::testCase, gridType::String, howmany , mode;tolerance=CoherentStructure.default_tolerance,solver=CoherentStructures.default_solver)
+    function experimentResult(experiment::testCase, gridType::String, howmany , mode;tolerance=CoherentStructure.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
         ctx = regularGrid(gridType,howmany, experiment.LL, experiment.UR)
         bdata = boundaryData(ctx,experiment.bdata_predicate,experiment.dbc_facesets)
-        return experimentResult(experiment,ctx,bdata,mode;tolerance=tolerance, solver=solver)
+        return experimentResult(experiment,ctx,bdata,mode;tolerance=tolerance, solver=solver,δ=δ)
     end
 
 end
@@ -75,7 +76,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         if eR.experiment.is_ode
             ode_fun = eR.experiment.ode_fun
             #TODO: Th10ink about varying the parameters below.
-            cgfun = (x -> mean_diff_tensor(ode_fun,x,times, 1.e-8,tolerance=eR.tolerance,p=eR.experiment.p))
+            cgfun = (x -> mean_diff_tensor(ode_fun,x,times, eR.δ,tolerance=eR.tolerance,p=eR.experiment.p))
         else
             cgfun = x->0.5*(one(SymmetricTensor{2,2,Float64,4}) + dott(inv(eR.experiment.Df(x))))
         end
@@ -209,7 +210,7 @@ function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Float64
         return  u2 ⋅ Mu1
 end
 
-function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Complex128},u2::Vector{Complex128},Min=nothing)
+function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{ComplexF64},u2::Vector{ComplexF64},Min=nothing)
         if Min == nothing
             M = assembleMassMatrix(ctx)
         else
@@ -263,6 +264,14 @@ function makeDoubleGyreTestCase(tf=1.0)
     return result
 end
 
+function makeDoubleGyreEqVariTestCase(tf=1.0)
+    LL=Vec{2}([0.0,0.0])
+    UR=Vec{2}([1.0,1.0])
+    bdata_predicate = (x,y) -> false
+    result = testCase("Rotating Double Gyre",LL,UR,bdata_predicate,[], true,0.0,tf, rot_double_gyreEqVari,nothing,nothing,nothing,nothing)
+    return result
+end
+
 
 function makeCylinderFlowTestCase()
     tf = 40.0
@@ -312,7 +321,7 @@ function makeStaticLaplaceTestCase()
 end
 
 
-function accuracyTest(tC::testCase,whichgrids=20:20:200;quadrature_order=CoherentStructures.default_quadrature_order,mode=:CG,tolerance=CoherentStructures.default_tolerance)
+function accuracyTest(tC::testCase,whichgrids=20:20:200;quadrature_order=CoherentStructures.default_quadrature_order,mode=:CG,tolerance=CoherentStructures.default_tolerance,δ=1e-8)
     #gridConstructors = [regularTriangularGrid, regularDelaunayGrid, regularP2TriangularGrid, regularP2DelaunayGrid , regularQuadrilateralGrid,regularP2QuadrilateralGrid]
     #gridConstructorNames = ["regular triangular grid", "regular Delaunay grid","regular P2 triangular grid", "regular P2 Delaunay grid", "regular quadrilateral grid", "regular P2 quadrilateral grid"]
 
@@ -331,7 +340,7 @@ function accuracyTest(tC::testCase,whichgrids=20:20:200;quadrature_order=Coheren
             testCaseName = tC.name
             gCName = gridConstructorNames[gCindex]
             print("Running $testCaseName test case on $width×$width $gCName")
-            eR = experimentResult(tC, ctx,mode,tolerance=tolerance)
+            eR = experimentResult(tC, ctx,mode,tolerance=tolerance,δ=δ)
             runExperiment!(eR)
             push!(experimentResults,eR)
         end
@@ -401,6 +410,19 @@ function testDoubleGyre(whichgrids;quadrature_order=CoherentStructures.default_q
         push!(result,reference)
     end
     append!(result,accuracyTest(tC,whichgrids,quadrature_order=quadrature_order,mode=mode,tolerance=1e-5))
+    return result
+end
+
+function testDoubleGyreEqVari(whichgrids;quadrature_order=CoherentStructures.default_quadrature_order,run_reference=true,mode=:CG,tf=1.0)
+    tC = makeDoubleGyreEqVariTestCase(tf)
+    result = experimentResult[]
+    if run_reference
+        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=quadrature_order)
+        reference = experimentResult(tC,referenceCtx,:CG,tolerance=1e-5,δ=0.0)
+        runExperiment!(reference)
+        push!(result,reference)
+    end
+    append!(result,accuracyTest(tC,whichgrids,quadrature_order=quadrature_order,mode=mode,tolerance=1e-5,δ=0.0))
     return result
 end
 
