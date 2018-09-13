@@ -1,4 +1,5 @@
 # CoherentStructures.jl
+[![Build Status](https://travis-ci.org/CoherentStructures/CoherentStructures.jl.svg?branch=master)](https://travis-ci.org/KristofferC/JuAFEM.jl)
 
 This package (and this page) are still under construction. 
 
