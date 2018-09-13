@@ -291,7 +291,9 @@ Approximating the Dynamical Laplacian by FEM methods is straightforward:
 using CoherentStructures #hide
 using Tensors, Plots, Arpack, Printf
 ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
-pred  = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π) < 1e-9
+
+pred  = (x,y) -> peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π) < 1e-9
+
 bdata = boundaryData(ctx,pred) #Periodic boundary
 
 id2 = one(Tensors.Tensor{2,2}) # 2D identity tensor

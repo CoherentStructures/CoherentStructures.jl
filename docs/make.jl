@@ -1,6 +1,9 @@
+Base.HOME_PROJECT[] = abspath(Base.HOME_PROJECT[]) # JuliaLang/julia/pull/28625
+ENV["GKSwstype"] = "100"
+
 using Documenter, CoherentStructures
 
-#Before running this, make sure that Distances,JLD2, Printf, Random, OrdinaryDiffEq and Clustering packages are
+#Before running this, make sure that Plots, Tensors, Distances,JLD2, Printf, Random, OrdinaryDiffEq and Clustering packages are
 #installed and added to your current environment (]add )
 makedocs(
     format=:html,
@@ -16,3 +19,11 @@ makedocs(
             ]
     ]
     )
+
+deploydocs(
+    repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
+    target = "build",
+    julia = "1.0",
+    deps = nothing,
+    make = nothing,
+)
