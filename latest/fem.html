@@ -1,29 +1,1148 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>FEM-based methods · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">Home</a></li><li><a class="toctext" href="examples.html">Examples</a></li><li><a class="toctext" href="basics.html">Basics</a></li><li><span class="toctext">Methods</span><ul><li class="current"><a class="toctext" href="fem.html">FEM-based methods</a><ul class="internal"><li><a class="toctext" href="#Features-1">Features</a></li><li><a class="toctext" href="#The-gridContext-Type-1">The <code>gridContext</code> Type</a></li><li><a class="toctext" href="#Assembly-1">Assembly</a></li><li><a class="toctext" href="#Evaluating-Functions-in-the-Approximation-Space-1">Evaluating Functions in the Approximation Space</a></li><li><a class="toctext" href="#Nodal-Interpolation-1">Nodal Interpolation</a></li><li><a class="toctext" href="#Boundary-Conditions-1">Boundary Conditions</a></li><li><a class="toctext" href="#Plotting-and-Videos-1">Plotting and Videos</a></li><li><a class="toctext" href="#Parallelisation-1">Parallelisation</a></li><li><a class="toctext" href="#FEM-API-1">FEM-API</a></li></ul></li><li><a class="toctext" href="elliptic.html">Geodesic vortices</a></li><li><a class="toctext" href="Laplace.html">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Methods</li><li><a href="fem.html">FEM-based methods</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/src/fem.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>FEM-based methods</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h1><p>These methods rely on the theory outlined by Froyland&#39;s <a href="http://arxiv.org/pdf/1411.7186v4.pdf"><em>Dynamical Laplacian</em></a> and the <a href="https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures"><em>Geometric Heat Flow</em></a> of Karrasch &amp; Keller.</p><p>The Laplace-like operators are best discretized by finite-element-based methods, see this <a href="https://arxiv.org/pdf/1705.03640.pdf">paper</a> by Froyland &amp; Junge.</p><p>This involves the discretization of the average of a one-parameter family of Laplace operators of the form:</p><div>\[\Delta^{dyn} := \sum_{t \in \mathcal T} P_t^* \Delta P_t\]</div><p>for a finite series of times <span>$\mathcal T$</span>, where <span>$P_t$</span> is the transfer-operator for the flow at time <span>$t$</span> (in volume-preserving flows).</p><p>The resulting operator is both symmetric and uniformly elliptic. Eigenfunctions of <span>$\Delta^{dyn}$</span> can be used to find Lagrangian Coherent Structures.</p><p>See the <a href="examples.html#Examples-1">Examples</a> section for examples of how these methods can be used.</p><h2><a class="nav-anchor" id="Features-1" href="#Features-1">Features</a></h2><h3><a class="nav-anchor" id="CG-and-TO-methods-1" href="#CG-and-TO-methods-1">CG and TO methods</a></h3><p>The standard Galerkin formulation of the weak dynamical Laplace is refered to as the CG-method here, due to the fact that the inverse Cauchy-Green tensor appears in the weak formulation. This gives a bilinear form <span>$\overline a(u,v) := \sum_{t \in \mathcal T}a^t(P_t u, P_t v)$</span> Here <span>$P_t$</span> is the Transfer-Operator (or pushforward) to time-<span>$t$</span>, and <span>$a^t$</span> is the weak-form of the Laplacian on the range of the time-<span>$t$</span> map being considered.   There are also a range of Transfer-Operator based approaches implemented here. These approximate the weak form of the Dynamical-Laplace by a bilinear-form:</p><div>\[\tilde a_h(u,v) = \sum_{t \in \mathcal T} a^t(I_hP_t u, I_h P_t v)\]</div><p>where <span>$I_h$</span> is a suitable interpolation operator depending on the mesh-width <span>$h$</span>. Options for <span>$I_h$</span> implemented in this package are:</p><ul><li>Collocation (pointwise interpolation)...<ul><li>Points used are mesh points from domain grid (&quot;adaptive TO&quot;)</li><li>Points usedare arbitrary(&quot;non-adaptive TO&quot;)</li></ul></li><li>the <span>$L^2$</span>-orthogonal projection onto a FEM-space<ul><li>Using the forwards flow map (currently gives poor results)</li><li>Using the inverse flow map</li></ul></li></ul><p>Note that the <span>$L^2$</span>-Galerkin methods currently perform very poorly on larger problems.</p><p>For more details, see <a href="https://arxiv.org/pdf/1705.03640.pdf">this paper</a>.</p><h3><a class="nav-anchor" id="Grids-1" href="#Grids-1">Grids</a></h3><p>Various types of regular and irregular meshes (with Delaunay triangulation using <a href="https://github.com/JuliaGeometry/VoronoiDelaunay.jl">VoronoiDelaunay.jl</a> ) are supported. These are based on the corresponding elements from <a href="https://github.com/KristofferC/JuAFEM.jl">JuAFEM.jl</a> and include:</p><ul><li>Triangular P1-Lagrange elements in 2D (all methods)</li><li>Quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)</li><li>Triangular and Quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)</li><li>Tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)</li></ul><h2><a class="nav-anchor" id="The-gridContext-Type-1" href="#The-gridContext-Type-1">The <code>gridContext</code> Type</a></h2><p>The FEM-based methods of <code>CoherentStructures.jl</code> rely heavily on the <a href="https://github.com/KristofferC/JuAFEM.jl">JuAFEM.jl</a> package. This package is very low-level and does not provide point-location/plotting functionality. To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a <code>gridContext</code> structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.</p><p>In this documentation, the variable name <code>ctx</code> is exclusively used for <code>gridContext</code> objects.</p><p>See also <a href="fem.html#Constructing-Grids-1">Constructing Grids</a> in the <a href="fem.html#FEM-API-1">FEM-API</a> section.</p><h3><a class="nav-anchor" id="Node-ordering-and-dof-ordering-1" href="#Node-ordering-and-dof-ordering-1">Node ordering and dof ordering</a></h3><p>Finite Element methods work with degrees of freedom (dof), which are elements of some dual space. For nodal finite elements, these correspond to evaluation functionals at the nodes of the grid.</p><p>The nodes of the grid can be obtained in the following way <code>[n.x for n in ctx.grid.nodes]</code>. However, most of the methods of this package do <em>not</em> return results in this order, but instead use <code>JuAFEM.jl</code>&#39;s dof-ordering.</p><p>See also the documentation in <a href="fem.html#CoherentStructures.dof2node"><code>dof2node</code></a> and <a href="fem.html#CoherentStructures.gridContext"><code>CoherentStructures.gridContext</code></a></p><p>When working with (non-natural) <a href="fem.html#Boundary-Conditions-1">Boundary Conditions</a>, the ordering is further changed, due to there being fewer degrees of freedom in total.</p><h2><a class="nav-anchor" id="Assembly-1" href="#Assembly-1">Assembly</a></h2><p>See <a href="fem.html#Stiffness-and-Mass-Matrices-1">Stiffness and Mass Matrices</a> from the <a href="fem.html#FEM-API-1">FEM-API</a> section.</p><h2><a class="nav-anchor" id="Evaluating-Functions-in-the-Approximation-Space-1" href="#Evaluating-Functions-in-the-Approximation-Space-1">Evaluating Functions in the Approximation Space</a></h2><p>given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the <code>evaluate_function_from_nodevals</code> or <code>evaluate_function_from_dofvals</code> functions.</p><pre><code class="language-">using CoherentStructures #hide
-using Plots
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>FEM-based methods · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">Home</a></li><li><a class="toctext" href="examples.html">Examples</a></li><li><a class="toctext" href="basics.html">Basics</a></li><li><span class="toctext">Methods</span><ul><li class="current"><a class="toctext" href="fem.html">FEM-based methods</a><ul class="internal"><li><a class="toctext" href="#Features-1">Features</a></li><li><a class="toctext" href="#The-gridContext-Type-1">The <code>gridContext</code> Type</a></li><li><a class="toctext" href="#Assembly-1">Assembly</a></li><li><a class="toctext" href="#Evaluating-Functions-in-the-Approximation-Space-1">Evaluating Functions in the Approximation Space</a></li><li><a class="toctext" href="#Nodal-Interpolation-1">Nodal Interpolation</a></li><li><a class="toctext" href="#Boundary-Conditions-1">Boundary Conditions</a></li><li><a class="toctext" href="#Plotting-and-Videos-1">Plotting and Videos</a></li><li><a class="toctext" href="#Parallelisation-1">Parallelisation</a></li><li><a class="toctext" href="#FEM-API-1">FEM-API</a></li></ul></li><li><a class="toctext" href="elliptic.html">Geodesic vortices</a></li><li><a class="toctext" href="Laplace.html">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Methods</li><li><a href="fem.html">FEM-based methods</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/src/fem.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>FEM-based methods</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h1><p>These methods rely on the theory outlined by Froyland&#39;s <a href="http://arxiv.org/pdf/1411.7186v4.pdf"><em>Dynamical Laplacian</em></a> and the <a href="https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures"><em>Geometric Heat Flow</em></a> of Karrasch &amp; Keller.</p><p>The Laplace-like operators are best discretized by finite-element-based methods, see this <a href="https://arxiv.org/pdf/1705.03640.pdf">paper</a> by Froyland &amp; Junge.</p><p>This involves the discretization of the average of a one-parameter family of Laplace operators of the form:</p><div>\[\Delta^{dyn} := \sum_{t \in \mathcal T} P_t^* \Delta P_t\]</div><p>for a finite series of times <span>$\mathcal T$</span>, where <span>$P_t$</span> is the transfer-operator for the flow at time <span>$t$</span> (in volume-preserving flows).</p><p>The resulting operator is both symmetric and uniformly elliptic. Eigenfunctions of <span>$\Delta^{dyn}$</span> can be used to find Lagrangian Coherent Structures.</p><p>See the <a href="examples.html#Examples-1">Examples</a> section for examples of how these methods can be used.</p><h2><a class="nav-anchor" id="Features-1" href="#Features-1">Features</a></h2><h3><a class="nav-anchor" id="CG-and-TO-methods-1" href="#CG-and-TO-methods-1">CG and TO methods</a></h3><p>The standard Galerkin formulation of the weak dynamical Laplace is refered to as the CG-method here, due to the fact that the inverse Cauchy-Green tensor appears in the weak formulation. This gives a bilinear form <span>$\overline a(u,v) := \sum_{t \in \mathcal T}a^t(P_t u, P_t v)$</span> Here <span>$P_t$</span> is the Transfer-Operator (or pushforward) to time-<span>$t$</span>, and <span>$a^t$</span> is the weak-form of the Laplacian on the range of the time-<span>$t$</span> map being considered.   There are also a range of Transfer-Operator based approaches implemented here. These approximate the weak form of the Dynamical-Laplace by a bilinear-form:</p><div>\[\tilde a_h(u,v) = \sum_{t \in \mathcal T} a^t(I_hP_t u, I_h P_t v)\]</div><p>where <span>$I_h$</span> is a suitable interpolation operator depending on the mesh-width <span>$h$</span>. Options for <span>$I_h$</span> implemented in this package are:</p><ul><li>Collocation (pointwise interpolation)...<ul><li>Points used are mesh points from domain grid (&quot;adaptive TO&quot;)</li><li>Points usedare arbitrary(&quot;non-adaptive TO&quot;)</li></ul></li><li>the <span>$L^2$</span>-orthogonal projection onto a FEM-space<ul><li>Using the forwards flow map (currently gives poor results)</li><li>Using the inverse flow map</li></ul></li></ul><p>Note that the <span>$L^2$</span>-Galerkin methods currently perform very poorly on larger problems.</p><p>For more details, see <a href="https://arxiv.org/pdf/1705.03640.pdf">this paper</a>.</p><h3><a class="nav-anchor" id="Grids-1" href="#Grids-1">Grids</a></h3><p>Various types of regular and irregular meshes (with Delaunay triangulation using <a href="https://github.com/JuliaGeometry/VoronoiDelaunay.jl">VoronoiDelaunay.jl</a> ) are supported. These are based on the corresponding elements from <a href="https://github.com/KristofferC/JuAFEM.jl">JuAFEM.jl</a> and include:</p><ul><li>Triangular P1-Lagrange elements in 2D (all methods)</li><li>Quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)</li><li>Triangular and Quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)</li><li>Tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)</li></ul><h2><a class="nav-anchor" id="The-gridContext-Type-1" href="#The-gridContext-Type-1">The <code>gridContext</code> Type</a></h2><p>The FEM-based methods of <code>CoherentStructures.jl</code> rely heavily on the <a href="https://github.com/KristofferC/JuAFEM.jl">JuAFEM.jl</a> package. This package is very low-level and does not provide point-location/plotting functionality. To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a <code>gridContext</code> structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.</p><p>In this documentation, the variable name <code>ctx</code> is exclusively used for <code>gridContext</code> objects.</p><p>See also <a href="fem.html#Constructing-Grids-1">Constructing Grids</a> in the <a href="fem.html#FEM-API-1">FEM-API</a> section.</p><h3><a class="nav-anchor" id="Node-ordering-and-dof-ordering-1" href="#Node-ordering-and-dof-ordering-1">Node ordering and dof ordering</a></h3><p>Finite Element methods work with degrees of freedom (dof), which are elements of some dual space. For nodal finite elements, these correspond to evaluation functionals at the nodes of the grid.</p><p>The nodes of the grid can be obtained in the following way <code>[n.x for n in ctx.grid.nodes]</code>. However, most of the methods of this package do <em>not</em> return results in this order, but instead use <code>JuAFEM.jl</code>&#39;s dof-ordering.</p><p>See also the documentation in <a href="fem.html#CoherentStructures.dof2node"><code>dof2node</code></a> and <a href="fem.html#CoherentStructures.gridContext"><code>CoherentStructures.gridContext</code></a></p><p>When working with (non-natural) <a href="fem.html#Boundary-Conditions-1">Boundary Conditions</a>, the ordering is further changed, due to there being fewer degrees of freedom in total.</p><h2><a class="nav-anchor" id="Assembly-1" href="#Assembly-1">Assembly</a></h2><p>See <a href="fem.html#Stiffness-and-Mass-Matrices-1">Stiffness and Mass Matrices</a> from the <a href="fem.html#FEM-API-1">FEM-API</a> section.</p><h2><a class="nav-anchor" id="Evaluating-Functions-in-the-Approximation-Space-1" href="#Evaluating-Functions-in-the-Approximation-Space-1">Evaluating Functions in the Approximation Space</a></h2><p>given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the <code>evaluate_function_from_nodevals</code> or <code>evaluate_function_from_dofvals</code> functions.</p><div><pre><code class="language-julia">using Plots
 ctx = regularP2TriangularGrid((10,10))
 u = zeros(ctx.n)
 u[45] = 1.0
-Plots.heatmap(range(0,stop=1,length=200),range(0,stop=1,length=200), (x,y)-&gt;evaluate_function_from_nodevals(ctx,u,[x,y]))</code></pre><p>For more details, consult the API: <a href="fem.html#CoherentStructures.evaluate_function_from_dofvals"><code>evaluate_function_from_dofvals</code></a>, <a href="fem.html#CoherentStructures.evaluate_function_from_nodevals"><code>evaluate_function_from_nodevals</code></a></p><h2><a class="nav-anchor" id="Nodal-Interpolation-1" href="#Nodal-Interpolation-1">Nodal Interpolation</a></h2><p>To perform nodal interpolation of a grid, use the <a href="fem.html#CoherentStructures.nodal_interpolation"><code>nodal_interpolation</code></a> function.</p><h2><a class="nav-anchor" id="Boundary-Conditions-1" href="#Boundary-Conditions-1">Boundary Conditions</a></h2><p>To use something other than the natural homogeneous von Neumann boundary conditions, the <code>CoherentStructures.boundaryData</code> type can be used. This currently supports combinations of homogeneous Dirichlet and periodic boundary conditions.</p><ul><li>Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass matrices to be deleted</li><li>Periodic boundary conditions require rows and columns of the stiffness/mass matrices to be added to each other.</li></ul><p>This means that the coefficient vectors for elements of the approximation space that satisfy the boundary conditions are potentially smaller and in a different order. Given a <code>bdata</code> argument, functions like <code>plot_u</code> will take this into account.</p><h3><a class="nav-anchor" id="Constructing-Boundary-Conditions-1" href="#Constructing-Boundary-Conditions-1">Constructing Boundary Conditions</a></h3><p>Natural von-Neumann boundary conditions can be constructed with: <code>boundaryData()</code> and are generally the default</p><p>Homogeneous Dirichlet boundary conditions can be constructed with the <code>getHomDBCS(ctx,[which=&quot;all&quot;])</code> function. The optional <code>which</code> parameter is a vector of strings, corresponding to <code>JuAFEM</code> face-sets, e.g. <code>getHomDBCS(ctx,which=[&quot;left&quot;,&quot;right&quot;])</code></p><p>Periodic boundary conditions are constructed by calling <code>boundaryData(ctx,predicate,[which_dbc=[]])</code>. The argument <code>predicate</code> is a function that should return <code>true</code> if and only if two points should be identified. Due to floating-point rounding errors, note that using exact comparisons (<code>==</code>) should be avoided. Only points that are in <code>JuAFEM.jl</code> boundary facesets are considered. If this is too restrictive, use the <code>boundaryData(dbc_dofs, periodic_dofs_from,periodic_dofs_to)</code> constructor.</p><p>For details, see <a href="fem.html#CoherentStructures.boundaryData"><code>boundaryData</code></a></p><h3><a class="nav-anchor" id="Example-1" href="#Example-1">Example</a></h3><p>Here we apply Homogeneous DBC to top and bottom, and identify the left and right side:</p><pre><code class="language-">using CoherentStructures
+Plots.heatmap(range(0,stop=1,length=200),range(0,stop=1,length=200), (x,y)-&gt;evaluate_function_from_nodevals(ctx,u,[x,y]))</code></pre><?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 2400 1600">
+<defs>
+  <clipPath id="clip6500">
+    <rect x="0" y="0" width="2000" height="2000"/>
+  </clipPath>
+</defs>
+<defs>
+  <clipPath id="clip6501">
+    <rect x="0" y="0" width="2400" height="1600"/>
+  </clipPath>
+</defs>
+<polygon clip-path="url(#clip6501)" points="
+0,1600 2400,1600 2400,0 0,0 
+  " fill="#ffffff" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip6502">
+    <rect x="480" y="0" width="1681" height="1600"/>
+  </clipPath>
+</defs>
+<polygon clip-path="url(#clip6501)" points="
+94.4882,1537.01 2081.26,1537.01 2081.26,47.2441 94.4882,47.2441 
+  " fill="#ffffff" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip6503">
+    <rect x="94" y="47" width="1988" height="1491"/>
+  </clipPath>
+</defs>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  99.4551,1537.01 99.4551,47.2441 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  593.665,1537.01 593.665,47.2441 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1087.87,1537.01 1087.87,47.2441 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1582.08,1537.01 1582.08,47.2441 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  2076.29,1537.01 2076.29,47.2441 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  94.4882,1533.28 2081.26,1533.28 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  94.4882,1162.7 2081.26,1162.7 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  94.4882,792.126 2081.26,792.126 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  94.4882,421.547 2081.26,421.547 
+  "/>
+<polyline clip-path="url(#clip6503)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  94.4882,50.9685 2081.26,50.9685 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,1537.01 2081.26,1537.01 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,1537.01 94.4882,47.2441 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  99.4551,1537.01 99.4551,1514.66 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  593.665,1537.01 593.665,1514.66 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1087.87,1537.01 1087.87,1514.66 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1582.08,1537.01 1582.08,1514.66 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  2076.29,1537.01 2076.29,1514.66 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,1533.28 124.29,1533.28 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,1162.7 124.29,1162.7 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,792.126 124.29,792.126 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,421.547 124.29,421.547 
+  "/>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  94.4882,50.9685 124.29,50.9685 
+  "/>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 99.4551, 1591.01)" x="99.4551" y="1591.01">0.00</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 593.665, 1591.01)" x="593.665" y="1591.01">0.25</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 1087.87, 1591.01)" x="1087.87" y="1591.01">0.50</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 1582.08, 1591.01)" x="1582.08" y="1591.01">0.75</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 2076.29, 1591.01)" x="2076.29" y="1591.01">1.00</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 70.4882, 1550.78)" x="70.4882" y="1550.78">0.00</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 70.4882, 1180.2)" x="70.4882" y="1180.2">0.25</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 70.4882, 809.626)" x="70.4882" y="809.626">0.50</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 70.4882, 439.047)" x="70.4882" y="439.047">0.75</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 70.4882, 68.4685)" x="70.4882" y="68.4685">1.00</text>
+</g>
+<g clip-path="url(#clip6503)">
+<image width="1987" height="1490" xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAB8MAAAXSCAYAAACM9k6wAAAgAElEQVR4nOzZQQ3AIADAwLE3FnCD
+f0vMxBKS5k5B/x1r7vMAAAAAAAAAQMh7OwAAAAAAAAAA/maGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAA
+AACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMA
+AAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBj
+hgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAA
+AJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAA
+AAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOG
+AwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAA
+kGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAA
+AAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YD
+AAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQ
+Y4YDAAAAAAAAkGOGAwAAAAAAAJBjhgMAAAAAAACQY4YDAAAAAAAAkGOGAwAAAAAAAJBjhgPAx54d
+yAAAAAAM8re+x1caAQAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAA
+sCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAA
+AADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAA
+AAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHh
+AAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABg
+R4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAA
+AIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAA
+AAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MB
+AAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCO
+DAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAA
+ADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAA
+AAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMA
+AAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0Z
+DgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAA
+dmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAA
+AADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAA
+AAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIc
+AAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADs
+yHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAA
+ALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAA
+AAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgA
+AAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR
+4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAA
+YEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAA
+AACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAA
+AAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPD
+AQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADA
+jgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAA
+AAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAA
+AAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YD
+AAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAd
+GQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAA
+AHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAA
+AAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcA
+AAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsy
+HAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA
+7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAA
+AACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAA
+AAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4
+AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADY
+keEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAA
+AGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAA
+AAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAA
+AAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAj
+wwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAA
+wI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAA
+AAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAA
+AAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeG
+AwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACA
+HRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAA
+AAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDhHfCmsAACAASURBVAAAAAAAAMCODAcAAAAAAABgR4YD
+AAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAd
+GQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAA
+AHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAA
+AAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcA
+AAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsy
+HAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA
+7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAA
+AACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAA
+AAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4
+AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADY
+keEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAA
+AGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAA
+AAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAA
+AAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAj
+wwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAA
+wI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAA
+AAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAA
+AAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeG
+AwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7MhwAAAAAAACA
+HRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAAAOzIcAAAAAAA
+AAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAAAAAAsCPDAQAA
+AAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4AAAAAAADAjgwH
+AAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZkOAAAAAAAAAA7
+MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA2JHhAAAAAAAA
+AOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAAAABgR4YDAAAA
+AAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAAAAAAAIAdGQ4A
+AAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7MhwAAAAAAAAAHZk
+OAAAAAAAAAA7MhwAAAAAAACAHRkOAAAAAAAAwI4MBwAAAAAAAGBHhgMAAAAAAACwI8MBAAAAAAAA
+2JHhAAAAAAAAAOzIcAAAAAAAAAB2ZDgAAAAAAAAAOzIcAAAAAAAAgB0ZDgAAAAAAAMCODAcAAAAA
+AABgR4YDAAAAAAAAsCPDAQAAAAAAANiR4QAAAAAAAADsyHAAAAAAAAAAdmQ4AAAAAAAAADsyHAAA
+AAAAAIAdGQ4AAAAAAADAjgwHAAAAAAAAYEeGAwAAAAAAALAjwwEAAAAAAADYkeEAAAAAAAAA7Mhw
+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
+AAB1/hfCNGpxXl06nAAAAABJRU5ErkJggg==
+" transform="translate(94, 47)"/>
+</g>
+<defs>
+  <clipPath id="clip6504">
+    <rect x="2129" y="47" width="73" height="1491"/>
+  </clipPath>
+</defs>
+<g clip-path="url(#clip6504)">
+<image width="72" height="1490" xlink:href="data:image/png;base64,
+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
+" transform="translate(2129, 47)"/>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:start;" transform="rotate(0, 2237.26, 1375.89)" x="2237.26" y="1375.89">0</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:start;" transform="rotate(0, 2237.26, 1026.35)" x="2237.26" y="1026.35">0.25</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:start;" transform="rotate(0, 2237.26, 676.802)" x="2237.26" y="676.802">0.50</text>
+</g>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:start;" transform="rotate(0, 2237.26, 327.257)" x="2237.26" y="327.257">0.75</text>
+</g>
+<polyline clip-path="url(#clip6501)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  2201.26,1537.01 2201.26,1362.24 2225.26,1362.24 2201.26,1362.24 2201.26,1012.7 2225.26,1012.7 2201.26,1012.7 2201.26,663.151 2225.26,663.151 2201.26,663.151 
+  2201.26,313.606 2225.26,313.606 2201.26,313.606 2201.26,47.2441 
+  "/>
+<g clip-path="url(#clip6501)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:66; text-anchor:middle;" transform="rotate(-90, 2378.86, 792.126)" x="2378.86" y="792.126"></text>
+</g>
+</svg>
+</div><p>For more details, consult the API: <a href="fem.html#CoherentStructures.evaluate_function_from_dofvals"><code>evaluate_function_from_dofvals</code></a>, <a href="fem.html#CoherentStructures.evaluate_function_from_nodevals"><code>evaluate_function_from_nodevals</code></a></p><h2><a class="nav-anchor" id="Nodal-Interpolation-1" href="#Nodal-Interpolation-1">Nodal Interpolation</a></h2><p>To perform nodal interpolation of a grid, use the <a href="fem.html#CoherentStructures.nodal_interpolation"><code>nodal_interpolation</code></a> function.</p><h2><a class="nav-anchor" id="Boundary-Conditions-1" href="#Boundary-Conditions-1">Boundary Conditions</a></h2><p>To use something other than the natural homogeneous von Neumann boundary conditions, the <code>CoherentStructures.boundaryData</code> type can be used. This currently supports combinations of homogeneous Dirichlet and periodic boundary conditions.</p><ul><li>Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass matrices to be deleted</li><li>Periodic boundary conditions require rows and columns of the stiffness/mass matrices to be added to each other.</li></ul><p>This means that the coefficient vectors for elements of the approximation space that satisfy the boundary conditions are potentially smaller and in a different order. Given a <code>bdata</code> argument, functions like <code>plot_u</code> will take this into account.</p><h3><a class="nav-anchor" id="Constructing-Boundary-Conditions-1" href="#Constructing-Boundary-Conditions-1">Constructing Boundary Conditions</a></h3><p>Natural von-Neumann boundary conditions can be constructed with: <code>boundaryData()</code> and are generally the default</p><p>Homogeneous Dirichlet boundary conditions can be constructed with the <code>getHomDBCS(ctx,[which=&quot;all&quot;])</code> function. The optional <code>which</code> parameter is a vector of strings, corresponding to <code>JuAFEM</code> face-sets, e.g. <code>getHomDBCS(ctx,which=[&quot;left&quot;,&quot;right&quot;])</code></p><p>Periodic boundary conditions are constructed by calling <code>boundaryData(ctx,predicate,[which_dbc=[]])</code>. The argument <code>predicate</code> is a function that should return <code>true</code> if and only if two points should be identified. Due to floating-point rounding errors, note that using exact comparisons (<code>==</code>) should be avoided. Only points that are in <code>JuAFEM.jl</code> boundary facesets are considered. If this is too restrictive, use the <code>boundaryData(dbc_dofs, periodic_dofs_from,periodic_dofs_to)</code> constructor.</p><p>For details, see <a href="fem.html#CoherentStructures.boundaryData"><code>boundaryData</code></a></p><h3><a class="nav-anchor" id="Example-1" href="#Example-1">Example</a></h3><p>Here we apply Homogeneous DBC to top and bottom, and identify the left and right side:</p><div><pre><code class="language-julia">using CoherentStructures
 ctx = regularQuadrilateralGrid((10,10))
 predicate = (p1,p2) -&gt; abs(p1[2] - p2[2]) &lt; 1e-10 &amp;&amp; peuclidean(p1[1],p2[1],1.0) &lt; 1e-10
 bdata = boundaryData(ctx,predicate,[&quot;top&quot;,&quot;bottom&quot;])
 u = ones(nDofs(ctx,bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
-plot_u(ctx,u,200,200,bdata=bdata,colorbar=:none)</code></pre><p>To apply boundary conditions to a stiffness/mass matrix, use the <code>applyBCS</code> function. Note that <code>assembleStiffnessMatrix</code> and <code>assembleMassMatrix</code> take a <code>bdata</code> argument that does this internally.</p><h2><a class="nav-anchor" id="Plotting-and-Videos-1" href="#Plotting-and-Videos-1">Plotting and Videos</a></h2><p>There are some helper functions that exist for making plots and videos of functions on grids. These rely on the <a href="https://github.com/JuliaPlots/Plots.jl">Plots.jl</a> library. Plotting recipes are unfortunately not implemented.</p><p>The simplest way to plot is using the <a href="fem.html#CoherentStructures.plot_u"><code>plot_u</code></a> function. Plots and videos of eulerian plots like <span>$f \circ \Phi^0_t$</span> can be made with the <a href="fem.html#CoherentStructures.plot_u_eulerian"><code>plot_u_eulerian</code></a> and  <a href="fem.html#CoherentStructures.eulerian_videos"><code>eulerian_videos</code></a> functions.</p><h2><a class="nav-anchor" id="Parallelisation-1" href="#Parallelisation-1">Parallelisation</a></h2><p>Many of the plotting functions support parallelism internally. Tensor fields can be constructed in parallel, and then passed to <a href="fem.html#CoherentStructures.assembleStiffnessMatrix"><code>assembleStiffnessMatrix</code></a>. For an example that does this, see TODO: Add this example</p><h2><a class="nav-anchor" id="FEM-API-1" href="#FEM-API-1">FEM-API</a></h2><h3><a class="nav-anchor" id="Stiffness-and-Mass-Matrices-1" href="#Stiffness-and-Mass-Matrices-1">Stiffness and Mass Matrices</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.assembleStiffnessMatrix" href="#CoherentStructures.assembleStiffnessMatrix"><code>CoherentStructures.assembleStiffnessMatrix</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">assembleStiffnessMatrix(ctx,A,[p; bdata])</code></pre><p>Assemble the stiffness-matrix for a symmetric bilinear form</p><div>\[a(u,v) = \int \nabla u(x)\cdot A(x)\nabla v(x)f(x) dx\]</div><p>The integral is approximated using quadrature. <code>A</code> is a function that returns a <code>Tensors.SymmetricTensor{2,dim}</code> and has one of the following forms:</p><ul><li><code>A(x::Vector{Float64})</code></li><li><code>A(x::Vec{dim})</code></li><li><code>A(x::Vec{dim}, index::Int, p)</code>. Here x is equal to <code>ctx.quadrature_points[index]</code>, and <code>p</code> is that which is passed to <code>assembleStiffnessMatrix</code></li></ul><p>The ordering of the result is in dof order, except that boundary conditions from <code>bdata</code> are applied. The default is natural boundary conditions.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/FEMassembly.jl#L12-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.assembleMassMatrix" href="#CoherentStructures.assembleMassMatrix"><code>CoherentStructures.assembleMassMatrix</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">assembleMassMatrix(ctx;[bdata,lumped=false])</code></pre><p>Assemble the mass matrix</p><div>\[M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d\]</div><p>The integral is approximated using numerical quadrature. The values of <code>f(x)</code> are taken from <code>ctx.mass_weights</code>, and should be ordered in the same way as <code>ctx.quadrature_points</code></p><p>The result is ordered in a way so as to be usable with a stiffness matrix with boundary data <code>bdata</code>.</p><p>Returns a lumped mass matrix if <code>lumped==true</code>.</p><p><strong>Example</strong></p><pre><code class="language-none">ctx.mass_weights = map(f, ctx.quadrature_points)
-M = assembleMassMatrix(ctx)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/FEMassembly.jl#L106-L126">source</a></section><h3><a class="nav-anchor" id="Constructing-Grids-1" href="#Constructing-Grids-1">Constructing Grids</a></h3><p>There are several helper functions available for constructing grids. The simplest is:</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regular2DGrid" href="#CoherentStructures.regular2DGrid"><code>CoherentStructures.regular2DGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regular2DGrid(gridType, numnodes, LL=[0.0,0.0],UR=[1.0,1.0];quadrature_order=default_quadrature_order)</code></pre><p>Constructs a regular grid. <code>gridType</code> should be from <code>CoherentStructures.regular2DGridTypes</code></p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L86-L90">source</a></section><p>Supported values for the <code>gridType</code> argument are:</p><div><pre><code class="language-julia">CoherentStructures.regular2DGridTypes</code></pre><pre><code class="language-none">6-element Array{String,1}:
+plot_u(ctx,u,200,200,bdata=bdata,colorbar=:none)</code></pre><?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 2400 1600">
+<defs>
+  <clipPath id="clip6600">
+    <rect x="0" y="0" width="2000" height="2000"/>
+  </clipPath>
+</defs>
+<defs>
+  <clipPath id="clip6601">
+    <rect x="0" y="0" width="2400" height="1600"/>
+  </clipPath>
+</defs>
+<polygon clip-path="url(#clip6601)" points="
+0,1600 2400,1600 2400,0 0,0 
+  " fill="#ffffff" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip6602">
+    <rect x="480" y="0" width="1681" height="1600"/>
+  </clipPath>
+</defs>
+<polygon clip-path="url(#clip6601)" points="
+462.992,1537.01 1952.76,1537.01 1952.76,47.2441 462.992,47.2441 
+  " fill="#ffffff" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip6603">
+    <rect x="462" y="47" width="1491" height="1491"/>
+  </clipPath>
+</defs>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,1537.01 462.992,47.2441 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  760.945,1537.01 760.945,47.2441 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1058.9,1537.01 1058.9,47.2441 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1356.85,1537.01 1356.85,47.2441 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1654.8,1537.01 1654.8,47.2441 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1952.76,1537.01 1952.76,47.2441 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,1537.01 1952.76,1537.01 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,1239.06 1952.76,1239.06 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,941.102 1952.76,941.102 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,643.15 1952.76,643.15 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,345.197 1952.76,345.197 
+  "/>
+<polyline clip-path="url(#clip6603)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  462.992,47.2441 1952.76,47.2441 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,1537.01 1952.76,1537.01 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,1537.01 462.992,47.2441 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,1537.01 462.992,1514.66 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  760.945,1537.01 760.945,1514.66 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1058.9,1537.01 1058.9,1514.66 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1356.85,1537.01 1356.85,1514.66 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1654.8,1537.01 1654.8,1514.66 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1952.76,1537.01 1952.76,1514.66 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,1537.01 485.339,1537.01 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,1239.06 485.339,1239.06 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,941.102 485.339,941.102 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,643.15 485.339,643.15 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,345.197 485.339,345.197 
+  "/>
+<polyline clip-path="url(#clip6601)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  462.992,47.2441 485.339,47.2441 
+  "/>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 462.992, 1591.01)" x="462.992" y="1591.01">0.0</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 760.945, 1591.01)" x="760.945" y="1591.01">0.2</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 1058.9, 1591.01)" x="1058.9" y="1591.01">0.4</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 1356.85, 1591.01)" x="1356.85" y="1591.01">0.6</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 1654.8, 1591.01)" x="1654.8" y="1591.01">0.8</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:middle;" transform="rotate(0, 1952.76, 1591.01)" x="1952.76" y="1591.01">1.0</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 438.992, 1554.51)" x="438.992" y="1554.51">0.0</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 438.992, 1256.56)" x="438.992" y="1256.56">0.2</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 438.992, 958.602)" x="438.992" y="958.602">0.4</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 438.992, 660.65)" x="438.992" y="660.65">0.6</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 438.992, 362.697)" x="438.992" y="362.697">0.8</text>
+</g>
+<g clip-path="url(#clip6601)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48; text-anchor:end;" transform="rotate(0, 438.992, 64.7441)" x="438.992" y="64.7441">1.0</text>
+</g>
+<g clip-path="url(#clip6603)">
+<image width="1497" height="1497" xlink:href="data:image/png;base64,
+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
+/gcBJEkHLsuLYgAAAABJRU5ErkJggg==
+" transform="translate(459, 44)"/>
+</g>
+</svg>
+</div><p>To apply boundary conditions to a stiffness/mass matrix, use the <code>applyBCS</code> function. Note that <code>assembleStiffnessMatrix</code> and <code>assembleMassMatrix</code> take a <code>bdata</code> argument that does this internally.</p><h2><a class="nav-anchor" id="Plotting-and-Videos-1" href="#Plotting-and-Videos-1">Plotting and Videos</a></h2><p>There are some helper functions that exist for making plots and videos of functions on grids. These rely on the <a href="https://github.com/JuliaPlots/Plots.jl">Plots.jl</a> library. Plotting recipes are unfortunately not implemented.</p><p>The simplest way to plot is using the <a href="fem.html#CoherentStructures.plot_u"><code>plot_u</code></a> function. Plots and videos of eulerian plots like <span>$f \circ \Phi^0_t$</span> can be made with the <a href="fem.html#CoherentStructures.plot_u_eulerian"><code>plot_u_eulerian</code></a> and  <a href="fem.html#CoherentStructures.eulerian_videos"><code>eulerian_videos</code></a> functions.</p><h2><a class="nav-anchor" id="Parallelisation-1" href="#Parallelisation-1">Parallelisation</a></h2><p>Many of the plotting functions support parallelism internally. Tensor fields can be constructed in parallel, and then passed to <a href="fem.html#CoherentStructures.assembleStiffnessMatrix"><code>assembleStiffnessMatrix</code></a>. For an example that does this, see TODO: Add this example</p><h2><a class="nav-anchor" id="FEM-API-1" href="#FEM-API-1">FEM-API</a></h2><h3><a class="nav-anchor" id="Stiffness-and-Mass-Matrices-1" href="#Stiffness-and-Mass-Matrices-1">Stiffness and Mass Matrices</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.assembleStiffnessMatrix" href="#CoherentStructures.assembleStiffnessMatrix"><code>CoherentStructures.assembleStiffnessMatrix</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">assembleStiffnessMatrix(ctx,A,[p; bdata])</code></pre><p>Assemble the stiffness-matrix for a symmetric bilinear form</p><div>\[a(u,v) = \int \nabla u(x)\cdot A(x)\nabla v(x)f(x) dx\]</div><p>The integral is approximated using quadrature. <code>A</code> is a function that returns a <code>Tensors.SymmetricTensor{2,dim}</code> and has one of the following forms:</p><ul><li><code>A(x::Vector{Float64})</code></li><li><code>A(x::Vec{dim})</code></li><li><code>A(x::Vec{dim}, index::Int, p)</code>. Here x is equal to <code>ctx.quadrature_points[index]</code>, and <code>p</code> is that which is passed to <code>assembleStiffnessMatrix</code></li></ul><p>The ordering of the result is in dof order, except that boundary conditions from <code>bdata</code> are applied. The default is natural boundary conditions.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/FEMassembly.jl#L12-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.assembleMassMatrix" href="#CoherentStructures.assembleMassMatrix"><code>CoherentStructures.assembleMassMatrix</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">assembleMassMatrix(ctx;[bdata,lumped=false])</code></pre><p>Assemble the mass matrix</p><div>\[M_{i,j} = \int \varphi_j(x) \varphi_i(x) f(x)d\lambda^d\]</div><p>The integral is approximated using numerical quadrature. The values of <code>f(x)</code> are taken from <code>ctx.mass_weights</code>, and should be ordered in the same way as <code>ctx.quadrature_points</code></p><p>The result is ordered in a way so as to be usable with a stiffness matrix with boundary data <code>bdata</code>.</p><p>Returns a lumped mass matrix if <code>lumped==true</code>.</p><p><strong>Example</strong></p><pre><code class="language-none">ctx.mass_weights = map(f, ctx.quadrature_points)
+M = assembleMassMatrix(ctx)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/FEMassembly.jl#L106-L126">source</a></section><h3><a class="nav-anchor" id="Constructing-Grids-1" href="#Constructing-Grids-1">Constructing Grids</a></h3><p>There are several helper functions available for constructing grids. The simplest is:</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regular2DGrid" href="#CoherentStructures.regular2DGrid"><code>CoherentStructures.regular2DGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regular2DGrid(gridType, numnodes, LL=[0.0,0.0],UR=[1.0,1.0];quadrature_order=default_quadrature_order)</code></pre><p>Constructs a regular grid. <code>gridType</code> should be from <code>CoherentStructures.regular2DGridTypes</code></p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L86-L90">source</a></section><p>Supported values for the <code>gridType</code> argument are:</p><div><pre><code class="language-julia">CoherentStructures.regular2DGridTypes</code></pre><pre><code class="language-none">6-element Array{String,1}:
  &quot;regular triangular grid&quot;
  &quot;regular P2 triangular grid&quot;
  &quot;regular Delaunay grid&quot;
  &quot;regular P2 Delaunay grid&quot;
  &quot;regular quadrilateral grid&quot;
- &quot;regular P2 quadrilateral grid&quot;</code></pre></div><p>The following functions are conceptually similar:</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularTriangularGrid" href="#CoherentStructures.regularTriangularGrid"><code>CoherentStructures.regularTriangularGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularTriangularGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0], quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P1 triangular grid on a rectangle; it does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L252-L256">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularP2TriangularGrid" href="#CoherentStructures.regularP2TriangularGrid"><code>CoherentStructures.regularP2TriangularGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2TriangularGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P2 triangular grid on a Rectangle. Does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L288-L292">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularQuadrilateralGrid" href="#CoherentStructures.regularQuadrilateralGrid"><code>CoherentStructures.regularQuadrilateralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2QuadrilateralGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P1 quadrilateral grid on a Rectangle.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L328-L332">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularP2QuadrilateralGrid" href="#CoherentStructures.regularP2QuadrilateralGrid"><code>CoherentStructures.regularP2QuadrilateralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2QuadrilateralGrid(numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P2 quadrilateral grid on a rectangle.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L372-L376">source</a></section><p>In 3D we have</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularTetrahedralGrid" href="#CoherentStructures.regularTetrahedralGrid"><code>CoherentStructures.regularTetrahedralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularTetrahedralGrid(numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)</code></pre><p>Create a regular P1 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L436-L440">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularP2TetrahedralGrid" href="#CoherentStructures.regularP2TetrahedralGrid"><code>CoherentStructures.regularP2TetrahedralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2TetrahedralGrid(numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)</code></pre><p>Create a regular P2 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L446-L450">source</a></section><p>All of these methods return a <code>gridContext</code> object.</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.gridContext" href="#CoherentStructures.gridContext"><code>CoherentStructures.gridContext</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">struct gridContext&lt;dim&gt;</code></pre><p>Stores everything needed as &quot;context&quot; to be able to work on a FEM grid based on the <code>JuAFEM</code> package. Adds a point-locator API which facilitates plotting functions defined on the grid within Julia.</p><p><strong>Fields</strong></p><ul><li><code>grid::JuAFEM.Grid</code>, <code>ip::JuAFEM.Interpolation</code>, <code>qr::JuAFEM.QuadratureRule</code> - See the <code>JuAFEM</code> package</li><li><code>loc::CellLocator</code> object used for point-location on the grid.</li><li><code>node_to_dof::Vector{Int}</code>  lookup table for dof index of a node</li><li><code>dof_to_node::Vector{Int}</code>  inverse of node<em>to</em>dof</li><li><code>n::Int</code> number of nodes on the grid</li><li><code>m::Int</code> number of elements (e.g. triangles,quadrilaterals, ...) on the grid</li><li><code>quadrature_points::Vector{Vec{dim,Float64}}</code> All quadrature points on the grid, in a fixed order.</li><li><code>mass_weights::Vector{Float64}</code> Weighting for mass matrix</li><li><code>spatialBounds</code> If available, the corners of a bounding box of a domain. For regular grids, the bounds are tight.</li><li><code>numberOfPointsInEachDirection</code> For regular grids, how many (non-interior) nodes make up the regular grid.</li><li><code>gridType</code> A string describing what kind of grid this is (e.g. &quot;regular triangular grid&quot;)</li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L19-L37">source</a></section><h4><a class="nav-anchor" id="Irregular-grids-1" href="#Irregular-grids-1">Irregular grids</a></h4><p>The constructors for <code>CoherentStructures.gridContext</code>, including one for irregular Delaunay grids, are not exported by default, the documentation is available through the REPL:</p><pre><code class="language-" id="TODO">help?&gt; (::Type{CoherentStructures.gridContext{2}})</code></pre><h3><a class="nav-anchor" id="Boundary-Conditions-API-1" href="#Boundary-Conditions-API-1">Boundary Conditions API</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.boundaryData" href="#CoherentStructures.boundaryData"><code>CoherentStructures.boundaryData</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">mutable struct boundaryData</code></pre><p>Represent (a combination of) homogeneous Dirichlet and periodic boundary conditions. Fields:</p><ul><li><code>dbc_dofs</code> list of dofs that should have homogeneous Dirichlet boundary conditions. Must be sorted.</li><li><code>periodic_dofs_from</code> and <code>periodic_dofs_to</code> are both <code>Vector{Int}</code>. The former <em>must</em> be strictly increasing, both must be the same length. <code>periodic_dofs_from[i]</code> is identified with <code>periodic_dofs_to[i]</code>. <code>periodic_dofs_from[i]</code> must be strictly larger than <code>periodic_dofs_to[i]</code>. Multiple dofs can be identified with the same dof. If some dof is identified with another dof and one of them is in <code>dbc_dofs</code>, both points <em>must</em> be in <code>dbc_dofs</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L1032-L1039">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.getHomDBCS" href="#CoherentStructures.getHomDBCS"><code>CoherentStructures.getHomDBCS</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">getHomDBCS(ctx,which=&quot;all&quot;)</code></pre><p>Return <code>boundaryData</code> object corresponding to homogeneous Dirichlet Boundary Conditions for a set of facesets. <code>which=&quot;all&quot;</code> is shorthand for <code>[&quot;left&quot;,&quot;right&quot;,&quot;top&quot;,&quot;bottom&quot;]</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L1057-L1062">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.undoBCS" href="#CoherentStructures.undoBCS"><code>CoherentStructures.undoBCS</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">undoBCS(ctx,u,bdata)</code></pre><p>Given a vector <code>u</code> in dof order with boundary conditions applied, return the corresponding <code>u</code> in dof order without the boundary conditions.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L1098-L1103">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.applyBCS" href="#CoherentStructures.applyBCS"><code>CoherentStructures.applyBCS</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">applyBCS(ctx,K,bdata)</code></pre><p>Apply the boundary conditions from <code>bdata</code> to the <code>ctx.n</code> by <code>ctx.n</code> sparse matrix <code>K</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L1217-L1221">source</a></section><h3><a class="nav-anchor" id="Helper-functions-1" href="#Helper-functions-1">Helper functions</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.dof2node" href="#CoherentStructures.dof2node"><code>CoherentStructures.dof2node</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">dof2node(ctx,u)</code></pre><p>Interprets <code>u</code> as an array of coefficients ordered in dof order, and reorders them to be in node order.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/util.jl#L76-L81">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.getDofCoordinates" href="#CoherentStructures.getDofCoordinates"><code>CoherentStructures.getDofCoordinates</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">getDofCoordinates(ctx,dofindex)</code></pre><p>Return the coordinates of the node corresponding to the dof with index <code>dofindex</code></p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L1122-L1126">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.evaluate_function_from_dofvals" href="#CoherentStructures.evaluate_function_from_dofvals"><code>CoherentStructures.evaluate_function_from_dofvals</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">evaluate_function_from_dofvals(ctx,dofvals,x_in; [outside_value=0,project_in=false])</code></pre><p>Evaluate a function in the approximation space at the point <code>x_in</code>. If <code>x_in</code> is out of points, return <code>outside_value</code>. If <code>project_in</code> is <code>true</code>, points not within <code>ctx.spatialBounds</code> are first projected into the domain.</p><p>The coefficients in <code>nodevals</code> are interpreted to be in dof order.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L529-L536">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.evaluate_function_from_nodevals" href="#CoherentStructures.evaluate_function_from_nodevals"><code>CoherentStructures.evaluate_function_from_nodevals</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">evaluate_function_from_nodevals(ctx,nodevals,x_in; [outside_value=0, project_in=false])</code></pre><p>Like <code>evaluate_function_from_dofvals</code>, but the coefficients from <code>nodevals</code> are assumed to be in node order.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L480-L484">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.nodal_interpolation" href="#CoherentStructures.nodal_interpolation"><code>CoherentStructures.nodal_interpolation</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">nodal_interpolation(ctx,f)</code></pre><p>Perform nodal interpolation of a function. Returns a vector of coefficients in dof order</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/gridfunctions.jl#L1023-L1027">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.getH" href="#CoherentStructures.getH"><code>CoherentStructures.getH</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">getH(ctx)</code></pre><p>Return the mesh width of a regular grid.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/util.jl#L169-L173">source</a></section><h3><a class="nav-anchor" id="Plotting-API-1" href="#Plotting-API-1">Plotting API</a></h3><h4><a class="nav-anchor" id="FEM-1" href="#FEM-1">FEM</a></h4><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.plot_u" href="#CoherentStructures.plot_u"><code>CoherentStructures.plot_u</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">plot_u(ctx, dof_vals, nx, ny; bdata=nothing, kwargs...)</code></pre><p>Plot the function with coefficients (in dof order, possible boundary conditions in <code>bdata</code>) given by <code>dof_vals</code> on the grid <code>ctx</code>. The domain to be plotted on is given by <code>ctx.spatialBounds</code>. The function is evaluated on a regular <code>nx</code> by <code>ny</code> grid, the resulting plot is a heatmap. Keyword arguments are passed down to <code>plot_u_eulerian</code>, which this function calls internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/plotting.jl#L2-L9">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.plot_u_eulerian" href="#CoherentStructures.plot_u_eulerian"><code>CoherentStructures.plot_u_eulerian</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">plot_u_eulerian(ctx,dof_vals,inverse_flow_map,
+ &quot;regular P2 quadrilateral grid&quot;</code></pre></div><p>The following functions are conceptually similar:</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularTriangularGrid" href="#CoherentStructures.regularTriangularGrid"><code>CoherentStructures.regularTriangularGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularTriangularGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0], quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P1 triangular grid on a rectangle; it does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L252-L256">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularP2TriangularGrid" href="#CoherentStructures.regularP2TriangularGrid"><code>CoherentStructures.regularP2TriangularGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2TriangularGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P2 triangular grid on a Rectangle. Does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L288-L292">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularQuadrilateralGrid" href="#CoherentStructures.regularQuadrilateralGrid"><code>CoherentStructures.regularQuadrilateralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2QuadrilateralGrid(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P1 quadrilateral grid on a Rectangle.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L328-L332">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularP2QuadrilateralGrid" href="#CoherentStructures.regularP2QuadrilateralGrid"><code>CoherentStructures.regularP2QuadrilateralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2QuadrilateralGrid(numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)</code></pre><p>Create a regular P2 quadrilateral grid on a rectangle.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L372-L376">source</a></section><p>In 3D we have</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularTetrahedralGrid" href="#CoherentStructures.regularTetrahedralGrid"><code>CoherentStructures.regularTetrahedralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularTetrahedralGrid(numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)</code></pre><p>Create a regular P1 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L436-L440">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.regularP2TetrahedralGrid" href="#CoherentStructures.regularP2TetrahedralGrid"><code>CoherentStructures.regularP2TetrahedralGrid</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">regularP2TetrahedralGrid(numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)</code></pre><p>Create a regular P2 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L446-L450">source</a></section><p>All of these methods return a <code>gridContext</code> object.</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.gridContext" href="#CoherentStructures.gridContext"><code>CoherentStructures.gridContext</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">struct gridContext&lt;dim&gt;</code></pre><p>Stores everything needed as &quot;context&quot; to be able to work on a FEM grid based on the <code>JuAFEM</code> package. Adds a point-locator API which facilitates plotting functions defined on the grid within Julia.</p><p><strong>Fields</strong></p><ul><li><code>grid::JuAFEM.Grid</code>, <code>ip::JuAFEM.Interpolation</code>, <code>qr::JuAFEM.QuadratureRule</code> - See the <code>JuAFEM</code> package</li><li><code>loc::CellLocator</code> object used for point-location on the grid.</li><li><code>node_to_dof::Vector{Int}</code>  lookup table for dof index of a node</li><li><code>dof_to_node::Vector{Int}</code>  inverse of node<em>to</em>dof</li><li><code>n::Int</code> number of nodes on the grid</li><li><code>m::Int</code> number of elements (e.g. triangles,quadrilaterals, ...) on the grid</li><li><code>quadrature_points::Vector{Vec{dim,Float64}}</code> All quadrature points on the grid, in a fixed order.</li><li><code>mass_weights::Vector{Float64}</code> Weighting for mass matrix</li><li><code>spatialBounds</code> If available, the corners of a bounding box of a domain. For regular grids, the bounds are tight.</li><li><code>numberOfPointsInEachDirection</code> For regular grids, how many (non-interior) nodes make up the regular grid.</li><li><code>gridType</code> A string describing what kind of grid this is (e.g. &quot;regular triangular grid&quot;)</li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L19-L37">source</a></section><h4><a class="nav-anchor" id="Irregular-grids-1" href="#Irregular-grids-1">Irregular grids</a></h4><p>The constructors for <code>CoherentStructures.gridContext</code>, including one for irregular Delaunay grids, are not exported by default, the documentation is available through the REPL:</p><pre><code class="language-" id="TODO">help?&gt; (::Type{CoherentStructures.gridContext{2}})</code></pre><h3><a class="nav-anchor" id="Boundary-Conditions-API-1" href="#Boundary-Conditions-API-1">Boundary Conditions API</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.boundaryData" href="#CoherentStructures.boundaryData"><code>CoherentStructures.boundaryData</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">mutable struct boundaryData</code></pre><p>Represent (a combination of) homogeneous Dirichlet and periodic boundary conditions. Fields:</p><ul><li><code>dbc_dofs</code> list of dofs that should have homogeneous Dirichlet boundary conditions. Must be sorted.</li><li><code>periodic_dofs_from</code> and <code>periodic_dofs_to</code> are both <code>Vector{Int}</code>. The former <em>must</em> be strictly increasing, both must be the same length. <code>periodic_dofs_from[i]</code> is identified with <code>periodic_dofs_to[i]</code>. <code>periodic_dofs_from[i]</code> must be strictly larger than <code>periodic_dofs_to[i]</code>. Multiple dofs can be identified with the same dof. If some dof is identified with another dof and one of them is in <code>dbc_dofs</code>, both points <em>must</em> be in <code>dbc_dofs</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L1032-L1039">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.getHomDBCS" href="#CoherentStructures.getHomDBCS"><code>CoherentStructures.getHomDBCS</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">getHomDBCS(ctx,which=&quot;all&quot;)</code></pre><p>Return <code>boundaryData</code> object corresponding to homogeneous Dirichlet Boundary Conditions for a set of facesets. <code>which=&quot;all&quot;</code> is shorthand for <code>[&quot;left&quot;,&quot;right&quot;,&quot;top&quot;,&quot;bottom&quot;]</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L1057-L1062">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.undoBCS" href="#CoherentStructures.undoBCS"><code>CoherentStructures.undoBCS</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">undoBCS(ctx,u,bdata)</code></pre><p>Given a vector <code>u</code> in dof order with boundary conditions applied, return the corresponding <code>u</code> in dof order without the boundary conditions.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L1098-L1103">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.applyBCS" href="#CoherentStructures.applyBCS"><code>CoherentStructures.applyBCS</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">applyBCS(ctx,K,bdata)</code></pre><p>Apply the boundary conditions from <code>bdata</code> to the <code>ctx.n</code> by <code>ctx.n</code> sparse matrix <code>K</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L1217-L1221">source</a></section><h3><a class="nav-anchor" id="Helper-functions-1" href="#Helper-functions-1">Helper functions</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.dof2node" href="#CoherentStructures.dof2node"><code>CoherentStructures.dof2node</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">dof2node(ctx,u)</code></pre><p>Interprets <code>u</code> as an array of coefficients ordered in dof order, and reorders them to be in node order.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/util.jl#L76-L81">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.getDofCoordinates" href="#CoherentStructures.getDofCoordinates"><code>CoherentStructures.getDofCoordinates</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">getDofCoordinates(ctx,dofindex)</code></pre><p>Return the coordinates of the node corresponding to the dof with index <code>dofindex</code></p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L1122-L1126">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.evaluate_function_from_dofvals" href="#CoherentStructures.evaluate_function_from_dofvals"><code>CoherentStructures.evaluate_function_from_dofvals</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">evaluate_function_from_dofvals(ctx,dofvals,x_in; [outside_value=0,project_in=false])</code></pre><p>Evaluate a function in the approximation space at the point <code>x_in</code>. If <code>x_in</code> is out of points, return <code>outside_value</code>. If <code>project_in</code> is <code>true</code>, points not within <code>ctx.spatialBounds</code> are first projected into the domain.</p><p>The coefficients in <code>nodevals</code> are interpreted to be in dof order.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L529-L536">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.evaluate_function_from_nodevals" href="#CoherentStructures.evaluate_function_from_nodevals"><code>CoherentStructures.evaluate_function_from_nodevals</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">evaluate_function_from_nodevals(ctx,nodevals,x_in; [outside_value=0, project_in=false])</code></pre><p>Like <code>evaluate_function_from_dofvals</code>, but the coefficients from <code>nodevals</code> are assumed to be in node order.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L480-L484">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.nodal_interpolation" href="#CoherentStructures.nodal_interpolation"><code>CoherentStructures.nodal_interpolation</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">nodal_interpolation(ctx,f)</code></pre><p>Perform nodal interpolation of a function. Returns a vector of coefficients in dof order</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/gridfunctions.jl#L1023-L1027">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.getH" href="#CoherentStructures.getH"><code>CoherentStructures.getH</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">getH(ctx)</code></pre><p>Return the mesh width of a regular grid.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/util.jl#L169-L173">source</a></section><h3><a class="nav-anchor" id="Plotting-API-1" href="#Plotting-API-1">Plotting API</a></h3><h4><a class="nav-anchor" id="FEM-1" href="#FEM-1">FEM</a></h4><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.plot_u" href="#CoherentStructures.plot_u"><code>CoherentStructures.plot_u</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">plot_u(ctx, dof_vals, nx, ny; bdata=nothing, kwargs...)</code></pre><p>Plot the function with coefficients (in dof order, possible boundary conditions in <code>bdata</code>) given by <code>dof_vals</code> on the grid <code>ctx</code>. The domain to be plotted on is given by <code>ctx.spatialBounds</code>. The function is evaluated on a regular <code>nx</code> by <code>ny</code> grid, the resulting plot is a heatmap. Keyword arguments are passed down to <code>plot_u_eulerian</code>, which this function calls internally.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/plotting.jl#L2-L9">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.plot_u_eulerian" href="#CoherentStructures.plot_u_eulerian"><code>CoherentStructures.plot_u_eulerian</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">plot_u_eulerian(ctx,dof_vals,inverse_flow_map,
     LL,UR,nx,ny,
     euler_to_lagrange_points=nothing, only_get_lagrange_points=false,
     z=nothing,
     postprocessor=nothing,
-    bdata=nothing, ....)</code></pre><p>Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of <span>$f$</span>. This is given by <span>$f \circ \Phi^{-1}$</span>, <span>$f$</span> is a function defined on the grid <code>ctx</code>, represented by coefficients given by <code>dof_vals</code> (with possible boundary conditions given in <code>bdata</code>)</p><p>The argument <code>inverse_flow_map</code> is <span>$\Phi^{-1}$</span>.</p><p>The resulting plot is on a regular <code>nx</code> by <code>ny</code> grid on the grid with lower left corner <code>LL</code> and upper right corner <code>UR</code>.</p><p>Points that fall outside of the domain represented by <code>ctx</code> are plotted as <code>NaN</code>, which results in transparency.</p><p>One can pass values to be plotted directly by providing them in an array in the argument <code>z</code>. <code>postprocessor</code> can modify the values being plotted, <code>return_scalar_field</code> results in these values being returned.  See the source code for further details.  Additional arguments are passed to <code>Plots.heatmap</code></p><p>Inverse flow maps are computed in parallel if there are multiple workers.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/plotting.jl#L95-L115">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.eulerian_videos" href="#CoherentStructures.eulerian_videos"><code>CoherentStructures.eulerian_videos</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none"> eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
-    extra_kwargs_fun=nothing, ...)</code></pre><p>Create <code>num_videos::Int</code> videos in eulerian coordinates, i.e. where the time <span>$t$</span> is varied, plot <span>$f_i \circ \Phi_t^0$</span> for <span>$f_1, \dots$</span>.</p><p><code>us(i,t)</code> is a vector of dofs to be plotted at time <code>t</code> for the <code>i</code>th video.</p><p><code>inverse_flow_map_t(t,x)</code> is <span>$\Phi_t^0(x)$</span></p><p><code>t0, tf</code>  are initial and final time. Spatial bounds are given by <code>LL,UR</code></p><p><code>nx,ny,nt</code> give the number of points in each direction.</p><p><code>extra_kwargs_fun(i,t)</code> can be used to provide additional keyword arguments to Plots.heatmap()</p><p>Additional kwargs are passed down to <code>plot_eulerian_video</code></p><p>As much as possible is done in parallel.</p><p>Returns a Vector of iterables <code>result</code>. Call <code>Plots.animate(result[i])</code> to get an animation.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/plotting.jl#L227-L248">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.eulerian_video" href="#CoherentStructures.eulerian_video"><code>CoherentStructures.eulerian_video</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">eulerian_video(ctx, u, inverse_flow_map_t,t0,tf, nx, ny, nt, LL, UR;extra_kwargs_fun=nothing,...)</code></pre><p>Like <code>eulerian_videos</code>, but <code>u(t)</code> is a vector of dofs, and <code>extra_kwargs_fun(t)</code> gives extra keyword arguments. Returns only one result, on which <code>Plots.animate()</code> can be applied.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/plotting.jl#L252-L257">source</a></section><h3><a class="nav-anchor" id="Other-plotting-utilities-1" href="#Other-plotting-utilities-1">Other plotting utilities</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.plot_ftle" href="#CoherentStructures.plot_ftle"><code>CoherentStructures.plot_ftle</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
+    bdata=nothing, ....)</code></pre><p>Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of <span>$f$</span>. This is given by <span>$f \circ \Phi^{-1}$</span>, <span>$f$</span> is a function defined on the grid <code>ctx</code>, represented by coefficients given by <code>dof_vals</code> (with possible boundary conditions given in <code>bdata</code>)</p><p>The argument <code>inverse_flow_map</code> is <span>$\Phi^{-1}$</span>.</p><p>The resulting plot is on a regular <code>nx</code> by <code>ny</code> grid on the grid with lower left corner <code>LL</code> and upper right corner <code>UR</code>.</p><p>Points that fall outside of the domain represented by <code>ctx</code> are plotted as <code>NaN</code>, which results in transparency.</p><p>One can pass values to be plotted directly by providing them in an array in the argument <code>z</code>. <code>postprocessor</code> can modify the values being plotted, <code>return_scalar_field</code> results in these values being returned.  See the source code for further details.  Additional arguments are passed to <code>Plots.heatmap</code></p><p>Inverse flow maps are computed in parallel if there are multiple workers.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/plotting.jl#L95-L115">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.eulerian_videos" href="#CoherentStructures.eulerian_videos"><code>CoherentStructures.eulerian_videos</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none"> eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
+    extra_kwargs_fun=nothing, ...)</code></pre><p>Create <code>num_videos::Int</code> videos in eulerian coordinates, i.e. where the time <span>$t$</span> is varied, plot <span>$f_i \circ \Phi_t^0$</span> for <span>$f_1, \dots$</span>.</p><p><code>us(i,t)</code> is a vector of dofs to be plotted at time <code>t</code> for the <code>i</code>th video.</p><p><code>inverse_flow_map_t(t,x)</code> is <span>$\Phi_t^0(x)$</span></p><p><code>t0, tf</code>  are initial and final time. Spatial bounds are given by <code>LL,UR</code></p><p><code>nx,ny,nt</code> give the number of points in each direction.</p><p><code>extra_kwargs_fun(i,t)</code> can be used to provide additional keyword arguments to Plots.heatmap()</p><p>Additional kwargs are passed down to <code>plot_eulerian_video</code></p><p>As much as possible is done in parallel.</p><p>Returns a Vector of iterables <code>result</code>. Call <code>Plots.animate(result[i])</code> to get an animation.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/plotting.jl#L227-L248">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.eulerian_video" href="#CoherentStructures.eulerian_video"><code>CoherentStructures.eulerian_video</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">eulerian_video(ctx, u, inverse_flow_map_t,t0,tf, nx, ny, nt, LL, UR;extra_kwargs_fun=nothing,...)</code></pre><p>Like <code>eulerian_videos</code>, but <code>u(t)</code> is a vector of dofs, and <code>extra_kwargs_fun(t)</code> gives extra keyword arguments. Returns only one result, on which <code>Plots.animate()</code> can be applied.</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/plotting.jl#L252-L257">source</a></section><h3><a class="nav-anchor" id="Other-plotting-utilities-1" href="#Other-plotting-utilities-1">Other plotting utilities</a></h3><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="CoherentStructures.plot_ftle" href="#CoherentStructures.plot_ftle"><code>CoherentStructures.plot_ftle</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
     δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-    existing_plot=nothing,flip_y=false, check_inbounds=always_true,vari=true)</code></pre><p>Make a heatmap of a FTLE field using finite differences. If <code>existing_plot</code> is given a value, plot using <code>heatmap!</code> on top of it. If <code>flip_y</code> is true, then flip the y-coordinate (needed sometimes due to a bug in Plots). Points where <code>check_inbounds(x[1],x[2],p) == false</code> are set to <code>NaN</code> (i.e. transparent).</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/8182127d6fea25e27356b19ad49ac0450fbae7c6/src/plotting.jl#L418-L427">source</a></section><h3><a class="nav-anchor" id="Defaults-1" href="#Defaults-1">Defaults</a></h3><pre><code class="language-none">const default_quadrature_order=5
+    existing_plot=nothing,flip_y=false, check_inbounds=always_true,vari=true)</code></pre><p>Make a heatmap of a FTLE field using finite differences. If <code>existing_plot</code> is given a value, plot using <code>heatmap!</code> on top of it. If <code>flip_y</code> is true, then flip the y-coordinate (needed sometimes due to a bug in Plots). Points where <code>check_inbounds(x[1],x[2],p) == false</code> are set to <code>NaN</code> (i.e. transparent).</p></div></div><a class="source-link" target="_blank" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/e0edf27dfb9e7d4412d636dfc328ad53abd974fe/src/plotting.jl#L418-L427">source</a></section><h3><a class="nav-anchor" id="Defaults-1" href="#Defaults-1">Defaults</a></h3><pre><code class="language-none">const default_quadrature_order=5
 const default_solver = OrdinaryDiffEq.BS5()</code></pre><footer><hr/><a class="previous" href="basics.html"><span class="direction">Previous</span><span class="title">Basics</span></a><a class="next" href="elliptic.html"><span class="direction">Next</span><span class="title">Geodesic vortices</span></a></footer></article></body></html>

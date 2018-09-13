@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "First install the JuAFEM.jl package.Then, run the following in the Julia REPL:Pkg.clone(\"git@gitlab.lrz.de:ga24guz/CoherentStructures.git\")If you do not have a public key registered with gitlab, do:Pkg.clone(\"https://gitlab.lrz.de/ga24guz/CoherentStructures.git\")"
+    "text": "First install the JuAFEM.jl package.Then, run the following in the Julia REPL:     ]add https://github.com/CoherentStructures/CoherentStructures.jl.git"
 },
 
 {
