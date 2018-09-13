@@ -709,7 +709,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FEM-based methods",
     "title": "CoherentStructures.plot_ftle",
     "category": "function",
-    "text": "plot_ftle(odefun,p,tspan,LL,UR,nx,ny;\n    δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),\n    existing_plot=nothing,flip_y=false, check_inbounds=always_true,vari=true)\n\nMake a heatmap of a FTLE field using finite differences. If existing_plot is given a value, plot using heatmap! on top of it. If flip_y is true, then flip the y-coordinate (needed sometimes due to a bug in Plots). Points where check_inbounds(x[1],x[2],p) == false are set to NaN (i.e. transparent).\n\n\n\n\n\n"
+    "text": "plot_ftle(odefun,p,tspan,LL,UR,nx,ny;\n    δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),\n    existing_plot=nothing,flip_y=false, check_inbounds=always_true)\n\nMake a heatmap of a FTLE field using finite differences. If existing_plot is given a value, plot using heatmap! on top of it. If flip_y is true, then flip the y-coordinate (needed sometimes due to a bug in Plots). Points where check_inbounds(x[1],x[2],p) == false are set to NaN (i.e. transparent).\n\n\n\n\n\n"
 },
 
 {
