@@ -609,16 +609,6 @@ with finite differences.
     return Tensors.tdot(linearized_flow(odefun, u, [tspan[1],tspan[end]], δ; kwargs...)[end])
 end
 
-#TODO: Document this
-@inline function CG_tensor_vari(
-            odefun,
-            u::AbstractVector{T},
-            tspan::AbstractVector{S};
-            kwargs...
-        ) where {T <: Real, S <: Real}
-    return Tensors.tdot(linearized_flow_vari(odefun, (@SVector T[u[1],u[2]]), [tspan[1],tspan[end]]; kwargs...)[end])
-end
-
 """
     pullback_tensors(odefun, u, tspan, δ; D, kwargs...) -> Tuple(Vector{SymmetricTensor},Vector{SymmetricTensor})
 
