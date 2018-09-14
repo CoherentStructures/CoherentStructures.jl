@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Rotating Double Gyre · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">Home</a></li><li><span class="toctext">Examples</span><ul><li class="current"><a class="toctext" href="rot_double_gyre.html">Rotating Double Gyre</a><ul class="internal"><li><a class="toctext" href="#Description-1">Description</a></li><li><a class="toctext" href="#FEM-Based-Methods-1">FEM-Based Methods</a></li><li><a class="toctext" href="#Geodesic-vortices-1">Geodesic vortices</a></li></ul></li><li><a class="toctext" href="ocean_flow.html">Geostrophic Ocean Flow</a></li><li><a class="toctext" href="bickley.html">Bickley Jet</a></li><li><a class="toctext" href="standard_map.html">Standard Map</a></li></ul></li><li><a class="toctext" href="basics.html">Basics</a></li><li><span class="toctext">Methods</span><ul><li><a class="toctext" href="fem.html">FEM-based methods</a></li><li><a class="toctext" href="elliptic.html">Geodesic vortices</a></li><li><a class="toctext" href="Laplace.html">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href="rot_double_gyre.html">Rotating Double Gyre</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/src/rot_double_gyre.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Rotating Double Gyre</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Rotating-Double-Gyre-1" href="#Rotating-Double-Gyre-1">Rotating Double Gyre</a></h1><h2><a class="nav-anchor" id="Description-1" href="#Description-1">Description</a></h2><p>The rotating double gyre model was introduced by <a href="https://dx.doi.org/10.1137/100794110">Mosovsky &amp; Meiss</a>. It can be derived from the stream function</p><div>\[\psi(x,y,t)=(1−s(t))\psi_P +s(t)\psi_F \\ \psi_P (x, y) = \sin(2\pi x) \sin(\pi y) \\ \psi_F (x, y) = \sin(\pi x) \sin(2\pi y)\]</div><p>where <span>$s$</span> is (usually taken to be) a cubic interpolating function satisfying <span>$s(0) = 0$</span> and <span>$s(1) = 1$</span>. It therefore interpolates two double gyre flow fields, from horizontally to vertically arranged counter-rotating gyres. The corresponding velocity field is provided by the package and callable as <code>rot_double_gyre</code>.</p><h2><a class="nav-anchor" id="FEM-Based-Methods-1" href="#FEM-Based-Methods-1">FEM-Based Methods</a></h2><p>The following code-snippet shows how these methods can be used.</p><pre><code class="language-">using CoherentStructures,Arpack
+LL = [0.0,0.0]; UR = [1.0,1.0];
+ctx = regularTriangularGrid((50,50),LL,UR)
+
+A = x-&gt; mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-4)
+K = assembleStiffnessMatrix(ctx,A)
+M = assembleMassMatrix(ctx)
+λ, v = eigs(-K,M,which=:SM);</code></pre><p>This velocity field is given by the <code>rot_double_gyre</code> function. The second argument to <code>mean_diff_tensor</code> are the times at which we average the pullback diffusion tensors. The third parameter is the step size δ used for the finite-difference scheme, <code>tolerance</code> is passed to the ODE solver from <a href="http://juliadiffeq.org/">DifferentialEquations.jl</a>. In the above, <code>A(x)</code> approximates the mean diffusion tensor given by</p><div>\[A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}\]</div><p>The eigenfunctions saved in <code>v</code> approximate those of <span>$\Delta^{dyn}$</span></p><pre><code class="language-">import Plots
+res = [plot_u(ctx, v[:,i],colorbar=:none,clim=(-3,3)) for i in 1:6];
+Plots.plot(res...,margin=-10Plots.px)</code></pre><p>Looking at the spectrum, there appears a gap after the third eigenvalue:</p><pre><code class="language-">Plots.scatter(1:6, real.(λ))</code></pre><p>We can use the <a href="https://github.com/JuliaStats/Clustering.jl">Clustering.jl</a> package to compute coherent structures from the first two nontrivial eigenfunctions:</p><pre><code class="language-">using Clustering
+numclusters=2
+res = kmeans(permutedims(v[:,2:numclusters+1]),numclusters+1)
+u = kmeansresult2LCS(res)
+Plots.plot([plot_u(ctx,u[:,i],200,200,color=:viridis) for i in [1,2,3]]...)
+</code></pre><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here, we demonstrate how to calculate black-hole vortices, see <a href="elliptic.html#Geodesic-elliptic-material-vortices-1">Geodesic elliptic material vortices</a> for references and details.</p><pre><code class="language-">using CoherentStructures
+import Tensors, OrdinaryDiffEq, Plots
+
+const q = 51
+const tspan = collect(range(0.,stop=1.,length=q))
+ny = 101
+nx = 101
+N = nx*ny
+xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
+xspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)
+P = vcat.(xspan&#39;,yspan)
+const δ = 1.e-6
+mCG_tensor = u -&gt; CG_tensor(rot_double_gyre,u,tspan,δ,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
+
+C = map(mCG_tensor,P)
+
+LCSparams = (.1, 0.5, 0.01, 0.2, 0.3, 60)
+vals, signs, orbits = ellipticLCS(C,xspan,yspan,LCSparams);</code></pre><p>The results are then visualized as follows.</p><pre><code class="language-">using Statistics
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C)
+# damp &quot;outliers&quot;
+l₁ = min.(λ₁,quantile(λ₁[:],0.999))
+l₁ = max.(λ₁,1e-2)
+l₂ = min.(λ₂,quantile(λ₂[:],0.995))
+
+fig = Plots.heatmap(xspan,yspan,log10.(l₂),aspect_ratio=1,color=:viridis,
+            title=&quot;FTLE-field and transport barriers&quot;,xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
+for i in eachindex(orbits)
+    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label=&quot;T = $(round(vals[i],digits=2))&quot;)
+end
+Plots.plot(fig)</code></pre><footer><hr/><a class="previous" href="index.html"><span class="direction">Previous</span><span class="title">Home</span></a><a class="next" href="ocean_flow.html"><span class="direction">Next</span><span class="title">Geostrophic Ocean Flow</span></a></footer></article></body></html>

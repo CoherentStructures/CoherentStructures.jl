@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Standard Map · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">Home</a></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="rot_double_gyre.html">Rotating Double Gyre</a></li><li><a class="toctext" href="ocean_flow.html">Geostrophic Ocean Flow</a></li><li><a class="toctext" href="bickley.html">Bickley Jet</a></li><li class="current"><a class="toctext" href="standard_map.html">Standard Map</a><ul class="internal"></ul></li></ul></li><li><a class="toctext" href="basics.html">Basics</a></li><li><span class="toctext">Methods</span><ul><li><a class="toctext" href="fem.html">FEM-based methods</a></li><li><a class="toctext" href="elliptic.html">Geodesic vortices</a></li><li><a class="toctext" href="Laplace.html">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href="standard_map.html">Standard Map</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/src/standard_map.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Standard Map</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Standard-Map-1" href="#Standard-Map-1">Standard Map</a></h1><p>The &quot;standard map&quot; with parameter <span>$a$</span> is defined on a 2-dimensional doubly 2π-periodic domain by <span>$f(x,y) = (x+ y+ a \sin(x),y + a\cos(x))$</span>.</p><p>For <span>$a = 0.971635$</span>, the standard map is implemented in <code>CoherentStructures.standardMap</code>, its Jacobi-matrix in <code>CoherentStructures.DstandardMap</code>.</p><p>See also <a href="https://arxiv.org/abs/1505.05056">Froyland &amp; Junge (2015)</a>, who calculate Coherent Structures for this map.</p><p>Below are some orbits of the standard map</p><pre><code class="language-">using CoherentStructures
+using Random,Plots
+to_plot = []
+for i in 1:50
+    Random.seed!(i)
+    x = rand(2)*2π
+    for i in 1:500
+        x = CoherentStructures.standardMap(x)
+        push!(to_plot,x)
+    end
+end
+Plots.scatter([x[1] for x in to_plot],[x[2] for x in to_plot],
+    m=:pixel,ms=1,aspect_ratio=1,legend=:none)</code></pre><p>Approximating the Dynamical Laplacian by FEM methods is straightforward:</p><pre><code class="language-">using Tensors, Plots, Arpack, Printf
+ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
+pred  = (x,y) -&gt; peuclidean(x[1],y[1],2π) &lt; 1e-9 &amp;&amp; peuclidean(x[2],y[2],2π) &lt; 1e-9
+bdata = boundaryData(ctx,pred) #Periodic boundary
+
+id2 = one(Tensors.Tensor{2,2}) # 2D identity tensor
+cgfun = x -&gt; 0.5*(id2 +  Tensors.dott(Tensors.inv(CoherentStructures.DstandardMap(x))))
+
+K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
+M = assembleMassMatrix(ctx,lumped=false,bdata=bdata)
+@time λ, v = eigs(-1*K,M,which=:SM)
+Plots.plot(
+    [plot_u(ctx,v[:,i],bdata=bdata,title=@sprintf(&quot;\\lambda = %.3f&quot;,λ[i]),
+        clim=(-0.25,0.25),colorbar=:none)
+         for i in 1:6]...)</code></pre><footer><hr/><a class="previous" href="bickley.html"><span class="direction">Previous</span><span class="title">Bickley Jet</span></a><a class="next" href="basics.html"><span class="direction">Next</span><span class="title">Basics</span></a></footer></article></body></html>

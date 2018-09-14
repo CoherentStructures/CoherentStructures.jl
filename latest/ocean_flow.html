@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Geostrophic Ocean Flow · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">Home</a></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="rot_double_gyre.html">Rotating Double Gyre</a></li><li class="current"><a class="toctext" href="ocean_flow.html">Geostrophic Ocean Flow</a><ul class="internal"><li><a class="toctext" href="#Geodesic-vortices-1">Geodesic vortices</a></li></ul></li><li><a class="toctext" href="bickley.html">Bickley Jet</a></li><li><a class="toctext" href="standard_map.html">Standard Map</a></li></ul></li><li><a class="toctext" href="basics.html">Basics</a></li><li><span class="toctext">Methods</span><ul><li><a class="toctext" href="fem.html">FEM-based methods</a></li><li><a class="toctext" href="elliptic.html">Geodesic vortices</a></li><li><a class="toctext" href="Laplace.html">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href="ocean_flow.html">Geostrophic Ocean Flow</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/src/ocean_flow.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Geostrophic Ocean Flow</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Geostrophic-Ocean-Flow-1" href="#Geostrophic-Ocean-Flow-1">Geostrophic Ocean Flow</a></h1><p>For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature.</p><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here, we demonstrate how to detect material barriers to diffusive transport.</p><pre><code class="language-">using CoherentStructures
+import JLD2, OrdinaryDiffEq, Plots
+###################### load and interpolate velocity data sets #############
+JLD2.@load(&quot;../../examples/Ocean_geostrophic_velocity.jld2&quot;)
+
+UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
+p = (UI,VI)
+
+############################ integration set up ################################
+q = 91
+t_initial = minimum(Time)
+t_final = t_initial + 90
+const tspan = range(t_initial,stop=t_final,length=q)
+nx = 500
+ny = Int(floor(0.6*nx))
+N = nx*ny
+xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
+xspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)
+P = vcat.(xspan&#39;,yspan)
+const δ = 1.e-5
+mCG_tensor = u -&gt; av_weighted_CG_tensor(interp_rhs,u,tspan,δ,p = p,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())
+
+C̅ = map(mCG_tensor,P)
+LCSparams = (.09, 0.5, 0.05, 0.5, 1.0, 60)
+vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);</code></pre><p>The result is visualized as follows:</p><pre><code class="language-">using Statistics
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+l₁ = min.(λ₁,quantile(λ₁[:],0.999))
+l₁ = max.(λ₁,1e-2)
+l₂ = min.(λ₂,quantile(λ₂[:],0.995))
+fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
+            title=&quot;DBS-field and transport barriers&quot;,xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)
+for i in eachindex(orbits)
+    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label=&quot;T = $(round(vals[i],digits=2))&quot;)
+end
+Plots.plot(fig)</code></pre><footer><hr/><a class="previous" href="rot_double_gyre.html"><span class="direction">Previous</span><span class="title">Rotating Double Gyre</span></a><a class="next" href="bickley.html"><span class="direction">Next</span><span class="title">Bickley Jet</span></a></footer></article></body></html>

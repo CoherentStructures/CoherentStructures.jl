@@ -33,91 +33,115 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "examples.html#",
-    "page": "Examples",
-    "title": "Examples",
+    "location": "rot_double_gyre.html#",
+    "page": "Rotating Double Gyre",
+    "title": "Rotating Double Gyre",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "examples.html#Examples-1",
-    "page": "Examples",
-    "title": "Examples",
-    "category": "section",
-    "text": "As a quick hands-on introduction, we demonstrate the usage of the CoherentStructures package on some classic flow problems. For references to the original works in which the methods were developed see the respective help page."
-},
-
-{
-    "location": "examples.html#Rotating-Double-Gyre-1",
-    "page": "Examples",
+    "location": "rot_double_gyre.html#Rotating-Double-Gyre-1",
+    "page": "Rotating Double Gyre",
     "title": "Rotating Double Gyre",
     "category": "section",
-    "text": "The rotating double gyre model was introduced by Mosovsky & Meiss. It can be derived from the stream function $ \\psi(x,y,t)=(1−s(t))\\psiP +s(t)\\psiF$ psi_P (x y) = sin(2pi x) sin(pi y) psi_F (x y) = sin(pi x) sin(2pi y)where s is (usually taken to be) a cubic interpolating function satisfying s(0) = 0 and s(1) = 1. It therefore interpolates two double gyre flow fields, from horizontally to vertically arranged counter-rotating gyres. The corresponding velocity field is provided by the package and callable as rot_double_gyre."
+    "text": ""
 },
 
 {
-    "location": "examples.html#FEM-Based-Methods-1",
-    "page": "Examples",
+    "location": "rot_double_gyre.html#Description-1",
+    "page": "Rotating Double Gyre",
+    "title": "Description",
+    "category": "section",
+    "text": "The rotating double gyre model was introduced by Mosovsky & Meiss. It can be derived from the stream functionpsi(xyt)=(1s(t))psi_P +s(t)psi_F  psi_P (x y) = sin(2pi x) sin(pi y)  psi_F (x y) = sin(pi x) sin(2pi y)where s is (usually taken to be) a cubic interpolating function satisfying s(0) = 0 and s(1) = 1. It therefore interpolates two double gyre flow fields, from horizontally to vertically arranged counter-rotating gyres. The corresponding velocity field is provided by the package and callable as rot_double_gyre."
+},
+
+{
+    "location": "rot_double_gyre.html#FEM-Based-Methods-1",
+    "page": "Rotating Double Gyre",
     "title": "FEM-Based Methods",
     "category": "section",
     "text": "The following code-snippet shows how these methods can be used.using CoherentStructures,Arpack\nLL = [0.0,0.0]; UR = [1.0,1.0];\nctx = regularTriangularGrid((50,50),LL,UR)\n\nA = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-10,tolerance= 1.e-4)\nK = assembleStiffnessMatrix(ctx,A)\nM = assembleMassMatrix(ctx)\nλ, v = eigs(-K,M,which=:SM);This velocity field is given by the rot_double_gyre function. The second argument to mean_diff_tensor are the times at which we average the pullback diffusion tensors. The third parameter is the step size δ used for the finite-difference scheme, tolerance is passed to the ODE solver from DifferentialEquations.jl. In the above, A(x) approximates the mean diffusion tensor given byA(x) = sum_t in mathcal T(DPhi^t(x))^-1 (DPhi^t x)^-TThe eigenfunctions saved in v approximate those of Delta^dynimport Plots\nres = [plot_u(ctx, v[:,i],colorbar=:none,clim=(-3,3)) for i in 1:6];\nPlots.plot(res...,margin=-10Plots.px)Looking at the spectrum, there appears a gap after the third eigenvalue:Plots.scatter(1:6, real.(λ))We can use the Clustering.jl package to compute coherent structures from the first two nontrivial eigenfunctions:using Clustering\nnumclusters=2\nres = kmeans(permutedims(v[:,2:numclusters+1]),numclusters+1)\nu = kmeansresult2LCS(res)\nPlots.plot([plot_u(ctx,u[:,i],200,200,color=:viridis) for i in [1,2,3]]...)\n"
 },
 
 {
-    "location": "examples.html#Geodesic-vortices-1",
-    "page": "Examples",
+    "location": "rot_double_gyre.html#Geodesic-vortices-1",
+    "page": "Rotating Double Gyre",
     "title": "Geodesic vortices",
     "category": "section",
     "text": "Here, we demonstrate how to calculate black-hole vortices, see Geodesic elliptic material vortices for references and details.using CoherentStructures\nimport Tensors, OrdinaryDiffEq, Plots\n\nconst q = 51\nconst tspan = collect(range(0.,stop=1.,length=q))\nny = 101\nnx = 101\nN = nx*ny\nxmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0\nxspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)\nP = vcat.(xspan\',yspan)\nconst δ = 1.e-6\nmCG_tensor = u -> CG_tensor(rot_double_gyre,u,tspan,δ,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())\n\nC = map(mCG_tensor,P)\n\nLCSparams = (.1, 0.5, 0.01, 0.2, 0.3, 60)\nvals, signs, orbits = ellipticLCS(C,xspan,yspan,LCSparams);The results are then visualized as follows.using Statistics\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C)\n# damp \"outliers\"\nl₁ = min.(λ₁,quantile(λ₁[:],0.999))\nl₁ = max.(λ₁,1e-2)\nl₂ = min.(λ₂,quantile(λ₂[:],0.995))\n\nfig = Plots.heatmap(xspan,yspan,log10.(l₂),aspect_ratio=1,color=:viridis,\n            title=\"FTLE-field and transport barriers\",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)\nfor i in eachindex(orbits)\n    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label=\"T = $(round(vals[i],digits=2))\")\nend\nPlots.plot(fig)"
 },
 
 {
-    "location": "examples.html#Bickley-Jet-1",
-    "page": "Examples",
-    "title": "Bickley Jet",
-    "category": "section",
-    "text": "The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by Rypina et al.; cf. also del‐Castillo‐Negrete and Morrison.The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field is provided by the package and callable as bickleyJet."
+    "location": "ocean_flow.html#",
+    "page": "Geostrophic Ocean Flow",
+    "title": "Geostrophic Ocean Flow",
+    "category": "page",
+    "text": ""
 },
 
 {
-    "location": "examples.html#Geodesic-vortices-2",
-    "page": "Examples",
-    "title": "Geodesic vortices",
-    "category": "section",
-    "text": "Here we briefly demonstrate how to find material barriers to diffusive transport; see Geodesic elliptic material vortices for references and details.using CoherentStructures, Arpack\nimport Tensors, OrdinaryDiffEq\n\nconst q = 81\nconst tspan = collect(range(0.,stop=3456000.,length=q))\nny = 120\nnx = div(ny*24,6)\nN = nx*ny\nxmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0\nxspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)\nP = vcat.(xspan\',yspan)\nconst δ = 1.e-6\nconst DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])\nmCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,\n          D=DiffTensor,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())\n\nC̅ = map(mCG_tensor,P)\n\nLCSparams = (.1, 0.5, 0.04, 0.5, 1.8, 60)\nvals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);The result is visualized as follows:import Plots\nusing Statistics\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nl₁ = min.(λ₁,quantile(λ₁[:],0.999))\nl₁ = max.(λ₁,1e-2)\nl₂ = min.(λ₂,quantile(λ₂[:],0.995))\nbegin\n    fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,\n            title=\"DBS-field and transport barriers\",xlims=(0., 6.371π),ylims=(-3., 3.),leg=true)\n    for i in eachindex(orbits)\n        Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label=\"T = $(round(vals[i],digits=2))\")\n    end\nend\nPlots.plot(fig)"
-},
-
-{
-    "location": "examples.html#FEM-based-Methods-1",
-    "page": "Examples",
-    "title": "FEM-based Methods",
-    "category": "section",
-    "text": "The Bickley Jet is described by a time-dependent velocity field arising from a stream-function. Instead of using the bickleyJet function to get this velocity field, we can use the @velo_from_stream macro:using CoherentStructures\n# after this, \'bickley\' will reference a Dictionary of functions\n# access it via the desired signature. e.g. F = bickley[:(dU, U, p, t)]\n# for the right side of the equation of variation.\nbickley = @velo_from_stream stream begin\n    stream = psi₀ + psi₁\n    psi₀   = - U₀ * L₀ * tanh(y / L₀)\n    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term\n\n    re_sum_term =  Σ₁ + Σ₂ + Σ₃\n\n    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))\n    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))\n    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))\n\n    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀\n\n    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3\n    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)\n\n    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3\nend;As we are using a periodic domain in one direction:LL = [0.0,-3.0]; UR=[6.371π,3.0]\nctx = regularTriangularGrid((100,30),LL,UR,quadrature_order=1)\npredicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 6.371π) < 1e-10\nbdata = CoherentStructures.boundaryData(ctx,predicate,[]);Using a FEM-based method to compute coherent structures:using Arpack,Statistics\ncgfun = (x -> mean(pullback_diffusion_tensor(bickley, x,range(0.0,stop=40*3600*24,length=81),\n     1.e-8,tolerance=1.e-5)))\n\nK = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)\nM = assembleMassMatrix(ctx,bdata=bdata)\nλ, v = eigs(K,M,which=:SM, nev= 10)\nplot_real_spectrum(λ)K-means clustering gives something we can plot:using Clustering,Plots\nn_partition = 8\nres = kmeans(permutedims(v[:,2:n_partition]),n_partition)\nu = kmeansresult2LCS(res)\nu_combined = sum([u[:,i]*i for i in 1:n_partition])\nplot_u(ctx, u_combined,200,200,bdata=bdata,\n    color=:rainbow,colorbar=:none,title=\"$n_partition-partition of Bickley Jet\")We ran kmeans only once. To get better results, kmeans should be run several times and only the run with the lowest objective function be kept."
-},
-
-{
-    "location": "examples.html#Geostrophic-Ocean-Flow-1",
-    "page": "Examples",
+    "location": "ocean_flow.html#Geostrophic-Ocean-Flow-1",
+    "page": "Geostrophic Ocean Flow",
     "title": "Geostrophic Ocean Flow",
     "category": "section",
     "text": "For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature."
 },
 
 {
-    "location": "examples.html#Geodesic-vortices-3",
-    "page": "Examples",
+    "location": "ocean_flow.html#Geodesic-vortices-1",
+    "page": "Geostrophic Ocean Flow",
     "title": "Geodesic vortices",
     "category": "section",
     "text": "Here, we demonstrate how to detect material barriers to diffusive transport.using CoherentStructures\nimport JLD2, OrdinaryDiffEq, Plots\n###################### load and interpolate velocity data sets #############\nJLD2.@load(\"../../examples/Ocean_geostrophic_velocity.jld2\")\n\nUI, VI = interpolateVF(Lon,Lat,Time,UT,VT)\np = (UI,VI)\n\n############################ integration set up ################################\nq = 91\nt_initial = minimum(Time)\nt_final = t_initial + 90\nconst tspan = range(t_initial,stop=t_final,length=q)\nnx = 500\nny = Int(floor(0.6*nx))\nN = nx*ny\nxmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0\nxspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)\nP = vcat.(xspan\',yspan)\nconst δ = 1.e-5\nmCG_tensor = u -> av_weighted_CG_tensor(interp_rhs,u,tspan,δ,p = p,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())\n\nC̅ = map(mCG_tensor,P)\nLCSparams = (.09, 0.5, 0.05, 0.5, 1.0, 60)\nvals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);The result is visualized as follows:using Statistics\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nl₁ = min.(λ₁,quantile(λ₁[:],0.999))\nl₁ = max.(λ₁,1e-2)\nl₂ = min.(λ₂,quantile(λ₂[:],0.995))\nfig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,\n            title=\"DBS-field and transport barriers\",xlims=(xmin, xmax),ylims=(ymin, ymax),leg=true)\nfor i in eachindex(orbits)\n    Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label=\"T = $(round(vals[i],digits=2))\")\nend\nPlots.plot(fig)"
 },
 
 {
-    "location": "examples.html#Standard-Map-1",
-    "page": "Examples",
+    "location": "bickley.html#",
+    "page": "Bickley Jet",
+    "title": "Bickley Jet",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "bickley.html#Bickley-Jet-1",
+    "page": "Bickley Jet",
+    "title": "Bickley Jet",
+    "category": "section",
+    "text": "The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by Rypina et al.; cf. also del‐Castillo‐Negrete and Morrison.The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field is provided by the package and callable as bickleyJet."
+},
+
+{
+    "location": "bickley.html#Geodesic-vortices-1",
+    "page": "Bickley Jet",
+    "title": "Geodesic vortices",
+    "category": "section",
+    "text": "Here we briefly demonstrate how to find material barriers to diffusive transport; see Geodesic elliptic material vortices for references and details.using CoherentStructures, Arpack\nimport Tensors, OrdinaryDiffEq\n\nconst q = 81\nconst tspan = collect(range(0.,stop=3456000.,length=q))\nny = 120\nnx = div(ny*24,6)\nN = nx*ny\nxmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0\nxspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)\nP = vcat.(xspan\',yspan)\nconst δ = 1.e-6\nconst DiffTensor = Tensors.SymmetricTensor{2,2}([2., 0., 1/2])\nmCG_tensor = u -> av_weighted_CG_tensor(bickleyJet,u,tspan,δ,\n          D=DiffTensor,tolerance=1e-6,solver=OrdinaryDiffEq.Tsit5())\n\nC̅ = map(mCG_tensor,P)\n\nLCSparams = (.1, 0.5, 0.04, 0.5, 1.8, 60)\nvals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);The result is visualized as follows:import Plots\nusing Statistics\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nl₁ = min.(λ₁,quantile(λ₁[:],0.999))\nl₁ = max.(λ₁,1e-2)\nl₂ = min.(λ₂,quantile(λ₂[:],0.995))\nbegin\n    fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,\n            title=\"DBS-field and transport barriers\",xlims=(0., 6.371π),ylims=(-3., 3.),leg=true)\n    for i in eachindex(orbits)\n        Plots.plot!(orbits[i][1,:],orbits[i][2,:],w=3,label=\"T = $(round(vals[i],digits=2))\")\n    end\nend\nPlots.plot(fig)"
+},
+
+{
+    "location": "bickley.html#FEM-based-Methods-1",
+    "page": "Bickley Jet",
+    "title": "FEM-based Methods",
+    "category": "section",
+    "text": "The Bickley Jet is described by a time-dependent velocity field arising from a stream-function. Instead of using the bickleyJet function to get this velocity field, we can use the @velo_from_stream macro:using CoherentStructures\n# after this, \'bickley\' will reference a Dictionary of functions\n# access it via the desired signature. e.g. F = bickley[:(dU, U, p, t)]\n# for the right side of the equation of variation.\nbickley = @velo_from_stream stream begin\n    stream = psi₀ + psi₁\n    psi₀   = - U₀ * L₀ * tanh(y / L₀)\n    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term\n\n    re_sum_term =  Σ₁ + Σ₂ + Σ₃\n\n    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))\n    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))\n    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))\n\n    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀\n\n    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3\n    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)\n\n    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3\nend;As we are using a periodic domain in one direction:LL = [0.0,-3.0]; UR=[6.371π,3.0]\nctx = regularTriangularGrid((100,30),LL,UR,quadrature_order=1)\npredicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 6.371π) < 1e-10\nbdata = CoherentStructures.boundaryData(ctx,predicate,[]);Using a FEM-based method to compute coherent structures:using Arpack,Statistics\ncgfun = (x -> mean(pullback_diffusion_tensor(bickley, x,range(0.0,stop=40*3600*24,length=81),\n     1.e-8,tolerance=1.e-5)))\n\nK = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)\nM = assembleMassMatrix(ctx,bdata=bdata)\nλ, v = eigs(K,M,which=:SM, nev= 10)\nplot_real_spectrum(λ)K-means clustering gives something we can plot:using Clustering,Plots\nn_partition = 8\nres = kmeans(permutedims(v[:,2:n_partition]),n_partition)\nu = kmeansresult2LCS(res)\nu_combined = sum([u[:,i]*i for i in 1:n_partition])\nplot_u(ctx, u_combined,200,200,bdata=bdata,\n    color=:rainbow,colorbar=:none,title=\"$n_partition-partition of Bickley Jet\")We ran kmeans only once. To get better results, kmeans should be run several times and only the run with the lowest objective function be kept."
+},
+
+{
+    "location": "standard_map.html#",
+    "page": "Standard Map",
+    "title": "Standard Map",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "standard_map.html#Standard-Map-1",
+    "page": "Standard Map",
     "title": "Standard Map",
     "category": "section",
-    "text": "The \"standard map\" with parameter a is defined on a 2-dimensional doubly 2π-periodic domain by f(xy) = (x+ y+ a sin(x)y + acos(x)).For a = 0971635, the standard map is implemented in CoherentStructures.standardMap, its Jacobi-matrix in CoherentStructures.DstandardMap.See also Froyland & Junge (2015), who calculate Coherent Structures for this map.Below are some orbits of the standard mapusing Random\nto_plot = []\nfor i in 1:50\n    Random.seed!(i)\n    x = rand(2)*2π\n    for i in 1:500\n        x = CoherentStructures.standardMap(x)\n        push!(to_plot,x)\n    end\nend\nPlots.scatter([x[1] for x in to_plot],[x[2] for x in to_plot],\n    m=:pixel,ms=1,aspect_ratio=1,legend=:none)Approximating the Dynamical Laplacian by FEM methods is straightforward:using CoherentStructures #hide\nusing Tensors, Plots, Arpack, Printf\nctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])\npred  = (x,y) -> peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π) < 1e-9\nbdata = boundaryData(ctx,pred) #Periodic boundary\n\nid2 = one(Tensors.Tensor{2,2}) # 2D identity tensor\ncgfun = x -> 0.5*(id2 +  Tensors.dott(Tensors.inv(CoherentStructures.DstandardMap(x))))\n\nK = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)\nM = assembleMassMatrix(ctx,lumped=false,bdata=bdata)\n@time λ, v = eigs(-1*K,M,which=:SM)\nPlots.plot(\n    [plot_u(ctx,v[:,i],bdata=bdata,title=@sprintf(\"\\\\lambda = %.3f\",λ[i]),\n        clim=(-0.25,0.25),colorbar=:none)\n         for i in 1:6]...)"
+    "text": "The \"standard map\" with parameter a is defined on a 2-dimensional doubly 2π-periodic domain by f(xy) = (x+ y+ a sin(x)y + acos(x)).For a = 0971635, the standard map is implemented in CoherentStructures.standardMap, its Jacobi-matrix in CoherentStructures.DstandardMap.See also Froyland & Junge (2015), who calculate Coherent Structures for this map.Below are some orbits of the standard mapusing CoherentStructures\nusing Random,Plots\nto_plot = []\nfor i in 1:50\n    Random.seed!(i)\n    x = rand(2)*2π\n    for i in 1:500\n        x = CoherentStructures.standardMap(x)\n        push!(to_plot,x)\n    end\nend\nPlots.scatter([x[1] for x in to_plot],[x[2] for x in to_plot],\n    m=:pixel,ms=1,aspect_ratio=1,legend=:none)Approximating the Dynamical Laplacian by FEM methods is straightforward:using Tensors, Plots, Arpack, Printf\nctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])\npred  = (x,y) -> peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π) < 1e-9\nbdata = boundaryData(ctx,pred) #Periodic boundary\n\nid2 = one(Tensors.Tensor{2,2}) # 2D identity tensor\ncgfun = x -> 0.5*(id2 +  Tensors.dott(Tensors.inv(CoherentStructures.DstandardMap(x))))\n\nK = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)\nM = assembleMassMatrix(ctx,lumped=false,bdata=bdata)\n@time λ, v = eigs(-1*K,M,which=:SM)\nPlots.plot(\n    [plot_u(ctx,v[:,i],bdata=bdata,title=@sprintf(\"\\\\lambda = %.3f\",λ[i]),\n        clim=(-0.25,0.25),colorbar=:none)\n         for i in 1:6]...)"
 },
 
 {
@@ -157,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Basics",
     "title": "CoherentStructures.@velo_from_stream",
     "category": "macro",
-    "text": "@velofromstream(name::Symbol, [code::Expr])\n\nGet the velocity field corresponding to a stream function on R^2.  The defining code can be a series of definitions (in an enclosing begin ... end-block and is treated as a series of symbolic substitutions. Starting from the symbol name, substitutions are performed until the resulting expression only depends on x, y and t.\n\nThe macro returns an anonymous function f(u,p,t) that returns a SVector{2} holding the vector field at u at time t.\n\nThe macro can be called without the code if the stream name has been define beforehand via @define_stream.\n\nExamples\n\njulia> using CoherentStructures\n\njulia> f = @velo_from_stream Ψ_ellipse begin\n               Ψ_ellipse = a*x^2 + b*y^2\n               a = t\n               b = 3\n           end\n(#3) (generic function with 1 method)\n\njulia> f([1.0,1.0], nothing, 1.0)\n2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:\n -6.0\n  2.0\n\njulia> using CoherentStructures\n\njulia> @define_stream Ψ_circular begin\n           Ψ_circular = f(x) + g(y)\n\n           # naming of function variables\n           # does not matter:\n           f(a) = a^2\n           g(y) = y^2\n       end\n\njulia> f2 = @velo_from_stream Ψ_circular\n(#5) (generic function with 1 method)\n\njulia> f2([1.0,1.0], nothing, 0.0)\n2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:\n -2.0\n  2.0\n\n\n\n\n\n"
+    "text": "@velofromstream(name::Symbol, [code::Expr])\n\nGet the velocity field corresponding to a stream function on R^2.  The defining code can be a series of definitions (in an enclosing begin ... end-block and is treated as a series of symbolic substitutions. Starting from the symbol name, substitutions are performed until the resulting expression only depends on x, y and t.\n\nThe macro returns an anonymous function f(u,p,t) that returns a SVector{2} holding the vector field at u at time t.\n\nThe macro can be called without the code if the stream name has been define beforehand via @define_stream.\n\nExamples\n\njulia> using CoherentStructures\n\njulia> f = @velo_from_stream Ψ_ellipse begin\n               Ψ_ellipse = a*x^2 + b*y^2\n               a = t\n               b = 3\n           end\n(#3) (generic function with 1 method)\n\njulia> f([1.0,1.0], nothing, 1.0)\n2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:\n -6.0\n  2.0\n\njulia> using CoherentStructures\n\njulia> @define_stream Ψ_circular begin\n           Ψ_circular = f(x) + g(y)\n           # naming of function variables\n           # does not matter:\n           f(a) = a^2\n           g(y) = y^2\n       end\n\njulia> f2 = @velo_from_stream Ψ_circular\n(#5) (generic function with 1 method)\n\njulia> f2([1.0,1.0], nothing, 0.0)\n2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:\n -2.0\n  2.0\n\n\n\n\n\n"
 },
 
 {
@@ -365,7 +389,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FEM-based methods",
     "title": "Grids",
     "category": "section",
-    "text": "Various types of regular and irregular meshes (with Delaunay triangulation using VoronoiDelaunay.jl ) are supported. These are based on the corresponding elements from JuAFEM.jl and include:Triangular P1-Lagrange elements in 2D (all methods)\nQuadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)\nTriangular and Quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)\nTetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)"
+    "text": "Note that irregular meshes currently do not work in Julia 1.0, the documentation has not been changed to reflect this.Various types of regular and irregular meshes (with Delaunay triangulation using VoronoiDelaunay.jl ) are supported. These are based on the corresponding elements from JuAFEM.jl and include:Triangular P1-Lagrange elements in 2D (all methods)\nQuadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)\nTriangular and Quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)\nTetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)"
 },
 
 {
