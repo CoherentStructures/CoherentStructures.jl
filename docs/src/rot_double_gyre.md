@@ -14,6 +14,8 @@ fields, from horizontally to vertically arranged counter-rotating gyres. The
 corresponding velocity field is provided by the package and callable as
 `rot_double_gyre`.
 
+![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
+
 ## FEM-Based Methods
 
 The following code-snippet shows how these methods can be used.
