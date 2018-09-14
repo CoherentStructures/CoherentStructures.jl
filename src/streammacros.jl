@@ -50,7 +50,7 @@ julia> f = @velo_from_stream Ψ_ellipse begin
                a = t
                b = 3
            end
-(#3) (generic function with 1 method)
+(#3) #1 (generic function with 1 method)
 
 julia> f([1.0,1.0], nothing, 1.0)
 2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
@@ -69,7 +69,7 @@ julia> @define_stream Ψ_circular begin
        end
 
 julia> f2 = @velo_from_stream Ψ_circular
-(#5) (generic function with 1 method)
+(#5) #1 (generic function with 1 method)
 
 julia> f2([1.0,1.0], nothing, 0.0)
 2-element StaticArrays.SArray{Tuple{2},Float64,1,2}:
