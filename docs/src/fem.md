@@ -41,6 +41,8 @@ Note that the $L^2$-Galerkin methods currently perform very poorly on larger pro
 For more details, see [this paper](https://arxiv.org/pdf/1705.03640.pdf).
 
 ### Grids
+Note that irregular meshes currently do not work in Julia 1.0, the documentation has not been changed to reflect this.
+
 Various types of regular and irregular meshes (with Delaunay triangulation using [VoronoiDelaunay.jl](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) and include:
  - Triangular P1-Lagrange elements in 2D (all methods)
  - Quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)

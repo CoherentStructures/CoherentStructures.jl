@@ -62,7 +62,6 @@ julia> using CoherentStructures
 
 julia> @define_stream Ψ_circular begin
            Ψ_circular = f(x) + g(y)
-
            # naming of function variables
            # does not matter:
            f(a) = a^2

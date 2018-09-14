@@ -1,4 +1,3 @@
-Base.HOME_PROJECT[] = abspath(Base.HOME_PROJECT[]) # JuliaLang/julia/pull/28625
 ENV["GKSwstype"] = "100"
 
 using Documenter, CoherentStructures
@@ -10,7 +9,12 @@ makedocs(
     sitename="CoherentStructures.jl",
     pages = Any[
         "Home" => "index.md"
-        "Examples" => "examples.md"
+        "Examples" => [
+            "Rotating Double Gyre" => "rot_double_gyre.md"
+            "Geostrophic Ocean Flow" => "ocean_flow.md"
+            "Bickley Jet" => "bickley.md"
+            "Standard Map" => "standard_map.md"
+            ]
         "Basics" => "basics.md"
         "Methods" => [
             "FEM-based methods" => "fem.md"
