@@ -1,7 +1,7 @@
 #(c) 2018 Nathanael Schilling
 #Plots for paper
 
-using CoherentStructures,Plots,Serialization,LinearAlgebra
+using CoherentStructures,Plots,Serialization,LinearAlgebra, Printf
 
 include("numericalExperiments.jl")
 
@@ -26,6 +26,7 @@ function runStandardMapTests()
   close(myfd)
 end
 
+runStandardMapTests()
 
 
 function runStandardMap8Tests()
@@ -46,7 +47,6 @@ function runStandardMap8Tests()
   close(myfd)
 end
 
-runStandardMapTests()
 runStandardMap8Tests()
 
 
@@ -147,6 +147,8 @@ function standardMapPlots()
   end
 end
 
+standardMapPlots()
+
 
 function standardMap8Plots()
   reference_index = 1
@@ -185,9 +187,9 @@ function standardMap8Plots()
       #loglogleastsquareslines(x,y,gridtypes)
     end
     if j == 1
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMev$(whichev)errsCG.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SM8ev$(whichev)errsCG.pdf")
     else
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMev$(whichev)errsTO.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SM8ev$(whichev)errsTO.pdf")
     end
 
     begin
@@ -216,16 +218,14 @@ function standardMap8Plots()
     end
 
     if j == 1
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMevec23errsCG.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SM8evec23errsCG.pdf")
     else
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMevec23errsTO.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SM8evec23errsTO.pdf")
     end
   end
 end
 
 standardMap8Plots()
-
-standardMapPlots()
 
 
 function standardMapQuadraturePlots()
@@ -263,9 +263,9 @@ function standardMapQuadraturePlots()
       #loglogleastsquareslines(x,y,gridtypes)
     end
     if j == 1
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMev$(whichev)errsCG.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMQev$(whichev)errsCG.pdf")
     else
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMev$(whichev)errsTO.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMQev$(whichev)errsTO.pdf")
     end
 
     begin
@@ -295,9 +295,9 @@ function standardMapQuadraturePlots()
     end
 
     if j == 1
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMevec23errsCG.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMQevec23errsCG.pdf")
     else
-      #Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMevec23errsTO.pdf")
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/SMQevec23errsTO.pdf")
     end
   end
 end
@@ -325,10 +325,28 @@ function runDoubleGyreTests()
   GC.gc()
 end
 
-runDoubleGyreTests()
+
+function runDoubleGyreEqVariTests()
+  results0dg = testDoubleGyreEqVari([],quadrature_order=5,tf=0.25,run_reference=true)
+  results1dg = testDoubleGyreEqVari(experimentRange,run_reference=false,quadrature_order=5,tf=0.25)
+  #results3dg = testDoubleGyreEqVari(experimentRange[2:end],mode=:naTO,run_reference=false,quadrature_order=2,tf=0.25)
+  #results4dg = testDoubleGyreEqVari(experimentRangeSmall,mode=:L2GTOb,run_reference=false,quadrature_order=4,tf=0.25)
+
+  resultsdg = copy(results0dg)
+  append!(resultsdg,results1dg)
+  buildStatistics!(resultsdg,1)
 
 
-function plotDoubleGyreResults()
+  myfd = open("DGEqVari25","w")
+  serialize(myfd,resultsdg)
+  close(myfd)
+  GC.gc()
+end
+
+runDoubleGyreEqVariTests()
+
+
+function doubleGyrePlots()
   resultsdg=open(deserialize,"DG25")
   reference_indexdg = 1
 
@@ -418,10 +436,98 @@ function plotDoubleGyreResults()
   end
 end
 
-plotDoubleGyreResults()
+doubleGyrePlots()
 
 
+function doubleGyreEqVariPlots()
+  resultsdg=open(deserialize,"DGEqVari25")
+  reference_indexdg = 1
 
+  for j in [1]
+    if j == 1
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
+    else
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode != :CG]
+    end
+    begin
+      whichev = 2
+      x = [getH(x.ctx) for x in resultsdg[indexes_to_plotdg]]
+      #y = [abs(x.λ[whichev] - resultsdg[reference_indexdg].λ[whichev])/(resultsdg[reference_index].λ[whichev])  for x in resultsdg[indexes_to_plot]]
+      y = [abs(x.λ[whichev] - resultsdg[reference_indexdg].λ[whichev])/(resultsdg[reference_indexdg].λ[whichev])  for x in resultsdg[indexes_to_plotdg]]
+      gridtypes = [x.ctx.gridType * " $(x.mode)" for x in resultsdg[indexes_to_plotdg]]
+      mycolors = [method_colors[f] for f in gridtypes]
+      ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in resultsdg[indexes_to_plotdg] ]
+      if j == 2
+        legendlabels = [@sprintf("%s, %s ", occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements","$(x.mode)") for x in resultsdg[indexes_to_plotdg]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf("(%.1f)",ev_slopes[gridtypes[i]] )
+        end
+      else
+        legendlabels = [occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements" for x in resultsdg[indexes_to_plotdg]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",ev_slopes[gridtypes[i]] )
+        end
+      end
+      if j == 1
+        ylim = (1e-6,10^(-0.4))
+      else
+        ylim = (1e-3,10^(-0.4))
+      end
+      Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Relative eigenvalue error",m =ms,
+        xscale=:log10,yscale=:log10,color=mycolors,label=legendlabels,
+        legend=(0.43,0.35),ylim=ylim,xlim=(10^-2.4,10^-0.7))
+      #loglogleastsquareslines(x,y,gridtypes)
+      Plots.display(loglogslopeline(x,y,gridtypes,ev_slopes,lsq_c=false))
+      sleep(2)
+    end
+    if j == 1
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/DG25ev$(whichev)errsCG.pdf")
+    else
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/DG25ev$(whichev)errsTO.pdf")
+    end
+    begin
+      whichev=2
+      x = [getH(x.ctx) for x in resultsdg[indexes_to_plotdg]]
+      y = [max(1e-10,sqrt(abs(1 - opnorm((inv(x.statistics["B"])*x.statistics["E"]*inv(resultsdg[reference_indexdg].statistics["B"]))[whichev,whichev]))))  for x in resultsdg[indexes_to_plotdg]]
+      #y = [max(1e-10,sqrt(abs(1 - abs(x.statistics["E"][whichev,whichev]))))  for x in resultsdg[indexes_to_plotdg]]
+      gridtypes = [x.ctx.gridType * " $(x.mode)" for x in resultsdg[indexes_to_plotdg]]
+      mycolors = [method_colors[f] for f in gridtypes]
+      ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in resultsdg[indexes_to_plotdg] ]
+      if j == 1
+        slopes = evec_slopes
+      else
+        slopes = evec_slopes2
+      end
+      if j == 2
+        legendlabels = [@sprintf("%s, %s ", occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements","$(x.mode)") for x in resultsdg[indexes_to_plotdg]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf("(%.1f)",slopes[gridtypes[i]] )
+        end
+      else
+        legendlabels = [(occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements") for x in resultsdg[indexes_to_plotdg]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",slopes[gridtypes[i]] )
+        end
+      end
+      if j == 1
+        ylim = (10^(-5.5),10^-0.8)
+      else
+        ylim = (10^(-2.5),10^-0.8)
+      end
+      Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Eigenvector error",
+        xscale=:log10, yscale=:log10, legend=(0.30,0.20),m=ms,label=legendlabels,color=mycolors,
+        ylim=ylim,xlim=(10^-2.5,10^-0.5))
+      Plots.display(loglogslopeline(x,y,gridtypes,slopes,lsq_c=false))
+      sleep(2)
+    end
+
+    if j == 1
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/DG25evec$(whichev)errsCG.pdf")
+    else
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/DG25evec$(whichev)errsTO.pdf")
+    end
+  end
+end
 
 
 function makeStaticLaplaceTestCase()
@@ -487,8 +593,8 @@ end
 
 function makeDoubleGyre1Results()
   results0dg1 = testDoubleGyre([],quadrature_order=5)
-  results1dg1 = testDoubleGyre(experimentRange[2:end-1],quadrature_order=5,run_reference=false)
-  results3dg1 = testDoubleGyre(experimentRange[2:end-1],mode=:naTO,run_reference=false,quadrature_order=2)
+  results1dg1 = testDoubleGyre(experimentRange[2:end],quadrature_order=5,run_reference=false)
+  results3dg1 = testDoubleGyre(experimentRange[2:end],mode=:naTO,run_reference=false,quadrature_order=2)
   results4dg1 = testDoubleGyre(experimentRangeSmall,mode=:L2GTOb,run_reference=false,quadrature_order=4)
 
   resultsdg1 = copy(results0dg1)
@@ -503,6 +609,8 @@ function makeDoubleGyre1Results()
   close(myfd)
   gc()
 end
+
+makeDoubleGyre1Results()
 
 
 function plotDoubleGyre1Results()
