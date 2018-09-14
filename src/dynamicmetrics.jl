@@ -16,11 +16,11 @@ Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 
 # Example
-```jldoctest
+```
 julia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]
 ([0.0, 0.0], [0.7, 0.0], [0.5, Inf])
 
-julia> Distances.evaluate(PEuclidean(L),x,y)
+julia> evaluate(PEuclidean(L),x,y)
 0.19999999999999996
 ```
 """
@@ -39,7 +39,7 @@ PEuclidean() = Dists.Euclidean()
     end
     @inbounds begin
         s = eval_start(d, a, b)
-        @simd for I in eachindex(a, b, d.periods)
+        @simd for I in 1:length(a)
             ai = a[I]
             bi = b[I]
             li = d.periods[I]
