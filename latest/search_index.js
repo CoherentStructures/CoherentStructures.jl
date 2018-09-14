@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Rotating Double Gyre",
     "title": "Description",
     "category": "section",
-    "text": "The rotating double gyre model was introduced by Mosovsky & Meiss. It can be derived from the stream functionpsi(xyt)=(1s(t))psi_P +s(t)psi_F  psi_P (x y) = sin(2pi x) sin(pi y)  psi_F (x y) = sin(pi x) sin(2pi y)where s is (usually taken to be) a cubic interpolating function satisfying s(0) = 0 and s(1) = 1. It therefore interpolates two double gyre flow fields, from horizontally to vertically arranged counter-rotating gyres. The corresponding velocity field is provided by the package and callable as rot_double_gyre."
+    "text": "The rotating double gyre model was introduced by Mosovsky & Meiss. It can be derived from the stream functionpsi(xyt)=(1s(t))psi_P +s(t)psi_F  psi_P (x y) = sin(2pi x) sin(pi y)  psi_F (x y) = sin(pi x) sin(2pi y)where s is (usually taken to be) a cubic interpolating function satisfying s(0) = 0 and s(1) = 1. It therefore interpolates two double gyre flow fields, from horizontally to vertically arranged counter-rotating gyres. The corresponding velocity field is provided by the package and callable as rot_double_gyre.(Image: )"
 },
 
 {
