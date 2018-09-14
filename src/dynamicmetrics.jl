@@ -17,6 +17,8 @@ For dimensions without periodicity put `Inf` in the respective component.
 
 # Example
 ```jldoctest
+julia> using Distances
+
 julia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]
 ([0.0, 0.0], [0.7, 0.0], [0.5, Inf])
 
