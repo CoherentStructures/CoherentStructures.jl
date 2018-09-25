@@ -140,18 +140,17 @@ Uses `DelaunayVoronoi.jl` internally.
 function gridContext{2}(
             ::Type{JuAFEM.Triangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
-            quadrature_order::Int=default_quadrature_order) =
-    begin
-        grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list)
-        ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
-        dh = JuAFEM.DofHandler(grid)
-        qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-        JuAFEM.close!(dh)
-        result =  gridContext{2}(grid, ip, dh, qr, loc)
-        result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
-        return result
-    end
+            quadrature_order::Int=default_quadrature_order)
+    grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list)
+    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result =  gridContext{2}(grid, ip, dh, qr, loc)
+    result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
+    return result
+end
 
 
 """
@@ -186,8 +185,7 @@ Create a P2 grid given a set of (non-interior) nodes using Delaunay Triangulatio
 function gridContext{2}(
             ::Type{JuAFEM.QuadraticTriangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
-            quadrature_order::Int=default_quadrature_order) =
-begin
+            quadrature_order::Int=default_quadrature_order)
     grid, loc = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, node_list)
     ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
     dh = JuAFEM.DofHandler(grid)
