@@ -333,7 +333,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Basics",
     "title": "CoherentStructures.PEuclidean",
     "category": "type",
-    "text": "PEuclidean(L)\n\nCreate a Euclidean metric on a rectangular periodic domain. Periods per dimension are contained in the vector L. For dimensions without periodicity put Inf in the respective component.\n\nExample\n\njulia> using Distances\n\njulia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]\n([0.0, 0.0], [0.7, 0.0], [0.5, Inf])\n\njulia> Distances.evaluate(PEuclidean(L),x,y)\n0.19999999999999996\n\n\n\n\n\n"
+    "text": "PEuclidean(L)\n\nCreate a Euclidean metric on a rectangular periodic domain. Periods per dimension are contained in the vector L. For dimensions without periodicity put Inf in the respective component.\n\nExample\n\njulia> using Distances\n\njulia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]\n([0.0, 0.0], [0.7, 0.0], [0.5, Inf])\n\njulia> evaluate(PEuclidean(L),x,y)\n0.19999999999999996\n\n\n\n\n\n"
 },
 
 {
