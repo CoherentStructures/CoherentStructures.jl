@@ -1,7 +1,10 @@
 # CoherentStructures.jl
 [![Build Status](https://travis-ci.org/CoherentStructures/CoherentStructures.jl.svg?branch=master)](https://travis-ci.org/CoherentStructures/CoherentStructures.jl)
 
-This package (and this page) are still under construction. 
+CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures
+in aperiodic flows in Julia.
+
+For details, see the Documentation
 
 # Documentation
 [![][docs-latest-img]][docs-latest-url]
