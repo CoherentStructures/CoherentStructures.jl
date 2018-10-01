@@ -696,6 +696,9 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError("Not in domain"))
     end
+    if isnan(x[1]) || isnan(x[2])
+        throw(DomainError("NaN coordinates"))
+    end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
     n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)

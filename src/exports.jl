@@ -43,9 +43,9 @@ export
 
 	#gridfunctions.jl
 	regularTriangularGrid,
-	#regularDelaunayGrid, #TODO 1.0
+	regularDelaunayGrid, 
 	regularP2TriangularGrid,
-	#regularP2DelaunayGrid, #TODO 1.0
+	regularP2DelaunayGrid, 
 	regularQuadrilateralGrid,
 	regularP2QuadrilateralGrid,
 	regularTetrahedralGrid,

@@ -126,7 +126,8 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
                 euler_to_lagrange_points_raw[j,i,1] = back[1]
                 euler_to_lagrange_points_raw[j,i,2] = back[2]
             catch e
-                if isa(e,InexactError)
+                #if isa(e,InexactError)
+                if true
                     euler_to_lagrange_points_raw[j,i,1] = NaN
                     euler_to_lagrange_points_raw[j,i,2] = NaN
                 else
