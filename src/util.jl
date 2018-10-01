@@ -141,8 +141,8 @@ end
 
 #TODO: think of adding @inbounds here
 function interp_rhs!(du, u, p, t)
-    du[1] = p[1][u[1], u[2], t]
-    du[2] = p[2][u[1], u[2], t]
+    du[1] = p[1](u[1], u[2], t)
+    du[2] = p[2](u[1], u[2], t)
 end
 
 """
@@ -155,8 +155,8 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 field.
 """
 function interp_rhs(u, p, t)
-    du1 = p[1][u[1], u[2], t]
-    du2 = p[2][u[1], u[2], t]
+    du1 = p[1](u[1], u[2], t)
+    du2 = p[2](u[1], u[2], t)
     return SA.SVector{2}(du1, du2)
 end
 

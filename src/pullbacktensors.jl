@@ -15,7 +15,7 @@ Solve the ODE with right hand side given by `odefun` and initial value `u0`.
 which is determined by `solver`.
 """
 function flow(
-            odefun::Function,
+            odefun::F,
             u0::AbstractVector{T},
             tspan::AbstractVector{S};
             tolerance = default_tolerance,
@@ -23,7 +23,7 @@ function flow(
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T <: Real, S <: Real}
+        ) where {T <: Real, S <: Real,F}
     # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing
@@ -80,7 +80,7 @@ end
 function _flow(
             ::Type{Val{false}},
             ::Type{Val{2}},
-            odefun::Function,
+            odefun::F,
             u0::SA.SVector{2,T},
             tspan::AbstractVector{S};
             tolerance = default_tolerance,
@@ -88,7 +88,7 @@ function _flow(
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T <: Real, S <: Real}
+        ) where {T <: Real, S <: Real,F}
     prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
     sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                           save_everystep=false, dense=false,
@@ -99,7 +99,7 @@ end
 function _flow(
             ::Type{Val{false}},
             ::Type{Val{3}},
-            odefun::Function,
+            odefun::F,
             u0::SA.SVector{3,T},
             tspan::AbstractVector{S};
             tolerance = default_tolerance,
@@ -107,7 +107,7 @@ function _flow(
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T <: Real, S <: Real}
+        ) where {T <: Real, S <: Real,F}
     prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
     sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                           save_everystep=false, dense=false,
@@ -118,7 +118,7 @@ end
 function _flow(
             ::Type{Val{true}},
             ::Type{Val{2}},
-            odefun::Function,
+            odefun::F,
             u0::AbstractVector{T},
             tspan::AbstractVector{S};
             tolerance = default_tolerance,
@@ -126,7 +126,7 @@ function _flow(
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T <: Real, S <: Real}
+        ) where {T <: Real, S <: Real,F}
     prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
     sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                           save_everystep=false, dense=false,
@@ -137,7 +137,7 @@ end
 function _flow(
             ::Type{Val{false}},
             ::Type{Val{3}},
-            odefun::Function,
+            odefun::F,
             u0::AbstractVector{T},
             tspan::AbstractVector{S};
             tolerance = default_tolerance,
@@ -145,7 +145,7 @@ function _flow(
             solver = default_solver,
             #ctx_for_boundscheck=nothing,
             force_dtmin=false
-        ) where {T <: Real, S <: Real}
+        ) where {T <: Real, S <: Real,F}
     prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
     sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
                           save_everystep=false, dense=false,
@@ -249,14 +249,14 @@ variational equation in this case).
 Return time-resolved linearized flow maps.
 """
 @inline function linearized_flow(
-            odefun::Function,
+            odefun::F,
             x::SA.SVector{2,T},
             tspan::AbstractVector{Float64},
             δ::Float64;
             tolerance=default_tolerance,
             solver=default_solver,
             p=nothing
-        )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real}
+        )::Vector{Tensors.Tensor{2,2,T,4}} where {T <: Real,F}
 
     num_tsteps = length(tspan)
     num_args = DiffEqBase.numargs(odefun)
@@ -303,14 +303,14 @@ Return time-resolved linearized flow maps.
 end
 
 @inline function linearized_flow(
-            odefun::Function,
+            odefun::F,
             x::SA.SVector{3,T},
             tspan::AbstractVector{Float64},
             δ::Float64;
             tolerance=default_tolerance,
             solver=default_solver,
             p=nothing
-        )::Vector{Tensors.Tensor{2,3,T,9}} where {T <: Real}
+        )::Vector{Tensors.Tensor{2,3,T,9}} where {T <: Real,F}
 
     num_tsteps = length(tspan)
     num_args = DiffEqBase.numargs(odefun)
@@ -355,15 +355,15 @@ end
     end
 end
 
-@inline function linearized_flow(odefun::Function, u::Tensors.Vec{2,T},args...;kwargs...)::Vector{Tensors.Tensor{2,2,T,4}} where {T<:Real}
+@inline function linearized_flow(odefun::F, u::Tensors.Vec{2,T},args...;kwargs...)::Vector{Tensors.Tensor{2,2,T,4}} where {T<:Real,F}
     return linearized_flow(odefun, SA.SVector{2,T}(u), args...; kwargs...)
 end
 
-@inline function linearized_flow(odefun::Function, u::Tensors.Vec{3,T},args...;kwargs...)::Vector{Tensors.Tensor{2,3,T,9}} where {T<:Real}
+@inline function linearized_flow(odefun::F, u::Tensors.Vec{3,T},args...;kwargs...)::Vector{Tensors.Tensor{2,3,T,9}} where {T<:Real,F}
     return linearized_flow(odefun, SA.SVector{3,T}(u), args...; kwargs...)
 end
 
-@inline function linearized_flow(odefun::Function, u::AbstractVector{T}, args...; kwargs...) where {T<:Real}
+@inline function linearized_flow(odefun::F, u::AbstractVector{T}, args...; kwargs...) where {T<:Real,F}
     if length(u) == 2
         return linearized_flow(odefun, SA.SVector{2,T}(u[1], u[2]), args...; kwargs...)
     elseif length(u) == 3

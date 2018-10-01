@@ -46,14 +46,7 @@ function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=defa
     new_ctx = gridContext{2}(JuAFEM.Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
     #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
     I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
-    # Nate's version
-    # result = spzeros(n,n)
-    # for i in eachindex(I,J,V)
-    #     #The node-ordering of the grid in new_ctx is the dof-ordering of the grid in ctx
-    #     result[new_ctx.dof_to_node[I[i]],new_ctx.dof_to_node[J[i]]] = V[i]
-    # end
-    # end of Nate's version
-    # Daniel's version
+
     I .= new_ctx.dof_to_node[I]
     J .= new_ctx.dof_to_node[J]
     result = sparse(I,J,V,n,n)

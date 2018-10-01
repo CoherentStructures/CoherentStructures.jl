@@ -3,9 +3,8 @@
 #This includes methods for making grids from Delaunay Triangulations based
 #on the code in FEMDL.jl
 
-##TODO 1.0
-#const GP = GeometricalPredicates
-#const VD = VoronoiDelaunay
+const GP = GeometricalPredicates
+const VD = VoronoiDelaunay
 
 
 #JuAFEM has no functions for determining which cell a point is in.
@@ -130,29 +129,28 @@ function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
     return res
 end
 
-#= TODO 1.0
-#Constructor for grids created with delaunay triangulations.
+#= #TODO 1.0
 """
     gridContext{2}(JuAFEM.Triangle, node_list, [quadrature_order=default_quadrature_order])
 
 Create a P1-Lagrange grid based on Delaunay Triangulation.
 Uses `DelaunayVoronoi.jl` internally.
 """
-(::Type{gridContext{2}})(#Defined like this so julia doesn't complain that 2 is not a type
+=#
+function gridContext{2}(
             ::Type{JuAFEM.Triangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
-            quadrature_order::Int=default_quadrature_order) =
-    begin
-        grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list)
-        ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
-        dh = JuAFEM.DofHandler(grid)
-        qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-        push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-        JuAFEM.close!(dh)
-        result =  gridContext{2}(grid, ip, dh, qr, loc)
-        result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
-        return result
-    end
+            quadrature_order::Int=default_quadrature_order)
+    grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list)
+    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result =  gridContext{2}(grid, ip, dh, qr, loc)
+    result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
+    return result
+end
 
 
 """
@@ -177,16 +175,17 @@ function regularDelaunayGrid(
     return result
 end
 
+#= TODO 1.0
 """
     gridContext{2}(JuAFEM.QuadraticTriangle, node_list, quadrature_order=default_quadrature_order)
 
 Create a P2 grid given a set of (non-interior) nodes using Delaunay Triangulation.
 """
-(::Type{gridContext{2}})(
+=#
+function gridContext{2}(
             ::Type{JuAFEM.QuadraticTriangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
-            quadrature_order::Int=default_quadrature_order) =
-begin
+            quadrature_order::Int=default_quadrature_order)
     grid, loc = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, node_list)
     ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
     dh = JuAFEM.DofHandler(grid)
@@ -220,9 +219,7 @@ function regularP2DelaunayGrid(
     result.gridType = "regular P2 Delaunay grid"
     return result
 end
-=#
 
-#TODO 1.0
 #=
 """
     gridContext{2}(JuAFEM.Triangle, numnodes=(25,25),LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
@@ -576,7 +573,6 @@ function evaluate_function_from_dofvals(ctx::gridContext{dim}, dofvals::Vector, 
     return result
 end
 
-#= TODO 1.0
 #Helper type for keeping track of point numbers
 struct NumberedPoint2D <: VD.AbstractPoint2D
     x::Float64
@@ -688,7 +684,6 @@ function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.V
     #TODO: Think about whether doing it like this (with the permutation) is sensible
     return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
 end
-=#
 
 #Here N gives the number of nodes and M gives the number of faces
 struct regular2DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
@@ -700,6 +695,9 @@ end
 function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError("Not in domain"))
+    end
+    if isnan(x[1]) || isnan(x[2])
+        throw(DomainError("NaN coordinates"))
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
