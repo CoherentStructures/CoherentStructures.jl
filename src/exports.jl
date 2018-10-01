@@ -75,7 +75,7 @@ export
 	plot_spectrum,
 	plot_real_spectrum,
 	plot_u_eulerian,
-	plot_dbs,
+	plot_ftle,
 	eulerian_videos,
 	eulerian_video,
 
