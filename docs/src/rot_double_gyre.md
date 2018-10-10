@@ -41,7 +41,7 @@ $A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}$
 The eigenfunctions saved in `v` approximate those of $\Delta^{dyn}$
 ```@example 1
 import Plots
-res = [plot_u(ctx, v[:,i],colorbar=:none,clim=(-3,3)) for i in 1:6];
+res = [plot_u(ctx, v[:,i],100,100,colorbar=:none,clim=(-3,3)) for i in 1:6];
 Plots.plot(res...,margin=-10Plots.px)
 ```
 Looking at the spectrum, there appears a gap after the third eigenvalue:
@@ -51,10 +51,15 @@ Plots.scatter(1:6, real.(λ))
 We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package to compute coherent structures from the first two nontrivial eigenfunctions:
 ```@example 1
 using Clustering
+
+ctx2 = regularTriangularGrid((200,200))
+v_upsampled = sample_to(v,ctx,ctx2)
+
+
 numclusters=2
-res = kmeans(permutedims(v[:,2:numclusters+1]),numclusters+1)
+res = kmeans(permutedims(v_upsampled[:,2:numclusters+1]),numclusters+1)
 u = kmeansresult2LCS(res)
-Plots.plot([plot_u(ctx,u[:,i],200,200,color=:viridis) for i in [1,2,3]]...)
+Plots.plot([plot_u(ctx2,u[:,i],200,200,color=:viridis,colorbar=:none) for i in [1,2,3]]...)
 
 ```
 ## Geodesic vortices
