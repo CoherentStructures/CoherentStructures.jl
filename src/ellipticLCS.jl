@@ -18,12 +18,12 @@ function singularity_location_detection(T::AbstractMatrix{Tensors.SymmetricTenso
     zdiff = z1-z2
     # C = Contour.contours(xspan,yspan,zdiff,[0.])
     cl = Contour.levels(Contour.contours(yspan, xspan, zdiff, [0.]))[1]
-    itp = ITP.interpolate(z1, ITP.BSpline(ITP.Linear()), ITP.OnGrid())
-    sitp = ITP.scale(itp, yspan, xspan)
+    itp = ITP.interpolate(z1, ITP.BSpline(ITP.Linear()))
+    sitp = ITP.extrapolate(ITP.scale(itp, yspan, xspan), (Reflect(),Reflect(),Reflect()))
     Xs, Ys = Float64[], Float64[]
     for line in Contour.lines(cl)
         yL, xL = Contour.coordinates(line)
-        zL = [sitp[yL[i], xL[i]] for i in eachindex(xL, yL)]
+        zL = [sitp(yL[i], xL[i]) for i in eachindex(xL, yL)]
         ind = findall(zL[1:end-1] .* zL[2:end].<=0.)
         zLind = -zL[ind] ./ (zL[ind .+ 1] - zL[ind])
         Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
@@ -41,13 +41,13 @@ around the singularity. `xspan` and `yspan` correspond to the computational grid
 Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
 function singularity_type_detection(singularity::AbstractVector{S},
-                                    ξ::ITP.ScaledInterpolation,
-                                    radius::Float64) where S
+                                    ξ::I,
+                                    radius::Float64) where {S,I} #TODO: Maybe restrict type of I
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
     circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
     pnts = [singularity + c for c in circle]
-    radVals = [ξ[p[2], p[1]] for p in pnts]
+    radVals = [ξ(p[2], p[1]) for p in pnts]
     singularity_type = 0
     if (sum(diff(radVals) .< 0) / Ntheta > 0.62)
         singularity_type = -1  # trisector
@@ -129,9 +129,9 @@ function compute_returning_orbit(calT::Float64,
     β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
-    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid()),
+    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
                         yspan, xspan)
-    ηfield = (u,p,t) -> ηitp[u[2], u[1]]
+    ηfield = (u,p,t) -> ηitp(u[2], u[1])
 
     prob = OrdinaryDiffEq.ODEProblem(ηfield, StaticArrays.SVector{2}(seed[1], seed[2]), (0.,20.))
     condition(u,t,integrator) = u[2] - seed[2]
@@ -198,9 +198,9 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                                         pmax::Float64 = 1.3) where S <: Real
 
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
+    l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear())),
                         yspan,xspan)
-    l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
+    l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear())),
                         yspan,xspan)
 
     # for computational tractability, pre-orient the eigenvector fields
@@ -230,7 +230,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
             # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
             orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, 1, xspan, yspan)
             closed = norm(orbit[1] - orbit[end]) <= 1e-2
-            uniform = all([l1itp[p[2], p[1]] .<= Tsol .<= l2itp[p[2], p[1]] for p in orbit])
+            uniform = all([l1itp(p[2], p[1]) .<= Tsol .<= l2itp(p[2], p[1]) for p in orbit])
             # @show (closed, uniform)
             if (closed && uniform)
                 Tval[i] = Tsol
@@ -249,7 +249,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                 # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
                 orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, -1, xspan, yspan)
                 closed = norm(orbit[1] - orbit[end]) <= 1e-2
-                uniform = all([l1itp[p[2], p[1]] .<= Tsol .<= l2itp[p[2], p[1]] for p in orbit])
+                uniform = all([l1itp(p[2], p[1]) .<= Tsol .<= l2itp(p[2], p[1]) for p in orbit])
                 # @show (closed, uniform)
                 if (closed && uniform)
                     Tval[i] = Tsol
@@ -298,9 +298,9 @@ function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
 
     ξ = [eigvecs(t)[:,1] for t in T]
     ξrad = atan.([v[2]./v[1] for v in ξ])
-    ξraditp = ITP.scale(ITP.interpolate(ξrad,
-                        ITP.BSpline(ITP.Linear()), ITP.OnGrid()),
-                        yspan,xspan)
+    ξraditp = ITP.extrapolate(ITP.scale(ITP.interpolate(ξrad,
+                        ITP.BSpline(ITP.Linear())),
+                        yspan,xspan),Reflect())
     singularitytypes = map(singularities) do s
         singularity_type_detection(s, ξraditp, radius)
     end

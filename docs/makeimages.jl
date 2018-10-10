@@ -6,6 +6,12 @@ mkdir("docs/buildimg/")
     return ((-1)^(floor((x[1]*10)%10)))*((-1)^(floor((x[2]*10)%10)))
 end
 
+@macroexpand @animate for i in 1:10
+    Plots.scatter([0.0],[1.0])
+end
+
+Plots.mp4(l)
+
 plot_u(ctx2,u2,100,100)
 
 inverse_flow_map_t = (t,u0) -> flow(rot_double_gyre,u0,[t,0.0])[end]
