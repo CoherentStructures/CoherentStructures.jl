@@ -182,13 +182,6 @@ end
 
 
 #TODO: Think of moving helper functions like these to GridFunctions.jl
-function sampleTo(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext) where {T}
-    u_new::Vector{T} = zeros(T,ctx_new.n)*NaN
-    for i in 1:ctx_new.n
-        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u,ctx_new.grid.nodes[i].x,NaN,true)
-    end
-    return u_new
-end
 
 function getnorm(u::Vector{T},ctx::CoherentStructures.gridContext,which="L∞", M=nothing) where {T}
     if which == "L∞"
@@ -364,7 +357,7 @@ function buildStatistics!(experimentResults::Vector{experimentResult}, reference
         upsampled_current = []
         for i in 1:6
             index = sortperm(real.(eR.λ))[i]
-            upsampled = sampleTo(undoBCS(eR.ctx,eR.V[:,index],eR.bdata),eR.ctx,reference.ctx)
+            upsampled = sample_to(undoBCS(eR.ctx,eR.V[:,index],eR.bdata),eR.ctx,reference.ctx)
             upsampled /= getnorm(upsampled,reference.ctx,"L2",M_ref)
             push!(upsampled_current,upsampled)
             for j in 1:6

@@ -1,9 +1,9 @@
 #OceanFlow.jl - based on code from Daniel Karrasch
-nprocs() == 1 && addprocs()
+#nprocs() == 1 && addprocs()
+using CoherentStructures
+using Distributed,JLD2
 
 @everywhere begin
-    using CoherentStructures
-    using JLD2
     JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
     t_initial = minimum(Time)
@@ -75,17 +75,19 @@ res = CoherentStructures.eulerian_video(ctx,current_u,LL_big,UR_big,
 #Save it
 Plots.mp4(res,"/tmp/output.mp4")
 
+using Arpack
+using Plots
 
 ctx = regularDelaunayGrid((100,60),LL,UR,quadrature_order=2)
 #With adaptive TO method
 begin
-    ocean_flow_map = u0 -> flow(interp_rhs!,u0, [t_initial,t_final],p=(UI,VI))[end]
+    ocean_flow_map = u0 -> flow(interp_rhs,u0, [t_initial,t_final],p=(UI,VI),tolerance=1e-5)[end]
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
     @time S2= adaptiveTO(ctx,ocean_flow_map)
     @time λ, v = eigs(S + S2,M,which=:SM)
 end
-Plots.spy(S2)
+plot_u(ctx,v[:,1])
 Plots.gr()
 I, J, V = findnz(S)
 Plots.scatter(I,J,markersize=0.1)

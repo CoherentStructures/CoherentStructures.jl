@@ -573,6 +573,47 @@ function evaluate_function_from_dofvals(ctx::gridContext{dim}, dofvals::Vector, 
     return result
 end
 
+"""
+    sample_to(u::Vector{T},ctx_old,ctx_new)
+
+Perform nodal_interpolation of a function onto a different grid.
+"""
+function sample_to(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext;
+    bdata=boundaryData()
+    ) where {T}
+    u_undoBCS = undoBCS(ctx_old,u[:,j],bdata)
+    u_new::Vector{T} = zeros(T,ctx_new.n)*NaN
+    for i in 1:ctx_new.n
+        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u_undoBCS,ctx_new.grid.nodes[i].x,NaN,true)
+    end
+    return u_new
+end
+
+"""
+    sample_to(u::AbstractArray{2,T},ctx_old,ctx_new)
+
+Perform nodal_interpolation of a function onto a different grid for a set of columns of a matrix.
+Returns a matrix
+"""
+
+function CoherentStructures.sample_to(u::AbstractArray{T,2}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext;bdata=boundaryData()) where {T}
+    ncols = size(u)[2]
+    u_undoBCS = zeros(T, ctx_old.n,ncols)
+    for j in 1:ncols
+        u_undoBCS[:,j] = undoBCS(ctx_old,u[:,j],bdata)
+    end
+    u_new::Array{T,2} = zeros(T,ctx_new.n,ncols)*NaN
+    for i in 1:ctx_new.n
+        for j in 1:ncols
+            u_new[ctx_new.node_to_dof[i],j] = evaluate_function_from_dofvals(ctx_old,u_undoBCS[:,j],ctx_new.grid.nodes[i].x,NaN,true)
+        end
+    end
+    return u_new
+end
+
+
+
+
 #Helper type for keeping track of point numbers
 struct NumberedPoint2D <: VD.AbstractPoint2D
     x::Float64

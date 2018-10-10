@@ -816,7 +816,7 @@ function makeOceanFlowResults()
   ctx2 = regularTriangularGrid((200,120),oceanTC.LL,oceanTC.UR,quadrature_order=2)
   Vp1 = zeros(ctx2.n,6)
   for i in 1:6
-    Vp1[:,i] = sampleTo(undoBCS(oceanCtx, oceanEx1.V[:,i],oceanEx1.bdata), oceanCtx,ctx2)
+    Vp1[:,i] = sample_to(undoBCS(oceanCtx, oceanEx1.V[:,i],oceanEx1.bdata), oceanCtx,ctx2)
   end
 
   n_partition = 4
@@ -834,7 +834,7 @@ function makeOceanFlowResults()
   ctx2 = regularTriangularGrid((200,120),oceanTC.LL,oceanTC.UR,quadrature_order=2)
   V = zeros(ctx2.n,6)
   for i in 1:6
-    V[:,i] = sampleTo(undoBCS(oceanCtxP2, oceanEx1P2.V[:,i],oceanEx1P2.bdata), oceanCtxP2,ctx2)
+    V[:,i] = sample_to(undoBCS(oceanCtxP2, oceanEx1P2.V[:,i],oceanEx1P2.bdata), oceanCtxP2,ctx2)
   end
 
 
@@ -893,7 +893,7 @@ begin
     ctx2 = regularP2TriangularGrid((200,60),LL,UR,quadrature_order=1)
     V = zeros(ctx2.n,10)
     for i in 1:10
-      V[:,i] = sampleTo(undoBCS(ctx, v[:,i],bdata), ctx,ctx2)
+      V[:,i] = sample_to(undoBCS(ctx, v[:,i],bdata), ctx,ctx2)
     end
     print("Clustering...")
 
@@ -936,7 +936,7 @@ for j in [1,2]
   ctx2 = regularP2TriangularGrid((200,60),LL,UR,quadrature_order=1)
   V = zeros(ctx2.n,10)
   for i in 1:10
-    V[:,i] = sampleTo(undoBCS(ctx, v[:,i],bdata), ctx,ctx2)
+    V[:,i] = sample_to(undoBCS(ctx, v[:,i],bdata), ctx,ctx2)
   end
 
   n_partition = 8

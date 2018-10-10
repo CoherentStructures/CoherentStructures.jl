@@ -55,6 +55,7 @@ export
 	evaluate_function_from_nodevals,
 	locatePoint,
 	nodal_interpolation,
+    sample_to,
 	undoBCS,
 	doBCS,
 	applyBCS,
