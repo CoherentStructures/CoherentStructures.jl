@@ -64,6 +64,7 @@ vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 The result is visualized as follows:
 ```@example 1
 import Plots
+Plots.clibrary(:misc) #hide
 using Statistics
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
@@ -135,9 +136,6 @@ u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx2, u_combined,400,400,
     color=:rainbow,colorbar=:none,title="$n_partition-partition of Bickley Jet")
-
-
-
 ```
 
 

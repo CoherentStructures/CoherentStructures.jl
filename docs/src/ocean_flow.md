@@ -74,7 +74,7 @@ flow_map = u0 -> flow(interp_rhs, u0,times,p=p,tolerance=1e-5,solver=OrdinaryDif
 LL = [-4.0,-34.0]
 UR = [6.0,-28.0]
 ctx = regularTriangularGrid((150,90), LL,UR)
-bdata = getHomDBCS(ctx,"all")
+bdata = getHomDBCS(ctx,"all");
 ```
 
 For the TO method, we seek generalized eigenpairs involving a bilinear form of the form 
@@ -97,14 +97,14 @@ S0 = assembleStiffnessMatrix(ctx)
 S1 = adaptiveTO(ctx,flow_map)
 
 #Average matrices and apply boundary conditions
-S = applyBCS(ctx,0.5(S0 + S1),bdata)
+S = applyBCS(ctx,0.5(S0 + S1),bdata);
 ```
 
 We can now solve the eigenproblem
 ```@example 5
 using Arpack
 
-λ,v = eigs(S, M,which=:SM, nev=6)
+λ,v = eigs(S, M,which=:SM, nev=6);
 ```
 We upsample the eigenfunctions and then cluster
 ```@example 5
@@ -113,8 +113,21 @@ using Clustering
 ctx2 = regularTriangularGrid((200,120),LL,UR)
 v_upsampled = sample_to(v,ctx,ctx2,bdata=bdata)
 
+#Run k-means several times, keep the best result
+function iterated_kmeans(numiterations,args...)
+    best = kmeans(args...)
+    for i in 1:(numiterations-1)
+        cur = kmeans(args...)
+        if cur.totalcost < best.totalcost
+            best = cur
+        end
+    end
+    return best
+end
+
+
 n_partition = 4
-res = kmeans(permutedims(v_upsampled[:,1:(n_partition-1)]),n_partition)
+res = iterated_kmeans(20,permutedims(v_upsampled[:,1:(n_partition-1)]),n_partition)
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx2, u_combined,200,200,
