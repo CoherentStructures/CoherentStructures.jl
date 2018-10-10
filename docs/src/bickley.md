@@ -135,9 +135,6 @@ u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx2, u_combined,400,400,
     color=:rainbow,colorbar=:none,title="$n_partition-partition of Bickley Jet")
-
-
-
 ```
 
 
