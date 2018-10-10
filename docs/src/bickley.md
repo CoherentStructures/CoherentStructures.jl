@@ -64,6 +64,7 @@ vals, signs, orbits = ellipticLCS(C̅,xspan,yspan,LCSparams);
 The result is visualized as follows:
 ```@example 1
 import Plots
+Plots.clibrary(:misc) #hide
 using Statistics
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 l₁ = min.(λ₁,quantile(λ₁[:],0.999))
