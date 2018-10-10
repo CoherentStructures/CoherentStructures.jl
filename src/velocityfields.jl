@@ -46,7 +46,7 @@ function interpolateVF(xspan::AbstractVector{S1},
                         tspan::AbstractVector{S1},
                         u::AbstractArray{S2,3},
                         v::AbstractArray{S2,3},
-                        interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free()))
+                        interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
                         ) where {S1 <: Real, S2 <: Real}
 
     # convert arrays into linspace-form for interpolation
@@ -54,31 +54,11 @@ function interpolateVF(xspan::AbstractVector{S1},
     Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
     T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
 
-    UI = ITP.scale(ITP.interpolate(u,interpolation_type,ITP.OnGrid()),X,Y,T)
-    # UE = extrapolate(UI,(Linear(),Linear(),Flat()))
-    VI = ITP.scale(ITP.interpolate(v,interpolation_type,ITP.OnGrid()),X,Y,T)
-    # VE = extrapolate(VI,(Linear(),Linear(),Flat()))
+    UI = ITP.scale(ITP.interpolate(u,interpolation_type),X,Y,T)
+    #UE = extrapolate(UI,(Flat(),Flat(),Flat()))
+    VI = ITP.scale(ITP.interpolate(v,interpolation_type),X,Y,T)
+    #VE = extrapolate(VI,(Flat(),Flat(),Flat()))
     return UI, VI
-end
-
-function interpolateVFPeriodic(xspan::AbstractVector{S1},
-                                yspan::AbstractVector{S1},
-                                tspan::AbstractVector{S1},
-                                u::AbstractArray{S2,3},
-                                v::AbstractArray{S2,3},
-                                interpolation_type = ITP.BSpline(ITP.Linear())
-                                ) where {S1 <: Real, S2 <: Real}
-
-    # convert arrays into linspace-form for interpolation
-    X = range(minimum(xspan), stop=maximum(xspan), length=length(xspan))
-    Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
-    T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
-
-    UI = ITP.scale(ITP.interpolate(u,interpolation_type,ITP.OnGrid()), X, Y, T)
-    UE = ITP.extrapolate(UI, ITP.Periodic(),ITP.Periodic(),ITP.Flat())
-    VI = ITP.scale(ITP.interpolate(v,interpolation_type,ITP.OnGrid()), X, Y, T)
-    VE = ITP.extrapolate(VI, ITP.Periodic(),ITP.Periodic(),ITP.Flat())
-    return UE, VE
 end
 
 # standard map

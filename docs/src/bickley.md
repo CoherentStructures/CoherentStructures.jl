@@ -13,7 +13,7 @@ callable as `bickleyJet`.
 Here we briefly demonstrate how to find material barriers to diffusive transport;
 see [Geodesic elliptic material vortices](@ref) for references and details.
 ```@example 1
-using CoherentStructures, Arpack
+using CoherentStructures
 import Tensors, OrdinaryDiffEq
 
 const q = 81
