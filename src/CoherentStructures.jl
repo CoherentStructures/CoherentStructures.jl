@@ -20,8 +20,9 @@ module CoherentStructures
     using Markdown
     using Statistics
     using Arpack
-    using GeometricalPredicates
-    using VoronoiDelaunay
+    import GeometricalPredicates
+    import VoronoiDelaunay
+    import ForwardDiff
 
     import JuAFEM
     using RecipesBase

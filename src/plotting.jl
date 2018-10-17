@@ -335,6 +335,7 @@ end
     	   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
 		   #existing_plot=nothing, TODO 1.0
            flip_y=false, check_inbounds=always_true,
+           pass_on_errors=false
            )
    odefun=as.args[1]
    p = as.args[2]
@@ -364,26 +365,39 @@ end
     end
     #Initialize FTLE-field with NaNs
     FTLE = SharedArray{Float64,2}(ny,nx)
+    totalelements = ny*nx
     FTLE .= NaN
-    nancounter, nonancounter = @sync @distributed ((x,y)->x.+y) for i in eachindex(x1)
+    nancounter, nonancounter = @sync @distributed ((x,y)->x.+y) for c in 0:(totalelements-1)
+        j,i = divrem(c,ny) .+ (1,1)
         nancounter_local = 0
         nonancounter_local = 0
-        for j in eachindex(x2)
-            if check_inbounds(x1[i],x2[j],p)
-                try
-                    FTLE[j,i] = 1 / (2(tspan[end]-tspan[1])) *
-                      log(maximum(eigvals(eigen(CG_tensor(odefun, [x1[i],x2[j]], [tspan[1],tspan[end]], δ;
-                            tolerance=tolerance, p=p, solver=solver)))))
+        if check_inbounds(x1[j],x2[i],p)
+            try
+                cgtensor = CG_tensor(odefun, [x1[j],x2[i]], [tspan[1],tspan[end]], δ;
+                        tolerance=tolerance, p=p, solver=solver)
+                FTLE[c+1] = 1 / (2(tspan[end]-tspan[1])) *
+                  log(maximum(eigvals(eigen(cgtensor))))
+                if isinf(FTLE[c+1])
+                    FTLE[c+1] = NaN
+                end
+                if !isnan(FTLE[c+1])
                     nonancounter_local += 1
-                catch e
+                else
                     nancounter_local += 1
                 end
+            catch e
+                if pass_on_errors
+                    throw(e)
+                end
+                nancounter_local += 1
             end
         end
         (nancounter_local, nonancounter_local)
     end
+    minval = minimum(FTLE)
+    maxval = maximum(FTLE)
 
-    print("plot_ftle ignored $nancounter NaN values ($nonancounter were good)")
+    print("plot_ftle ignored $nancounter NaN values ($nonancounter were good). Bounds ($minval,$maxval)")
     seriestype --> :heatmap
 
     if flip_y == true
@@ -406,11 +420,12 @@ end
 """
     plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
         δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-        existing_plot=nothing,flip_y=false, check_inbounds=always_true)
+        existing_plot=nothing,flip_y=false, check_inbounds=always_true, pass_on_errors=false)
 
 Make a heatmap of a FTLE field using finite differences.
 If `existing_plot` is given a value, plot using `heatmap!` on top of it.
 If `flip_y` is true, then flip the y-coordinate (needed sometimes due to a bug in Plots).
 Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. transparent).
+Unless `pass_on_errors` is set to `true`, errors from calculating FTLE values are caught and ignored.
 """
 plot_ftle
