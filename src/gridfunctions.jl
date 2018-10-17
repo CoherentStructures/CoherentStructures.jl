@@ -167,7 +167,7 @@ function regularDelaunayGrid(
         )
     X = range(LL[1],stop= UR[1],length= numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
-    node_list = vec([Tensors.Vec{2}([x, y]) for y in Y, x in X])
+    node_list = vec([Tensors.Vec{2}((x, y)) for y in Y, x in X])
     result = CoherentStructures.gridContext{2}(JuAFEM.Triangle, node_list, quadrature_order=quadrature_order)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
@@ -211,7 +211,7 @@ function regularP2DelaunayGrid(
 
     X = range(LL[1], stop=UR[1], length=numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
-    node_list = vec([Tensors.Vec{2}([x, y]) for y in Y, x in X])
+    node_list = vec([Tensors.Vec{2}((x, y)) for y in Y, x in X])
     result = gridContext{2}(JuAFEM.QuadraticTriangle, node_list, quadrature_order=quadrature_order)
     #TODO: Think about what values would be sensible for the two variables below
     result.spatialBounds = [LL, UR]
@@ -458,19 +458,19 @@ Returns a tuple (coords, [nodes])
 where coords gives the coordinates within the reference shape (e.g. standard simplex)
 And [nodes] is the list of corresponding node ids, ordered in the order of the
 corresponding shape functions from JuAFEM's interpolation.jl file.
-"""#TODO: could this be more efficient, etc.. with multiple dispatch?
-function locatePoint(ctx::gridContext{dim}, x::AbstractVector) where dim
-    if length(x) == 2
-        return locatePoint(ctx.loc, ctx.grid, Tensors.Vec{2,Float64}(x))
-    elseif lenght(x) == 3
-        return locatePoint(ctx.loc, ctx.grid, Tensors.Vec{3,Float64}(x))
+"""#
+function locatePoint(ctx::gridContext{dim}, x::AbstractVector{T}) where {dim,T}
+    if dim == 2
+        return locatePoint(ctx,Vec{2,T}((x[1],x[2])))
+    elseif dim == 3
+        return locatePoint(ctx,Vec{3,T}((x[1],x[2],x[3])))
     else
         throw(DomainError("Wrong dimension"))
     end
 end
 
 
-function locatePoint(ctx::gridContext{dim}, x::Tensors.Vec{dim,Float64}) where dim
+function locatePoint(ctx::gridContext{dim}, x::Tensors.Vec{dim,T}) where {dim,T}
     return locatePoint(ctx.loc, ctx.grid, x)
 end
 
@@ -479,25 +479,28 @@ end
 
 Like `evaluate_function_from_dofvals`, but the coefficients from `nodevals` are assumed to be in node order.
 """
-function evaluate_function_from_nodevals(ctx::gridContext{dim}, nodevals::Vector, x_in::AbstractVector, outside_value=0.0, project_in=false) where dim
+function evaluate_function_from_nodevals(
+    ctx::gridContext{dim}, nodevals::Vector,
+    x_in::Vec{dim,T}, outside_value=0.0, project_in=false
+    ) where {dim,T}
     if !project_in
         if dim == 2
-            x = Tensors.Vec{dim}((x_in[1], x_in[2]))
+            x = Tensors.Vec{dim,T}((x_in[1], x_in[2]))
         elseif dim == 3
-            x = Tensors.Vec{dim}((x_in[1], x_in[2], x_in[3]))
+            x = Tensors.Vec{dim,T}((x_in[1], x_in[2], x_in[3]))
         else
             error("dim = $dim not supported")
         end
     else
         if dim == 2
             #TODO: replace this with a macro maybe
-            x = Tensors.Vec{3}(
+            x = Tensors.Vec{2,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ))
         elseif dim == 3
             #TODO: replace this with a macro maybe
-            x = Tensors.Vec{3,Float64}(
+            x = Tensors.Vec{3,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3], x_in[3]))
@@ -516,11 +519,24 @@ function evaluate_function_from_nodevals(ctx::gridContext{dim}, nodevals::Vector
         print("Unexpected error for $x")
         throw(y)
     end
-    result = 0.0
+    result = zero(T)
     for (j, nodeid) in enumerate(nodes)
         result += nodevals[nodeid]*JuAFEM.value(ctx.ip, j, local_coordinates)
     end
     return result
+end
+
+function evaluate_function_from_nodevals(
+    ctx::gridContext{dim}, nodevals::Vector,
+    x_in::AbstractVector{T}, outside_value=0.0, project_in=false
+    ) where {dim,T}
+    if dim == 2
+        return evaluate_function_from_nodevals(ctx,dofvals, Vec{2,T}((x_in[1],x_in[2])))
+    elseif dim == 3
+        return evaluate_function_from_nodevals(ctx,dofvals, Vec{3,T}((x_in[1],x_in[2],x_in[3])))
+    else
+        throw(AssertionError("dim ∉ [2,3] not supported"))
+    end
 end
 
 """
@@ -531,23 +547,33 @@ If `project_in` is `true`, points not within `ctx.spatialBounds` are first proje
 
 The coefficients in `nodevals` are interpreted to be in dof order.
 """
-function evaluate_function_from_dofvals(ctx::gridContext{dim}, dofvals::Vector, x_in::AbstractVector, outside_value=0.0, project_in=false) where dim
+function evaluate_function_from_dofvals(
+    ctx::gridContext{dim}, dofvals::Vector,
+    x_in::S, outside_value=0.0, project_in=false
+    ) where {dim,T,S <: AbstractVector{T}}
+    if dim == 2
+        return evaluate_function_from_dofvals(ctx,dofvals, Vec{2,T}((x_in[1],x_in[2])))
+    elseif dim == 3
+        return evaluate_function_from_dofvals(ctx,dofvals, Vec{3,T}((x_in[1],x_in[2],x_in[3])))
+    else
+        throw(AssertionError("dim ∉ [2,3] not supported"))
+    end
+end
+
+function evaluate_function_from_dofvals(
+    ctx::gridContext{dim}, dofvals::Vector,
+    x_in::Tensors.Vec{dim,T}, outside_value=0.0, project_in=false
+    ) where {dim,T}
     if !project_in
-        if dim == 2
-            x = Tensors.Vec{dim}((x_in[1], x_in[2]))
-        elseif dim == 3
-            x = Tensors.Vec{dim}((x_in[1], x_in[2], x_in[3]))
-        else
-            error("dim = $dim not supported")
-        end
+        x = x_in
     else
         if dim == 2
-            x = Tensors.Vec{dim}(
+            x = Tensors.Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
                 ))
         elseif dim == 3
-            x = Tensors.Vec{dim}(
+            x = Tensors.Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
                 ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3],x_in[3]))
@@ -566,12 +592,14 @@ function evaluate_function_from_dofvals(ctx::gridContext{dim}, dofvals::Vector, 
         print("Unexpected error for $x")
         throw(y)
     end
-    result = 0.0
+    result = zero(T)
     for (j, nodeid) in enumerate(nodes)
         result += dofvals[ctx.node_to_dof[nodeid]]*JuAFEM.value(ctx.ip, j, local_coordinates)
     end
     return result
 end
+
+
 
 """
     sample_to(u::Vector{T},ctx_old,ctx_new)
@@ -581,7 +609,7 @@ Perform nodal_interpolation of a function onto a different grid.
 function sample_to(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext;
     bdata=boundaryData()
     ) where {T}
-    u_undoBCS = undoBCS(ctx_old,u[:,j],bdata)
+    u_undoBCS = undoBCS(ctx_old,u,bdata)
     u_new::Vector{T} = zeros(T,ctx_new.n)*NaN
     for i in 1:ctx_new.n
         u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u_undoBCS,ctx_new.grid.nodes[i].x,NaN,true)
@@ -664,7 +692,9 @@ struct delaunayCellLocator <: cellLocator
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
 end
 
-function locatePoint(loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
+function locatePoint(
+        loc::delaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64}
+    ) #TODO: can this work for x that are not Float64?
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError("Outside of domain"))
@@ -709,7 +739,9 @@ struct p2DelaunayCellLocator <: cellLocator
     end
 end
 
-function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
+function locatePoint(
+        loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64}
+    )#TODO: can this work for x that are not Float64?
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError("Outside of domain"))
@@ -727,13 +759,18 @@ function locatePoint(loc::p2DelaunayCellLocator, grid::JuAFEM.Grid, x::Tensors.V
 end
 
 #Here N gives the number of nodes and M gives the number of faces
-struct regular2DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{2,M,N}}
+struct regular2DGridLocator{C} <: cellLocator where {C <: JuAFEM.Cell}
     nx::Int
     ny::Int
     LL::Tensors.Vec{2,Float64}
     UR::Tensors.Vec{2,Float64}
 end
-function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Grid, x::AbstractVector{Float64})
+function locatePoint(
+        loc::regular2DGridLocator{S},
+        grid::JuAFEM.Grid,
+        x::Tensors.Vec{2,T}
+    )::Tuple{Tensors.Vec{2,T}, Vector{Int}} where {S,T}
+
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError("Not in domain"))
     end
@@ -742,137 +779,80 @@ function locatePoint(loc::regular2DGridLocator{JuAFEM.Triangle},grid::JuAFEM.Gri
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
-    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
-    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1.0)
-    n1 = Base.unsafe_trunc(Int,n1f)
-    n2 = Base.unsafe_trunc(Int,n2f)
+    n1::Int, loc1 = gooddivrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
+    n2::Int, loc2 = gooddivrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1.0)
+
     if n1 == (loc.nx-1) #If we hit the right hand edge
-        n1 = loc.nx-2
-        loc1 = 1.0
+        if loc1 ≈ 0.0
+            n1 = loc.nx-2
+            loc1 += 1.0
+        else
+            throw(DomainError("Not in domain"))
+        end
     end
     if n2 == (loc.ny-1) #If we hit the top edge
-        n2 = loc.ny-2
-        loc2 = 1.0
+        if loc2 ≈ 0.0
+            n2 = loc.ny-2
+            loc2 += 1.0
+        else
+            throw(DomainError("Not in domain"))
+        end
     end
     #Get the four node numbers of quadrilateral the point is in:
-    ll = n1 + n2*loc.nx
-    lr = ll + 1
-    ul = n1 + (n2+1)*loc.nx
-    ur = ul + 1
-    @assert ur < (loc.nx * loc.ny)
-    if loc1 + loc2 < 1.0 # ◺
-        return Tensors.Vec{2}((loc1, loc2)), [lr+1, ul+1, ll+1]
-    else # ◹
-        #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
-        #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
-        #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
-        return tM⋅Tensors.Vec{2}((loc1-1,loc2)), [ ur+1, ul+1, lr+1]
+
+    if S == JuAFEM.Triangle || S == JuAFEM.Quadrilateral
+        ll = n1 + n2*loc.nx
+        lr = ll + 1
+        ul = n1 + (n2+1)*loc.nx
+        ur = ul + 1
+        @assert ur < (loc.nx * loc.ny)
+
+        if S == JuAFEM.Triangle
+            if loc1 + loc2 < 1.0 # ◺
+                return Tensors.Vec{2,T}((loc1, loc2)), [lr+1, ul+1, ll+1]
+            else # ◹
+                #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
+                #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
+                #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
+                tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
+                return tM⋅Tensors.Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1, lr+1]
+            end
+        elseif S == JuAFEM.Quadrilateral
+            return Tensors.Vec{2,T}([2 * loc1 - 1, 2 * loc2 - 1]), [ll+1, lr+1, ur+1, ul+1]
+        else
+            throw(AssertionError("Case should not be reached"))
+        end
+    elseif S == JuAFEM.QuadraticTriangle || S == JuAFEM.QuadraticQuadrilateral
+        #Get the four node numbers of quadrilateral the point is in
+        #Zero-indexing of the array here, so we need to +1 for everything being returned
+        num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
+        num_y_with_edge_nodes::Int = loc.ny + loc.ny -1
+        ll = 2*n1 + 2*n2*num_x_with_edge_nodes
+        lr = ll + 2
+        ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
+        ur = ul + 2
+        middle_left =  2*n1 + (2*n2+1)*num_x_with_edge_nodes
+        @assert ur < (num_x_with_edge_nodes*num_y_with_edge_nodes) #Sanity check
+        if S == JuAFEM.QuadraticTriangle
+            if loc1 + loc2 <= 1.0 # ◺
+                return Tensors.Vec{2,T}((loc1,loc2)), [lr+1,ul+1,ll+1, middle_left+2, middle_left+1, ll+2]
+            else # ◹
+
+                #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
+                #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
+                #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
+                tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
+                return tM⋅Tensors.Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3]
+            end
+        elseif S == JuAFEM.QuadraticQuadrilateral
+            return Tensors.Vec{2,T}((2*loc1-1,2*loc2-1)), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2]
+        else
+            throw(AssertionError("Case should not be reached"))
+        end
+    else
+        throw(AssertionError("Case should not be reached"))
     end
 end
-
-function locatePoint(loc::regular2DGridLocator{JuAFEM.Quadrilateral},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
-    if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
-        throw(DomainError("Not in domain"))
-    end
-    #Get integer and fractional part of coordinates
-    #This is the lower left corner
-    n1f, loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
-    n2f, loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1), 1.0)
-    n1 = Base.unsafe_trunc(Int,n1f)
-    n2 = Base.unsafe_trunc(Int,n2f)
-    if n1 == (loc.nx-1) #If we hit the right hand edge
-        n1 = loc.nx-2
-        loc1 = 1.0
-    end
-    if n2 == (loc.ny-1) #If we hit the top edge
-        n2 = loc.ny-2
-        loc2 = 1.0
-    end
-    #Get the four node numbers of quadrilateral the point is in:
-    ll = n1 + n2 * loc.nx
-    lr = ll + 1
-    ul = n1 + (n2+1) * loc.nx
-    ur = ul + 1
-    @assert ur < (loc.nx * loc.ny)
-    return Tensors.Vec{2}([2 * loc1 - 1, 2 * loc2 - 1]), [ll+1, lr+1, ur+1, ul+1]
-end
-
-#Same principle as for Triangle type above
-function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticTriangle},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
-    if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
-        throw(DomainError("Not in domain"))
-    end
-    #Get integer and fractional part of coordinates
-    #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
-    n1 = Base.unsafe_trunc(Int,n1f)
-    n2 = Base.unsafe_trunc(Int,n2f)
-    if n1 == (loc.nx-1) #If we hit the right hand edge
-        n1 = loc.nx-2
-        loc1 = 1.0
-    end
-    if n2 == (loc.ny-1) #If we hit the top edge
-        n2 = loc.ny-2
-        loc2 = 1.0
-    end
-    #Get the four node numbers of quadrilateral the point is in
-    #Zero-indexing of the array here, so we need to +1 for everything being returned
-    num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
-    num_y_with_edge_nodes::Int = loc.ny + loc.ny -1
-    ll = 2*n1 + 2*n2*num_x_with_edge_nodes
-    lr = ll + 2
-    ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
-    ur = ul + 2
-    middle_left =  2*n1 + (2*n2+1)*num_x_with_edge_nodes
-    @assert ur < (num_x_with_edge_nodes*num_y_with_edge_nodes) #Sanity check
-    if loc1 + loc2 <= 1.0 # ◺
-        return Tensors.Vec{2}([loc1,loc2]), [lr+1,ul+1,ll+1, middle_left+2, middle_left+1, ll+2]
-    else # ◹
-
-        #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
-        #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
-        #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
-        tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
-        return tM⋅Tensors.Vec{2}([loc1-1,loc2]), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3]
-    end
-    return
-end
-
-
-function locatePoint(loc::regular2DGridLocator{JuAFEM.QuadraticQuadrilateral},grid::JuAFEM.Grid, x::Tensors.Vec{2,Float64})
-    if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
-        throw(DomainError("Not in domain"))
-    end
-    #Get integer and fractional part of coordinates
-    #This is the lower left corner
-    n1f,loc1= divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
-    n1 = Base.unsafe_trunc(Int,n1f)
-    n2 = Base.unsafe_trunc(Int,n2f)
-    if n1 == (loc.nx-1) #If we hit the right hand edge
-        n1 = loc.nx-2
-        loc1 = 1.0
-    end
-    if n2 == (loc.ny-1) #If we hit the top edge
-        n2 = loc.ny-2
-        loc2 = 1.0
-    end
-    #Get the four node numbers of quadrilateral the point is in
-    #Zero-indexing of the array here, so we need to +1 for everything being returned
-    num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
-    num_y_with_edge_nodes::Int = loc.ny + loc.ny -1
-    ll = 2*n1 + 2*n2*num_x_with_edge_nodes
-    lr = ll + 2
-    ul = 2*n1 + 2(n2+1)*num_x_with_edge_nodes
-    ur = ul + 2
-    middle_left =  2*n1 + (2*n2+1)*num_x_with_edge_nodes
-    @assert ur < (num_x_with_edge_nodes*num_y_with_edge_nodes) #Sanity check
-    #permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
-    return Tensors.Vec{2}([2*loc1-1,2*loc2-1]), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2]
-end
-
 
 struct regular3DGridLocator{T} <: cellLocator where {M,N,T <: JuAFEM.Cell{3,M,N}}
     nx::Int
@@ -896,32 +876,45 @@ function in_tetrahedron(a,b,c,d,p)
     return (mydet(b-a,c-a,p-a) >= -my0) && (mydet(b-a,d-a,p-a) <= my0) && (mydet(d-b,c-b,p-b) >= -my0) && (mydet(d-a,c-a,p-a) <= my0)
 end
 
-function locatePoint(loc::regular3DGridLocator{T},grid::JuAFEM.Grid,x::AbstractVector{Float64}) where T <: Union{JuAFEM.Tetrahedron,JuAFEM.QuadraticTetrahedron}
+function locatePoint(
+    loc::regular3DGridLocator{S},
+    grid::JuAFEM.Grid,x::Vec{3,T}
+    ) where {T,S <: Union{JuAFEM.Tetrahedron,JuAFEM.QuadraticTetrahedron}}
+
   if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[3] > loc.UR[3] || x[1] < loc.LL[1] || x[2] < loc.LL[2] || x[3] < loc.LL[3]
         throw(DomainError("Not in domain"))
     end
     #Get integer and fractional part of coordinates
     #This is the lower left corner
     #warning: all the coputation is done with zero-indexing
-    n1f,loc1 = divrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
-    n2f,loc2 = divrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
-    n3f,loc3 = divrem((x[3] - loc.LL[3])/(loc.UR[3] - loc.LL[3]) * (loc.nz-1),1.0)
+    n1::Int,loc1 = gooddivrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1),1.0)
+    n2::Int,loc2 = gooddivrem((x[2] - loc.LL[2])/(loc.UR[2] - loc.LL[2]) * (loc.ny-1),1.0)
+    n3::Int,loc3 = gooddivrem((x[3] - loc.LL[3])/(loc.UR[3] - loc.LL[3]) * (loc.nz-1),1.0)
 
-    n1 = Base.unsafe_trunc(Int,n1f)
-    n2 = Base.unsafe_trunc(Int,n2f)
-    n3 = Base.unsafe_trunc(Int,n3f)
     if n1 == (loc.nx-1) #If we hit the right hand edge
-        n1 = loc.nx-2
-        loc1 = 1.0
+        if loc1 ≈ 0.0
+            n1 = loc.nx-2
+            loc1 += 1.0
+        else
+            throw(DomainError("Not in domain"))
+        end
     end
     if n2 == (loc.ny-1) #If we hit the top edge
-        n2 = loc.ny-2
-        loc2 = 1.0
+        if loc2 ≈ 0.0
+            n2 = loc.ny-2
+            loc2 += 1.0
+        else
+            throw(DomainError("Not in domain"))
+        end
     end
 
     if n3 == (loc.nz-1) #If we hit the top edge
-        n3 = loc.nz-2
-        loc3 = 1.0
+        if loc3 ≈ 0.0
+            n3 = loc.nz-2
+            loc3 += 1.0
+        else
+            throw(DomainError("Not in domain"))
+        end
     end
     #Get the 8 node numbers of the rectangular hexahedron the point is in:
     #Ordering is like tmp of JuAFEM's generate_grid(::Type{Tetrahedron})
@@ -930,7 +923,7 @@ function locatePoint(loc::regular3DGridLocator{T},grid::JuAFEM.Grid,x::AbstractV
     j = n2+1
     k = n3+1
 
-    if T == JuAFEM.Tetrahedron
+    if S == JuAFEM.Tetrahedron
         node_array = reshape(collect(0:(loc.nx*loc.ny*loc.nz - 1)), (loc.nx, loc.ny, loc.nz))
         nodes = (node_array[i,j,k], node_array[i+1,j,k], node_array[i+1,j+1,k], node_array[i,j+1,k],
                    node_array[i,j,k+1], node_array[i+1,j,k+1], node_array[i+1,j+1,k+1], node_array[i,j+1,k+1])
@@ -956,7 +949,7 @@ function locatePoint(loc::regular3DGridLocator{T},grid::JuAFEM.Grid,x::AbstractV
             M[:,3] = p4-p1
             tMI::Tensors.Tensor{2,3,Float64,9} =  Tensors.Tensor{2,3,Float64}(M)
             if T == JuAFEM.Tetrahedron
-                return inv(tMI) ⋅ Tensors.Vec{3}([loc1,loc2,loc3] - p1), nodes[tet] .+ 1
+                return inv(tMI) ⋅ Tensors.Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])), nodes[tet] .+ 1
             else
                 avg(x,y) = (x == 1 && y == 3) || (x == 3 && y == 1) ? 2 : x
                 indexavg(x,y) = CartesianIndex(avg.(Tuple(x),Tuple(y)))
@@ -971,7 +964,7 @@ function locatePoint(loc::regular3DGridLocator{T},grid::JuAFEM.Grid,x::AbstractV
                 resulting_nodes = [nodes[v1],nodes[v2],nodes[v3],nodes[v4],
                         nodes[indexavg(v1,v2)],nodes[indexavg(v2,v3)],nodes[indexavg(v1,v3)],nodes[indexavg(v1,v4)],
                         nodes[indexavg(v2,v4)],nodes[indexavg(v3,v4)] ]
-                return inv(tMI) ⋅ Tensors.Vec{3}([loc1,loc2,loc3] - p1),(resulting_nodes .+ 1)
+                return inv(tMI) ⋅ Tensors.Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])),(resulting_nodes .+ 1)
             end
         end
     end
