@@ -192,17 +192,17 @@ end
 
 #divrem that returns the first value as an Int
 #TODO: maybe optimize this?
-function gooddivrem(x,y)
-        a,b = divrem(x,y)
+function gooddivrem(x, y)
+        a, b = divrem(x, y)
         return Int(a), b
 end
 
 function gooddivrem(x::ForwardDiff.Dual, y)
-        a,b = divrem(x,y)
-        if b != 0.0
+        a, b = divrem(x, y)
+        if !iszero(b)
             return Int(ForwardDiff.value(a)), b
         else
             aret = Int(ForwardDiff.value(a))
-            return aret, x - aret*y
+            return aret, x - aret * y
         end
 end
