@@ -267,6 +267,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
 @inline function wLap_normalize!(A::SparseMatrixCSC{T}) where {T <: Real}
+    # TODO: remove this function in Julia 1.0.2
     n = LinearAlgebra.checksquare(A)
     # dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
