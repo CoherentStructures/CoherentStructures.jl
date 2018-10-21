@@ -80,7 +80,7 @@ function diff_op(data::AbstractMatrix{T},
     Js::Vector{Int} = [j[2] for j in CIs]
     Vs::Vector{T} = kernel.(D[CIs])
     P = SparseArrays.sparse(Is, Js, Vs, N, N)
-    !iszero(α) && α_normalize!(P, α)
+    !iszero(α) && kde_normalize!(P, α)
     wLap_normalize!(P)
     return P
 end
@@ -112,7 +112,7 @@ function diff_op(data::AbstractMatrix{T},
     else
         @. P = min(P, PermutedDimsArray(P, (2,1)))
     end
-    α>0 && α_normalize!(P, α)
+    α>0 && kde_normalize!(P, α)
     wLap_normalize!(P)
     return P
 end
@@ -178,7 +178,7 @@ Return a sparse diffusion/Markov matrix `P`.
 
     typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
     P = sparseaffinitykernel(data, sp_method, kernel, metric)
-    α>0 && α_normalize!(P, α)
+    α>0 && kde_normalize!(P, α)
     wLap_normalize!(P)
     return P
 end
@@ -236,12 +236,12 @@ end
 end
 
 """
-    α_normalize!(A, α = 1.0)
+    kde_normalize!(A, α = 1.0)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
-@inline function α_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
+@inline function kde_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
     n = LinearAlgebra.checksquare(A)
     # qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
@@ -255,7 +255,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     end
     return A
 end
-@inline function α_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
+@inline function kde_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
     LinearAlgebra.checksquare(A)
     qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     LinearAlgebra.rmul!(A, qₑ)

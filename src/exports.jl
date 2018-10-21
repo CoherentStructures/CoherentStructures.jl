@@ -23,7 +23,7 @@ export
 	sparse_diff_op_family,
 	sparse_diff_op,
 	sparseaffinitykernel,
-	α_normalize!,
+	kde_normalize!,
 	wlap_normalize!,
 	sparse_adjacency_family,
 	sparse_adjacency,
