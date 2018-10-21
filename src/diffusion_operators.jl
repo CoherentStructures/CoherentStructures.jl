@@ -396,8 +396,8 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
      Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
      Πinvsqrt = LinearAlgebra.Diagonal(inv.(Πsqrt))
-     LinearAlgebra.lmul!(Πsqrt, L) # TODO
-     LinearAlgebra.rmul!(L, Πinvsqrt) # TODO
+     LinearAlgebra.lmul!(Πsqrt, L)
+     LinearAlgebra.rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
      return LinearMaps.LinearMap(LMap * LinearAlgebra.transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
