@@ -242,11 +242,9 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
 @inline function kde_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
+    # TODO: remove this function in Julia 1.0.2
     n = LinearAlgebra.checksquare(A)
-    # qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
     qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
-    # LinearAlgebra.rmul!(A, qₑ)
-    # LinearAlgebra.lmul!(qₑ, A)
     Anzval = A.nzval
     Arowval = A.rowval
     for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
