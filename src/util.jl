@@ -62,6 +62,16 @@ T = [Tensors.SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
 All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
+function tensor_invariants(T::Tensors.SymmetricTensor{2,2,S,3}) where S <: Real
+    E = LinearAlgebra.eigen(T)
+    λ₁ = LinearAlgebra.eigvals(E)[1]
+    λ₂ = LinearAlgebra.eigvals(E)[2]
+    ξ₁ = LinearAlgebra.eigvecs(E)[:,1]
+    ξ₂ = LinearAlgebra.eigvecs(E)[:,2]
+    traceT = LinearAlgebra.tr(T)
+    detT = LinearAlgebra.det(T)
+    return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+end
 function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
     E = LinearAlgebra.eigen.(T)
     λ₁ = [ev[1] for ev in LinearAlgebra.eigvals.(E)]
