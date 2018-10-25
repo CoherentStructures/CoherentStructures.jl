@@ -20,11 +20,11 @@ module CoherentStructures
     using Markdown
     using Statistics
     using Arpack
-    import GeometricalPredicates
-    import VoronoiDelaunay
-    import ForwardDiff
+    using GeometricalPredicates
+    using VoronoiDelaunay
+    using ForwardDiff
 
-    import JuAFEM
+    using JuAFEM
     using RecipesBase
     using SymEngine
 
