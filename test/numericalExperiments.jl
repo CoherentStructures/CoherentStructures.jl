@@ -3,32 +3,7 @@
 
 using JLD2,StaticArrays,Tensors, LinearMaps, Printf,Arpack
 
-
-#TODO: Replace Float64 with a more general type
-#TODO: Generalize to dim != 2
-
-#This struct contains information about the experiment run
-struct testCase
-    name::String #Something like "Ocean Flow" or other (human-readable) description
-    LL::Vec{2}
-    UR::Vec{2}
-    bdata_predicate::Function
-    dbc_facesets
-
-    is_ode::Bool
-
-    #We need the stuff below if is_ode == true
-    t_initial::Float64
-    t_final::Float64
-    #Things that may be needed for this experiment
-    ode_fun
-    p #Parameters to pass to ode_fun,
-
-    #If is_ode == false
-    f
-    Df
-    finv
-end
+include("testCase.jl")
 
 mutable struct experimentResult
     experiment::testCase
@@ -83,10 +58,6 @@ function runExperiment!(eR::experimentResult,nev=6)
         eR.runtime += (@elapsed K = assembleStiffnessMatrix(eR.ctx,cgfun,bdata=eR.bdata))
         #TODO:Vary whether or not we lump the mass matrices or not
         eR.runtime += (@elapsed M = assembleMassMatrix(eR.ctx,bdata=eR.bdata,lumped=false))
-        global Mglob = M
-        global ctxglob = eR.ctx
-        global Kglob = K#assembleStiffnessMatrix(eR.ctx,bdata=eR.bdata)
-        global bdata_glob = eR.bdata
         eR.runtime +=  (@elapsed λ, v = eigs(-1*K,M,which=:SM,nev=nev))
         eR.λ = λ
         eR.V = v
@@ -217,93 +188,10 @@ function getDiscreteInnerProduct(ctx1::CoherentStructures.gridContext, u1::Vecto
     res = 0.0
     for x in range(ctx1.spatialBounds[1][1],stop=ctx1.spatialBounds[2][1],length=nx)
         for y in range(ctx1.spatialBounds[1][2],stop=ctx1.spatialBounds[2][2],length=ny)
-            res += evaluate_function_from_dofvals(ctx1,u1,[x,y],NaN) * evaluate_function_from_dofvals(ctx2,u2,[x,y],NaN)
+            res += evaluate_function_from_dofvals(ctx1,u1,[x,y],outside_value=NaN) * evaluate_function_from_dofvals(ctx2,u2,[x,y],outside_value=NaN)
         end
     end
     return  res/(nx*ny)
-end
-
-
-function makeOceanFlowTestCase(location::AbstractString="examples/Ocean_geostrophic_velocity.jld2")
-
-    JLD2.@load location Lon Lat Time UT VT
-
-    UI, VI = interpolateVF(Lon,Lat,Time,UT,VT)
-    p = (UI,VI)
-
-    #The computational domain
-    LL = Vec{2}([-4.0,-34.0])
-    UR = Vec{2}([6.0,-28.0])
-
-    t_initial = minimum(Time)
-    t_final = t_initial + 90
-    bdata_predicate = (x,y) -> false
-    result = testCase("Ocean Flow", LL,UR,bdata_predicate,"all",true,t_initial,t_final, interp_rhs,p,nothing,nothing,nothing)
-    return result
-end
-
-function makeDoubleGyreTestCase(tf=1.0)
-    LL=Vec{2}([0.0,0.0])
-    UR=Vec{2}([1.0,1.0])
-    bdata_predicate = (x,y) -> false
-    result = testCase("Rotating Double Gyre",LL,UR,bdata_predicate,[], true,0.0,tf, rot_double_gyre,nothing,nothing,nothing,nothing)
-    return result
-end
-
-function makeDoubleGyreEqVariTestCase(tf=1.0)
-    LL=Vec{2}([0.0,0.0])
-    UR=Vec{2}([1.0,1.0])
-    bdata_predicate = (x,y) -> false
-    result = testCase("Rotating Double Gyre",LL,UR,bdata_predicate,[], true,0.0,tf, rot_double_gyreEqVari,nothing,nothing,nothing,nothing)
-    return result
-end
-
-
-function makeCylinderFlowTestCase()
-    tf = 40.0
-    LL=Vec{2}([0.0,0.0])
-    UR=Vec{2}([2π,π])
-
-    function periodic_x(u0)
-        return StaticArrays.SVector{2,Float64}(mod(u0[1],2π), u0[2])
-    end
-
-    backwards_flow = u0->periodic_x(flow(cylinder_flow, u0,[tf,0.0],tolerance=1e-6)[end])
-    forwards_flow = u0->periodic_x(flow(cylinder_flow, u0,[0.0,tf],tolerance=1e-6)[end])
-
-    bdata_predicate = (x,y) -> peucliden(x[1],y[1],2π) < 1e-9 && abs(x[2] - y[2]) < 1e-9
-    result = testCase("Cylinder Flow",LL,UR,bdata_predicate,[], true,0.0,tf, cylinder_flow,nothing,forwards_flow,nothing,backwards_flow)
-    return result
-end
-
-
-function makeStandardMapTestCase()
-    LL = Vec{2}([0.0,0.0])
-    UR=Vec{2}([2π,2π])
-    bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π)<1e-9)
-    result = testCase("Standard Map",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap,CoherentStructures.DstandardMap,CoherentStructures.standardMapInv)
-    return result
-end
-
-
-function makeStandardMap8TestCase()
-    LL = Vec{2}([0.0,0.0])
-    UR=Vec{2}([2π,2π])
-    bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π)<1e-9)
-    result = testCase("Standard Map 8",LL,UR,bdata_predicate,[], false,NaN,NaN, nothing,nothing,CoherentStructures.standardMap8,CoherentStructures.DstandardMap8,CoherentStructures.standardMap8Inv)
-    return result
-end
-
-function zeroRHS(u,p,t)
-    return @SVector [0.0, 0.0]
-end
-
-function makeStaticLaplaceTestCase()
-    LL=Vec{2}([0.0,0.0])
-    UR=Vec{2}([1.5,1.0])
-    bdata_predicate = (x,y) -> (peuclidean(x[1],y[1],1.5) < 1e-9 && peuclidean(x[2],y[2],1.)<1e-9)
-    result = testCase("Static Laplace",LL,UR,bdata_predicate,[], true,0.0,0.01, zeroRHS,nothing,nothing,nothing,nothing)
-    return result
 end
 
 
@@ -390,7 +278,7 @@ function testDoubleGyre(whichgrids;quadrature_order=CoherentStructures.default_q
     tC = makeDoubleGyreTestCase(tf)
     result = experimentResult[]
     if run_reference
-        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=quadrature_order)
+        referenceCtx = regularP2TriangularGrid( (513,513), tC.LL,tC.UR,quadrature_order=quadrature_order)
         reference = experimentResult(tC,referenceCtx,:CG,tolerance=1e-5)
         runExperiment!(reference)
         push!(result,reference)
@@ -403,7 +291,7 @@ function testDoubleGyreEqVari(whichgrids;quadrature_order=CoherentStructures.def
     tC = makeDoubleGyreEqVariTestCase(tf)
     result = experimentResult[]
     if run_reference
-        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=quadrature_order)
+        referenceCtx = regularP2TriangularGrid( (513,513), tC.LL,tC.UR,quadrature_order=quadrature_order)
         reference = experimentResult(tC,referenceCtx,:CG,tolerance=1e-5,δ=0.0)
         runExperiment!(reference)
         push!(result,reference)
@@ -426,6 +314,21 @@ function testStaticLaplace(whichgrids;quadrature_order=CoherentStructures.defaul
     return result
 end
 
+function testGeneric(tC, whichgrids; quadrature_order=CoherentStructures.default_quadrature_order,
+    run_reference=true,mode=:CG,tolerance=CoherentStructures.default_tolerance
+    )
+    result = experimentResult[]
+    if run_reference
+        print("Running reference")
+        referenceCtx = regularP2TriangularGrid( (513,513), tC.LL,tC.UR,quadrature_order=5)
+        reference = experimentResult(tC,referenceCtx,:CG)
+        runExperiment!(reference)
+        push!(result,reference)
+    end
+    append!(result,accuracyTest(tC, whichgrids,quadrature_order=quadrature_order,mode=mode,tolerance=tolerance))
+    return result
+end
+
 function testStandardMap(
     whichgrids;
     quadrature_order=CoherentStructures.default_quadrature_order,run_reference=true,mode=:CG,
@@ -434,7 +337,7 @@ function testStandardMap(
     tC = makeStandardMapTestCase()
     result = experimentResult[]
     if run_reference
-        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=5)
+        referenceCtx = regularP2TriangularGrid( (513,513), tC.LL,tC.UR,quadrature_order=5)
         reference = experimentResult(tC,referenceCtx,:CG)
         runExperiment!(reference)
         push!(result,reference)
@@ -452,7 +355,7 @@ function testStandardMap8(
     tC = makeStandardMap8TestCase()
     result = experimentResult[]
     if run_reference
-        referenceCtx = regularP2TriangularGrid( (500,500), tC.LL,tC.UR,quadrature_order=5)
+        referenceCtx = regularP2TriangularGrid( (513,513), tC.LL,tC.UR,quadrature_order=5)
         reference = experimentResult(tC,referenceCtx,:CG)
         runExperiment!(reference)
         push!(result,reference)

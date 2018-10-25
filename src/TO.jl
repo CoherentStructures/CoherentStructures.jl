@@ -5,27 +5,31 @@
 # zero2D = zero(Vec{2}) # seems unused currently
 const one2D = e1 + e2
 
-#Currently only works on a rectangular grid that must be specified in advance
-function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
-    LL::Tensors.Vec{2} = Tensors.Vec{2}(ctx.spatialBounds[1])
-    UR::Tensors.Vec{2} = Tensors.Vec{2}(ctx.spatialBounds[2])
-    n = ctx.n
-    result = spzeros(n,n)
+function nonAdaptiveTO(
+        ctx_domain::gridContext{dim},ctx_codomain::gridContext{dim},
+        inverse_flow_map::Function;
+        project_in=false
+    ) where dim
+    n = ctx_codomain.n
+    m = ctx_domain.n
+    result = spzeros(n,m)
+    speyem = sparse(I,m,m)
+
     for j in 1:n
-        current_point = ctx.grid.nodes[j].x
-        jdof = (ctx.node_to_dof)[j]
+        current_point = ctx_codomain.grid.nodes[j].x
+        jdof = (ctx_codomain.node_to_dof)[j]
         try
-            #TODO: Is using the Vec{2} type here slower than using Arrays?
-            pointPullback::Tensors.Vec{2,Float64} = Tensors.Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
-            #TODO: Don't doo this pointwise, but pass whole vector to locatePoint
-            #TODO: can't I use evaluate_function here?
-            local_coords::Tensors.Vec{2,Float64}, nodelist::Vector{Int} = locatePoint(ctx,pointPullback)
-            for  (i,nodeid) in enumerate(nodelist)
-                result[jdof,ctx.node_to_dof[nodeid]] = JuAFEM.value(ctx.ip,i,local_coords)
+            #pointPullback::Tensors.Vec{2,Float64} = Tensors.Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
+            pointPullBack::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(inverse_flow_map(current_point))
+            #TODO: make the below more efficient
+            shape_function_values = evaluate_function_from_nodevals(ctx_domain,speyem,pointPullBack,
+                outside_value=0.0,project_in=project_in,is_diag=true)
+            for (index,i) in enumerate(shape_function_values.nzind)
+                    result[jdof,ctx_domain.node_to_dof[i]] = shape_function_values.nzval[index]
             end
             catch y
                 if !isa(y, DomainError)
-                    throw(y)
+                    rethrow(y)
                 end
                 print("Inverse flow map gave result outside of domain!")
                 #pointPullback = Vec{2}(min.((1+1e-6)*one2D, max.(1e-6*one2D, inverse_flow_map(current_point))))
@@ -38,19 +42,106 @@ function nonAdaptiveTO(ctx::gridContext{2},inverse_flow_map::Function)
 end
 
 #TODO Rename functions name in this file to something more consistent
-#Note that it seems like this function is broken somehow TODO: Fix this.
-function adaptiveTO(ctx::gridContext{2},flow_map::Function,quadrature_order=default_quadrature_order)
-    n = ctx.n
-    new_nodes_in_dof_order = [ Tensors.Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
+function adaptiveTO(
+        ctx::gridContext{2},
+        flow_map::Function,
+        quadrature_order=default_quadrature_order;
+        on_torus::Bool=false,
+        LL::AbstractVector{Float64}=[0.0,0.0],
+        UR::AbstractVector{Float64}=[1.0,1.0],
+        bdata::boundaryData=nothing
+        )
+    new_ctx,new_bdata = adaptiveTOFutureGrid(ctx,flow_map; on_torus=on_torus,LL=LL,UR=UR,bdata=bdata)
+    if !on_torus
+        #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
+        n = ctx.n
+        I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
 
-    new_ctx = gridContext{2}(JuAFEM.Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
-    #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
-    I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
+        I .= new_ctx.dof_to_node[I]
+        J .= new_ctx.dof_to_node[J]
+       return sparse(I,J,V,n,n)
+    else
+        K = assembleStiffnessMatrix(new_ctx,bdata=new_bdata)
+        return  periodizedNewToOldDofOrder(ctx,new_ctx,new_bdata,K)
+    end
+end
 
-    I .= new_ctx.dof_to_node[I]
-    J .= new_ctx.dof_to_node[J]
-    result = sparse(I,J,V,n,n)
-    return result
+
+#Reordering in the periodic case is slightly more tricky
+function periodizedNewToOldDofOrder(
+        old_ctx::gridContext{dim},new_ctx::gridContext{dim},new_bdata::boundaryData,K
+        ) where dim
+
+        I, J ,V = findnz(K)
+
+        bcdof_to_node = pdof_to_node(new_ctx,new_bdata)
+        I .= old_ctx.node_to_dof[bcdof_to_node[I]]
+        J .= old_ctx.node_to_dof[bcdof_to_node[J]]
+
+        return sparse(I,J,V,old_ctx.n,old_ctx.n)
+end
+
+function node_to_pdof(ctx::gridContext{dim},bdata::boundaryData) where dim
+        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+        bdata_table = BCTable(ctx,bdata)
+        return bdata_table[ctx.node_to_dof[1:n_nodes]]
+end
+
+function pdof_to_node(ctx::gridContext{dim},bdata::boundaryData) where dim
+        return sortperm(node_to_pdof(ctx,bdata))
+end
+
+
+function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
+        on_torus=false,bdata=nothing,LL=[0.0,0.0], UR=[1.0,1.0]
+        ) where dim
+
+
+    if !on_torus
+        n = ctx.n
+        new_nodes_in_dof_order = [ Tensors.Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
+        new_ctx = gridContext{2}(JuAFEM.Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
+        return new_ctx,boundaryData()
+
+    else
+        if bdata == nothing
+            throw(AssertionError("Require bdata parameter if on_torus==true"))
+        end
+
+        #Push forward "original" nodes
+        # (There are additional nodes from the periodic dofs, but
+        #by construction of the periodic delaunay triangulation, they
+        #are at the end)
+
+        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+        new_nodes_in_node_order = [
+                    Tensors.Vec{2}(flow_map(ctx.grid.nodes[j].x))
+                    for j in 1:n_nodes ]
+
+        new_ctx, new_bdata = periodicDelaunayGrid(new_nodes_in_node_order,LL,UR)
+        return new_ctx,new_bdata
+    end
+end
+
+
+function adaptiveTransferOperator(ctx::gridContext{dim}, flow_map::Function;
+     on_torus::Bool=false,  bdata=nothing, LL=[0.0,0.0],UR=[1.0,1.0]
+     ) where dim
+
+    if on_torus
+            if bdata == nothing
+                    throw(AssertionError("bdata == nothing"))
+            end
+        npoints = ctx.n - length(bdata.periodic_dofs_from)
+        ctx_new, bdata_new = CoherentStructures.adaptiveTOFutureGrid(ctx,flow_map,
+             on_torus=true, LL=LL, UR=UR,bdata=bdata)
+        ALPHA = nonAdaptiveTO(ctx_new,ctx,x->x)
+        ALPHA_bc = applyBCS(ctx,ALPHA,bdata,ctx_col=ctx_new,bdata_col=bdata_new,add_vals=false)
+        L = sparse(I,npoints,npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
+        return ALPHA_bc*L
+    else
+            throw(AssertionError("Not yet implemented"))
+    end
 end
 
 
@@ -58,7 +149,7 @@ end
 #TODO: Can this be written without any dependence on the dimension?
 #TODO: Implement this for multiple timesteps
 #TODO: Implement this for missing data
-function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Float64=0.0;periodic_directions::Tuple{Bool,Bool}=(false,false),n_stencil_points::Int=10)
+function L2GalerkinTOFromInverse(ctx::gridContext{2},inverse_flow_map::Function,ϵ::Float64=0.0;periodic_directions::Tuple{Bool,Bool}=(false,false),n_stencil_points::Int=10)
 
     #See http://blog.marmakoide.org/?p=1
     stencil::Vector{Tensors.Vec{2,Float64}} = Tensors.Vec{2,Float64}[]
@@ -95,7 +186,7 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},flow_map::Function,ϵ::Floa
         #Iterate over all quadrature points in the cell
         for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
             dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
-            TQ::Tensors.Vec{2,Float64} = Tensors.Vec{2}(flow_map(ctx.quadrature_points[index]))
+            TQ::Tensors.Vec{2,Float64} = Tensors.Vec{2}(inverse_flow_map(ctx.quadrature_points[index]))
             for s in stencil
                 current_point::Tensors.Vec{2,Float64} = TQ + s
                 current_point = Tensors.Vec{2,Float64}((

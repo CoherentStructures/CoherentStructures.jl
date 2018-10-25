@@ -42,6 +42,8 @@ export
 	assembleMassMatrix,
 
 	#gridfunctions.jl
+	regular1dGrid,
+	regular1dP2Grid,
 	regularTriangularGrid,
 	regularDelaunayGrid,
 	regularP2TriangularGrid,
@@ -51,6 +53,8 @@ export
 	regularTetrahedralGrid,
 	regularP2TetrahedralGrid,
 	regularGrid,
+	periodicDelaunayGrid,
+	aperiodicDelaunayGrid,
 	evaluate_function_from_dofvals,
 	evaluate_function_from_nodevals,
 	locatePoint,
@@ -73,6 +77,7 @@ export
 
 	#plotting.jl
 	plot_u,
+	plot_u!,
 	plot_spectrum,
 	plot_real_spectrum,
 	plot_u_eulerian,
@@ -104,6 +109,7 @@ export
 	adaptiveTO,
 	L2GalerkinTO,
 	L2GalerkinTOFromInverse,
+	adaptiveTransferOperator,
 
 	#util.jl
 	tensor_invariants,

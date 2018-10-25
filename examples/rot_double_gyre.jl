@@ -1,9 +1,14 @@
 using CoherentStructures
 using Arpack,StaticArrays,Tensors,Statistics,BenchmarkTools
+using Plots
 
 
 ctx = regularTriangularGrid((25,25),quadrature_order=5)
-u = zeros(ctx.n)
+f = x -> sin(x[1]*x[2])
+u = nodal_interpolation(ctx,f)
+using Tensors
+evaluate_function_from_dofvals(ctx,[u u u],Vec{2}((0.0,0.0)))
+plot_u(ctx,u,100,100)
 
 
 
@@ -75,7 +80,7 @@ using Plots
 
 ctx2 = regularTriangularGrid((200,200))
 u2 = nodal_interpolation(ctx2,checkerboard)
-plot_u(ctx2,u2,100,100)
+plot_u(ctx2,u2,500,500)
 inverse_flow_map_t = (t,u0) -> flow(rot_double_gyre,u0,[t,0.0])[end]
 inverse_flow_map_t(0.5,[0.5,0.5])
 u(t) = u2
@@ -86,10 +91,16 @@ animate(res)
 
 
 #With non-adaptive TO-method:
+ctx = regularTriangularGrid((100,100))
+inverse_flow = u0 -> flow(rot_double_gyre,u0,[1.0,0.0],tolerance=1e-5)[end]
+xs = range(0,stop=1,length=50)
+@time [inverse_flow([x,y]) for x in xs, y in xs]
+@time nonAdaptiveTO(ctx,inverse_flow)
+
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    inverse_flow = u0 -> flow(rot_double_gyre,u0,[1.0,0.0])[end]
+    inverse_flow = u0 -> flow(rot_double_gyre,u0,[1.0,0.0],tolerance=1e-5)[end]
     @time ALPHA = nonAdaptiveTO(ctx,inverse_flow)
     R = -1*(S + ALPHA'*S*ALPHA)
     R = 0.5(R + R')
@@ -98,13 +109,15 @@ end
 
 plot_u(ctx,v[:,2])
 #With adaptive TO method
+ctx = regularTriangularGrid((100,100))
 begin
     @time S = assembleStiffnessMatrix(ctx)
     @time M = assembleMassMatrix(ctx)
-    forwards_flow = u0->flow(rot_double_gyre, u0,[0.0,1.0],tolerance=1e-3)[end]
+    forwards_flow = u0->flow(rot_double_gyre, u0,[0.0,1.0],tolerance=1e-5)[end]
     @time S2= adaptiveTO(ctx,forwards_flow)
     @time λ, v = eigs(-1*(S + S2),M,which=:SM)
 end
+plot_u(ctx,v[:,6])
 #With L2-Galerkin calculation of ALPHA
 ctx = regularP2TriangularGrid((20,20),quadrature_order=4)
 using LinearMaps

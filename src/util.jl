@@ -177,16 +177,23 @@ function getH(ctx::abstractGridContext)
                     "regular Delaunay grid",
                     "regular P2 Delaunay grid",
                     "regular quadrilateral grid",
-                    "regular P2 quadrilateral grid"]
+                    "regular P2 quadrilateral grid",
+                    ]
 
-    if ctx.gridType ∉ supportedRegularGridTypes
+    supported1DGridTypes = ["regular 1d grid",
+                    "regular 1d P2 grid"]
+
+    if ctx.gridType ∈ supportedRegularGridTypes
+        hx = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
+        hy = (ctx.spatialBounds[2][2] - ctx.spatialBounds[1][2])/(ctx.numberOfPointsInEachDirection[1] - 1)
+
+        return sqrt(hx^2 + hy^2)
+    elseif ctx.gridType ∈ supported1DGridTypes
+        hx = (ctx.spatialBounds[2][1] - ctx.spatialBounds[2][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
+        return hx
+    else
         error("Mesh width for this grid type not yet implemented")
     end
-
-    hx = (ctx.spatialBounds[2][1] - ctx.spatialBounds[1][1])/(ctx.numberOfPointsInEachDirection[1] - 1)
-    hy = (ctx.spatialBounds[2][2] - ctx.spatialBounds[1][2])/(ctx.numberOfPointsInEachDirection[1] - 1)
-
-    return sqrt(hx^2 + hy^2)
 end
 
 
@@ -197,6 +204,11 @@ function gooddivrem(x,y)
         return Int(a), b
 end
 
+function goodmod(a,b)
+    return Base.mod(a,b)
+end
+
+
 function gooddivrem(x::ForwardDiff.Dual, y)
         a,b = divrem(x,y)
         if b != 0.0
@@ -205,4 +217,14 @@ function gooddivrem(x::ForwardDiff.Dual, y)
             aret = Int(ForwardDiff.value(a))
             return aret, x - aret*y
         end
+end
+
+
+function goodmod(x::ForwardDiff.Dual,y)
+    a,b = gooddivrem(x,y)
+    if b < 0
+        return b+y
+    else
+        return b
+    end
 end

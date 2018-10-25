@@ -71,13 +71,14 @@ function standardMap(u)
         ))
 end
 
-function standardMapInv(Tu)
+function standardMapInv(Tu::AbstractArray{T}) where T <: Number
     a = 0.971635
-    return StaticArrays.SVector{2,Float64}((
-        mod(Tu[1] - Tu[2]               , 2π),
-        mod(Tu[2] - a*sin(Tu[1]-Tu[2])  , 2π)
+    return StaticArrays.SVector{2,T}((
+        goodmod(Tu[1] - Tu[2]               , 2π),
+        goodmod(Tu[2] - a*sin(Tu[1]-Tu[2])  , 2π)
         ))
 end
+
 
 
 function DstandardMap(u)

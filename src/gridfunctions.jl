@@ -14,7 +14,6 @@ const default_quadrature_order=5
 const default_quadrature_order3D=2
 
 
-
 """
     struct gridContext<dim>
 
@@ -73,6 +72,59 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
         x.mass_weights = ones(length(x.quadrature_points))
         return x
     end
+end
+
+
+function gridContext{1}(::Type{JuAFEM.Line},
+                         numnodes::Tuple{Int}=( 25), LL::AbstractVector=[0.0], UR::AbstractVector=[1.0];
+                         quadrature_order::Int=default_quadrature_order)
+    # The -1 below is needed because JuAFEM internally then goes on to increment it
+    grid = JuAFEM.generate_grid(JuAFEM.Line, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+    loc = regular1DGridLocator{JuAFEM.Line}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+    ip = JuAFEM.Lagrange{1, JuAFEM.RefCube, 1}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{1, JuAFEM.RefCube}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result = gridContext{1}(grid, ip, dh, qr, loc)
+    result.spatialBounds = [LL,UR]
+    result.numberOfPointsInEachDirection = [numnodes[1]]
+    result.gridType = "regular 1d grid"
+    return result
+end
+
+function gridContext{1}(::Type{JuAFEM.QuadraticLine},
+                         numnodes::Tuple{Int}=( 25), LL::AbstractVector=[0.0], UR::AbstractVector=[1.0];
+                         quadrature_order::Int=default_quadrature_order)
+    # The -1 below is needed because JuAFEM internally then goes on to increment it
+    grid = JuAFEM.generate_grid(JuAFEM.QuadraticLine, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+    loc = regular1DGridLocator{JuAFEM.QuadraticLine}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+    ip = JuAFEM.Lagrange{1, JuAFEM.RefCube, 2}()
+    dh = JuAFEM.DofHandler(grid)
+    qr = JuAFEM.QuadratureRule{1, JuAFEM.RefCube}(quadrature_order)
+    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    JuAFEM.close!(dh)
+    result = gridContext{1}(grid, ip, dh, qr, loc)
+    result.spatialBounds = [LL,UR]
+    result.numberOfPointsInEachDirection = [numnodes[1]]
+    result.gridType = "regular 1d grid"
+    return result
+end
+
+function regular1dGrid(numnodes::Int,left=0.0,right=1.0; quadrature_order::Int=default_quadrature_order)
+    return gridContext{1}(JuAFEM.Line,(numnodes,), [left],[right]; quadrature_order=quadrature_order)
+end
+
+function regular1dGrid(numnodes::Tuple{Int},args...;kwargs...)
+    return regular1dGrid(numnodes[1],args...;kwargs...)
+end
+
+function regular1dP2Grid(numnodes::Int,left=0.0,right=1.0; quadrature_order::Int=default_quadrature_order)
+    return gridContext{1}(JuAFEM.QuadraticLine,(numnodes,), [left],[right]; quadrature_order=quadrature_order)
+end
+
+function regular1dP2Grid(numnodes::Tuple{Int},args...;kwargs...)
+    return regular1dP2Grid(numnodes[1],args...;kwargs...)
 end
 
 regular2DGridTypes = ["regular triangular grid",
@@ -140,8 +192,12 @@ Uses `DelaunayVoronoi.jl` internally.
 function gridContext{2}(
             ::Type{JuAFEM.Triangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
-            quadrature_order::Int=default_quadrature_order)
-    grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list)
+            quadrature_order::Int=default_quadrature_order,
+            on_torus=false,
+            LL=nothing,
+            UR=nothing,
+            )
+    grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list;on_torus=on_torus,LL=LL,UR=UR)
     ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
@@ -149,7 +205,35 @@ function gridContext{2}(
     JuAFEM.close!(dh)
     result =  gridContext{2}(grid, ip, dh, qr, loc)
     result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
+    if LL == nothing
+        LL = [minimum([x[i] for x in node_list]) for i in 1:2]
+    end
+    if UR == nothing
+        UR = [maximum([x[i] for x in node_list]) for i in 1:2]
+    end
+    result.spatialBounds = [LL,UR]
     return result
+end
+
+function aperiodicDelaunayGrid(nodes_in::Vector{Vec{2,Float64}})
+    ctx = CoherentStructures.gridContext{2}(
+        JuAFEM.Triangle,nodes_in,on_torus=false)
+        return ctx
+end
+
+function periodicDelaunayGrid(
+                    nodes_in::Vector{Vec{2,Float64}},
+                    LL::AbstractVector=[0.0,0.0],
+                    UR::AbstractVector=[1.0,1.0]
+    )
+
+    ctx = CoherentStructures.gridContext{2}(
+        JuAFEM.Triangle,nodes_in,on_torus=true,LL=LL,UR=UR)
+
+    metric = PEuclidean(UR-LL)
+
+    bdata = boundaryData(ctx,metric)
+    return ctx,bdata
 end
 
 
@@ -480,11 +564,13 @@ end
 Like `evaluate_function_from_dofvals`, but the coefficients from `nodevals` are assumed to be in node order.
 """
 function evaluate_function_from_nodevals(
-    ctx::gridContext{dim}, nodevals::Vector,
-    x_in::Vec{dim,T}, outside_value=0.0, project_in=false
-    ) where {dim,T}
+    ctx::gridContext{dim}, nodevals::AbstractMatrix{S},
+    x_in::Vec{dim,T}; outside_value=0.0, project_in=false,is_diag=false
+    ) where {dim,T,S}
     if !project_in
-        if dim == 2
+        if dim == 1
+            x = Tensors.Vec{dim,T}((x_in[1],))
+        elseif dim == 2
             x = Tensors.Vec{dim,T}((x_in[1], x_in[2]))
         elseif dim == 3
             x = Tensors.Vec{dim,T}((x_in[1], x_in[2], x_in[3]))
@@ -492,15 +578,19 @@ function evaluate_function_from_nodevals(
             error("dim = $dim not supported")
         end
     else
-        if dim == 2
+        if dim == 1
+            x = Tensors.Vec{dim,T}(
+                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1])),
+                ))
+        elseif dim == 2
             #TODO: replace this with a macro maybe
-            x = Tensors.Vec{2,T}(
+            x = Tensors.Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ))
         elseif dim == 3
             #TODO: replace this with a macro maybe
-            x = Tensors.Vec{3,T}(
+            x = Tensors.Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3], x_in[3]))
@@ -509,34 +599,38 @@ function evaluate_function_from_nodevals(
             error("dim = $dim not supported")
         end
     end
-    @assert length(nodevals) == ctx.n
+    @assert size(nodevals)[1] == ctx.n
     local_coordinates, nodes = try
          locatePoint(ctx, x)
     catch y
         if isa(y,DomainError)
-            return outside_value
+            return spzeros(T,size(nodevals)[2]) .+ outside_value
         end
         print("Unexpected error for $x")
         throw(y)
     end
-    result = zero(T)
+    result = spzeros(T,size(nodevals)[2])
     for (j, nodeid) in enumerate(nodes)
-        result += nodevals[nodeid]*JuAFEM.value(ctx.ip, j, local_coordinates)
+        val = JuAFEM.value(ctx.ip, j, local_coordinates)
+        if !is_diag
+            for i in 1:size(nodevals)[2]
+                result[i] += nodevals[nodeid,i]*val
+            end
+        else
+            result[nodeid] += nodevals[nodeid,nodeid]*val
+        end
     end
+
     return result
 end
 
 function evaluate_function_from_nodevals(
-    ctx::gridContext{dim}, nodevals::Vector,
-    x_in::AbstractVector{T}, outside_value=0.0, project_in=false
-    ) where {dim,T}
-    if dim == 2
-        return evaluate_function_from_nodevals(ctx,dofvals, Vec{2,T}((x_in[1],x_in[2])))
-    elseif dim == 3
-        return evaluate_function_from_nodevals(ctx,dofvals, Vec{3,T}((x_in[1],x_in[2],x_in[3])))
-    else
-        throw(AssertionError("dim ∉ [2,3] not supported"))
-    end
+    ctx::gridContext{dim}, nodevals::AbstractVector{S}, x_in::AbstractVector{T};
+    outside_value=0.0, project_in=false
+    ) where {dim,T,S}
+    #The [:,:] converts vector to matrix
+    return evaluate_function_from_nodevals(
+        ctx,nodevals[:,:],Vec{dim}(i->x_in[i]);outside_value=outside_value,project_in=project_in)[1]
 end
 
 """
@@ -548,55 +642,24 @@ If `project_in` is `true`, points not within `ctx.spatialBounds` are first proje
 The coefficients in `nodevals` are interpreted to be in dof order.
 """
 function evaluate_function_from_dofvals(
-    ctx::gridContext{dim}, dofvals::Vector,
-    x_in::S, outside_value=0.0, project_in=false
-    ) where {dim,T,S <: AbstractVector{T}}
-    if dim == 2
-        return evaluate_function_from_dofvals(ctx,dofvals, Vec{2,T}((x_in[1],x_in[2])))
-    elseif dim == 3
-        return evaluate_function_from_dofvals(ctx,dofvals, Vec{3,T}((x_in[1],x_in[2],x_in[3])))
-    else
-        throw(AssertionError("dim ∉ [2,3] not supported"))
-    end
+    ctx::gridContext{dim}, dofvals::AbstractVector{U}, x_in::AbstractVector{T};
+    outside_value=0.0, project_in=false
+    ) where {dim,U,T}
+    #The [:,:] converts vector to matrix
+    return evaluate_function_from_dofvals(ctx,dofvals[:,:], Vec{dim,T}(i -> x_in[i]),
+        outside_value=outside_value, project_in=project_in)[1]
 end
 
 function evaluate_function_from_dofvals(
-    ctx::gridContext{dim}, dofvals::Vector,
-    x_in::Tensors.Vec{dim,T}, outside_value=0.0, project_in=false
-    ) where {dim,T}
-    if !project_in
-        x = x_in
-    else
-        if dim == 2
-            x = Tensors.Vec{dim,T}(
-                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
-                ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
-                ))
-        elseif dim == 3
-            x = Tensors.Vec{dim,T}(
-                (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1],x_in[1]))
-                ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2],x_in[2]))
-                ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3],x_in[3]))
-                ))
-        else
-            error("dim = $dim not supported")
-        end
+    ctx::gridContext{dim}, dofvals::AbstractMatrix{U},
+    x_in::Tensors.Vec{dim,T};
+    outside_value=0.0, project_in=false
+    ) where {dim,T,U}
+    u_nodevals = zeros(U,size(dofvals))
+    for i in 1:ctx.n
+        u_nodevals[i,:] = dofvals[ctx.node_to_dof[i],:]
     end
-    @assert length(dofvals) == ctx.n
-    local_coordinates, nodes = try
-         locatePoint(ctx, x)
-    catch y
-        if isa(y, DomainError)
-            return outside_value
-        end
-        print("Unexpected error for $x")
-        throw(y)
-    end
-    result = zero(T)
-    for (j, nodeid) in enumerate(nodes)
-        result += dofvals[ctx.node_to_dof[nodeid]]*JuAFEM.value(ctx.ip, j, local_coordinates)
-    end
-    return result
+    return evaluate_function_from_nodevals(ctx,u_nodevals, x_in,outside_value=outside_value,project_in=project_in)
 end
 
 
@@ -607,12 +670,13 @@ end
 Perform nodal_interpolation of a function onto a different grid.
 """
 function sample_to(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext;
-    bdata=boundaryData()
+    bdata=boundaryData(),project_in=true
     ) where {T}
     u_undoBCS = undoBCS(ctx_old,u,bdata)
     u_new::Vector{T} = zeros(T,ctx_new.n)*NaN
     for i in 1:ctx_new.n
-        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u_undoBCS,ctx_new.grid.nodes[i].x,NaN,true)
+        u_new[ctx_new.node_to_dof[i]] = evaluate_function_from_dofvals(ctx_old,u_undoBCS,ctx_new.grid.nodes[i].x;
+            outside_value=NaN,project_in=project_in)
     end
     return u_new
 end
@@ -624,7 +688,12 @@ Perform nodal_interpolation of a function onto a different grid for a set of col
 Returns a matrix
 """
 
-function CoherentStructures.sample_to(u::AbstractArray{T,2}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext;bdata=boundaryData()) where {T}
+function CoherentStructures.sample_to(u::AbstractArray{T,2},
+        ctx_old::CoherentStructures.gridContext,
+        ctx_new::CoherentStructures.gridContext;
+        bdata=boundaryData(),
+        project_in=true
+        ) where {T}
     ncols = size(u)[2]
     u_undoBCS = zeros(T, ctx_old.n,ncols)
     for j in 1:ncols
@@ -633,13 +702,61 @@ function CoherentStructures.sample_to(u::AbstractArray{T,2}, ctx_old::CoherentSt
     u_new::Array{T,2} = zeros(T,ctx_new.n,ncols)*NaN
     for i in 1:ctx_new.n
         for j in 1:ncols
-            u_new[ctx_new.node_to_dof[i],j] = evaluate_function_from_dofvals(ctx_old,u_undoBCS[:,j],ctx_new.grid.nodes[i].x,NaN,true)
+            u_new[ctx_new.node_to_dof[i],j] = evaluate_function_from_dofvals(
+            ctx_old,u_undoBCS[:,j],ctx_new.grid.nodes[i].x, outside_value=NaN,project_in=true)
         end
     end
     return u_new
 end
 
 
+struct regular1DGridLocator{C} <: cellLocator where {C <: JuAFEM.Cell}
+    nx::Int
+    LL::Tensors.Vec{1,Float64}
+    UR::Tensors.Vec{1,Float64}
+end
+
+function locatePoint(
+        loc::regular1DGridLocator{S},
+        grid::JuAFEM.Grid,
+        x::Tensors.Vec{1,T}
+    )::Tuple{Tensors.Vec{1,T}, Vector{Int}} where {S,T}
+
+    if x[1] > loc.UR[1]  || x[1] < loc.LL[1]
+        throw(DomainError("Not in domain"))
+    end
+
+    if isnan(x[1])
+        throw(DomainError("NaN coordinates"))
+    end
+
+    n1::Int, loc1 = gooddivrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
+
+    if n1 == (loc.nx-1) #If we hit the right hand edge
+        if loc1 ≈ 0.0
+            n1 = loc.nx-2
+            loc1 += 1.0
+        else
+            throw(DomainError("Not in domain"))
+        end
+    end
+
+    if S == JuAFEM.Line
+        ll = n1
+        lr = ll+1
+        @assert lr < (2*loc.nx + 1)
+
+        return Tensors.Vec{1,T}((2*loc1-1,)), [ll+1,lr+1]
+    elseif S == JuAFEM.QuadraticLine
+        ll = 2*n1
+        lr = 2*n1 + 2
+        lm = 2*n1 +1
+        return Tensors.Vec{1,T}((2*loc1-1,)), [ll+1,lr+1,lm+1]
+    else
+        throw(AssertionError("Invalid 1D Cell type"))
+    end
+
+end
 
 
 #Helper type for keeping track of point numbers
@@ -690,6 +807,8 @@ struct delaunayCellLocator <: cellLocator
     minx::Float64
     miny::Float64
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
+    extended_points::Vector{Vec{2,Float64}}
+    point_number_table::Vector{Int}
 end
 
 function locatePoint(
@@ -703,15 +822,15 @@ function locatePoint(
     if VD.isexternal(t)
         throw(DomainError("Outside of domain"))
     end
-    v1::Tensors.Vec{2} = grid.nodes[t._b.id].x - grid.nodes[t._a.id].x
-    v2::Tensors.Vec{2} = grid.nodes[t._c.id].x - grid.nodes[t._a.id].x
+    v1::Tensors.Vec{2} = loc.extended_points[t._b.id] - loc.extended_points[t._a.id]
+    v2::Tensors.Vec{2} = loc.extended_points[t._c.id] - loc.extended_points[t._a.id]
     J::Tensors.Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
+    #J = [v1[1] v2[1]; v1[2] v2[2]]
     #TODO: rewrite this so that we actually find the cell in question and get the ids
     #From there (instead of from the tesselation). Then get rid of the permutation that
     #is implicit below (See also comment below in p2DelaunayCellLocator locatePoint())
-    return (inv(J) ⋅ (x - grid.nodes[t._a.id].x)), [t._b.id, t._c.id, t._a.id]
+    return (inv(J) ⋅ (x - loc.extended_points[t._a.id])), loc.point_number_table[[t._b.id, t._c.id, t._a.id]]
 end
-
 
 #For delaunay triangulations with P2-Lagrange Elements
 struct p2DelaunayCellLocator <: cellLocator
@@ -723,7 +842,8 @@ struct p2DelaunayCellLocator <: cellLocator
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
     internal_triangles::Vector{Int}
     inv_internal_triangles::Vector{Int}
-    function p2DelaunayCellLocator(m,scale_x,scale_y,minx,miny,tess)
+    point_number_table::Vector{Int}
+    function p2DelaunayCellLocator(m,scale_x,scale_y,minx,miny,tess,point_number_table)
         itr = start(tess)
         internal_triangles = []
         inv_internal_triangles = zeros(length(tess._trigs))
@@ -734,7 +854,7 @@ struct p2DelaunayCellLocator <: cellLocator
         for (i,j) in enumerate(internal_triangles)
             inv_internal_triangles[j] = i
         end
-        res = new(m,scale_x,scale_y,minx,miny,tess,internal_triangles,inv_internal_triangles)
+        res = new(m,scale_x,scale_y,minx,miny,tess,internal_triangles,inv_internal_triangles,point_number_table)
         return res
     end
 end
@@ -755,7 +875,7 @@ function locatePoint(
     v2::Tensors.Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
     J::Tensors.Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
     #TODO: Think about whether doing it like this (with the permutation) is sensible
-    return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])
+    return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), loc.point_number_table[[permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])]]
 end
 
 #Here N gives the number of nodes and M gives the number of faces
@@ -971,13 +1091,58 @@ function locatePoint(
     throw(DomainError("Not in domain (could be a bug/rounding error)")) #In case we didn't land in any tetrahedron
 end
 
-function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
-    tess, m, scale_x, scale_y, min_x, min_y = delaunay2(nodes_in)
+function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}};on_torus=false,LL=[0.0,0.0],UR=[1.0,1.0])
+    num_nodes_in = length(nodes_in)
+
+    nodes_to_triangulate = Vector{Tensors.Vec{2,Float64}}()
+
+    points_mapping = Vector{Int}()
+    if on_torus
+        dx = UR[1] - LL[1]
+        dy = UR[2] - LL[2]
+        for i in [0,1,-1]
+            for j in [0,1,-1]
+                for (index,node) in enumerate(nodes_in)
+                    new_point = node .+ (i*dx,j*dy)
+                    push!(nodes_to_triangulate,Tensors.Vec{2}((new_point[1],new_point[2])))
+                    push!(points_mapping,index)
+                end
+            end
+        end
+    else
+        for (index,node) in enumerate(nodes_in)
+            push!(nodes_to_triangulate,node)
+            push!(points_mapping,index)
+        end
+    end
+
+
+    tess, m, scale_x, scale_y, min_x, min_y = delaunay2(nodes_to_triangulate)
+
     nodes = map(JuAFEM.Node, nodes_in)
+    additional_nodes = Dict{Int,Int}()#which nodes outside of the torus do we need?
+    cells_used = Set{Tuple{Int,Int,Int}}()
+    #See if this cell, or vertical and horizontal translations
+    #of it have already been added to the triangulation.
+    function in_cells_used(element::Tuple{Int,Int,Int})
+        a,b,c = element
+        function moveby(i,direction)
+            return min(max(1,i + num_nodes_in*direction),9*num_nodes_in)
+        end
+        for direction in -9:9
+            #TODO: optimize this for speed
+            moved_cell = Tuple{Int,Int,Int}(sort(collect(moveby.(element,direction))))
+            if moved_cell ∈ cells_used
+                return true
+            end
+        end
+        return false
+    end
+
     cells = JuAFEM.Triangle[]
     for tri in tess
-        J = Tensors.otimes((nodes_in[tri._b.id] - nodes_in[tri._a.id]), e1)
-        J += Tensors.otimes((nodes_in[tri._c.id] - nodes_in[tri._a.id]), e2)
+        J = Tensors.otimes((nodes_to_triangulate[tri._b.id] - nodes_to_triangulate[tri._a.id]), e1)
+        J += Tensors.otimes((nodes_to_triangulate[tri._c.id] - nodes_to_triangulate[tri._a.id]), e2)
         detJ = det(J)
         @assert detJ != 0
         if detJ > 0
@@ -985,20 +1150,76 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
         else
             new_tri = JuAFEM.Triangle((tri._a.id, tri._c.id, tri._b.id))
         end
-        push!(cells, new_tri)
+        if !on_torus
+            push!(cells, new_tri)
+        else
+            tri_nodes = [new_tri.nodes[i] for i in 1:3]
+            #Are any of the vertices actually inside?
+            if any(x -> x <= num_nodes_in, tri_nodes) && !in_cells_used(new_tri.nodes)
+                for (index,cur) in enumerate(tri_nodes)
+                    if cur > num_nodes_in
+                        if cur ∈ keys(additional_nodes)
+                            tri_nodes[index] = additional_nodes[cur]
+                        else
+                            push!(nodes, JuAFEM.Node(nodes_to_triangulate[cur]))
+                            additional_nodes[cur] = length(nodes)
+                            tri_nodes[index] = length(nodes)
+                        end
+                    end
+                end
+                new_tri = JuAFEM.Triangle((tri_nodes[1],tri_nodes[2],tri_nodes[3]))
+                push!(cells, new_tri)
+                push!(cells_used, Tuple{Int,Int,Int}(sort(tri_nodes)))
+            end
+        end
     end
 
-    #facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
+    facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = JuAFEM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess)
+    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate,points_mapping)
     return grid, locator
 end
 
 function JuAFEM.generate_grid(::Type{JuAFEM.QuadraticTriangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
-    tess, m, scale_x, scale_y, minx, miny = delaunay2(nodes_in)
-    locator = p2DelaunayCellLocator(m, scale_x, scale_y, minx, miny, tess)
+
+    nodes_to_triangulate = Vector{Tensors.Vec{2,Float64}}[]
+    dx = UR[1] - LL[1]
+    dy = UR[2] - LL[2]
+
+    points_mapping = Vector{Int}[]
+
+    for (index,node) in enumerate(nodes_in)
+        if on_torus
+            for i in -1:1
+                for j in -1:1
+                    new_point = node .+ (i*dx,j*dy)
+                    push!(nodes_to_triangulate,new_point)
+                    push!(points_mapping,index)
+                end
+            end
+        else
+            push!(nodes_to_triangulate)
+            push!(points_mapping,index)
+        end
+    end
+    for (index,node) in enumerate(nodes_in)
+        if on_torus
+            for i in -1:1
+                for j in -1:1
+                    new_point = node .+ (i*dx,j*dy)
+                    push!(new_points,new_point)
+                    push!(points_mapping,index)
+                end
+            end
+        else
+        push!(new_points,node)
+        push!(points_mapping,index)
+        end
+    end
+    tess, m, scale_x, scale_y, minx, miny = delaunay2(nodes_to_triangulate)
+    locator = p2DelaunayCellLocator(m, scale_x, scale_y, minx, miny, tess,points_mapping)
     nodes = map(JuAFEM.Node, nodes_in)
     n = length(nodes)
     ctr = n #As we add nodes (for edge vertices), increment the ctr...
@@ -1079,7 +1300,7 @@ mutable struct boundaryData
         @assert issorted(periodic_dofs_from)
         return new(dbc_dofs, periodic_dofs_from, periodic_dofs_to)
     end
-    function boundaryData(ctx::gridContext{dim}, predicate::Function, which_dbc=[]) where dim
+    function boundaryData(ctx::gridContext{dim}, predicate::T, which_dbc=[]) where {dim, T <: Union{Function,Distances.Metric}}
         dbcs = getHomDBCS(ctx,which_dbc).dbc_dofs
         from, to = identifyPoints(ctx,predicate)
         return boundaryData(dbcs,from,to)
@@ -1096,14 +1317,19 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
     dbcs = JuAFEM.ConstraintHandler(ctx.dh)
     #TODO: See if newer version of JuAFEM export a "boundary" nodeset
     if which == "all"
-        if dim == 2
+        if dim == 1
+            dbc = JuAFEM.Dirichlet(:T,
+                    union(JuAFEM.getfaceset(ctx.grid, "left"),
+                     JuAFEM.getfaceset(ctx.grid, "right")
+                       ), (x,t)->0)
+        elseif dim == 2
             dbc = JuAFEM.Dirichlet(:T,
                     union(JuAFEM.getfaceset(ctx.grid, "left"),
                      JuAFEM.getfaceset(ctx.grid, "right"),
                      JuAFEM.getfaceset(ctx.grid, "top"),
                      JuAFEM.getfaceset(ctx.grid, "bottom"),
                        ), (x,t)->0)
-       else
+       elseif dim == 3
             dbc = JuAFEM.Dirichlet(:T,
                     union(JuAFEM.getfaceset(ctx.grid, "left"),
                      JuAFEM.getfaceset(ctx.grid, "right"),
@@ -1112,6 +1338,8 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
                      JuAFEM.getfaceset(ctx.grid, "front"),
                      JuAFEM.getfaceset(ctx.grid, "back"),
                        ), (x,t)->0)
+       else
+           throw(AssertionError("dim ∉ [1,2,3]"))
        end
    elseif isempty(which)
        return boundaryData(Vector{Int}())
@@ -1192,7 +1420,7 @@ function BCTable(ctx::gridContext{dim},bdata::boundaryData) where dim
         skipcounterincreased = false
         correspondsTo[j] = j - skipcounter
         jnew = j
-        if boundary_ptr <l && periodic_dofs_from[boundary_ptr+1] == j
+        if boundary_ptr < l && periodic_dofs_from[boundary_ptr+1] == j
             jnew = periodic_dofs_to[boundary_ptr+1]
             boundary_ptr += 1
             if jnew != j
@@ -1231,19 +1459,19 @@ This is a left-inverse to undoBCS
 """
 function doBCS(ctx, u::AbstractVector{T}, bdata) where T
     @assert length(u) == ctx.n
-    Is = find(i -> ∉(i,bdata.dbc_dofs) && ∉(i,bdata.periodic_dofs_to), 1:ctx.n)
-    return u[Is]
-    # result = T[]
-    # for i in 1:ctx.n
-    #     if i in bdata.dbc_dofs
-    #         continue
-    #     end
-    #     if i in bdata.periodic_dofs_to
-    #         continue
-    #     end
-    #     push!(result,u[i])
-    # end
-    # return result
+    #Is = findall(i -> ∉(i,bdata.dbc_dofs) && ∉(i,bdata.periodic_dofs_from), 1:ctx.n)
+    #return u[Is]
+     result = T[]
+     for i in 1:ctx.n
+         if i in bdata.dbc_dofs
+             continue
+         end
+         if i in bdata.periodic_dofs_from
+             continue
+         end
+         push!(result,u[i])
+     end
+     return result
 end
 
 """
@@ -1251,15 +1479,32 @@ end
 
 Apply the boundary conditions from `bdata` to the `ctx.n` by `ctx.n` sparse matrix `K`.
 """
-function applyBCS(ctx::gridContext{dim},K,bdata::boundaryData) where dim
-    k = length(bdata.dbc_dofs)
-    n = ctx.n
+function applyBCS(ctx_row::gridContext{dim},K,bdata_row::boundaryData;
+        ctx_col::gridContext{dim}=ctx_row, bdata_col::boundaryData=bdata_row,
+        add_vals = true
+        ) where dim
 
-    correspondsTo = BCTable(ctx,bdata)
-    new_n = length(unique(correspondsTo))
-    if 0 ∈ correspondsTo
+    k1 = length(bdata_col.dbc_dofs)
+    k2 = length(bdata_row.dbc_dofs)
+
+    n = ctx_row.n
+    m = ctx_col.n
+
+    is_symmetric = issymmetric(K) && (bdata_row == bdata_col)
+
+    correspondsTo_col = BCTable(ctx_col,bdata_col)
+    correspondsTo_row = BCTable(ctx_row,bdata_row)
+
+    new_n = length(unique(correspondsTo_col))
+    new_m = length(unique(correspondsTo_row))
+
+    if 0 ∈ correspondsTo_col
         new_n -= 1
     end
+    if 0 ∈ correspondsTo_row
+        new_m -= 1
+    end
+
     if issparse(K)
         vals = nonzeros(K)
         rows = rowvals(K)
@@ -1270,43 +1515,58 @@ function applyBCS(ctx::gridContext{dim},K,bdata::boundaryData) where dim
         J = Int[]
         sizehint!(J,length(rows))
         vals = nonzeros(K)
-        V = Int[]
+        V = Float64[]
         sizehint!(V,length(rows))
-        V = zeros(length(I))
-        for j = 1:n
-            if correspondsTo[j] == 0
+        for j = 1:m
+            if correspondsTo_col[j] == 0
                 continue
             end
             for i in nzrange(K,j)
                 row = rows[i]
-                if correspondsTo[row] == 0
+                if correspondsTo_row[row] == 0
                     continue
                 end
-                push!(I, correspondsTo[row])
-                push!(J, correspondsTo[j])
+                if is_symmetric && (correspondsTo_row[j] < correspondsTo_row[row])
+                    continue
+                end
+                push!(I, correspondsTo_row[row])
+                push!(J, correspondsTo_col[j])
                 push!(V,vals[i])
+                if is_symmetric && correspondsTo_row[row] != correspondsTo_row[j]
+                    push!(J, correspondsTo_row[row])
+                    push!(I, correspondsTo_col[j])
+                    push!(V,vals[i])
+                end
             end
         end
-        Kres = sparse(I,J,V,new_n,new_n)
+        if add_vals
+            Kres = sparse(I,J,V,new_n,new_n)
+        else
+            Kres = sparse(I,J,V,new_n,new_n,(x,y) -> x)
+        end
         return Kres
     else
         Kres = zeros(new_n,new_n)
-        for j = 1:n
-            if correspondsTo[j] == 0
+        for j = 1:m
+            if correspondsTo_col[j] == 0
                 continue
             end
             for i in 1:n
-                if correspondsTo[i] == 0
+                if correspondsTo_row[i] == 0
                     continue
                 end
-                Kres[correspondsTo[i],correspondsTo[j]] = K[i,j]
+                if add_vals
+                    Kres[correspondsTo_row[i],correspondsTo_col[j]] += K[i,j]
+                else
+                    Kres[correspondsTo_row[i],correspondsTo_col[j]] = K[i,j]
+                end
             end
         end
         return Kres
     end
 end
 
-function identifyPoints(ctx::gridContext{dim},predicate) where dim
+function identifyPoints(ctx::gridContext{dim},predicate::Function) where dim
     boundary_dofs = getHomDBCS(ctx).dbc_dofs
     identify_from = Int[]
     identify_to = Int[]
@@ -1317,6 +1577,32 @@ function identifyPoints(ctx::gridContext{dim},predicate) where dim
                 push!(identify_to,j)
                 break
             end
+        end
+    end
+    return identify_from,identify_to
+end
+
+
+function identifyPoints(ctx::gridContext{dim},predicate::Distances.Metric) where dim
+
+    identify_from = Int[]
+    identify_to = Int[]
+
+    l = zeros(2, ctx.n)
+    for i in 1:ctx.n
+        coords = getDofCoordinates(ctx,i)
+        l[1,i] = coords[1]
+        l[2,i] = coords[2]
+    end
+    TOL = 1e-12 #TODO: set this somewhere globally
+
+    S = NN.BallTree(l,predicate)
+
+    for index in 1:ctx.n
+        res = NN.inrange(S,getDofCoordinates(ctx,index),TOL,true)
+        if res[1] != index
+            push!(identify_from,index)
+            push!(identify_to,res[1])
         end
     end
     return identify_from,identify_to

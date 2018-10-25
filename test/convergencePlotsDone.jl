@@ -1,12 +1,146 @@
 #(c) 2018 Nathanael Schilling
 #Plots for paper
 
-using CoherentStructures,Plots,Serialization,LinearAlgebra, Printf
+using CoherentStructures
+using Plots,Serialization,LinearAlgebra, Printf
 
 include("numericalExperiments.jl")
 
-experimentRange=Int.(round.(10*1.3.^range(1,stop=13)))
-experimentRangeSmall=Int.(round.(10*1.3.^range(0,stop=7)))
+experimentRange= 2 .^ (4:8) .+ 1
+experimentRangeSmall= 2 .^ (4:6) .+ 1
+
+function runGenericTest(tC, name; nol2g=false)
+  results0 = testGeneric(tC,[],quadrature_order=5,run_reference=true)
+  results1 = testGeneric(tC,experimentRange,quadrature_order=2,run_reference=false)
+  results3 = testGeneric(tC,experimentRange,mode=:naTO,run_reference=false,quadrature_order=2)
+  if ! nol2g
+    results4 = testGeneric(tC,experimentRangeSmall,mode=:L2GTOb,run_reference=false,quadrature_order=4)
+  end
+
+  results = copy(results0)
+  append!(results,results1)
+  append!(results,results3)
+  if ! nol2g
+    append!(results,results4)
+  end
+  buildStatistics!(results,1)
+
+
+  myfd = open(name,"w")
+  serialize(myfd,results)
+  close(myfd)
+end
+
+rtC= makeRotationTestCase()
+runGenericTest(rtC,"SM";nol2g=true)
+res = testGeneric(rtC,[50], quadrature_order=2,run_reference=false,mode=:CG)
+#plot_u(res[1].ctx,res[1].V[:,2],bdata=res[1].bdata)
+
+K = assembleStiffnessMatrix(res[1].ctx,bdata=res[1].bdata)
+M = assembleMassMatrix(res[1].ctx,bdata=res[1].bdata)
+
+pdf = res[1].bdata.periodic_dofs_from
+plot_real_spectrum(λ)
+λ, V = eigs(K,M, which=:SM)
+myplot = plot_u(res[1].ctx,V[:,6],bdata=res[1].bdata)
+for i in pdf
+  global res
+  ctx = res[1].ctx
+  from_node = ctx.grid.nodes[ctx.dof_to_node[i]]
+  myplot = Plots.scatter!([from_node.x[1]],[from_node.x[2]],legend=:none)
+end
+myplot
+
+function readGenericTestCase(name)
+  results=open(Serialization.deserialize,name)
+  GC.gc()
+  return results
+end
+
+readGenericTestCase("SM")[1]
+
+function genericTestCasePlots(name;eigenspace=1:1)
+  reference_index = 1
+  results = readGenericTestCase(name)
+
+  for j in [1,2]
+    if j == 1
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
+    else
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode != :CG]
+    end
+    begin
+      whichev = 2
+      x = [getH(x.ctx) for x in results[indexes_to_plot]]
+      y = [abs(x.λ[whichev] - results[reference_index].λ[whichev])/(results[reference_index].λ[whichev])  for x in results[indexes_to_plot]]
+      gridtypes = [x.ctx.gridType * " $(x.mode)" for x in results[indexes_to_plot]]
+      if j == 2
+        legendlabels = [@sprintf("%s, %s ", occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements","$(x.mode)") for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf("(%.1f)",ev_slopes[gridtypes[i]] )
+        end
+      else
+        legendlabels = [occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements" for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",ev_slopes[gridtypes[i]] )
+        end
+      end
+      ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
+      colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
+      Plots.scatter(x,y,group=gridtypes,label=legendlabels,color=colors,xlabel="Mesh width",ylabel="Relative error",m=ms,
+        xscale=:log10,yscale=:log10,  legend=(0.40,0.20),
+        )
+        #ylim=(1e-10,1),xlim=(10^-1.8,1.03));
+      Plots.display(loglogslopeline(x,y,gridtypes,ev_slopes))
+      sleep(2)
+      #loglogleastsquareslines(x,y,gridtypes)
+    end
+    if j == 1
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/$(name)$(whichev)errsCG.pdf")
+    else
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/$(name)$(whichev)errsTO.pdf")
+    end
+
+    begin
+      x = [getH(x.ctx) for x in results[indexes_to_plot]]
+      matrices = [(inv(x.statistics["B"])*x.statistics["E"]*inv(results[reference_index].statistics["B"]))[eigenspace,eigenspace] for x in results[indexes_to_plot]]
+      #y = [sqrt(abs(1 - opnorm(x))) for x in matrices]
+      y = [sqrt(abs(1 - sqrt(abs(maximum(eigvals(x'*x)))))) for x in matrices]
+      gridtypes = [x.ctx.gridType * " $(x.mode)" for x in results[indexes_to_plot]]
+      mycolors = [method_colors[f] for f in gridtypes]
+      if j == 2
+        legendlabels = [@sprintf("%s, %s ", occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements","$(x.mode)") for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",evec_slopes[gridtypes[i]] )
+        end
+      else
+        legendlabels = [occursin("P2",x.ctx.gridType) ? "P2 elements" : "P1 elements" for x in results[indexes_to_plot]]
+        for i in 1:length(legendlabels)
+          legendlabels[i] = legendlabels[i] * @sprintf(" (%.1f)",evec_slopes[gridtypes[i]] )
+        end
+      end
+      ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
+      Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Eigenspace error",
+        xscale=:log10, yscale=:log10, legend=(0.55,0.25),color=mycolors,lab=legendlabels,m=ms,
+      #  ylim=(1.e-7,1e-1),xlim=(10^(-1.7),1.03))
+      )
+      Plots.display(loglogslopeline(x,y,gridtypes,evec_slopes))
+      sleep(2)
+    end
+
+    if j == 1
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/$(name)evec23errsCG.pdf")
+    else
+      Plots.pdf("/home/nathanael/Documents/TUM/topmath/plots/$(name)evec23errsTO.pdf")
+    end
+  end
+end
+
+genericTestCasePlots("ROT3",eigenspace=2:5)
+results = readGenericTestCase("ROT3")
+plot_u(results[1].ctx, results[1].V[:,2], bdata=results[1].bdata)
+plot_u(results[2].ctx, results[2].V[:,2], bdata=results[1].bdata)
+
 
 function runStandardMapTests()
   results0 = testStandardMap([],quadrature_order=5,run_reference=true)
@@ -309,8 +443,9 @@ standardMapQuadraturePlots()
 function runDoubleGyreTests()
   results0dg = testDoubleGyre([],quadrature_order=5,tf=0.25,run_reference=true)
   results1dg = testDoubleGyre(experimentRange,run_reference=false,quadrature_order=5,tf=0.25)
-  results3dg = testDoubleGyre(experimentRange[2:end],mode=:naTO,run_reference=false,quadrature_order=2,tf=0.25)
-  results4dg = testDoubleGyre(experimentRangeSmall,mode=:L2GTOb,run_reference=false,quadrature_order=4,tf=0.25)
+  results3dg = testDoubleGyre(experimentRange,mode=:naTO,run_reference=false,quadrature_order=2,tf=0.25)
+  results4dg = testDoubleGyre(experimentRange[1:end],mode=:aTO,run_reference=false,quadrature_order=2,tf=0.25)
+  #results4dg = testDoubleGyre(experimentRangeSmall,mode=:L2GTOb,run_reference=false,quadrature_order=4,tf=0.25)
 
   resultsdg = copy(results0dg)
   append!(resultsdg,results1dg)
@@ -325,6 +460,7 @@ function runDoubleGyreTests()
   GC.gc()
 end
 
+runDoubleGyreTests()
 
 function runDoubleGyreEqVariTests()
   results0dg = testDoubleGyreEqVari([],quadrature_order=5,tf=0.25,run_reference=true)

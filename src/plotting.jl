@@ -7,10 +7,28 @@ The domain to be plotted on is given by `ctx.spatialBounds`.
 The function is evaluated on a regular `nx` by `ny` grid, the resulting plot is a heatmap.
 Keyword arguments are passed down to `plot_u_eulerian`, which this function calls internally.
 """
-function plot_u(ctx::gridContext, dof_vals::Vector{Float64}, nx=50, ny=50; bdata=nothing, kwargs...)
+function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100,LL=ctx.spatialBounds[1],UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...) where dim
     id = x -> x
-    plot_u_eulerian(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
+    if dim == 1
+        plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx,  bdata=bdata; kwargs...)
+    elseif dim==2
+        plot_u_eulerian(ctx, dof_vals, id, LL,UR, nx,ny, bdata=bdata; kwargs...)
+    else
+        throw(AssertionError("Not yet implemented"))
+    end
 end
+
+function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100; bdata=nothing, kwargs...) where dim
+    id = x -> x
+    if dim == 1
+        plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
+    elseif dim==2
+        plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1],ctx.spatialBounds[2], nx, bdata=bdata; kwargs...)
+    else
+        throw(AssertionError("Not yet implemented"))
+    end
+end
+
 
 
 function get_full_nodevals(ctx,dof_vals; bdata=nothing)
@@ -35,60 +53,98 @@ end
         euler_to_lagrange_points=nothing,
         z=nothing,
         postprocessor=nothing,
-        return_scalar_field=false
+        return_scalar_field=false,
+        throw_errors=false
     )
     ctx::gridContext = as.args[1]
     dof_vals::Vector{Float64} = as.args[2]
     inverse_flow_map::Function = as.args[3]
     LL::AbstractVector{Float64} = as.args[4]
     UR::AbstractVector{Float64} = as.args[5]
-    if length(as.args) >= 6
-        nx=as.args[6]
-    else
-        nx = 100
-    end
-    if length(as.args) >= 7
-        ny = as.args[7]
-    else
-        ny = 100
-    end
+    if typeof(ctx) == gridContext{2}
+        if length(as.args) >= 6
+            nx=as.args[6]
+        else
+            nx = 100
+        end
+        if length(as.args) >= 7
+            ny = as.args[7]
+        else
+            ny = 100
+        end
 
-    #
-    # x1 = Float64[]
-    # x2 = Float64[]
-    # values = Float64[]
-    u_values = get_full_nodevals(ctx,dof_vals;bdata=bdata)
-    x1 = range(LL[1],stop=UR[1],length=nx)
-    x2 = range(LL[2],stop=UR[2],length=ny)
-    if euler_to_lagrange_points == nothing
-        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,x1,x2)
-        euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
-        for i in 1:nx, j in 1:ny
-            euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
-	    end
-	end
+        #
+        # x1 = Float64[]
+        # x2 = Float64[]
+        # values = Float64[]
+        u_values = get_full_nodevals(ctx,dof_vals;bdata=bdata)
+        x1 = range(LL[1],stop=UR[1],length=nx)
+        x2 = range(LL[2],stop=UR[2],length=ny)
+        if euler_to_lagrange_points == nothing
+            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1,x2],throw_errors=throw_errors)
+            euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
+            for i in 1:nx, j in 1:ny
+                euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
+    	    end
+    	end
 
-    if z == nothing
-        z = zeros(size(euler_to_lagrange_points))
-        for I in eachindex(euler_to_lagrange_points)
-            if isnan((euler_to_lagrange_points[I])[1])
-                z[I] = NaN
-            else
-                z[I] = evaluate_function_from_nodevals(ctx,u_values,euler_to_lagrange_points[I],NaN)
+        if z == nothing
+            z = zeros(size(euler_to_lagrange_points))
+            for I in eachindex(euler_to_lagrange_points)
+                if isnan((euler_to_lagrange_points[I])[1])
+                    z[I] = NaN
+                else
+                    z[I] = evaluate_function_from_nodevals(ctx,u_values,euler_to_lagrange_points[I],outside_value=NaN)
+                end
             end
         end
-    end
 
-    if postprocessor != nothing
-       z =  postprocessor(z)
-    end
+        if postprocessor != nothing
+           z =  postprocessor(z)
+        end
 
-    seriestype --> :heatmap
-    fill --> true
-    aspect_ratio --> 1
-    xlim --> (LL[1],UR[1])
-    ylim --> (LL[2],UR[2])
-    x1,x2,z
+        seriestype --> :heatmap
+        fill --> true
+        aspect_ratio --> 1
+        xlim --> (LL[1],UR[1])
+        ylim --> (LL[2],UR[2])
+        x1,x2,z
+    elseif typeof(ctx) == gridContext{1}
+        if length(as.args) >= 6
+            nx=as.args[6]
+        else
+            nx = 100
+        end
+        u_values = get_full_nodevals(ctx,dof_vals;bdata=bdata)
+        x1 = range(LL[1],UR[1],length=nx)
+
+        if euler_to_lagrange_points == nothing
+            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1])
+            euler_to_lagrange_points = [zero(Tensors.Vec{1}) for x in x1]
+            for i in 1:nx
+                euler_to_lagrange_points[i] = Tensors.Vec{1}([euler_to_lagrange_points_raw[i]])
+    	    end
+    	end
+
+        if z == nothing
+            z = zeros(size(euler_to_lagrange_points))
+            for I in eachindex(euler_to_lagrange_points)
+                if isnan(euler_to_lagrange_points[I][1])
+                    z[I] = NaN
+                else
+                    z[I] = evaluate_function_from_nodevals(ctx,u_values,euler_to_lagrange_points[I],outside_value=NaN)
+                end
+            end
+        end
+
+        if postprocessor != nothing
+           z =  postprocessor(z)
+        end
+
+        seriestype --> :line
+        xlim --> (LL[1],UR[1])
+        x1,z
+    end
 end
 
 
@@ -116,27 +172,45 @@ Inverse flow maps are computed in parallel if there are multiple workers.
 plot_u_eulerian
 
 
-function compute_euler_to_lagrange_points_raw(inv_flow_map,x1,x2)
-    euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
-    @sync @distributed for i in eachindex(x1)
-        for j in eachindex(x2)
-            point = StaticArrays.SVector{2}(x1[i],x2[j])
+function compute_euler_to_lagrange_points_raw(inv_flow_map,xi; throw_errors=false)
+    @assert length(xi) ∈ [1,2]
+    if length(xi) == 1
+        x1 = xi[1]
+        euler_to_lagrange_points_raw = SharedArray{Float64}(length(x1))
+        @sync @distributed for i in eachindex(x1)
+            point = StaticArrays.SVector{1}(x1[i])
             try
                 back = inv_flow_map(point)
-                euler_to_lagrange_points_raw[j,i,1] = back[1]
-                euler_to_lagrange_points_raw[j,i,2] = back[2]
+                euler_to_lagrange_points_raw[i] = back[1]
             catch e
-                #if isa(e,InexactError)
-                if true
-                    euler_to_lagrange_points_raw[j,i,1] = NaN
-                    euler_to_lagrange_points_raw[j,i,2] = NaN
-                else
-                    throw(e)
+                euler_to_lagrange_points_raw[i] = NaN
+            end
+        end
+        return euler_to_lagrange_points_raw
+
+    elseif length(xi) == 2
+        x1,x2 = xi
+        euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
+        @sync @distributed for i in eachindex(x1)
+            for j in eachindex(x2)
+                point = StaticArrays.SVector{2}(x1[i],x2[j])
+                try
+                    back = inv_flow_map(point)
+                    euler_to_lagrange_points_raw[j,i,1] = back[1]
+                    euler_to_lagrange_points_raw[j,i,2] = back[2]
+                catch e
+                    #if isa(e,InexactError)
+                    if !throw_errors
+                        euler_to_lagrange_points_raw[j,i,1] = NaN
+                        euler_to_lagrange_points_raw[j,i,2] = NaN
+                    else
+                        rethrow(e)
+                    end
                 end
             end
         end
+        return euler_to_lagrange_points_raw
     end
-    return euler_to_lagrange_points_raw
 end
 
 
@@ -176,7 +250,8 @@ function eulerian_videos(ctx,
                          LL, UR,
                          num_videos=1;
                          bdata=nothing,
-                         extra_kwargs_fun=nothing,kwargs...)
+                         extra_kwargs_fun=nothing,
+                         throw_errors=false,kwargs...)
     allvideos = [frameCollection([]) for i in 1:num_videos]
 
     for (index,t) in enumerate(range(t0,stop=tf,length=nt))
@@ -188,7 +263,7 @@ function eulerian_videos(ctx,
         end
         x1 = range(LL[1],stop=UR[1],length=nx)
         x2 = range(LL[2],stop=UR[2],length=ny)
-        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(current_inv_flow_map,x1,x2)
+        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(current_inv_flow_map,[x1,x2],throw_errors=throw_errors)
         euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
         for i in 1:nx, j in 1:ny
             euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
@@ -206,7 +281,8 @@ function eulerian_videos(ctx,
             	    current_u = current_us[:,i]
                     zs_all[yindex,xindex, i]= evaluate_function_from_nodevals(
                         ctx, current_u,
-                        euler_to_lagrange_points[yindex,xindex])
+                        euler_to_lagrange_points[yindex,xindex]
+                        )
                 end
             end
         end
@@ -387,7 +463,7 @@ end
                 end
             catch e
                 if pass_on_errors
-                    throw(e)
+                    rethrow(e)
                 end
                 nancounter_local += 1
             end

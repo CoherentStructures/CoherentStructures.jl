@@ -23,6 +23,8 @@ function sm(u)
         ))
 end
 
+2π/500
+
 function sminv(x::Tensors.Vec{2,Float64})::Tensors.Vec{2,Float64}
     ϵ::Float64 = 1.0
     ρ::Float64 = 0.3
