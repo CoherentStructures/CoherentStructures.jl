@@ -58,12 +58,14 @@ module CoherentStructures
     ##Extensions to JuAFEM dealing with non-curved grids
     ##Support for evaluating functions at grid points, delaunay Triangulations
 
-    #The cellLocator provides an abstract basis class for classes for locating points on grids.
-    #A cellLocator should implement a locatePoint function (see below)
+    #The pointLocator provides an abstract basis class for classes for locating points on grids.
+    #A pointLocator should implement a locatePoint function (see below)
     #TODO: Find out the existence of such a function can be enforced by julia
 
-    abstract type cellLocator end
+    abstract type pointLocator end
     include("gridfunctions.jl")
+    include("pointlocation.jl")
+    include("boundaryconditions.jl")
 
     #Creation of Stiffness and Mass-matrices
     include("FEMassembly.jl")

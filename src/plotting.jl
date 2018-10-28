@@ -31,7 +31,7 @@ end
 
 
 
-function get_full_nodevals(ctx,dof_vals; bdata=nothing)
+function get_full_dofvals(ctx,dof_vals; bdata=nothing)
     if (bdata==nothing) && (ctx.n != length(dof_vals))
         dbcs = getHomDBCS(ctx)
         if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
@@ -43,7 +43,7 @@ function get_full_nodevals(ctx,dof_vals; bdata=nothing)
     else
         dof_values = dof_vals
     end
-    return dof2node(ctx,dof_values)
+    return dof_values
 end
 
 @userplot Plot_U_Eulerian
@@ -77,7 +77,7 @@ end
         # x1 = Float64[]
         # x2 = Float64[]
         # values = Float64[]
-        u_values = get_full_nodevals(ctx,dof_vals;bdata=bdata)
+        u_values = get_full_dofvals(ctx,dof_vals;bdata=bdata)
         x1 = range(LL[1],stop=UR[1],length=nx)
         x2 = range(LL[2],stop=UR[2],length=ny)
         if euler_to_lagrange_points == nothing
@@ -89,14 +89,12 @@ end
     	end
 
         if z == nothing
-            z = zeros(size(euler_to_lagrange_points))
-            for I in eachindex(euler_to_lagrange_points)
-                if isnan((euler_to_lagrange_points[I])[1])
-                    z[I] = NaN
-                else
-                    z[I] = evaluate_function_from_nodevals(ctx,u_values,euler_to_lagrange_points[I],outside_value=NaN)
-                end
-            end
+            z_raw = evaluate_function_from_dofvals_multiple(
+                            ctx,u_values[:,:],
+                            vec(euler_to_lagrange_points),
+                            outside_value=NaN
+                            )
+            z = reshape(z_raw[1,:],size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -115,7 +113,7 @@ end
         else
             nx = 100
         end
-        u_values = get_full_nodevals(ctx,dof_vals;bdata=bdata)
+        u_values = get_full_dofvals(ctx,dof_vals;bdata=bdata)
         x1 = range(LL[1],UR[1],length=nx)
 
         if euler_to_lagrange_points == nothing
@@ -127,14 +125,12 @@ end
     	end
 
         if z == nothing
-            z = zeros(size(euler_to_lagrange_points))
-            for I in eachindex(euler_to_lagrange_points)
-                if isnan(euler_to_lagrange_points[I][1])
-                    z[I] = NaN
-                else
-                    z[I] = evaluate_function_from_nodevals(ctx,u_values,euler_to_lagrange_points[I],outside_value=NaN)
-                end
-            end
+            z_raw = evaluate_function_from_dofvals_multiple(
+                            ctx,u_values[:,:],
+                            vec(euler_to_lagrange_points),
+                            outside_value=NaN
+                            )
+            z = reshape(z_raw[1,:],size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -272,7 +268,7 @@ function eulerian_videos(ctx,
         zs_all = SharedArray{Float64}(ny,nx,num_videos)
         current_us = SharedArray{Float64}(ctx.n,num_videos)
         for i in 1:num_videos
-            current_us[:,i] = get_full_nodevals(ctx,us(i,t); bdata = bdata)
+            current_us[:,i] = get_full_dofvals(ctx,us(i,t); bdata = bdata)
         end
         @sync @distributed for xindex in 1:nx
             #@distributed for current_index in eachindex(z_all)

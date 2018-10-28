@@ -49,7 +49,7 @@ function assembleStiffnessMatrixInternal(
         ;
         bdata=boundaryData() #Default to natural BCs
         ) where {T,dim}
-    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr,ctx.ip, ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
     K::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
     a_K::JFM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(K)
@@ -129,7 +129,7 @@ function assembleMassMatrix(
         bdata=boundaryData(),
         lumped=false,
         ) where dim
-    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip,ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
     a_M::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(M)
@@ -180,7 +180,7 @@ Compute the coordinates of all quadrature points on a grid.
 Helper function.
 """
 function getQuadPoints(ctx::gridContext{dim}) where dim
-    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip)
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip,ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
     dofs = zeros(Int, JFM.ndofs_per_cell(dh))

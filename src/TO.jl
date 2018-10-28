@@ -13,7 +13,7 @@ function nonAdaptiveTO(
     n = ctx_codomain.n
     m = ctx_domain.n
     result = spzeros(n,m)
-    speyem = sparse(I,m,m)
+    speyem = sparse(I,m,m)*1.0
 
     for j in 1:n
         current_point = ctx_codomain.grid.nodes[j].x
@@ -22,7 +22,7 @@ function nonAdaptiveTO(
             #pointPullback::Tensors.Vec{2,Float64} = Tensors.Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
             pointPullBack::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(inverse_flow_map(current_point))
             #TODO: make the below more efficient
-            shape_function_values = evaluate_function_from_nodevals_multiple(ctx_domain,speyem,pointPullBack,
+            shape_function_values = evaluate_function_from_nodevals_multiple(ctx_domain,speyem,[pointPullBack],
                 outside_value=0.0,project_in=project_in,is_diag=true)
             for (index,i) in enumerate(shape_function_values.nzind)
                     result[jdof,ctx_domain.node_to_dof[i]] = shape_function_values.nzval[index]

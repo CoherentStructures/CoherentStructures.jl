@@ -21,12 +21,15 @@ Stores everything needed as "context" to be able to work on a FEM grid based on 
 Adds a point-locator API which facilitates plotting functions defined on the grid within Julia.
 
 # Fields
-- `grid::JuAFEM.Grid`, `ip::JuAFEM.Interpolation`, `qr::JuAFEM.QuadratureRule` - See the `JuAFEM` package
+- `grid::JuAFEM.Grid`, `ip::JuAFEM.Interpolation`,`ip_geom::JuAFEM.Interpolation`, `qr::JuAFEM.QuadratureRule` - See the `JuAFEM` package
 - `loc::CellLocator` object used for point-location on the grid.
-- `node_to_dof::Vector{Int}`  lookup table for dof index of a node
+- `node_to_dof::Vector{Int}`  lookup table for dof index of a node (for Lagrange Elements)
 - `dof_to_node::Vector{Int}`  inverse of node_to_dof
-- `n::Int` number of nodes on the grid
-- `m::Int` number of elements (e.g. triangles,quadrilaterals, ...) on the grid
+- `cell_to_dof::Vector{Int}`  lookup table for dof index of a cell (for piecewise constant elements)
+- `dof_to_cell::Vector{Int}`  inverse of cell_to_dof
+- `num_nodes::Int` number of nodes on the grid
+- `num_cells::Int` number of elements (e.g. triangles,quadrilaterals, ...) on the grid
+- `n` number of degrees of freedom (== `num_nodes` for Lagrange Elements, and == `num_cells` for piecewise constant elements)
 - `quadrature_points::Vector{Vec{dim,Float64}}` All quadrature points on the grid, in a fixed order.
 - `mass_weights::Vector{Float64}` Weighting for mass matrix
 - `spatialBounds` If available, the corners of a bounding box of a domain. For regular grids, the bounds are tight.
@@ -36,6 +39,7 @@ Adds a point-locator API which facilitates plotting functions defined on the gri
 mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set as mutable, is this sensible?
     grid::JuAFEM.Grid
     ip::JuAFEM.Interpolation
+    ip_geom::JuAFEM.Interpolation
     dh::JuAFEM.DofHandler
     qr::JuAFEM.QuadratureRule
     loc::pointLocator
@@ -48,8 +52,11 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
     cell_to_dof::Vector{Int} #cell_to_dof[cellid] contains the index of the corresponding dof
     dof_to_cell::Vector{Int} #dof_to_cell[dofid] contains the index of the corresponding cell
 
-    n::Int #The number of nodes
-    m::Int #The number of cells
+    num_nodes::Int #The number of nodes
+    num_cells::Int #The number of cells
+
+    n::Int #The number of dofs
+
     quadrature_points::Vector{Tensors.Vec{dim,Float64}} #All quadrature points, ordered by how they are accessed in assemble routines
     mass_weights::Vector{Float64}
 
@@ -63,22 +70,24 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
     function gridContext{dim}(
                 grid::JuAFEM.Grid,
                 ip::JuAFEM.Interpolation,
+                ip_geom::JuAFEM.Interpolation,
                 dh::JuAFEM.DofHandler,
                 qr::JuAFEM.QuadratureRule,
                 loc::pointLocator
             ) where {dim}
 
-        x =new{dim}(grid, ip, dh, qr, loc)
-        x.n = JuAFEM.getnnodes(dh.grid)
-        x.m = JuAFEM.getncells(dh.grid)
+        x =new{dim}(grid, ip,ip_geom, dh, qr, loc)
+        x.num_nodes = JuAFEM.getnnodes(dh.grid)
+        x.num_cells = JuAFEM.getncells(dh.grid)
+        x.n = JuAFEM.ndofs(dh)
 
         #TODO: Measure if the sorting below is expensive
-        if ip <: JuAFEM.Lagrange
+        if isa(ip,JuAFEM.Lagrange)
             x.node_to_dof = nodeToDHTable(x)
             x.dof_to_node = sortperm(x.node_to_dof)
-        elseif ip <: JuAFEM.PiecewiseConstant
+        elseif isa(ip,JuAFEM.PiecewiseConstant)
             x.cell_to_dof = cellToDHTable(x)
-            x.dof_to_cell = sortperm(x.node_to_dof)
+            x.dof_to_cell = sortperm(x.cell_to_dof)
         else
             throw(AssertionError("Unknown interpolation type"))
         end
@@ -89,68 +98,89 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
 end
 
 
-function gridContext{1}(::Type{JuAFEM.Line},ip=JuAFEM.Lagrange{1,JuAFEM.RefCube,1},
-                         numnodes::Tuple{Int}=( 25), LL::AbstractVector=[0.0], UR::AbstractVector=[1.0];
-                         quadrature_order::Int=default_quadrature_order,
-                         )
-    # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.Line, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
-    loc = regular1DGridLocator{JuAFEM.Line}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+#Based on JuAFEM's WriteVTK.vtk_point_data
+function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
+    dh::JuAFEM.DofHandler = ctx.dh
+    n = ctx.n
+    res = Vector{Int}(undef,n)
+    for cell in JuAFEM.CellIterator(dh)
+        _celldofs = JuAFEM.celldofs(cell)
+        ctr = 1
+        offset = JuAFEM.field_offset(dh, dh.field_names[1])
+        for node in JuAFEM.getnodes(cell)
+               res[node] = _celldofs[ctr + offset]
+               ctr += 1
+        end
+    end
+    return res
+end
 
-    dh = JuAFEM.DofHandler(grid)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-    JuAFEM.close!(dh)
-
-    qr = JuAFEM.QuadratureRule{1, JuAFEM.RefCube}(quadrature_order)
-    result = gridContext{1}(grid, ip, dh, qr, loc)
-    result.spatialBounds = [LL,UR]
-    result.numberOfPointsInEachDirection = [numnodes[1]]
-    result.gridType = "regular 1d grid"
-
-
-    return result
+function cellToDHTable(ctx::abstractGridContext{dim}) where {dim}
+    dh::JuAFEM.DofHandler = ctx.dh
+    n = ctx.n
+    res = Vector{Int}(undef,n)
+    for (cellindex,cell) in enumerate(JuAFEM.CellIterator(dh))
+        _celldofs = JuAFEM.celldofs(cell)
+        offset = JuAFEM.field_offset(dh, dh.field_names[1])
+        for node in JuAFEM.getnodes(cell)
+            mynode = node
+        end
+        res[cellindex] = _celldofs[offset+1]
+    end
+    return res
 end
 
 
 function gridContext{1}(::Type{JuAFEM.Line},
                          numnodes::Tuple{Int}=( 25), LL::AbstractVector=[0.0], UR::AbstractVector=[1.0];
                          quadrature_order::Int=default_quadrature_order,
+                         ip=JuAFEM.Lagrange{1,JuAFEM.RefCube,1}(),
                          )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.Line, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
     loc = regular1DGridLocator{JuAFEM.Line}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
-    ip = JuAFEM.Lagrange{1, JuAFEM.RefCube, 1}()
 
     dh = JuAFEM.DofHandler(grid)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
 
     qr = JuAFEM.QuadratureRule{1, JuAFEM.RefCube}(quadrature_order)
-    result = gridContext{1}(grid, ip, dh, qr, loc)
+    result = gridContext{1}(grid, ip,JuAFEM.Lagrange{1,JuAFEM.RefCube,1}(), dh, qr, loc)
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1]]
     result.gridType = "regular 1d grid"
-
 
     return result
 end
 
+
 function gridContext{1}(::Type{JuAFEM.QuadraticLine},
-                         numnodes::Tuple{Int}=( 25), LL::AbstractVector=[0.0], UR::AbstractVector=[1.0];
-                         quadrature_order::Int=default_quadrature_order)
+                         numnodes::Tuple{Int}=( 25),
+                         LL::AbstractVector=[0.0],
+                         UR::AbstractVector=[1.0];
+                         quadrature_order::Int=default_quadrature_order,
+                         ip=JuAFEM.Lagrange{1,JuAFEM.RefCube,2}()
+                         )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticLine, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
     loc = regular1DGridLocator{JuAFEM.QuadraticLine}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
-    ip = JuAFEM.Lagrange{1, JuAFEM.RefCube, 2}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{1, JuAFEM.RefCube}(quadrature_order)
     push!(dh, :T, 1) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result = gridContext{1}(grid, ip, dh, qr, loc)
+    result = gridContext{1}(grid, ip,JuAFEM.Lagrange{1,JuAFEM.RefCube,2}(), dh, qr, loc)
     result.spatialBounds = [LL,UR]
     result.numberOfPointsInEachDirection = [numnodes[1]]
     result.gridType = "regular 1d grid"
     return result
+end
+
+function regular1dGridPC(numnodes::Int,left=0.0,right=1.0; quadrature_order::Int=default_quadrature_order)
+    return gridContext{1}(JuAFEM.Line,(numnodes,),
+        [left],[right];
+        quadrature_order=quadrature_order,
+        ip=JuAFEM.PiecewiseConstant{1,JuAFEM.RefCube,1}()
+        )
 end
 
 function regular1dGrid(numnodes::Int,left=0.0,right=1.0; quadrature_order::Int=default_quadrature_order)
@@ -206,35 +236,6 @@ function regular2DGrid(
     end
 end
 
-#Based on JuAFEM's WriteVTK.vtk_point_data
-function nodeToDHTable(ctx::abstractGridContext{dim}) where {dim}
-    dh::JuAFEM.DofHandler = ctx.dh
-    n = ctx.n
-    res = Vector{Int}(undef,n)
-    for cell in JuAFEM.CellIterator(dh)
-        _celldofs = JuAFEM.celldofs(cell)
-        ctr = 1
-        offset = JuAFEM.field_offset(dh, dh.field_names[1])
-        for node in JuAFEM.getnodes(cell)
-               res[node] = _celldofs[ctr + offset]
-               ctr += 1
-        end
-    end
-    return res
-end
-
-function cellToDHTable(ctx::abstractGridContext{dim}) where {dim}
-    dh::JuAFEM.DofHandler = ctx.dh
-    n = ctx.n
-    res = Vector{Int}(undef,n)
-    #TODO: Figure out if CellIterators iterate in order
-    for (cellindex,cell) in enumerate(JuAFEM.CellIterator(dh))
-        _celldofs = JuAFEM.celldofs(cell)
-        offset = JuAFEM.field_offset(dh, dh.field_names[1])
-        res[cellindex] = _celldofs[offset]
-    end
-    return res
-end
 
 #= #TODO 1.0
 """
@@ -251,14 +252,14 @@ function gridContext{2}(
             on_torus=false,
             LL=nothing,
             UR=nothing,
+            ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,1}(),
             )
     grid, loc = JuAFEM.generate_grid(JuAFEM.Triangle, node_list;on_torus=on_torus,LL=LL,UR=UR)
-    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{2}(grid, ip, dh, qr, loc)
+    result =  gridContext{2}(grid, ip,JuAFEM.Lagrange{2,RefTetrahedron,1}(), dh, qr, loc)
     result.gridType = "irregular Delaunay grid" #This can be ovewritten by other constructors
     if LL == nothing
         LL = [minimum([x[i] for x in node_list]) for i in 1:2]
@@ -307,7 +308,32 @@ function regularDelaunayGrid(
     X = range(LL[1],stop= UR[1],length= numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
     node_list = vec([Tensors.Vec{2}((x, y)) for y in Y, x in X])
-    result = CoherentStructures.gridContext{2}(JuAFEM.Triangle, node_list, quadrature_order=quadrature_order)
+    result = CoherentStructures.gridContext{2}(JuAFEM.Triangle,
+         node_list;
+         quadrature_order=quadrature_order
+         )
+    result.spatialBounds = [LL, UR]
+    result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
+    result.gridType = "regular Delaunay grid"
+    return result
+end
+
+
+function regularDelaunayGridPC(
+            numnodes::Tuple{Int,Int}=(25, 25),
+            LL::AbstractVector=[0.0, 0.0],
+            UR::AbstractVector=[1.0, 1.0];
+            quadrature_order::Int=default_quadrature_order
+        )
+    X = range(LL[1],stop= UR[1],length= numnodes[1])
+    Y = range(LL[2], stop=UR[2], length=numnodes[2])
+    node_list = vec([Tensors.Vec{2}((x, y)) for y in Y, x in X])
+    result = CoherentStructures.gridContext{2}(
+            JuAFEM.Triangle,
+            node_list,
+            quadrature_order=quadrature_order,
+            ip=JuAFEM.PiecewiseConstant{2,RefTetrahedron,1}()
+            )
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular Delaunay grid"
@@ -324,14 +350,15 @@ Create a P2 grid given a set of (non-interior) nodes using Delaunay Triangulatio
 function gridContext{2}(
             ::Type{JuAFEM.QuadraticTriangle},
             node_list::Vector{Tensors.Vec{2,Float64}};
-            quadrature_order::Int=default_quadrature_order)
+            quadrature_order::Int=default_quadrature_order,
+            ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,2}()
+            )
     grid, loc = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, node_list)
-    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result = gridContext{2}(grid, ip, dh, qr, loc)
+    result = gridContext{2}(grid, ip,JuAFEM.Lagrange{2,RefTetrahedron,2}(), dh, qr, loc)
     result.gridType = "irregular P2 Delaunay grid"
     return result
 end
@@ -368,17 +395,20 @@ Create a regular triangular grid. Does not use Delaunay triangulation internally
 =#
 
 function gridContext{2}(::Type{JuAFEM.Triangle},
-                         numnodes::Tuple{Int,Int}=(25, 25), LL::AbstractVector=[0.0, 0.0], UR::AbstractVector=[1.0, 1.0];
-                         quadrature_order::Int=default_quadrature_order)
+                         numnodes::Tuple{Int,Int}=(25, 25),
+                         LL::AbstractVector=[0.0, 0.0],
+                         UR::AbstractVector=[1.0, 1.0];
+                         quadrature_order::Int=default_quadrature_order,
+                         ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,1}(),
+                         )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 1}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result = gridContext{2}(grid, ip, dh, qr, loc)
+    result = gridContext{2}(grid, ip,JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,1}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular triangular grid"
@@ -395,6 +425,23 @@ function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVect
     return gridContext{2}(JuAFEM.Triangle, numnodes, LL, UR,quadrature_order=quadrature_order)
 end
 
+
+"""
+    regularTriangularGridPC(numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0], quadrature_order=default_quadrature_order)
+
+Create a regular triangular grid on a rectangle with piecewise constant dofs; it does not use Delaunay triangulation internally.
+"""
+function regularTriangularGridPC(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=[0.0,0.0], UR::AbstractVector=[1.0,1.0];
+                                quadrature_order::Int=default_quadrature_order)
+    return gridContext{2}(
+        JuAFEM.Triangle,
+        numnodes,
+        LL,UR;
+        quadrature_order=quadrature_order,ip=JuAFEM.PiecewiseConstant{2,RefTetrahedron,1}()
+        )
+end
+
+
 #= TODO 1.0
 """
     gridContext{2}(JUAFEM.QuadraticTriangle, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
@@ -403,17 +450,20 @@ Constructor for regular P2 triangular grids. Does not use Delaunay triangulation
 """
 =#
 function gridContext{2}(::Type{JuAFEM.QuadraticTriangle},
-                         numnodes::Tuple{Int,Int}=(25, 25), LL::AbstractVector=[0.0,0.0], UR::AbstractVector=[1.0,1.0];
-                         quadrature_order::Int=default_quadrature_order)
+                         numnodes::Tuple{Int,Int}=(25, 25),
+                         LL::AbstractVector=[0.0,0.0],
+                         UR::AbstractVector=[1.0,1.0];
+                         quadrature_order::Int=default_quadrature_order,
+                         ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,2}()
+                         )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     loc = regular2DGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    ip = JuAFEM.Lagrange{2, JuAFEM.RefTetrahedron, 2}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{2}(grid, ip, dh, qr, loc)
+    result =  gridContext{2}(grid, ip,JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,2}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular P2 triangular grid"
@@ -445,16 +495,17 @@ function gridContext{2}(
             numnodes::Tuple{Int,Int}=(25,25),
             LL::AbstractVector=[0.0,0.0],
             UR::AbstractVector=[1.0,1.0];
-            quadrature_order::Int=default_quadrature_order)
+            quadrature_order::Int=default_quadrature_order,
+            ip=JuAFEM.Lagrange{2, JuAFEM.RefCube, 1}()
+            )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     loc = regular2DGridLocator{JuAFEM.Quadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    ip = JuAFEM.Lagrange{2, JuAFEM.RefCube, 1}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefCube}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{2}(grid, ip, dh, qr, loc)
+    result =  gridContext{2}(grid, ip,JuAFEM.Lagrange{2,JuAFEM.RefCube,1}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular quadrilateral grid"
@@ -488,16 +539,17 @@ function gridContext{2}(
             numnodes::Tuple{Int,Int}=(25, 25),
             LL::AbstractVector=[0.0, 0.0],
             UR::AbstractVector=[1.0, 1.0];
-            quadrature_order::Int=default_quadrature_order)
+            quadrature_order::Int=default_quadrature_order,
+            ip=JuAFEM.Lagrange{2, JuAFEM.RefCube, 2}()
+            )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     loc = regular2DGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    ip = JuAFEM.Lagrange{2, JuAFEM.RefCube, 2}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefCube}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{2}(grid, ip, dh, qr, loc)
+    result =  gridContext{2}(grid, ip,JuAFEM.Lagrange{2,JuAFEM.RefCube,2}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular P2 quadrilateral grid"
@@ -526,17 +578,20 @@ Create a regular Tetrahedral Grid. Does not use Delaunay triangulation internall
 """
 =#
 function gridContext{3}(::Type{JuAFEM.Tetrahedron},
-                         numnodes::Tuple{Int,Int,Int}=(10,10,10), LL::AbstractVector=[0.0,0.0,0.0], UR::AbstractVector=[1.0,1.0,1.0];
-                         quadrature_order::Int=default_quadrature_order3D)
+                         numnodes::Tuple{Int,Int,Int}=(10,10,10),
+                         LL::AbstractVector=[0.0,0.0,0.0],
+                         UR::AbstractVector=[1.0,1.0,1.0];
+                         quadrature_order::Int=default_quadrature_order3D,
+                         ip=JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 1}()
+                         )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
     loc = regular3DGridLocator{JuAFEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
-    ip = JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 1}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{3, JuAFEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{3}(grid, ip, dh, qr, loc)
+    result =  gridContext{3}(grid, ip,JuAFEM.Lagrange{3,JuAFEM.RefCube,1}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
     result.gridType = "3D regular triangular grid"
@@ -552,17 +607,20 @@ Create a regular P2 Tetrahedral Grid. Does not use Delaunay triangulation intern
 """
 =#
 function gridContext{3}(::Type{JuAFEM.QuadraticTetrahedron},
-                         numnodes::Tuple{Int,Int,Int}=(10,10,10), LL::AbstractVector=[0.0,0.0,0.0], UR::AbstractVector=[1.0,1.0,1.0];
-                         quadrature_order::Int=default_quadrature_order3D)
+                         numnodes::Tuple{Int,Int,Int}=(10,10,10),
+                         LL::AbstractVector=[0.0,0.0,0.0],
+                         UR::AbstractVector=[1.0,1.0,1.0];
+                         quadrature_order::Int=default_quadrature_order3D,
+                         ip=JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 2}()
+                         )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
     loc = regular3DGridLocator{JuAFEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
-    ip = JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 2}()
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{3, JuAFEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{3}(grid, ip, dh, qr, loc)
+    result =  gridContext{3}(grid, ip,JuAFEM.Lagrange{3,RefCube,2}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
     result.gridType = "3D regular triangular grid"
@@ -590,15 +648,9 @@ function regularP2TetrahedralGrid(numnodes::Tuple{Int,Int,Int}=(10,10,10), LL::A
 end
 
 
-"""
-    evaluate_function_from_nodevals(ctx,nodevals,x_in; [outside_value=0, project_in=false])
+function mollify_xin(
+    ctx::gridContext{dim}, x_in::AbstractVector{T},project_in) where {dim,T}
 
-Like `evaluate_function_from_dofvals`, but the coefficients from `nodevals` are assumed to be in node order.
-"""
-function evaluate_function_from_nodevals_multiple(
-    ctx::gridContext{dim}, nodevals::AbstractMatrix{S},
-    x_in::Vec{dim,T}; outside_value=0.0, project_in=false,is_diag=false
-    ) where {dim,T,S}
     if !project_in
         if dim == 1
             x = Tensors.Vec{dim,T}((x_in[1],))
@@ -631,73 +683,129 @@ function evaluate_function_from_nodevals_multiple(
             error("dim = $dim not supported")
         end
     end
-    @assert size(nodevals)[1] == ctx.n
-    local_coordinates, nodes = try
+    return x
+end
+
+"""
+    evaluate_function_from_node_or_cellvals(ctx,vals,x_in; [outside_value=0, project_in=false])
+
+Like `evaluate_function_from_dofvals`, but the coefficients from `vals` are assumed to be in node order.
+This is more efficient than `evaluate_function_from_dofvals`
+"""
+function evaluate_function_from_node_or_cellvals(
+    ctx::gridContext{dim}, vals::AbstractVector{S},
+    x_in::Vec{dim,W}; outside_value=0.0, project_in=false,is_diag=false
+    )::W where {
+        dim,S,W,
+        }
+
+    x::Vec{dim,W} = mollify_xin(ctx,x_in,project_in)
+
+    @assert length(vals) == ctx.n
+
+    local_coordinates::Tensors.Vec{dim,Float64}, nodes::Vector{Int}, cellid::Int = try
          locatePoint(ctx, x)
     catch y
         if isa(y,DomainError)
-            return spzeros(T,size(nodevals)[2]) .+ outside_value
+            return spzeros(T,size(vals)[2]) .+ outside_value
         end
         print("Unexpected error for $x")
         throw(y)
     end
-    result = spzeros(T,size(nodevals)[2])
-    for (j, nodeid) in enumerate(nodes)
-        val = JuAFEM.value(ctx.ip, j, local_coordinates)
-        if !is_diag
-            for i in 1:size(nodevals)[2]
-                result[i] += nodevals[nodeid,i]*val
+
+    result::S = zero(S)
+
+    if isa(ctx.ip, JuAFEM.Lagrange)
+        for (j, nodeid) in enumerate(nodes)
+            val::Float64 = JuAFEM.value(ctx.ip, j, local_coordinates)
+            result += vals[nodeid]*val
+        end
+    elseif isa(ctx.ip,JuAFEM.PiecewiseConstant)
+        #TODO: is hardcoding the 1 good here?
+        val = JuAFEM.value(ctx.ip, 1, local_coordinates)
+        result += vals[cellid]*val
+    else
+        throw(AssertionError("Unknown interpolation"))
+    end
+    return result
+end
+
+#TODO: this may not work, fix it.
+function evaluate_function_from_node_or_cellvals_multiple(
+    ctx::gridContext{dim}, vals::AbstractMatrix{S},
+    x_in::AbstractVector{Tensors.Vec{dim,W}}; outside_value=0.0, project_in=false,is_diag=false
+    )::SparseMatrixCSC{S,Int64} where{dim,S,W}
+
+    x::Vector{Vec{dim,W}} = [mollify_xin(ctx,x_cur,project_in) for x_cur in x_in]
+
+    @assert size(vals)[1] == ctx.n
+    npoints = length(x_in)
+    result::SparseMatrixCSC{S,Int64} = spzeros(S,size(vals)[2],npoints)
+    for current_point in 1:npoints
+        try
+            local_coordinates::Tensors.Vec{dim,Float64}, nodes::Vector{Int},cellid::Int = locatePoint(ctx,x[current_point])
+
+            if isa(ctx.ip, JuAFEM.Lagrange)
+                for (j, nodeid) in enumerate(nodes)
+                    val::Float64 = JuAFEM.value(ctx.ip, j, local_coordinates)
+                    if !is_diag
+                        for i in 1:size(vals)[2]
+                            result[i,current_point] += vals[nodeid,i]*val
+                        end
+                    else
+                        result[nodeid,current_point] += vals[nodeid,nodeid]*val
+                    end
+                end
+            elseif isa(ctx.ip,JuAFEM.PiecewiseConstant)
+                val = JuAFEM.value(ctx.ip, 1, local_coordinates)
+                if !is_diag
+                    for i in 1:size(vals)[2]
+                        result[i,current_point] += vals[cellid,i]*val
+                    end
+                else
+                    result[cellid,current_point] += vals[cellid,cellid]*val
+                end
+            else
+                throw(AssertionError("Unknown interpolation"))
             end
-        else
-            result[nodeid] += nodevals[nodeid,nodeid]*val
+        catch y
+                if isa(y,DomainError)
+                    result[:, current_point] .= outside_value
+                else
+                    print("Unexpected error for $(x[current_point])")
+                    rethrow(y)
+                end
         end
     end
-
     return result
 end
 
 
 """
-    evaluate_function_from_nodevals(ctx,nodevals,x_in; [outside_value=0, project_in=false])
-
-Like `evaluate_function_from_dofvals`, but the coefficients from `nodevals` are assumed to be in node order.
-"""
-function evaluate_function_from_nodevals(
-    ctx::gridContext{dim}, nodevals::AbstractVector{S}, x_in::AbstractVector{T};
-    outside_value=0.0, project_in=false
-    ) where {dim,T,S}
-    #The [:,:] converts vector to matrix
-    return evaluate_function_from_nodevals(
-        ctx,nodevals[:,:],Vec{dim}(i->x_in[i]);outside_value=outside_value,project_in=project_in)[1]
-end
-
-"""
     evaluate_function_from_dofvals(ctx,dofvals,x_in; [outside_value=0,project_in=false])
 
-Evaluate a function in the approximation space at the point `x_in`. If `x_in` is out of points, return `outside_value`.
+Evaluate a function in the approximation space at the point (or Vector of points) `x_in`. If `x_in` is out of bounds, return `outside_value`.
 If `project_in` is `true`, points not within `ctx.spatialBounds` are first projected into the domain.
 
-The coefficients in `nodevals` are interpreted to be in dof order.
+The coefficients in `dofvals` are interpreted to be in dof order. If a matrix of coefficients is passed as an argument,
+then the function is evaluated for each column.
 """
-function evaluate_function_from_dofvals(
-    ctx::gridContext{dim}, dofvals::AbstractVector{U}, x_in::AbstractVector{T};
+function evaluate_function_from_dofvals_multiple(
+    ctx::gridContext{dim}, dofvals::AbstractMatrix{S},
+    x_in::AbstractVector{Tensors.Vec{dim,W}};
     outside_value=0.0, project_in=false
-    ) where {dim,U,T}
-    #The [:,:] converts vector to matrix
-    return evaluate_function_from_dofvals(ctx,dofvals[:,:], Vec{dim,T}(i -> x_in[i]),
-        outside_value=outside_value, project_in=project_in)[1]
-end
-
-function evaluate_function_from_dofvals(
-    ctx::gridContext{dim}, dofvals::AbstractMatrix{U},
-    x_in::Tensors.Vec{dim,T};
-    outside_value=0.0, project_in=false
-    ) where {dim,T,U}
-    u_nodevals = zeros(U,size(dofvals))
-    for i in 1:ctx.n
-        u_nodevals[i,:] = dofvals[ctx.node_to_dof[i],:]
+    ) where { dim,S,W, }
+    u_vals = zeros(S,size(dofvals))
+    if isa(ctx.ip, JuAFEM.Lagrange)
+        for i in 1:ctx.n
+            u_vals[i,:] = dofvals[ctx.node_to_dof[i],:]
+        end
+    elseif isa(ctx.ip, JuAFEM.PiecewiseConstant)
+        for i in 1:ctx.n
+            u_vals[i,:] = dofvals[ctx.cell_to_dof[i],:]
+        end
     end
-    return evaluate_function_from_nodevals(ctx,u_nodevals, x_in,outside_value=outside_value,project_in=project_in)
+    return evaluate_function_from_node_or_cellvals_multiple(ctx,u_vals, x_in,outside_value=outside_value,project_in=project_in)
 end
 
 
@@ -726,7 +834,7 @@ Perform nodal_interpolation of a function onto a different grid for a set of col
 Returns a matrix
 """
 
-function CoherentStructures.sample_to(u::AbstractArray{T,2},
+function sample_to(u::AbstractArray{T,2},
         ctx_old::CoherentStructures.gridContext,
         ctx_new::CoherentStructures.gridContext;
         bdata=boundaryData(),
@@ -818,7 +926,7 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
 
     nodes = map(JuAFEM.Node, nodes_in)
     additional_nodes = Dict{Int,Int}()#which nodes outside of the torus do we need?
-    cells_used = Set{Tuple{Int,Int,Int}}()
+    cells_used = Dict{Tuple{Int,Int,Int},Int}()
     #See if this cell, or vertical and horizontal translations
     #of it have already been added to the triangulation.
     function in_cells_used(element::Tuple{Int,Int,Int})
@@ -829,15 +937,19 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
         for direction in -9:9
             #TODO: optimize this for speed
             moved_cell = Tuple{Int,Int,Int}(sort(collect(moveby.(element,direction))))
-            if moved_cell ∈ cells_used
-                return true
+            if moved_cell ∈ keys(cells_used)
+                return cells_used[moved_cell]
             end
         end
-        return false
+        return 0
     end
 
     cells = JuAFEM.Triangle[]
-    for tri in tess
+    cell_number_table = zeros(Int, length(tess._trigs))
+
+    tri_iterator = Base.iterate(tess)
+    while tri_iterator != nothing
+        (tri,triindex) = tri_iterator
         J = Tensors.otimes((nodes_to_triangulate[tri._b.id] - nodes_to_triangulate[tri._a.id]), e1)
         J += Tensors.otimes((nodes_to_triangulate[tri._c.id] - nodes_to_triangulate[tri._a.id]), e2)
         detJ = det(J)
@@ -849,33 +961,41 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
         end
         if !on_torus
             push!(cells, new_tri)
+            cell_number_table[triindex.ix-1] = length(cells)
         else
             tri_nodes = [new_tri.nodes[i] for i in 1:3]
             #Are any of the vertices actually inside?
-            if any(x -> x <= num_nodes_in, tri_nodes) && !in_cells_used(new_tri.nodes)
-                for (index,cur) in enumerate(tri_nodes)
-                    if cur > num_nodes_in
-                        if cur ∈ keys(additional_nodes)
-                            tri_nodes[index] = additional_nodes[cur]
-                        else
-                            push!(nodes, JuAFEM.Node(nodes_to_triangulate[cur]))
-                            additional_nodes[cur] = length(nodes)
-                            tri_nodes[index] = length(nodes)
+            if any(x -> x <= num_nodes_in, tri_nodes)
+                thiscell = in_cells_used(new_tri.nodes)
+                if thiscell != 0
+                    cell_number_table[triindex.ix-1] = thiscell
+                else
+                    for (index,cur) in enumerate(tri_nodes)
+                        if cur > num_nodes_in
+                            if cur ∈ keys(additional_nodes)
+                                tri_nodes[index] = additional_nodes[cur]
+                            else
+                                push!(nodes, JuAFEM.Node(nodes_to_triangulate[cur]))
+                                additional_nodes[cur] = length(nodes)
+                                tri_nodes[index] = length(nodes)
+                            end
                         end
                     end
+                    new_tri = JuAFEM.Triangle((tri_nodes[1],tri_nodes[2],tri_nodes[3]))
+                    push!(cells, new_tri)
+                    cell_number_table[triindex.ix-1] = length(cells)
+                    cells_used[ Tuple{Int,Int,Int}(sort(tri_nodes)) ] = length(cells)
                 end
-                new_tri = JuAFEM.Triangle((tri_nodes[1],tri_nodes[2],tri_nodes[3]))
-                push!(cells, new_tri)
-                push!(cells_used, Tuple{Int,Int,Int}(sort(tri_nodes)))
             end
         end
+        tri_iterator = Base.iterate(tess,triindex)
     end
 
     facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = JuAFEM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate,points_mapping)
+    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate,points_mapping,cell_number_table)
     return grid, locator
 end
 

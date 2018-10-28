@@ -7,7 +7,7 @@ where coords gives the coordinates within the reference shape (e.g. standard sim
 And [nodes] is the list of corresponding node ids, ordered in the order of the
 corresponding shape functions from JuAFEM's interpolation.jl file.
 """#
-function locatePoint(ctx::gridContext{dim}, x::AbstractVector{T}) where {dim,T}
+function locatePoint(ctx::gridContext{dim}, x::AbstractVector{T})::Tuple{Vec{dim,T},Vector{Int},Int} where{dim,T}
     if dim == 2
         return locatePoint(ctx,Vec{2,T}((x[1],x[2])))
     elseif dim == 3
@@ -18,7 +18,7 @@ function locatePoint(ctx::gridContext{dim}, x::AbstractVector{T}) where {dim,T}
 end
 
 
-function locatePoint(ctx::gridContext{dim}, x::Tensors.Vec{dim,T}) where {dim,T}
+function locatePoint(ctx::gridContext{dim}, x::Tensors.Vec{dim,T})::Tuple{Vec{dim,T},Vector{Int},Int} where {dim,T}
     return locatePoint(ctx.loc, ctx.grid, x)
 end
 
@@ -82,6 +82,7 @@ struct delaunayCellLocator <: pointLocator
     tess::VD.DelaunayTessellation2D{NumberedPoint2D}
     extended_points::Vector{Vec{2,Float64}}
     point_number_table::Vector{Int}
+    cell_number_table::Vector{Int}
 end
 
 function locatePoint(
@@ -91,7 +92,8 @@ function locatePoint(
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError("Outside of domain"))
     end
-    t = VD.locate(loc.tess, point_inbounds)
+    global t_index = VD.findindex(loc.tess, point_inbounds)
+    t = loc.tess._trigs[t_index]
     if VD.isexternal(t)
         throw(DomainError("Outside of domain"))
     end
@@ -102,7 +104,7 @@ function locatePoint(
     #TODO: rewrite this so that we actually find the cell in question and get the ids
     #From there (instead of from the tesselation). Then get rid of the permutation that
     #is implicit below (See also comment below in p2DelaunayCellLocator locatePoint())
-    return (inv(J) ⋅ (x - loc.extended_points[t._a.id])), loc.point_number_table[[t._b.id, t._c.id, t._a.id]]
+    return (inv(J) ⋅ (x - loc.extended_points[t._a.id])), loc.point_number_table[[t._b.id, t._c.id, t._a.id]], loc.cell_number_table[t_index]
 end
 
 #For delaunay triangulations with P2-Lagrange Elements
@@ -148,7 +150,7 @@ function locatePoint(
     v2::Tensors.Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
     J::Tensors.Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
     #TODO: Think about whether doing it like this (with the permutation) is sensible
-    return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), loc.point_number_table[[permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])]]
+    return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), loc.point_number_table[[permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])]],1
 end
 
 #Here N gives the number of nodes and M gives the number of faces
@@ -162,7 +164,7 @@ function locatePoint(
         loc::regular2DGridLocator{S},
         grid::JuAFEM.Grid,
         x::Tensors.Vec{2,T}
-    )::Tuple{Tensors.Vec{2,T}, Vector{Int}} where {S,T}
+    )::Tuple{Tensors.Vec{2,T}, Vector{Int},Int} where {S,T}
 
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError("Not in domain"))
@@ -202,16 +204,16 @@ function locatePoint(
 
         if S == JuAFEM.Triangle
             if loc1 + loc2 < 1.0 # ◺
-                return Tensors.Vec{2,T}((loc1, loc2)), [lr+1, ul+1, ll+1]
+                return Tensors.Vec{2,T}((loc1, loc2)), [lr+1, ul+1, ll+1], (2*n1 + 2*n2*(loc.nx-1)) +1
             else # ◹
                 #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
                 #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
                 #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
                 tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
-                return tM⋅Tensors.Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1, lr+1]
+                return tM⋅Tensors.Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1, lr+1], (2*n1 + 2*n2*(loc.nx-1)) +2
             end
         elseif S == JuAFEM.Quadrilateral
-            return Tensors.Vec{2,T}([2 * loc1 - 1, 2 * loc2 - 1]), [ll+1, lr+1, ur+1, ul+1]
+            return Tensors.Vec{2,T}([2 * loc1 - 1, 2 * loc2 - 1]), [ll+1, lr+1, ur+1, ul+1], (ll+1)
         else
             throw(AssertionError("Case should not be reached"))
         end
@@ -228,17 +230,17 @@ function locatePoint(
         @assert ur < (num_x_with_edge_nodes*num_y_with_edge_nodes) #Sanity check
         if S == JuAFEM.QuadraticTriangle
             if loc1 + loc2 <= 1.0 # ◺
-                return Tensors.Vec{2,T}((loc1,loc2)), [lr+1,ul+1,ll+1, middle_left+2, middle_left+1, ll+2]
+                return Tensors.Vec{2,T}((loc1,loc2)), [lr+1,ul+1,ll+1, middle_left+2, middle_left+1, ll+2], (2*n1 + 2*n2*(loc.nx-1) + 1)
             else # ◹
 
                 #The transformation that maps ◹ (with bottom node at origin) to ◺ (with ll node at origin)
                 #Does [0,1] ↦ [1,0] and [-1,1] ↦ [0,1]
                 #So it has representation matrix (columnwise) [ [1,-1] | [1,0] ]
                 tM = Tensors.Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
-                return tM⋅Tensors.Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3]
+                return tM⋅Tensors.Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3], (2*n1 + 2*n2*(loc.nx-1) + 2)
             end
         elseif S == JuAFEM.QuadraticQuadrilateral
-            return Tensors.Vec{2,T}((2*loc1-1,2*loc2-1)), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2]
+            return Tensors.Vec{2,T}((2*loc1-1,2*loc2-1)), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2], (n1 + loc.nx*n2 + 1)
         else
             throw(AssertionError("Case should not be reached"))
         end
@@ -342,7 +344,7 @@ function locatePoint(
             M[:,3] = p4-p1
             tMI::Tensors.Tensor{2,3,Float64,9} =  Tensors.Tensor{2,3,Float64}(M)
             if T == JuAFEM.Tetrahedron
-                return inv(tMI) ⋅ Tensors.Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])), nodes[tet] .+ 1
+                return inv(tMI) ⋅ Tensors.Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])), nodes[tet] .+ 1, 1
             else
                 avg(x,y) = (x == 1 && y == 3) || (x == 3 && y == 1) ? 2 : x
                 indexavg(x,y) = CartesianIndex(avg.(Tuple(x),Tuple(y)))
@@ -357,7 +359,7 @@ function locatePoint(
                 resulting_nodes = [nodes[v1],nodes[v2],nodes[v3],nodes[v4],
                         nodes[indexavg(v1,v2)],nodes[indexavg(v2,v3)],nodes[indexavg(v1,v3)],nodes[indexavg(v1,v4)],
                         nodes[indexavg(v2,v4)],nodes[indexavg(v3,v4)] ]
-                return inv(tMI) ⋅ Tensors.Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])),(resulting_nodes .+ 1)
+                return inv(tMI) ⋅ Tensors.Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])),(resulting_nodes .+ 1),1
             end
         end
     end

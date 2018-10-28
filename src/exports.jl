@@ -43,9 +43,12 @@ export
 
 	#gridfunctions.jl
 	regular1dGrid,
+	regular1dGridPC,
 	regular1dP2Grid,
 	regularTriangularGrid,
+	regularTriangularGridPC,
 	regularDelaunayGrid,
+	regularDelaunayGridPC,
 	regularP2TriangularGrid,
 	regularP2DelaunayGrid,
 	regularQuadrilateralGrid,

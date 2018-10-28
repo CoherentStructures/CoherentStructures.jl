@@ -93,7 +93,7 @@ animate(res)
 #With non-adaptive TO-method:
 ctx = regularTriangularGrid((100,100))
 inverse_flow = u0 -> flow(rot_double_gyre,u0,[1.0,0.0],tolerance=1e-5)[end]
-xs = range(0,stop=1,length=50)
+xs = range(0,stop=1,length=100)
 @time [inverse_flow([x,y]) for x in xs, y in xs]
 @time nonAdaptiveTO(ctx,inverse_flow)
 
@@ -107,7 +107,7 @@ begin
     @time λ, v = eigs(R,M,which=:SM)
 end
 
-plot_u(ctx,v[:,2])
+plot_u(ctx,v[:,6])
 #With adaptive TO method
 ctx = regularTriangularGrid((100,100))
 begin
