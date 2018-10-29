@@ -8,7 +8,8 @@ const one2D = e1 + e2
 function nonAdaptiveTO(
         ctx_domain::gridContext{dim},ctx_codomain::gridContext{dim},
         inverse_flow_map::Function;
-        project_in=false
+        project_in=false,
+        outside_value=NaN
     ) where dim
     n = ctx_codomain.n
     m = ctx_domain.n
@@ -18,15 +19,10 @@ function nonAdaptiveTO(
     for j in 1:n
         current_point = ctx_codomain.grid.nodes[j].x
         jdof = (ctx_codomain.node_to_dof)[j]
-        try
-            #pointPullback::Tensors.Vec{2,Float64} = Tensors.Vec{2}(min.(UR - 1e-15one2D, max.(LL + 1e-15*one2D, inverse_flow_map(current_point))))
+        shape_function_values = try
             pointPullBack::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(inverse_flow_map(current_point))
-            #TODO: make the below more efficient
-            shape_function_values = evaluate_function_from_nodevals_multiple(ctx_domain,speyem,[pointPullBack],
-                outside_value=0.0,project_in=project_in,is_diag=true)
-            for (index,i) in enumerate(shape_function_values.nzind)
-                    result[jdof,ctx_domain.node_to_dof[i]] = shape_function_values.nzval[index]
-            end
+            evaluate_function_from_node_or_cellvals_multiple(ctx_domain,speyem,[pointPullBack],
+                outside_value=outside_value,project_in=project_in,is_diag=true)
             catch y
                 if !isa(y, DomainError)
                     rethrow(y)
@@ -36,6 +32,10 @@ function nonAdaptiveTO(
                 pointPullback = inverse_flow_map(current_point)
                 print(pointPullback)
                 #TODO: What do we do if the point is outside of the triangulation?
+            end
+            for valindex in shape_function_values.colptr[1]:(shape_function_values.colptr[2]-1)
+                    row = shape_function_values.rowval[valindex]
+                    result[jdof,ctx_domain.node_to_dof[row]] = shape_function_values.nzval[valindex]
             end
     end
     return result
@@ -49,10 +49,23 @@ function adaptiveTO(
         on_torus::Bool=false,
         LL::AbstractVector{Float64}=[0.0,0.0],
         UR::AbstractVector{Float64}=[1.0,1.0],
-        bdata::boundaryData=nothing
+        bdata::boundaryData=boundaryData,
+        volume_preserving=true
         )
     new_ctx,new_bdata = adaptiveTOFutureGrid(ctx,flow_map; on_torus=on_torus,LL=LL,UR=UR,bdata=bdata)
+    if !volume_preserving
+            vols_new = sum(assembleMassMatrix(new_ctx,bdata=new_bdata),dim=1)
+            vols_old = sum(assembleMassMatrix(ctx,bdata),dim=1)
+    else
+            vols_new = ones(new_ctx.n - length(new_bdata.periodic_dofs_from) )
+            vols_old = ones(ctx.n - length(bdata.periodic_dofs_from) )
+    end
+
     if !on_torus
+        new_density_nodevals = vols_new ./ vols_old
+
+        new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(ctx_new,new_density_nodevals,q)
+                   for q in new_ctx.quadrature_points ]
         #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
         n = ctx.n
         I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
@@ -61,6 +74,12 @@ function adaptiveTO(
         J .= new_ctx.dof_to_node[J]
        return sparse(I,J,V,n,n)
     else
+        new_density_pdofvals = vols_new ./ vols_old
+        new_density_dofvals = undoBCS(new_ctx,new_density_pdofvals, new_bdata)
+        new_density_nodevals = new_density_dofvals[new_ctx.node_to_dof]
+
+        new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
+                   for q in new_ctx.quadrature_points ]
         K = assembleStiffnessMatrix(new_ctx,bdata=new_bdata)
         return  periodizedNewToOldDofOrder(ctx,new_ctx,new_bdata,K)
     end
@@ -171,7 +190,7 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},inverse_flow_map::Function,
     LL::Tensors.Vec{2,Float64} = Tensors.Vec{2}(ctx.spatialBounds[1])
     UR::Tensors.Vec{2,Float64} = Tensors.Vec{2}(ctx.spatialBounds[2])
 
-    cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr, ctx.ip)
+    cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr, ctx.ip,ctx.ip_geom)
     nshapefuncs::Int = JuAFEM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nshapefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
@@ -191,22 +210,28 @@ function L2GalerkinTOFromInverse(ctx::gridContext{2},inverse_flow_map::Function,
                 current_point::Tensors.Vec{2,Float64} = TQ + s
                 current_point = Tensors.Vec{2,Float64}((
                     periodic_directions[1] ? LL[1] + (mod(current_point[1] - LL[1],UR[1] - LL[1])) : current_point[1],
-                    periodic_directions[2] ? LL[2] + (mod(current_point[2] - LL[2],UR[2] - LL[2])) : current_point[1],
+                    periodic_directions[2] ? LL[2] + (mod(current_point[2] - LL[2],UR[2] - LL[2])) : current_point[2],
                     ))
                 try
-                    local_coords::Tensors.Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,current_point)
-                    for (shape_fun_num,j) in enumerate(nodes)
-                        for i in 1:nshapefuncs
-                            φ::Float64 = JuAFEM.shape_value(cv,q,i)
-                            ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
-                            push!(DL2I, dofs[i])
-                            push!(DL2J,ctx.node_to_dof[j])
-                            push!(DL2V, dΩ*φ*ψ*stencil_density)
-                        end
+                    local_coords::Tensors.Vec{2,Float64}, nodes::Vector{Int},TQinvCellNumber = locatePoint(ctx,current_point)
+                    if isa(ctx.ip, JuAFEM.Lagrange)
+                        for (shape_fun_num,j) in enumerate(nodes)
+                                for i in 1:nshapefuncs
+                                    φ::Float64 = JuAFEM.shape_value(cv,q,i)
+                                    ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
+                                    push!(DL2I, dofs[i])
+                                    push!(DL2J,ctx.node_to_dof[j])
+                                    push!(DL2V, dΩ*φ*ψ*stencil_density)
+                                end
+                         end
+                    else
+                            push!(DL2J, ctx.cell_to_dof[cellnumber])
+                            push!(DL2I,ctx.cell_to_dof[TQinvCellNumber])
+                            push!(DL2V, dΩ*stencil_density)
                     end
                 catch y
                     if !isa(y,DomainError)
-                        throw(y)
+                        rethrow(y)
                     end
                     print("Got result $current_point outside of domain!")
                 end
@@ -221,9 +246,9 @@ end
 
 function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
     DL2 = spzeros(ctx.n,ctx.n)
-    cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr, ctx.ip)
-    nshapefuncs = JuAFEM.getnbasefunctions(cv)         # number of basis functions
-    dofs::Vector{Int} = zeros(nshapefuncs)
+    cv::JuAFEM.CellScalarValues{2} = JuAFEM.CellScalarValues(ctx.qr,ctx.ip, ctx.ip_geom)
+    nbasefuncs = JuAFEM.getnbasefunctions(cv)         # number of basis functions
+    dofs::Vector{Int} = zeros(nbasefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
 
     #TODO: allow for using a different ctx here, e.g. like in the adaptiveTO settings
@@ -235,17 +260,23 @@ function L2GalerkinTO(ctx::gridContext{2},flow_map::Function)
             dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
             TQ::Tensors.Vec{2,Float64} = Tensors.Vec{2}(flow_map(ctx.quadrature_points[index]))
             try
-                local_coords::Tensors.Vec{2,Float64}, nodes::Vector{Int} = locatePoint(ctx,TQ)
-                for (shape_fun_num,i) in enumerate(nodes)
-                    for j in 1:nshapefuncs
-                        φ::Float64 = JuAFEM.shape_value(cv,q,j)
-                        ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coords)
-                        DL2[ctx.node_to_dof[i],dofs[j]] += dΩ*φ*ψ
-                    end
+                local_coordsTQ::Tensors.Vec{2,Float64}, nodesTQ::Vector{Int},cellIndexTQ = locatePoint(ctx,TQ)
+                if isa(ctx.ip,JuAFEM.Lagrange)
+                        for (shape_fun_num,i) in enumerate(nodesTQ)
+                            ψ::Float64 = JuAFEM.value(ctx.ip,shape_fun_num,local_coordsTQ)
+                            for j in 1:nbasefuncs
+                                φ::Float64 = JuAFEM.shape_value(cv,q,j)
+                                DL2[ctx.node_to_dof[i],dofs[j]] += dΩ*φ*ψ
+                            end
+                        end
+                else
+                        indexi = ctx.cell_to_dof[cellIndexTQ]
+                        indexj = ctx.cell_to_dof[cellnumber]
+                        DL2[indexi,indexj] +=  dΩ
                 end
             catch y
                 if !isa(y,DomainError)
-                    throw(y)
+                    rethrow(y)
                 end
                 print("Flow map gave result $TQ outside of domain!")
             end

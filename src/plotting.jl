@@ -95,7 +95,8 @@ end
                             outside_value=NaN,
                             throw_errors=throw_errors
                             )
-            z = reshape(z_raw[1,:],size(euler_to_lagrange_points))
+
+            z = reshape(z_raw.nzval,size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -131,7 +132,7 @@ end
                             vec(euler_to_lagrange_points),
                             outside_value=NaN
                             )
-            z = reshape(z_raw[1,:],size(euler_to_lagrange_points))
+            z = reshape(z_raw.nzval,size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing

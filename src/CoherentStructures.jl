@@ -55,6 +55,7 @@ module CoherentStructures
     ##Definitions of velocity fields
     include("velocityfields.jl")
 
+
     ##Extensions to JuAFEM dealing with non-curved grids
     ##Support for evaluating functions at grid points, delaunay Triangulations
 
@@ -72,6 +73,9 @@ module CoherentStructures
 
     #TO-approach based methods
     include("TO.jl")
+
+    #Ulam's method
+    include("ulam.jl")
 
 
     #Plotting

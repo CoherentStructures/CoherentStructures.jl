@@ -79,6 +79,9 @@ export
 	runExperiment!,
 	plotExperiment,
 
+	#ulam,jl
+	ulam,
+
 	#plotting.jl
 	plot_u,
 	plot_u!,

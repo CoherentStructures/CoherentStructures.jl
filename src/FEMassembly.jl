@@ -180,7 +180,7 @@ Compute the coordinates of all quadrature points on a grid.
 Helper function.
 """
 function getQuadPoints(ctx::gridContext{dim}) where dim
-    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip,ctx.ip_geom)
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr,ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
     dofs = zeros(Int, JFM.ndofs_per_cell(dh))

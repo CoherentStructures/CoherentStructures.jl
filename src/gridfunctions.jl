@@ -280,23 +280,25 @@ end
 function randomPeriodicDelaunayGrid(
                     npoints::Int,
                     LL::AbstractVector=[0.0,0.0],
-                    UR::AbstractVector=[1.0,1.0];PC=false
+                    UR::AbstractVector=[1.0,1.0];PC=false,
+                    kwargs...
     )
 
     nodes_in::Vector{Vec{2,Float64}} = Vec{2}.(zip(rand(npoints).*(UR[1]-LL[1]) .+ LL[1],rand(npoints).*(UR[2]-LL[2]) .+ LL[2]))
-    return periodicDelaunayGrid(nodes_in,LL,UR; PC=PC)
+    return periodicDelaunayGrid(nodes_in,LL,UR; PC=PC,kwargs...)
 end
 
 function periodicDelaunayGrid(
                     nodes_in::Vector{Vec{2,Float64}},
                     LL::AbstractVector=[0.0,0.0],
                     UR::AbstractVector=[1.0,1.0];
-                    PC=false
+                    PC=false,
+                    kwargs...
     )
 
     if !PC
         ctx = CoherentStructures.gridContext{2}(
-            JuAFEM.Triangle,nodes_in,on_torus=true,LL=LL,UR=UR)
+            JuAFEM.Triangle,nodes_in,on_torus=true,LL=LL,UR=UR,kwargs...)
 
         metric = PEuclidean(UR-LL)
         bdata = boundaryData(ctx,metric)
@@ -755,59 +757,82 @@ function evaluate_function_from_node_or_cellvals(
     return result
 end
 
-#TODO: this may not work, fix it.
 function evaluate_function_from_node_or_cellvals_multiple(
     ctx::gridContext{dim}, vals::AbstractMatrix{S},
     x_in::AbstractVector{Tensors.Vec{dim,W}};
-    outside_value=0.0, project_in=false,is_diag=false,throw_errors=false
+    outside_value=NaN, project_in=false,is_diag=false,throw_errors=false
     )::SparseMatrixCSC{S,Int64} where{dim,S,W}
+
 
     x::Vector{Vec{dim,W}} = [mollify_xin(ctx,x_cur,project_in) for x_cur in x_in]
 
     @assert size(vals)[1] == ctx.n
     npoints = length(x_in)
-    result::SparseMatrixCSC{S,Int64} = spzeros(S,size(vals)[2],npoints)
+
+    ctr::Int = 1
+    result_colptr=Int64[ctr]
+    result_rows=Int64[]
+    result_vals = S[]
+
     for current_point in 1:npoints
+        rows_tmp = Int[]
+        vals_tmp = S[]
         try
             local_coordinates::Tensors.Vec{dim,Float64}, nodes::Vector{Int},cellid::Int = locatePoint(ctx,x[current_point])
 
             if isa(ctx.ip, JuAFEM.Lagrange)
-                for (j, nodeid) in enumerate(nodes)
-                    val::Float64 = JuAFEM.value(ctx.ip, j, local_coordinates)
-                    if !is_diag
-                        for i in 1:size(vals)[2]
-                            result[i,current_point] += vals[nodeid,i]*val
+                if !is_diag
+                    for i in 1:(size(vals)[2])
+                        summed_value = 0.0
+                        for (j, nodeid) in enumerate(nodes)
+                            val::Float64 = JuAFEM.value(ctx.ip, j, local_coordinates)
+                            summed_value += vals[nodeid,i]*val
                         end
-                    else
-                        result[nodeid,current_point] += vals[nodeid,nodeid]*val
+                        push!(rows_tmp,i)
+                        push!(vals_tmp, summed_value)
+                    end
+                else
+                    for (j, nodeid) in enumerate(nodes)
+                        val = JuAFEM.value(ctx.ip, j, local_coordinates)
+                        push!(rows_tmp,nodeid)
+                        push!(vals_tmp,vals[nodeid,nodeid]*val)
                     end
                 end
             elseif isa(ctx.ip,JuAFEM.PiecewiseConstant)
                 val = JuAFEM.value(ctx.ip, 1, local_coordinates)
                 if !is_diag
-                    for i in 1:size(vals)[2]
-                        result[i,current_point] += vals[cellid,i]*val
+                    for i in 1:(size(vals)[2])
+                        push!(rows_tmp,i)
+                        push!(vals_tmp, vals[cellid,i]*val)
                     end
                 else
-                    result[cellid,current_point] += vals[cellid,cellid]*val
+                    push!(rows_tmp,cellid)
+                    push!(vals_tmp, vals[cellid,cellid]*val)
                 end
             else
                 throw(AssertionError("Unknown interpolation"))
             end
         catch y
                 if isa(y,DomainError)
-                    result[:, current_point] .= outside_value
+                    rows_tmp=collect(1:(size(vals)[2]))
+                    vals_tmp=[outside_value for i in 1:(size(vals)[2])]
                 else
                     if throw_errors
                         print("Unexpected error for $(x[current_point])")
                         rethrow(y)
                     else
-                        result[:, current_point] .= outside_value
+                        rows_tmp=collect(1:size(vals)[2])
+                        vals_tmp=[outside_value for i in 1:(size(vals)[2])]
                     end
                 end
         end
+        ordering = sortperm(rows_tmp)
+        append!(result_rows,rows_tmp[ordering])
+        append!(result_vals,vals_tmp[ordering])
+        ctr += length(rows_tmp)
+        push!(result_colptr,ctr)
     end
-    return result
+    return SparseMatrixCSC(size(vals)[2],npoints,result_colptr,result_rows,result_vals)
 end
 
 
@@ -848,6 +873,9 @@ Perform nodal_interpolation of a function onto a different grid.
 function sample_to(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_new::CoherentStructures.gridContext;
     bdata=boundaryData(),project_in=true
     ) where {T}
+    if !isa(ctx.ip,JuAFEM.Lagrange)
+        throw(AssertionError("Nodal interpolation only defined for Lagrange elements"))
+    end
     u_undoBCS = undoBCS(ctx_old,u,bdata)
     u_new::Vector{T} = zeros(T,ctx_new.n)*NaN
     for i in 1:ctx_new.n
