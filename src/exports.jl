@@ -57,6 +57,7 @@ export
 	regularP2TetrahedralGrid,
 	regularGrid,
 	periodicDelaunayGrid,
+	randomPeriodicDelaunayGrid,
 	aperiodicDelaunayGrid,
 	evaluate_function_from_dofvals,
 	evaluate_function_from_nodevals,

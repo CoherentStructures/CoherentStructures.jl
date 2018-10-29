@@ -277,19 +277,40 @@ function aperiodicDelaunayGrid(nodes_in::Vector{Vec{2,Float64}})
         return ctx
 end
 
+function randomPeriodicDelaunayGrid(
+                    npoints::Int,
+                    LL::AbstractVector=[0.0,0.0],
+                    UR::AbstractVector=[1.0,1.0];PC=false
+    )
+
+    nodes_in::Vector{Vec{2,Float64}} = Vec{2}.(zip(rand(npoints).*(UR[1]-LL[1]) .+ LL[1],rand(npoints).*(UR[2]-LL[2]) .+ LL[2]))
+    return periodicDelaunayGrid(nodes_in,LL,UR; PC=PC)
+end
+
 function periodicDelaunayGrid(
                     nodes_in::Vector{Vec{2,Float64}},
                     LL::AbstractVector=[0.0,0.0],
-                    UR::AbstractVector=[1.0,1.0]
+                    UR::AbstractVector=[1.0,1.0];
+                    PC=false
     )
 
-    ctx = CoherentStructures.gridContext{2}(
-        JuAFEM.Triangle,nodes_in,on_torus=true,LL=LL,UR=UR)
+    if !PC
+        ctx = CoherentStructures.gridContext{2}(
+            JuAFEM.Triangle,nodes_in,on_torus=true,LL=LL,UR=UR)
 
-    metric = PEuclidean(UR-LL)
-
-    bdata = boundaryData(ctx,metric)
-    return ctx,bdata
+        metric = PEuclidean(UR-LL)
+        bdata = boundaryData(ctx,metric)
+        return ctx,bdata
+    else
+        ip = JuAFEM.PiecewiseConstant{2,JuAFEM.RefTetrahedron,1}()
+        ctx = CoherentStructures.gridContext{2}(
+            JuAFEM.Triangle,nodes_in;
+            on_torus=true,LL=LL,UR=UR,
+            ip=ip
+        )
+        bdata = boundaryData()
+        return ctx,bdata
+    end
 end
 
 
@@ -709,8 +730,12 @@ function evaluate_function_from_node_or_cellvals(
         if isa(y,DomainError)
             return spzeros(T,size(vals)[2]) .+ outside_value
         end
-        print("Unexpected error for $x")
-        throw(y)
+        if throw_errors
+            print("Unexpected error for $x")
+            rethrow(y)
+        else
+            return spzeros(T,size(vals)[2]) .+ outside_value
+        end
     end
 
     result::S = zero(S)
@@ -733,7 +758,8 @@ end
 #TODO: this may not work, fix it.
 function evaluate_function_from_node_or_cellvals_multiple(
     ctx::gridContext{dim}, vals::AbstractMatrix{S},
-    x_in::AbstractVector{Tensors.Vec{dim,W}}; outside_value=0.0, project_in=false,is_diag=false
+    x_in::AbstractVector{Tensors.Vec{dim,W}};
+    outside_value=0.0, project_in=false,is_diag=false,throw_errors=false
     )::SparseMatrixCSC{S,Int64} where{dim,S,W}
 
     x::Vector{Vec{dim,W}} = [mollify_xin(ctx,x_cur,project_in) for x_cur in x_in]
@@ -772,8 +798,12 @@ function evaluate_function_from_node_or_cellvals_multiple(
                 if isa(y,DomainError)
                     result[:, current_point] .= outside_value
                 else
-                    print("Unexpected error for $(x[current_point])")
-                    rethrow(y)
+                    if throw_errors
+                        print("Unexpected error for $(x[current_point])")
+                        rethrow(y)
+                    else
+                        result[:, current_point] .= outside_value
+                    end
                 end
         end
     end
@@ -793,7 +823,7 @@ then the function is evaluated for each column.
 function evaluate_function_from_dofvals_multiple(
     ctx::gridContext{dim}, dofvals::AbstractMatrix{S},
     x_in::AbstractVector{Tensors.Vec{dim,W}};
-    outside_value=0.0, project_in=false
+    outside_value=0.0, project_in=false,throw_errors=false
     ) where { dim,S,W, }
     u_vals = zeros(S,size(dofvals))
     if isa(ctx.ip, JuAFEM.Lagrange)
@@ -805,7 +835,7 @@ function evaluate_function_from_dofvals_multiple(
             u_vals[i,:] = dofvals[ctx.cell_to_dof[i],:]
         end
     end
-    return evaluate_function_from_node_or_cellvals_multiple(ctx,u_vals, x_in,outside_value=outside_value,project_in=project_in)
+    return evaluate_function_from_node_or_cellvals_multiple(ctx,u_vals, x_in,outside_value=outside_value,project_in=project_in,throw_errors=throw_errors)
 end
 
 
@@ -896,6 +926,64 @@ function delaunay2(x::Vector{Tensors.Vec{2,Float64}})
 end
 
 
+#See if this cell, or vertical and horizontal translations
+#of it have already been added to the triangulation.
+#This is a helper function
+function in_cells_used(cells_used_arg,element::Tuple{Int,Int,Int},num_nodes_in)::Int
+    function moveby(i::Int,xdir::Int,ydir::Int)::Int
+        xpos = div((i-1),3*num_nodes_in)
+        ypos = rem(div((i-1),num_nodes_in),3)
+        remainder = rem((i-1),num_nodes_in)
+
+        #In order to keep the original nodes in the first copy
+        #of the tiling, we resorted to use using a "creative" ordering
+        #of the indices. This comes back to bite us here.
+        function addToPosition(pos,what)
+            @assert what ∈ [0,-1,1] #TODO: get rid of this
+            if what == 0
+                return pos
+            end
+            if pos == 0 #Corresponds to 0 position
+                if what == +1
+                    return 1
+                else
+                    return 2
+                end
+            elseif pos == 1 #Corresponds to +1 position
+                if what == -1
+                    return 0
+                else
+                    return 1
+                end
+            elseif pos == 2#Corresponds to -1 position
+                if what == +1
+                    return 0
+                else
+                    return 2
+                end
+            else
+                throw(AssertionError("Should never reach here, pos=$pos"))
+            end
+        end
+
+        xpos = addToPosition(xpos,xdir)
+        ypos = addToPosition(ypos,ydir)
+        return remainder + 3*num_nodes_in*xpos + ypos*num_nodes_in + 1
+    end
+    for directionx in -1:1
+        for directiony in -1:1
+            #TODO: optimize this for speed
+            moved_cell = Tuple{Int,Int,Int}(sort(collect(moveby.(element,directionx,directiony))))
+            if moved_cell ∈ keys(cells_used_arg)
+                result = cells_used_arg[moved_cell]
+                return result
+            end
+        end
+    end
+    return 0
+end
+
+
 function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.Vec{2,Float64}};on_torus=false,LL=[0.0,0.0],UR=[1.0,1.0])
     num_nodes_in = length(nodes_in)
 
@@ -926,26 +1014,11 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
 
     nodes = map(JuAFEM.Node, nodes_in)
     additional_nodes = Dict{Int,Int}()#which nodes outside of the torus do we need?
-    cells_used = Dict{Tuple{Int,Int,Int},Int}()
-    #See if this cell, or vertical and horizontal translations
-    #of it have already been added to the triangulation.
-    function in_cells_used(element::Tuple{Int,Int,Int})
-        a,b,c = element
-        function moveby(i,direction)
-            return min(max(1,i + num_nodes_in*direction),9*num_nodes_in)
-        end
-        for direction in -9:9
-            #TODO: optimize this for speed
-            moved_cell = Tuple{Int,Int,Int}(sort(collect(moveby.(element,direction))))
-            if moved_cell ∈ keys(cells_used)
-                return cells_used[moved_cell]
-            end
-        end
-        return 0
-    end
+    global cells_used = Dict{Tuple{Int,Int,Int},Int}()
 
     cells = JuAFEM.Triangle[]
     cell_number_table = zeros(Int, length(tess._trigs))
+    cells_to_deal_with = Dict{Tuple{Int,Int,Int},Int}()
 
     tri_iterator = Base.iterate(tess)
     while tri_iterator != nothing
@@ -966,10 +1039,12 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
             tri_nodes = [new_tri.nodes[i] for i in 1:3]
             #Are any of the vertices actually inside?
             if any(x -> x <= num_nodes_in, tri_nodes)
-                thiscell = in_cells_used(new_tri.nodes)
+                thiscell = in_cells_used(cells_used,new_tri.nodes,num_nodes_in)
                 if thiscell != 0
-                    cell_number_table[triindex.ix-1] = thiscell
+                   # print("HEERE")
+                   cell_number_table[triindex.ix-1] = thiscell
                 else
+                   # print("WHY")
                     for (index,cur) in enumerate(tri_nodes)
                         if cur > num_nodes_in
                             if cur ∈ keys(additional_nodes)
@@ -984,11 +1059,19 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle}, nodes_in::Vector{Tensors.
                     new_tri = JuAFEM.Triangle((tri_nodes[1],tri_nodes[2],tri_nodes[3]))
                     push!(cells, new_tri)
                     cell_number_table[triindex.ix-1] = length(cells)
-                    cells_used[ Tuple{Int,Int,Int}(sort(tri_nodes)) ] = length(cells)
+                    cells_used[ Tuple{Int,Int,Int}(sort([tri._a.id,tri._b.id,tri._c.id])) ] = length(cells)
                 end
+            else
+                cells_to_deal_with[(tri_nodes[1],tri_nodes[2],tri_nodes[3])] = triindex.ix-1
             end
         end
         tri_iterator = Base.iterate(tess,triindex)
+    end
+    if on_torus
+        for (c,index) in cells_to_deal_with
+            thiscell = in_cells_used(cells_used,c,num_nodes_in)
+            cell_number_table[index] = thiscell
+        end
     end
 
     facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?

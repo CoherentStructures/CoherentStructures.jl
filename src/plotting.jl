@@ -92,7 +92,8 @@ end
             z_raw = evaluate_function_from_dofvals_multiple(
                             ctx,u_values[:,:],
                             vec(euler_to_lagrange_points),
-                            outside_value=NaN
+                            outside_value=NaN,
+                            throw_errors=throw_errors
                             )
             z = reshape(z_raw[1,:],size(euler_to_lagrange_points))
         end

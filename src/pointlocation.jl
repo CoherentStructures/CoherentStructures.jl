@@ -92,7 +92,7 @@ function locatePoint(
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
         throw(DomainError("Outside of domain"))
     end
-    global t_index = VD.findindex(loc.tess, point_inbounds)
+    t_index = VD.findindex(loc.tess, point_inbounds)
     t = loc.tess._trigs[t_index]
     if VD.isexternal(t)
         throw(DomainError("Outside of domain"))
