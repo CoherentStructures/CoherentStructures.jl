@@ -7,7 +7,9 @@ The domain to be plotted on is given by `ctx.spatialBounds`.
 The function is evaluated on a regular `nx` by `ny` grid, the resulting plot is a heatmap.
 Keyword arguments are passed down to `plot_u_eulerian`, which this function calls internally.
 """
-function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100,LL=ctx.spatialBounds[1],UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...) where dim
+function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100,
+                LL=ctx.spatialBounds[1],UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...
+                ) where dim
     id = x -> x
     if dim == 1
         plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx,  bdata=bdata; kwargs...)
@@ -16,6 +18,10 @@ function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100
     else
         throw(AssertionError("Not yet implemented"))
     end
+end
+
+function plot_u(ctx,dof_vals::Vector{Complex{Float64}},args...;kwargs...)
+    return plot_u(ctx,real.(dof_vals),args...; title="Plotting real part!", kwargs...)
 end
 
 function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100; bdata=nothing, kwargs...) where dim

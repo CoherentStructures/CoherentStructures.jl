@@ -24,7 +24,7 @@ module CoherentStructures
     using VoronoiDelaunay
     using ForwardDiff
 
-    using JuAFEM
+    import JuAFEM
     using RecipesBase
     using SymEngine
 

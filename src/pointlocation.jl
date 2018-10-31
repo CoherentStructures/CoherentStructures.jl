@@ -23,14 +23,14 @@ function locatePoint(ctx::gridContext{dim}, x::Tensors.Vec{dim,T})::Tuple{Vec{di
 end
 
 
-struct regular1DGridLocator{C} <: pointLocator where {C <: JuAFEM.Cell}
+struct regular1dGridLocator{C} <: pointLocator where {C <: JuAFEM.Cell}
     nx::Int
     LL::Tensors.Vec{1,Float64}
     UR::Tensors.Vec{1,Float64}
 end
 
 function locatePoint(
-        loc::regular1DGridLocator{S},
+        loc::regular1dGridLocator{S},
         grid::JuAFEM.Grid,
         x::Tensors.Vec{1,T}
     )::Tuple{Tensors.Vec{1,T}, Vector{Int},Int} where {S,T}

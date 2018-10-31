@@ -43,12 +43,11 @@ export
 
 	#gridfunctions.jl
 	regular1dGrid,
-	regular1dGridPC,
 	regular1dP2Grid,
 	regularTriangularGrid,
-	regularTriangularGridPC,
 	regularDelaunayGrid,
-	regularDelaunayGridPC,
+	irregularDelaunayGrid,
+	randomDelaunayGrid,
 	regularP2TriangularGrid,
 	regularP2DelaunayGrid,
 	regularQuadrilateralGrid,
@@ -112,11 +111,12 @@ export
     @var_velo_from_stream,
 
 	#TO.jl
-	nonAdaptiveTO,
-	adaptiveTO,
+	nonAdaptiveTOCollocation,
+	adaptiveTOCollocation,
+	adaptiveTOCollocationStiffnessMatrix,
 	L2GalerkinTO,
 	L2GalerkinTOFromInverse,
-	adaptiveTransferOperator,
+	adaptiveTOCollocation,
 
 	#util.jl
 	tensor_invariants,
@@ -125,6 +125,7 @@ export
 	interp_rhs,
 	interp_rhs!,
 	getH,
+	unzip,
 
 	#velocityfields.jl
 	rot_double_gyre,
