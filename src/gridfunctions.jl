@@ -336,7 +336,7 @@ function gridContext{2}(
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JuAFEM.close!(dh)
-    result =  gridContext{2}(grid, ip,JuAFEM.Lagrange{2,RefTetrahedron,1}(), dh, qr, loc)
+    result =  gridContext{2}(grid, ip,JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,1}(), dh, qr, loc)
     if isa(ip, JuAFEM.Lagrange)
         result.gridType = "irregular P1 Delaunay grid"
     else
@@ -505,7 +505,7 @@ function regularP2DelaunayGrid(
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular P2 Delaunay grid"
-    return result
+    return result, boundaryData()
 end
 
 #=
@@ -525,7 +525,7 @@ function gridContext{2}(::Type{JuAFEM.Triangle},
                          )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2dGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -579,7 +579,7 @@ function gridContext{2}(::Type{JuAFEM.QuadraticTriangle},
     end
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2dGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -622,7 +622,7 @@ function gridContext{2}(
             )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2dGridLocator{JuAFEM.Quadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.Quadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -685,7 +685,7 @@ function gridContext{2}(
     end
     #The -1 below is needed because JuAFEM internally then goes on to increment it
     grid = JuAFEM.generate_grid(JuAFEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2dGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -1218,6 +1218,11 @@ function in_cells_used(cells_used_arg,element::Tuple{Int,Int,Int},num_nodes_in):
 end
 
 
+"""
+Function for creating a grid from scattered nodes.
+Calls VoronoiDelaunay for delaunay triangulation. Makes a periodic triangulation
+if `on_torus` is set to `true`.
+"""
 function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
      nodes_in::Vector{Tensors.Vec{2,Float64}};
      on_torus=false,LL=nothing,UR=nothing
@@ -1226,10 +1231,15 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
         @assert !(LL == nothing || UR == nothing)
     end
 
+    #How many nodes were supplied
     num_nodes_in = length(nodes_in)
 
+    #What nodes to triangulate. If we are working on the torus,
+    #this includes copies of the nodes on the covering space.
     nodes_to_triangulate = Vector{Tensors.Vec{2,Float64}}()
 
+    #points_mapping[i] = j means that nodes_to_triangulate[i]
+    #Should be identified with nodes_in[j]
     points_mapping = Vector{Int}()
     if on_torus
         dx = UR[1] - LL[1]
@@ -1250,62 +1260,123 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
         end
     end
 
-
+    #Delaunay Triangulation
     tess, m, scale_x, scale_y, min_x, min_y = delaunay2(nodes_to_triangulate)
 
     nodes = map(JuAFEM.Node, nodes_in)
-    additional_nodes = Dict{Int,Int}()#which nodes outside of the torus do we need?
-    cells_used = Dict{Tuple{Int,Int,Int},Int}()
 
+    #Our grid will require some nodes twice.
+    #additional_nodes[i] = j means that we require the node i
+    #and that it has been added at index j to the grid's list of nodes
+    additional_nodes = Dict{Int,Int}()
+
+
+    #Cells that are part of the grid later
     cells = JuAFEM.Triangle[]
+
+    #Here we keep track of which cells we've already added
+    #We assume that the mesh is fine enough that a cell is uniquely specified
+    #by its vertices modulo periodicity, so the the tuple acting as a key is
+    #assumed to be sorted.
+    cells_used = Dict{Tuple{Int,Int,Int},Int}()
+    #Our periodic tesselation produced many copies of the same cell
+    #In order to do point location later, cell_number_table[i] = j means
+    #that cell i in the periodic tesselation corresponds to cell j of the grid
     cell_number_table = zeros(Int, length(tess._trigs))
+    #In order to build cell_number_table, we are interested in *all* cells
+    #of the triangulation. But we only consider cells to be added to the grid
+    #that have a node inside the original grid. cells_to_deal_with contains other
+    #cells, and their indices in the tesselation
     cells_to_deal_with = Dict{Tuple{Int,Int,Int},Int}()
+
+    #We may need to switch the position of two nodes that are the same (modulo periodicity)
+    #if one of them gets added first
+    switched_nodes_table = collect(1:length(nodes_to_triangulate))
+    nodes_used = zeros(Bool, num_nodes_in)
+
 
     tri_iterator = Base.iterate(tess)
     while tri_iterator != nothing
         (tri,triindex) = tri_iterator
-        J = Tensors.otimes((nodes_to_triangulate[tri._b.id] - nodes_to_triangulate[tri._a.id]), e1)
-        J += Tensors.otimes((nodes_to_triangulate[tri._c.id] - nodes_to_triangulate[tri._a.id]), e2)
+        #It could be the the triangle in question is oriented the wrong way
+        #We test this, and flip it if neccessary
+        J = Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri._b.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e1)
+        J += Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri._c.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e2)
         detJ = det(J)
         @assert detJ != 0
         if detJ > 0
-            new_tri = JuAFEM.Triangle((tri._a.id, tri._b.id, tri._c.id))
+            new_tri_nodes_from_tess = (tri._a.id, tri._b.id, tri._c.id)
         else
-            new_tri = JuAFEM.Triangle((tri._a.id, tri._c.id, tri._b.id))
+            new_tri_nodes_from_tess = (tri._a.id, tri._c.id, tri._b.id)
         end
+
         if !on_torus
-            push!(cells, new_tri)
+            push!(cells, JuAFEM.Triangle(new_tri_nodes_from_tess))
             cell_number_table[triindex.ix-1] = length(cells)
         else
-            tri_nodes = [new_tri.nodes[i] for i in 1:3]
+            #Get the nodes in question.
+            tri_nodes = switched_nodes_table[collect(new_tri_nodes_from_tess)]
+
             #Are any of the vertices actually inside?
             if any(x -> x <= num_nodes_in, tri_nodes)
-                thiscell = in_cells_used(cells_used,new_tri.nodes,num_nodes_in)
+                #Let's find out if we've already added a (modulo periodicity)
+                #version of this cell
+                thiscell = in_cells_used(cells_used,
+                                    Tuple{Int,Int,Int}(new_tri_nodes_from_tess),
+                                    num_nodes_in)
                 if thiscell != 0
+                    #We have, so nothing to do here except record this.
                    cell_number_table[triindex.ix-1] = thiscell
                 else
+                    #Now iterate over the nodes of the cell
                     for (index,cur) in enumerate(tri_nodes)
-                        if cur > num_nodes_in
-                            if cur ∈ keys(additional_nodes)
+                        #Is this one of the "original" nodes?
+                        if cur <= num_nodes_in
+                            #Let's record that we've seen it
+                            nodes_used[cur] = true
+                        else
+                            #Have we never seen the corresponding original node?
+                            original_node = points_mapping[cur]
+                            if nodes_used[original_node] == false
+
+                                #This node get  s to be the "original" node now
+                                tmpNode = nodes[original_node].x
+                                nodes[original_node] = JuAFEM.Node(nodes_to_triangulate[cur])
+                                nodes_to_triangulate[original_node] = nodes_to_triangulate[cur]
+                                nodes_to_triangulate[cur] = tmpNode
+
+                                switched_nodes_table[cur] = original_node
+                                switched_nodes_table[original_node] = cur
+
+                                tri_nodes[index] = original_node
+                                nodes_used[original_node] = true
+
+                            #Have we added this node already?
+                            elseif cur ∈ keys(additional_nodes)
                                 tri_nodes[index] = additional_nodes[cur]
                             else
+                                #Need to add this node to the grid
                                 push!(nodes, JuAFEM.Node(nodes_to_triangulate[cur]))
                                 additional_nodes[cur] = length(nodes)
                                 tri_nodes[index] = length(nodes)
                             end
                         end
                     end
+                    #Phew. We can now add the triangle to the triangulation.
                     new_tri = JuAFEM.Triangle(Tuple{Int,Int,Int}(tri_nodes))
                     push!(cells, new_tri)
+
+                    #We now remember that we've used this cell
                     cell_number_table[triindex.ix-1] = length(cells)
-                    cells_used[ Tuple{Int,Int,Int}(sort([tri._a.id,tri._b.id,tri._c.id])) ] = length(cells)
+                    cells_used[ Tuple{Int,Int,Int}(sort(collect(new_tri_nodes_from_tess))) ] = length(cells)
                 end
-            else
-                cells_to_deal_with[(tri_nodes[1],tri_nodes[2],tri_nodes[3])] = triindex.ix-1
+            else #Deal with this cell later
+                cells_to_deal_with[Tuple{Int,Int,Int}(tri_nodes)] = triindex.ix-1
             end
         end
         tri_iterator = Base.iterate(tess,triindex)
     end
+    #Write down location of remining cells
     if on_torus
         for (c,index) in cells_to_deal_with
             thiscell = in_cells_used(cells_used,c,num_nodes_in)
@@ -1313,11 +1384,12 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
         end
     end
 
-    used_nodes = Int[]
+    #Check if everything worked out fine
+    used_nodes = zeros(Bool, length(nodes))
     for c in cells
-        append!(used_nodes,collect(c.nodes))
+        used_nodes[collect(c.nodes)] .= true
     end
-    if length(unique(used_nodes)) != length(nodes)
+    if any(x -> x == false, used_nodes)
         @warn "Some nodes added that might cause problems with JuAFEM. Proceed at your own risk."
     end
 
@@ -1325,7 +1397,7 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = JuAFEM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate,points_mapping,cell_number_table)
+    locator = delaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate[switched_nodes_table],points_mapping,cell_number_table)
     return grid, locator
 end
 

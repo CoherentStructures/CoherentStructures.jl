@@ -196,28 +196,35 @@ function doBCS(ctx, u::AbstractVector{T}, bdata) where T
 end
 
 """
-    applyBCS(ctx,K,bdata)
+    applyBCS(ctx_row,K,bdata_row; [ctx_col, bdata_col,bdata_row,add_vals=true])
 
-Apply the boundary conditions from `bdata` to the `ctx.n` by `ctx.n` sparse matrix `K`.
+Apply the boundary conditions from `bdata_row` and `bdata_col` to the sparse matrix `K`.
+Only applies boundary conditions accross columns (rows) if `bdata_row==nothing` (`bdata_col==nothing`)
+If `add_vals==true`, then
 """
-function applyBCS(ctx_row::gridContext{dim},K,bdata_row::boundaryData;
-        ctx_col::gridContext{dim}=ctx_row, bdata_col::boundaryData=bdata_row,
+function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
+        ctx_col::gridContext{dim}=ctx_row, bdata_col=bdata_row,
         add_vals = true
         ) where dim
 
-    k1 = length(bdata_col.dbc_dofs)
-    k2 = length(bdata_row.dbc_dofs)
-
-    n = ctx_row.n
-    m = ctx_col.n
+    n,m = size(K)
 
     is_symmetric = issymmetric(K) && (bdata_row == bdata_col)
 
-    correspondsTo_col = BCTable(ctx_col,bdata_col)
-    correspondsTo_row = BCTable(ctx_row,bdata_row)
+    if bdata_col != nothing
+        correspondsTo_col = BCTable(ctx_col,bdata_col)
+    else
+        correspondsTo_col = collect(1:(size(K)[2]))
+    end
 
-    new_n = length(unique(correspondsTo_col))
-    new_m = length(unique(correspondsTo_row))
+    if bdata_row != nothing
+        correspondsTo_row = BCTable(ctx_row,bdata_row)
+    else
+        correspondsTo_row = collect(1:(size(K)[1]))
+    end
+
+    new_n = length(unique(correspondsTo_row))
+    new_m = length(unique(correspondsTo_col))
 
     if 0 ∈ correspondsTo_col
         new_n -= 1
@@ -261,13 +268,13 @@ function applyBCS(ctx_row::gridContext{dim},K,bdata_row::boundaryData;
             end
         end
         if add_vals
-            Kres = sparse(I,J,V,new_n,new_n)
+            Kres = sparse(I,J,V,new_n,new_m)
         else
-            Kres = sparse(I,J,V,new_n,new_n,(x,y) -> x)
+            Kres = sparse(I,J,V,new_n,new_m,(x,y) -> x)
         end
         return Kres
     else
-        Kres = zeros(new_n,new_n)
+        Kres = zeros(new_n,new_m)
         for j = 1:m
             if correspondsTo_col[j] == 0
                 continue
@@ -309,11 +316,10 @@ function identifyPoints(ctx::gridContext{dim},predicate::Distances.Metric) where
     identify_from = Int[]
     identify_to = Int[]
 
-    l = zeros(2, ctx.n)
+    l = zeros(dim, ctx.n)
     for i in 1:ctx.n
         coords = getDofCoordinates(ctx,i)
-        l[1,i] = coords[1]
-        l[2,i] = coords[2]
+        l[:, i] .= coords
     end
     TOL = 1e-12 #TODO: set this somewhere globally
 
