@@ -122,8 +122,6 @@ export
 	tensor_invariants,
 	dof2node,
 	kmeansresult2LCS,
-	interp_rhs,
-	interp_rhs!,
 	getH,
 	unzip,
 
@@ -137,7 +135,8 @@ export
 	bickleyJetEqVari,
 	bickleyJetEqVari!,
 	interpolateVF,
-	interpolateVFPeriodic,
+	interp_rhs,
+	interp_rhs!,
 	standardMap,
 	standardMapInv,
 	DstandardMap,
