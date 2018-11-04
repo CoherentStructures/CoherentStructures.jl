@@ -132,43 +132,15 @@ end
 const e1 = Tensors.basevec(Tensors.Vec{2}, 1)
 const e2 = Tensors.basevec(Tensors.Vec{2}, 2)
 
-
-
-
 function rawInvCGTensor(args...; kwargs...)
     result = invCGTensor(args...; kwargs...)
     return result[1,1], result[1,2], result[2,2]
 end
 
-
 function AFromPrecomputedRaw(x, index, q)
     @views return Tensors.SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
 end
 
-
-#The rhs for an ODE on interpolated vector fields
-#The interpolant is passed via the p argument
-
-#TODO: think of adding @inbounds here
-function interp_rhs!(du, u, p, t)
-    du[1] = p[1](u[1], u[2], t)
-    du[2] = p[2](u[1], u[2], t)
-end
-
-"""
-    interp_rhs(u, p, t) -> SA.SVector{2}
-
-Defines a 2D vector field that is readily usable for trajectory integration from
-vector field interpolants of the x- and y-direction, resp. It assumes that the
-interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
-`UI` and `VI` are the interpolants for the x- and y-components of the velocity
-field.
-"""
-function interp_rhs(u, p, t)
-    du1 = p[1](u[1], u[2], t)
-    du2 = p[2](u[1], u[2], t)
-    return SA.SVector{2}(du1, du2)
-end
 
 #Returns true for all inputs. This is the default function for inbounds checking in plot_ftle
 function always_true(x,y,p)
