@@ -85,7 +85,6 @@ macro velo_from_stream(H::Symbol, formulas::Expr)
         (u,p,t) -> StaticArrays.SVector($(F[1]), $(F[2]))
     end
 end
-
 macro velo_from_stream(name::Symbol)
     haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
@@ -112,13 +111,12 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
                                         u[2,2] u[2,3] ]
             DF = StaticArrays.@SMatrix [ $(DF[1,1]) $(DF[1,2])
                                          $(DF[2,1]) $(DF[2,2]) ]
-            DA = DF*A
+            DA = DF * A
             return StaticArrays.@SMatrix [ $(F[1]) DA[1,1] DA[1,2]
                                            $(F[2]) DA[2,1] DA[2,2] ]
         end
     end
 end
-
 macro var_velo_from_stream(name::Symbol)
     haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
@@ -129,7 +127,7 @@ end
 function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
     # (additional to symbols defined in Base)
-    bound_symbols = [:x,:y,:t, keys(diff_dict)...]
+    bound_symbols = [:x, :y, :t, keys(diff_dict)...]
     H = substitutions(H, formulas, bound_symbols)
 
 
@@ -144,7 +142,7 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
     DF = [:(-$(∇²H[2,1])) :(-$(∇²H[2,2]))
                ∇²H[1,1]        ∇²H[1,2]  ]
 
-    return F,DF
+    return F, DF
 end
 
 
@@ -268,11 +266,11 @@ end
 #                      (mainly substitutions of function calls)                         #
 #########################################################################################
 
-""" substitutions(code::Expr, variable::Symbol, knowns = []) = begin
+""" substitutions(code::Expr, variable::Symbol, knowns = [])
 
-perform all substitutions that are defined in `code` until
+Perform all substitutions that are defined in `code` until
 the resulting expression does not contain free variables.
-variables can be bound by `knowns`
+Variables can be bound by `knowns`.
 """
 substitutions(variable::Symbol, code::Expr, knowns = []) = begin
     Base.remove_linenums!(code)
@@ -281,7 +279,7 @@ substitutions(variable::Symbol, code::Expr, knowns = []) = begin
 
     # dumb approach: keep blindly performing substitutions until there are no free
     # variables left
-    while has_free_symb(ex,knowns) && (count < maxit)
+    while has_free_symb(ex, knowns) && (count < maxit)
         ex = substitute_once(code, ex)
         ex = remove_blocks(Base.remove_linenums!(ex))
         count = count + 1
@@ -292,8 +290,9 @@ substitutions(variable::Symbol, code::Expr, knowns = []) = begin
     return ex
 end
 
-
-""" perform all substitutions that are defined in `code` once
+"""
+    substitute_once(defns::Expr, target::Expr)
+Perform all substitutions that are defined in `code` once.
 """
 substitute_once(defns::Expr, target::Expr) = begin
     if defns.head == :(=)
@@ -310,8 +309,9 @@ substitute_once(defns::Expr, target::Symbol) = begin
 end
 substitute_once(defns, target) = target
 
-
-""" substitute all function calls of f in expr
+"""
+    call_subst(expr::Expr, f_sig, f_body)
+Substitute all function calls of `f` in `expr`.
 """
 call_subst(expr::Expr, f_sig, f_body) = begin
     if expr.head == :call && f_sig[1] == expr.args[1]
@@ -332,9 +332,10 @@ call_subst(expr, f_sign, f_body) =  begin
     expr
 end
 
-""" sym_subst(expr, sym, s_expr)
+"""
+    sym_subst(expr, sym, s_expr)
 
-replace all occurences of `sym` in `expr` by `s_expr`
+Replace all occurences of `sym` in `expr` by `s_expr`.
 """
 sym_subst(expr::Symbol, sym::Symbol, s_expr::Union{Symbol, Expr}) =
     begin
@@ -356,11 +357,11 @@ sym_subst(expr, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
     end
 
 # fallback
-sym_subst(expr,         sym::Symbol, s_expr::Union{Symbol, Expr}) = expr
+sym_subst(expr, sym::Symbol, s_expr::Union{Symbol, Expr}) = expr
 
-
-
-""" does <ex> contain a symbol that is not bound by <bound_vars>?
+"""
+    has_free_symb(ex::Expr, bound_vars)
+Does `ex` contain a symbol that is not bound by `bound_vars`?
 """
 has_free_symb(ex::Expr, bound_vars) = begin
     !all((!).(has_free_symb.(ex.args, [bound_vars])))
@@ -370,7 +371,9 @@ has_free_symb(ex::Symbol, bound_vars) = begin
 end
 has_free_symb(ex, bound_vars) = false
 
-""" clean up enclosing blocks to get to the core expression
+"""
+    remove_blocks(ex::Expr)
+Clean up enclosing blocks to get to the core expression.
 """
 remove_blocks(ex::Expr) = begin
     if ex.head == :block
@@ -382,7 +385,7 @@ end
 remove_blocks(ex) = ex
 
 """ get signature [<f_name> <arg1> <arg2> ...]
-A symbol is interpreted as a function without arguments
+A symbol is interpreted as a function without arguments.
 """
 signature(ex::Symbol) = [ex]
 signature(ex::Expr) = ex.args
