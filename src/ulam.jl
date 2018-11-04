@@ -1,19 +1,27 @@
-#(c) 2018 Nathanael Schilling
+#(c) 2018 Nathanael Schilling & Daniel Karrasch
 #ulam.jl
 #Implements Ulam's method within CoherentStructures.jl
 
-
-function ulam(ctx::gridContext{2},f,nx,ny)
-    result = spzeros(ctx.n,ctx.n)
-    total_points = nx*ny
-    total_area = prod(ctx.spatialBounds[2][:] - ctx.spatialBounds[1][:])
-    for x in range(ctx.spatialBounds[1][1],stop=ctx.spatialBounds[2][1],length=nx)
-        for y in range(ctx.spatialBounds[1][2],stop=ctx.spatialBounds[2][2],length=ny)
-            m::Int = locatePoint(ctx,Tensors.Vec{2}((x,y)))[3]
-            pointImage = f(Tensors.Vec{2}((x,y)))
-            m2::Int = locatePoint(ctx,pointImage)[3]
-            result[ctx.cell_to_dof[m],ctx.cell_to_dof[m2]] += total_area/(nx*ny)
+function ulam(ctx::gridContext{2}, f, nx, ny)
+    n = ctx.n
+    npoints = nx * ny
+    area = prod(ctx.spatialBounds[2][:] - ctx.spatialBounds[1][:])
+    val = area / npoints
+    Is = Vector{Int}(undef, npoints)
+    Js = Vector{Int}(undef, npoints)
+    xs = range(ctx.spatialBounds[1][1], stop=ctx.spatialBounds[2][1], length=nx)
+    ys = range(ctx.spatialBounds[1][2], stop=ctx.spatialBounds[2][2], length=ny)
+    idx = 0
+    for x in xs
+        for y in ys
+            idx += 1
+            m::Int = locatePoint(ctx, Tensors.Vec{2}((x, y)))[3]
+            pointImage = f(Tensors.Vec{2}((x, y))) # TODO: why Vec{2}?
+            # this assumes that pointImage is contained in ctx
+            m2::Int = locatePoint(ctx, pointImage)[3]
+            Is[idx] = ctx.cell_to_dof[m]
+            Js[idx] = ctx.cell_to_dof[m2]
         end
     end
-    return result
+    return sparse(Is, Js, val, n, n)
 end
