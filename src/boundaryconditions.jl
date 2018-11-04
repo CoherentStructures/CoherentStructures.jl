@@ -15,16 +15,19 @@ mutable struct boundaryData
     dbc_dofs::Vector{Int}
     periodic_dofs_from::Vector{Int}
     periodic_dofs_to::Vector{Int}
-    function boundaryData(dbc_dofs::Vector{Int}=Vector{Int}(),periodic_dofs_from::Vector{Int}=Vector{Int}(), periodic_dofs_to::Vector{Int}=Vector{Int}())
+    function boundaryData(dbc_dofs::Vector{Int}=Vector{Int}(),
+                            periodic_dofs_from::Vector{Int}=Vector{Int}(),
+                            periodic_dofs_to::Vector{Int}=Vector{Int}()
+                         )
         @assert length(periodic_dofs_from) == length(periodic_dofs_to)
         @assert issorted(dbc_dofs)
         @assert issorted(periodic_dofs_from)
         return new(dbc_dofs, periodic_dofs_from, periodic_dofs_to)
     end
     function boundaryData(ctx::gridContext{dim}, predicate::T, which_dbc=[]) where {dim, T <: Union{Function,Distances.Metric}}
-        dbcs = getHomDBCS(ctx,which_dbc).dbc_dofs
-        from, to = identifyPoints(ctx,predicate)
-        return boundaryData(dbcs,from,to)
+        dbcs = getHomDBCS(ctx, which_dbc).dbc_dofs
+        from, to = identifyPoints(ctx, predicate)
+        return boundaryData(dbcs, from, to)
     end
 end
 
@@ -42,14 +45,14 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
             dbc = JuAFEM.Dirichlet(:T,
                     union(JuAFEM.getfaceset(ctx.grid, "left"),
                      JuAFEM.getfaceset(ctx.grid, "right")
-                       ), (x,t)->0)
+                       ), (x, t) -> 0)
         elseif dim == 2
             dbc = JuAFEM.Dirichlet(:T,
                     union(JuAFEM.getfaceset(ctx.grid, "left"),
                      JuAFEM.getfaceset(ctx.grid, "right"),
                      JuAFEM.getfaceset(ctx.grid, "top"),
                      JuAFEM.getfaceset(ctx.grid, "bottom"),
-                       ), (x,t)->0)
+                       ), (x, t) -> 0)
        elseif dim == 3
             dbc = JuAFEM.Dirichlet(:T,
                     union(JuAFEM.getfaceset(ctx.grid, "left"),
@@ -58,7 +61,7 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
                      JuAFEM.getfaceset(ctx.grid, "bottom"),
                      JuAFEM.getfaceset(ctx.grid, "front"),
                      JuAFEM.getfaceset(ctx.grid, "back"),
-                       ), (x,t)->0)
+                       ), (x, t) -> 0)
        else
            throw(AssertionError("dim ∉ [1,2,3]"))
        end
@@ -66,9 +69,9 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
        return boundaryData(Vector{Int}())
    else
        dbc = JuAFEM.Dirichlet(:T,
-               union([JuAFEM.getfaceset(ctx.grid, str) for str in which]...)
-               ,(x,t) -> 0
-           )
+               union([JuAFEM.getfaceset(ctx.grid, str) for str in which]...),
+               (x, t) -> 0
+               )
    end
     JuAFEM.add!(dbcs, dbc)
     JuAFEM.close!(dbcs)
@@ -77,12 +80,12 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
 end
 
 """
-    undoBCS(ctx,u,bdata)
+    undoBCS(ctx, u, bdata)
 
 Given a vector `u` in dof order with boundary conditions applied, return the corresponding
 `u` in dof order without the boundary conditions.
 """
-function undoBCS(ctx, u,bdata)
+function undoBCS(ctx, u, bdata)
         n = ctx.n
         if length(bdata.dbc_dofs) == 0 && length(bdata.periodic_dofs_from) == 0
             return copy(u)
@@ -90,7 +93,7 @@ function undoBCS(ctx, u,bdata)
         if n == length(u)
             error("u is already of length n, no need for undoBCS")
         end
-        correspondsTo = BCTable(ctx,bdata)
+        correspondsTo = BCTable(ctx, bdata)
         result = zeros(n)
         for i in 1:n
             if correspondsTo[i] != 0
@@ -105,19 +108,19 @@ end
 
 Return the coordinates of the node corresponding to the dof with index `dofindex`
 """
-function getDofCoordinates(ctx::gridContext{dim},dofindex::Int) where dim
+function getDofCoordinates(ctx::gridContext{dim}, dofindex::Int) where dim
     return ctx.grid.nodes[ctx.dof_to_node[dofindex]].x
 end
 
 function BCTable(ctx::gridContext{dim},bdata::boundaryData) where dim
-    dbcs_prescribed_dofs=bdata.dbc_dofs
-    periodic_dofs_from = bdata.periodic_dofs_from
-    periodic_dofs_to = bdata.periodic_dofs_to
+    dbcs_prescribed_dofs = bdata.dbc_dofs
+    periodic_dofs_from   = bdata.periodic_dofs_from
+    periodic_dofs_to     = bdata.periodic_dofs_to
     n = ctx.n
     k = length(dbcs_prescribed_dofs)
     l = length(periodic_dofs_from)
 
-    if dbcs_prescribed_dofs==nothing
+    if dbcs_prescribed_dofs === nothing
         dbcs_prescribed_dofs = getHomDBCS(ctx).prescribed_dofs
     end
     if !issorted(dbcs_prescribed_dofs)
@@ -157,23 +160,23 @@ function BCTable(ctx::gridContext{dim},bdata::boundaryData) where dim
             end
             continue
         end
-        correspondsTo[j] =  correspondsTo[jnew]
+        correspondsTo[j] = correspondsTo[jnew]
     end
     return correspondsTo
 end
 
 #TODO: Make this more efficient
 """
-    nDofs(ctx,bdata)
+    nDofs(ctx, bdata)
 
 Get the number of dofs that are left after the boundary conditions in `bdata` have been applied.
 """
-function nDofs(ctx::gridContext{dim},bdata::boundaryData) where dim
-    return length(unique(BCTable(ctx,bdata)))
+function nDofs(ctx::gridContext{dim}, bdata::boundaryData) where dim
+    return length(unique(BCTable(ctx, bdata)))
 end
 
 """
-    doBCS(ctx,u,bdata)
+    doBCS(ctx, u, bdata)
 
 Take a vector `u` in dof order and throw away uneccessary dofs.
 This is a left-inverse to undoBCS
@@ -182,43 +185,43 @@ function doBCS(ctx, u::AbstractVector{T}, bdata) where T
     @assert length(u) == ctx.n
     #Is = findall(i -> ∉(i,bdata.dbc_dofs) && ∉(i,bdata.periodic_dofs_from), 1:ctx.n)
     #return u[Is]
-     result = T[]
-     for i in 1:ctx.n
-         if i in bdata.dbc_dofs
-             continue
-         end
-         if i in bdata.periodic_dofs_from
-             continue
-         end
-         push!(result,u[i])
-     end
-     return result
+    result = T[]
+    for i in 1:ctx.n
+        if i in bdata.dbc_dofs
+            continue
+        end
+        if i in bdata.periodic_dofs_from
+            continue
+        end
+        push!(result,u[i])
+    end
+    return result
 end
 
 """
-    applyBCS(ctx_row,K,bdata_row; [ctx_col, bdata_col,bdata_row,add_vals=true])
+    applyBCS(ctx_row, K, bdata_row; [ctx_col, bdata_col, bdata_row, add_vals=true])
 
 Apply the boundary conditions from `bdata_row` and `bdata_col` to the sparse matrix `K`.
 Only applies boundary conditions accross columns (rows) if `bdata_row==nothing` (`bdata_col==nothing`)
 If `add_vals==true`, then
 """
-function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
+function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
         ctx_col::gridContext{dim}=ctx_row, bdata_col=bdata_row,
         add_vals = true
         ) where dim
 
-    n,m = size(K)
+    n, m = size(K)
 
     is_symmetric = issymmetric(K) && (bdata_row == bdata_col)
 
     if bdata_col != nothing
-        correspondsTo_col = BCTable(ctx_col,bdata_col)
+        correspondsTo_col = BCTable(ctx_col, bdata_col)
     else
         correspondsTo_col = collect(1:(size(K)[2]))
     end
 
     if bdata_row != nothing
-        correspondsTo_row = BCTable(ctx_row,bdata_row)
+        correspondsTo_row = BCTable(ctx_row, bdata_row)
     else
         correspondsTo_row = collect(1:(size(K)[1]))
     end
@@ -239,12 +242,12 @@ function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
 
         #Make an empty sparse matrix
         I = Int[]
-        sizehint!(I,length(rows))
+        sizehint!(I, length(rows))
         J = Int[]
-        sizehint!(J,length(rows))
+        sizehint!(J, length(rows))
         vals = nonzeros(K)
         V = Float64[]
-        sizehint!(V,length(rows))
+        sizehint!(V, length(rows))
         for j = 1:m
             if correspondsTo_col[j] == 0
                 continue
@@ -259,7 +262,7 @@ function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
                 end
                 push!(I, correspondsTo_row[row])
                 push!(J, correspondsTo_col[j])
-                push!(V,vals[i])
+                push!(V, vals[i])
                 if is_symmetric && correspondsTo_row[row] != correspondsTo_row[j]
                     push!(J, correspondsTo_row[row])
                     push!(I, correspondsTo_col[j])
@@ -268,13 +271,13 @@ function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
             end
         end
         if add_vals
-            Kres = sparse(I,J,V,new_n,new_m)
+            Kres = sparse(I, J, V, new_n, new_m)
         else
-            Kres = sparse(I,J,V,new_n,new_m,(x,y) -> x)
+            Kres = sparse(I, J, V, new_n, new_m, (x,y) -> x)
         end
         return Kres
     else
-        Kres = zeros(new_n,new_m)
+        Kres = zeros(new_n, new_m)
         for j = 1:m
             if correspondsTo_col[j] == 0
                 continue
@@ -284,9 +287,9 @@ function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
                     continue
                 end
                 if add_vals
-                    Kres[correspondsTo_row[i],correspondsTo_col[j]] += K[i,j]
+                    Kres[correspondsTo_row[i], correspondsTo_col[j]] += K[i,j]
                 else
-                    Kres[correspondsTo_row[i],correspondsTo_col[j]] = K[i,j]
+                    Kres[correspondsTo_row[i], correspondsTo_col[j]] = K[i,j]
                 end
             end
         end
@@ -294,43 +297,43 @@ function applyBCS(ctx_row::gridContext{dim},K,bdata_row;
     end
 end
 
-function identifyPoints(ctx::gridContext{dim},predicate::Function) where dim
+function identifyPoints(ctx::gridContext{dim}, predicate::Function) where dim
     boundary_dofs = getHomDBCS(ctx).dbc_dofs
     identify_from = Int[]
     identify_to = Int[]
     for (index, i) in enumerate(boundary_dofs)
         for j in 1:(i-1)
-            if predicate(getDofCoordinates(ctx,i),getDofCoordinates(ctx,j))
-                push!(identify_from,i)
-                push!(identify_to,j)
+            if predicate(getDofCoordinates(ctx,i), getDofCoordinates(ctx, j))
+                push!(identify_from, i)
+                push!(identify_to, j)
                 break
             end
         end
     end
-    return identify_from,identify_to
+    return identify_from, identify_to
 end
 
 
-function identifyPoints(ctx::gridContext{dim},predicate::Distances.Metric) where dim
+function identifyPoints(ctx::gridContext{dim}, predicate::Distances.Metric) where dim
 
     identify_from = Int[]
     identify_to = Int[]
 
     l = zeros(dim, ctx.n)
     for i in 1:ctx.n
-        coords = getDofCoordinates(ctx,i)
+        coords = getDofCoordinates(ctx, i)
         l[:, i] .= coords
     end
     TOL = 1e-12 #TODO: set this somewhere globally
 
-    S = NN.BallTree(l,predicate)
+    S = NN.BallTree(l, predicate)
 
     for index in 1:ctx.n
-        res = NN.inrange(S,getDofCoordinates(ctx,index),TOL,true)
+        res = NN.inrange(S, getDofCoordinates(ctx, index), TOL, true)
         if res[1] != index
-            push!(identify_from,index)
-            push!(identify_to,res[1])
+            push!(identify_from, index)
+            push!(identify_to, res[1])
         end
     end
-    return identify_from,identify_to
+    return identify_from, identify_to
 end
