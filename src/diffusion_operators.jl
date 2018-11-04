@@ -76,11 +76,10 @@ function diff_op(data::AbstractMatrix{T},
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
     CIs::Vector{CartesianIndex{2}} = findall(D .<= sp_method.ε)
-    Is::Vector{Int} = [i[1] for i in CIs]
-    Js::Vector{Int} = [j[2] for j in CIs]
     Vs::Vector{T} = kernel.(D[CIs])
-    P = SparseArrays.sparse(Is, Js, Vs, N, N)
-    !iszero(α) && kde_normalize!(P, α)
+    CIs´ = reinterpret(Int, reshape(CIs, 1, :)) # to avoid allocation
+    P = SparseArrays.sparse(view(CIs´, 1, :), view(CIs´, 2, :), Vs, N, N)
+    (α != 0) && kde_normalize!(P, α)
     wLap_normalize!(P)
     return P
 end
@@ -107,9 +106,9 @@ function diff_op(data::AbstractMatrix{T},
         Vs[(i-1)*(k+1)+1:i*(k+1)] = kernel.(di[index])
     end
     P = SparseArrays.sparse(Is, Js, Vs, N, N)
-    if typeof(sp_method) <: KNN
+    if sp_method isa KNN
         @. P = max(P, PermutedDimsArray(P, (2,1)))
-    else
+    else # sp_method isa mutualKNN
         @. P = min(P, PermutedDimsArray(P, (2,1)))
     end
     α>0 && kde_normalize!(P, α)
