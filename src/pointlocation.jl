@@ -1,6 +1,6 @@
 
 """
-    locatePoint(ctx,x)
+    locatePoint(ctx, x)
 Point location on grids.
 Returns a tuple (coords, [nodes])
 where coords gives the coordinates within the reference shape (e.g. standard simplex)
@@ -9,9 +9,9 @@ corresponding shape functions from JuAFEM's interpolation.jl file.
 """#
 function locatePoint(ctx::gridContext{dim}, x::AbstractVector{T})::Tuple{Vec{dim,T},Vector{Int},Int} where{dim,T}
     if dim == 2
-        return locatePoint(ctx,Vec{2,T}((x[1],x[2])))
+        return locatePoint(ctx,Vec{2,T}((x[1], x[2])))
     elseif dim == 3
-        return locatePoint(ctx,Vec{3,T}((x[1],x[2],x[3])))
+        return locatePoint(ctx,Vec{3,T}((x[1], x[2], x[3])))
     else
         throw(DomainError("Wrong dimension"))
     end
@@ -35,7 +35,7 @@ function locatePoint(
         x::Tensors.Vec{1,T}
     )::Tuple{Tensors.Vec{1,T}, Vector{Int},Int} where {S,T}
 
-    if x[1] > loc.UR[1]  || x[1] < loc.LL[1]
+    if x[1] > loc.UR[1] || x[1] < loc.LL[1]
         throw(DomainError("Not in domain"))
     end
 
@@ -43,11 +43,11 @@ function locatePoint(
         throw(DomainError("NaN coordinates"))
     end
 
-    n1::Int, loc1 = gooddivrem((x[1] - loc.LL[1])/(loc.UR[1] - loc.LL[1]) * (loc.nx-1), 1.0)
+    n1::Int, loc1 = gooddivrem((x[1] - loc.LL[1]) / (loc.UR[1] - loc.LL[1]) * (loc.nx - 1), 1.0)
 
-    if n1 == (loc.nx-1) #If we hit the right hand edge
+    if n1 == (loc.nx - 1) #If we hit the right hand edge
         if loc1 ≈ 0.0
-            n1 = loc.nx-2
+            n1 = loc.nx - 2
             loc1 += 1.0
         else
             throw(DomainError("Not in domain"))
@@ -56,15 +56,15 @@ function locatePoint(
 
     if S == JuAFEM.Line
         ll = n1
-        lr = ll+1
-        @assert lr < (2*loc.nx + 1)
+        lr = ll + 1
+        @assert lr < (2loc.nx + 1)
 
-        return Tensors.Vec{1,T}((2*loc1-1,)), [ll+1,lr+1], (n1+1)
+        return Tensors.Vec{1,T}((2 * loc1 - 1,)), [ll + 1, lr + 1], (n1 + 1)
     elseif S == JuAFEM.QuadraticLine
-        ll = 2*n1
-        lr = 2*n1 + 2
-        lm = 2*n1 +1
-        return Tensors.Vec{1,T}((2*loc1-1,)), [ll+1,lr+1,lm+1], (n1+1)
+        ll = 2n1
+        lr = 2n1 + 2
+        lm = 2n1 +1
+        return Tensors.Vec{1,T}((2loc1-1,)), [ll + 1, lr + 1, lm + 1], (n1 + 1)
     else
         throw(AssertionError("Invalid 1D Cell type"))
     end
