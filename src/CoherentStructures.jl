@@ -1,7 +1,7 @@
 module CoherentStructures
 
 # import standard libraries
-import LinearAlgebra
+using LinearAlgebra
 import SparseArrays
 using Distributed
 import SharedArrays

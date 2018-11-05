@@ -44,8 +44,7 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=tr
         ΔM = M - Δτ * κ * K
         if factor
             ΔM = factorize(ΔM)
-            matmul = (u,v) -> u .= ΔM \ v
-            # TODO: replace by LinearAlgebra.ldiv!(u, ΔM, v)
+            matmul = (u,v) -> ldiv!(u, ΔM, v) # u .= ΔM \ v
         else
             matmul = (u, v) -> u .= IterativeSolvers.cg(ΔM, v)
         end

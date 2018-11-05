@@ -253,9 +253,9 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 end
 @inline function kde_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
     LinearAlgebra.checksquare(A)
-    qₑ = LinearAlgebra.Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
-    LinearAlgebra.rmul!(A, qₑ)
-    LinearAlgebra.lmul!(qₑ, A)
+    qₑ = Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
+    rmul!(A, qₑ)
+    lmul!(qₑ, A)
     return A
 end
 
@@ -267,9 +267,9 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 @inline function wLap_normalize!(A::SparseArrays.SparseMatrixCSC{T}) where {T <: Real}
     # TODO: remove this function in Julia 1.0.2
     n = LinearAlgebra.checksquare(A)
-    # dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+    # dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
     dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
-    # LinearAlgebra.lmul!(dᵅ, A)
+    # lmul!(dᵅ, A)
     Anzval = A.nzval
     Arowval = A.rowval
     for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
@@ -279,8 +279,8 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
  end
  @inline function wLap_normalize!(A::AbstractMatrix{T}) where {T <: Real}
      LinearAlgebra.checksquare(A)
-     dᵅ = LinearAlgebra.Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
-     LinearAlgebra.lmul!(dᵅ, A)
+     dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
+     lmul!(dᵅ, A)
      return A
   end
 
@@ -383,21 +383,21 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
-     Πinv  = LinearAlgebra.Diagonal(inv.(Π))
-     return LinearMaps.LinearMap(Πsqrt * L * Πinv * LinearAlgebra.transpose(L) * Πsqrt;
+     Πsqrt = Diagonal(sqrt.(Π))
+     Πinv  = Diagonal(inv.(Π))
+     return LinearMaps.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
 
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
 
-     Πsqrt = LinearAlgebra.Diagonal(sqrt.(Π))
-     Πinvsqrt = LinearAlgebra.Diagonal(inv.(Πsqrt))
-     LinearAlgebra.lmul!(Πsqrt, L)
-     LinearAlgebra.rmul!(L, Πinvsqrt)
+     Πsqrt = Diagonal(sqrt.(Π))
+     Πinvsqrt = Diagonal(inv.(Πsqrt))
+     lmul!(Πsqrt, L)
+     rmul!(L, Πinvsqrt)
      LMap = LinearMaps.LinearMap(L)
-     return LinearMaps.LinearMap(LMap * LinearAlgebra.transpose(LMap); issymmetric=true,
+     return LinearMaps.LinearMap(LMap * transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
  end
 
@@ -411,7 +411,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 function diffusion_coordinates(P::LinMaps,n_coords::Int)
     N = LinearAlgebra.checksquare(P)
 
-    Π = stationary_distribution(LinearAlgebra.transpose(P))
+    Π = stationary_distribution(transpose(P))
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
@@ -431,9 +431,9 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
     Ψ = E[2]
 
     # Compute diffusion map Ψ and extract the diffusion coordinates
-    LinearAlgebra.rmul!(Ψ, LinearAlgebra.Diagonal(Σ))
+    rmul!(Ψ, Diagonal(Σ))
     @. Π = 1 / sqrt(Π)
-    LinearAlgebra.lmul!(LinearAlgebra.Diagonal(Π), Ψ)
+    lmul!(Diagonal(Π), Ψ)
     return Σ, Ψ
 end
 
