@@ -3,7 +3,6 @@
 const gaussian_kernel = x::Number -> exp(-abs2(x))
 
 const LinMaps{T} = Union{LinearMaps.LinearMap{T}, AbstractMatrix{T}}
-const NN = NearestNeighbors
 
 """
     KNN(k)

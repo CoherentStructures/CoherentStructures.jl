@@ -1,7 +1,5 @@
 # (c) 2018 Alvaro de Diego, Daniel Karrasch & Nathanael Schilling
 
-const ITP = Interpolations
-
 # Bickley jet flow [Rypina et al., 2010]
 @define_stream Ψ_bickley begin
     Ψ_bickley = psi₀ + psi₁
@@ -64,7 +62,7 @@ end
 #The rhs for an ODE on interpolated vector fields
 #The interpolant is passed via the p argument
 """
-    interp_rhs(u, p, t) -> SA.SVector{2}
+    interp_rhs(u, p, t) -> SVector{2}
 
 Defines a 2D vector field that is readily usable for trajectory integration from
 vector field interpolants of the x- and y-direction, resp. It assumes that the
@@ -75,25 +73,26 @@ field.
 function interp_rhs(u, p, t)
     du1 = p[1](u[1], u[2], t)
     du2 = p[2](u[1], u[2], t)
-    return SA.SVector{2}(du1, du2)
+    return SVector{2}(du1, du2)
 end
 #TODO: think of adding @inbounds here
 function interp_rhs!(du, u, p, t)
     du[1] = p[1](u[1], u[2], t)
     du[2] = p[2](u[1], u[2], t)
+    return du
 end
 
 # standard map
 function standardMap(u)
     a = 0.971635
-    return StaticArrays.SVector{2,Float64}((
+    return SVector{2,Float64}((
         mod(u[1] + u[2] + a*sin(u[1]), 2π),
         mod(u[2] + a*sin(u[1]), 2π)
         ))
 end
 function standardMapInv(Tu::AbstractArray{T}) where T <: Number
     a = 0.971635
-    return StaticArrays.SVector{2,T}((
+    return SVector{2,T}((
         goodmod(Tu[1] - Tu[2]               , 2π),
         goodmod(Tu[2] - a*sin(Tu[1]-Tu[2])  , 2π)
         ))
@@ -105,7 +104,7 @@ function DstandardMap(u)
         ))
 end
 function standardMap8(u)
-    return StaticArrays.SVector{2,Float64}((
+    return SVector{2,Float64}((
         mod(u[1] + u[2],2π),
         mod(u[2] + 8*sin(u[1] + u[2]),2π)
         ))
@@ -116,7 +115,7 @@ function DstandardMap8(u)
     ))
 end
 function standardMap8Inv(Tu)
-    return StaticArrays.SVector{2,Float64}((
+    return SVector{2,Float64}((
     mod(Tu[1]  - Tu[2] + 8*sin(Tu[1]),2π),
     mod(Tu[2] - 8*sin(Tu[1]),2π)
     ))
@@ -125,7 +124,7 @@ end
 # ABC flow
 function abcFlow(u,p,t)
     A, B, C = p
-    return StaticArrays.SVector{3,Float64}((
+    return SVector{3,Float64}((
         A + 0.5*t*sin(π*t))*sin(u[3]) + C*cos(u[2]),
         B*sin(u[1]) + (A + 0.5*t*sin(π*t))*cos(u[3]),
         C*sin(u[2]) + B*cos(u[1])
@@ -143,7 +142,7 @@ function cylinder_flow(u,p,t)
     g(x,y,t) = sin(x-ν*t)*sin(y) + y/2 - π/4
     x = u[1]
     y = u[2]
-    return StaticArrays.SVector{2,Float64}(
+    return SVector{2,Float64}(
         c - A(t)*sin(x - ν*t)*cos(y) + ε*G(g(x,y,t))+sin(t/2),
         A(t)*cos(x - ν*t)*sin(y)
         )

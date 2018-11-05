@@ -182,7 +182,7 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,xi; throw_errors=fals
         x1 = xi[1]
         euler_to_lagrange_points_raw = SharedArray{Float64}(length(x1))
         @sync @distributed for i in eachindex(x1)
-            point = StaticArrays.SVector{1}(x1[i])
+            point = SVector{1}(x1[i])
             try
                 back = inv_flow_map(point)
                 euler_to_lagrange_points_raw[i] = back[1]
@@ -197,7 +197,7 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,xi; throw_errors=fals
         euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
         @sync @distributed for i in eachindex(x1)
             for j in eachindex(x2)
-                point = StaticArrays.SVector{2}(x1[i],x2[j])
+                point = SVector{2}(x1[i],x2[j])
                 try
                     back = inv_flow_map(point)
                     euler_to_lagrange_points_raw[j,i,1] = back[1]

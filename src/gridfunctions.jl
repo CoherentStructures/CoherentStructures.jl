@@ -3,15 +3,11 @@
 #This includes methods for making grids from Delaunay Triangulations based
 #on the code in FEMDL.jl
 
-const GP = GeometricalPredicates
-const VD = VoronoiDelaunay
-
-
 #JuAFEM has no functions for determining which cell a point is in.
 #Amongst other things, this file (and pointlocation.jl) implements an API for doing this.
 
-const default_quadrature_order=5
-const default_quadrature_order3D=2
+const default_quadrature_order = 5
+const default_quadrature_order3D = 2
 
 
 """

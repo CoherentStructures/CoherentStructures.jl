@@ -1,5 +1,6 @@
 module CoherentStructures
 
+# import standard libraries
 import LinearAlgebra
 import SparseArrays
 using Distributed
@@ -7,7 +8,9 @@ import SharedArrays
 import Markdown
 using Statistics: mean
 
+# import data type packages
 import StaticArrays
+using StaticArrays: SVector, @SVector, SArray, SMatrix, @SMatrix
 import Tensors
 using Tensors: Vec, Tensor, SymmetricTensor
 
@@ -15,44 +18,52 @@ import DiffEqBase
 import OrdinaryDiffEq
 import Contour
 import Distances
+const Dists = Distances
 import NearestNeighbors
+const NN = NearestNeighbors
 import Interpolations
+const ITP = Interpolations
+
+# import linear algebra related packages
 import LinearMaps
 import IterativeSolvers
 import Arpack
+
+# import geometry related packages
 import GeometricalPredicates
+const GP = GeometricalPredicates
 import VoronoiDelaunay
+const VD = VoronoiDelaunay
 import ForwardDiff
 
 import JuAFEM
 import RecipesBase
 import SymEngine
 
-#Contains a list of functions being exported
+# contains a list of exported functions
 include("exports.jl")
 
-##Diffusion operator related functions
+# diffusion operator-related functions
 abstract type SparsificationMethod end
-
 include("diffusion_operators.jl")
 
-##Distances related functions and types
+# distance-related functions and types
 include("dynamicmetrics.jl")
 
-##Some small utility functions that are used throughout
+# some utility functions that are used throughout
 abstract type abstractGridContext{dim} end
 include("util.jl")
 
-##Functions related to pulling back tensors
+# functions related to pulling back tensors under flow maps
 include("pullbacktensors.jl")
 
-##Functions related to geodesic elliptic LCS detection
+# functions related to geodesic elliptic LCS detection
 include("ellipticLCS.jl")
 
-#Vector field from stream function generation
+# generation of vector fields from stream functions
 include("streammacros.jl")
 
-##Definitions of velocity fields
+# definitions of velocity fields
 include("velocityfields.jl")
 
 
@@ -68,19 +79,19 @@ include("gridfunctions.jl")
 include("pointlocation.jl")
 include("boundaryconditions.jl")
 
-#Creation of Stiffness and Mass-matrices
+# creation of Stiffness and Mass-matrices
 include("FEMassembly.jl")
 
-#TO-approach based methods
+# solving advection-diffusion equation
+include("advection_diffusion.jl")
+
+# transfer operator-based methods
 include("TO.jl")
 
-#Ulam's method
+# Ulam's method
 include("ulam.jl")
 
-
-#Plotting
+# plotting functionality
 include("plotting.jl")
 
-#Solving Advection/Diffusion Equation
-include("advection_diffusion.jl")
 end

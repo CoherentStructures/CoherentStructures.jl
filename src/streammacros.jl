@@ -82,7 +82,7 @@ macro velo_from_stream(H::Symbol, formulas::Expr)
     F, _ = streamline_derivatives(H, formulas)
     F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
-        (u,p,t) -> StaticArrays.SVector($(F[1]), $(F[2]))
+        (u, p, t) -> SVector($(F[1]), $(F[2]))
     end
 end
 macro velo_from_stream(name::Symbol)
@@ -107,13 +107,13 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
             #   x[2] A[2,1] A[2,2] ]
 
             # current
-            A = StaticArrays.@SMatrix [ u[1,2] u[1,3]
-                                        u[2,2] u[2,3] ]
-            DF = StaticArrays.@SMatrix [ $(DF[1,1]) $(DF[1,2])
-                                         $(DF[2,1]) $(DF[2,2]) ]
+            A = @SMatrix [ u[1,2] u[1,3]
+                           u[2,2] u[2,3] ]
+            DF = @SMatrix [ $(DF[1,1]) $(DF[1,2])
+                            $(DF[2,1]) $(DF[2,2]) ]
             DA = DF * A
-            return StaticArrays.@SMatrix [ $(F[1]) DA[1,1] DA[1,2]
-                                           $(F[2]) DA[2,1] DA[2,2] ]
+            return @SMatrix [ $(F[1]) DA[1,1] DA[1,2]
+                              $(F[2]) DA[2,1] DA[2,2] ]
         end
     end
 end

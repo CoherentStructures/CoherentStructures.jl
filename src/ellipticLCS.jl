@@ -1,7 +1,5 @@
 # (c) 2018 Daniel Karrasch
 
-const ITP = Interpolations
-
 """
     singularity_location_detection(T,xspan,yspan)
 
@@ -45,7 +43,7 @@ function singularity_type_detection(singularity::AbstractVector{S},
                                     radius::Float64) where {S,I} #TODO: Maybe restrict type of I
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
-    circle = [StaticArrays.SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
+    circle = [SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
     pnts = [singularity + c for c in circle]
     radVals = [ξ(p[2], p[1]) for p in pnts]
     singularity_type = 0
@@ -128,12 +126,12 @@ function compute_returning_orbit(calT::Float64,
     α = real.(sqrt.(Complex.((λ₂ .- calT) ./ Δλ)))
     β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
-    η = [StaticArrays.SVector{2,T}(n[1],n[2]) for n in η]
+    η = [SVector{2,T}(n[1],n[2]) for n in η]
     ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
                         yspan, xspan)
     ηfield = (u,p,t) -> ηitp(u[2], u[1])
 
-    prob = OrdinaryDiffEq.ODEProblem(ηfield, StaticArrays.SVector{2}(seed[1], seed[2]), (0.,20.))
+    prob = OrdinaryDiffEq.ODEProblem(ηfield, SVector{2}(seed[1], seed[2]), (0.,20.))
     condition(u,t,integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
