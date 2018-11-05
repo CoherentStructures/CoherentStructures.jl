@@ -62,7 +62,7 @@ mutable struct gridContext{dim} <: abstractGridContext{dim} #TODO: Currently set
 
     n::Int #The number of dofs
 
-    quadrature_points::Vector{Tensors.Vec{dim,Float64}} #All quadrature points, ordered by how they are accessed in assemble routines
+    quadrature_points::Vector{Vec{dim,Float64}} #All quadrature points, ordered by how they are accessed in assemble routines
     mass_weights::Vector{Float64}
 
     ##The following two fields are only well-defined for regular rectangular grids
@@ -148,8 +148,8 @@ function gridContext{1}(::Type{JuAFEM.Line},
                          ip=JuAFEM.Lagrange{1,JuAFEM.RefCube,1}(),
                          )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.Line, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
-    loc = regular1dGridLocator{JuAFEM.Line}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.Line, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
+    loc = regular1dGridLocator{JuAFEM.Line}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
 
     dh = JuAFEM.DofHandler(grid)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -181,8 +181,8 @@ function gridContext{1}(::Type{JuAFEM.QuadraticLine},
                          ip=JuAFEM.Lagrange{1,JuAFEM.RefCube,2}()
                          )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.QuadraticLine, (numnodes[1]-1,), Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
-    loc = regular1dGridLocator{JuAFEM.QuadraticLine}(numnodes[1], Tensors.Vec{1}(LL), Tensors.Vec{1}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.QuadraticLine, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
+    loc = regular1dGridLocator{JuAFEM.QuadraticLine}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{1, JuAFEM.RefCube}(quadrature_order)
     push!(dh, :T, 1) #The :T is just a generic name for the scalar field
@@ -318,7 +318,7 @@ Uses `DelaunayVoronoi.jl` internally.
 =#
 function gridContext{2}(
             ::Type{JuAFEM.Triangle},
-            node_list::Vector{Tensors.Vec{2,Float64}};
+            node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order,
             on_torus=false,
             LL=nothing,
@@ -427,7 +427,7 @@ function regularDelaunayGrid(
     else
         ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,1}()
     end
-    node_list = vec([Tensors.Vec{2}((x, y)) for y in Y, x in X])
+    node_list = vec([Vec{2}((x, y)) for y in Y, x in X])
     if on_torus
         function nudge(point)
             nudgefactor = (UR .- LL)  .* nudge_epsilon ./ numnodes
@@ -471,7 +471,7 @@ Create a P2 grid given a set of (non-interior) nodes using Delaunay Triangulatio
 =#
 function gridContext{2}(
             ::Type{JuAFEM.QuadraticTriangle},
-            node_list::Vector{Tensors.Vec{2,Float64}};
+            node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order,
             ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,2}()
             )
@@ -499,7 +499,7 @@ function regularP2DelaunayGrid(
 
     X = range(LL[1], stop=UR[1], length=numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
-    node_list = vec([Tensors.Vec{2}((x, y)) for y in Y, x in X])
+    node_list = vec([Vec{2}((x, y)) for y in Y, x in X])
     result = gridContext{2}(JuAFEM.QuadraticTriangle, node_list, quadrature_order=quadrature_order)
     #TODO: Think about what values would be sensible for the two variables below
     result.spatialBounds = [LL, UR]
@@ -524,8 +524,8 @@ function gridContext{2}(::Type{JuAFEM.Triangle},
                          ip=JuAFEM.Lagrange{2,JuAFEM.RefTetrahedron,1}(),
                          )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.Triangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -578,8 +578,8 @@ function gridContext{2}(::Type{JuAFEM.QuadraticTriangle},
         @warn "Using non-Lagrange interpolation with P2 elements may or may not work"
     end
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2DGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.QuadraticTriangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -621,8 +621,8 @@ function gridContext{2}(
             ip=JuAFEM.Lagrange{2, JuAFEM.RefCube, 1}()
             )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2DGridLocator{JuAFEM.Quadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.Quadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -684,8 +684,8 @@ function gridContext{2}(
         @warn "Non-Lagrange interpolation with P2 elements may or may not work"
     end
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
-    loc = regular2DGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Tensors.Vec{2}(LL), Tensors.Vec{2}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = regular2DGridLocator{JuAFEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{2, JuAFEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -727,8 +727,8 @@ function gridContext{3}(::Type{JuAFEM.Tetrahedron},
                          ip=JuAFEM.Lagrange{3, JuAFEM.RefTetrahedron, 1}()
                          )
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
-    loc = regular3DGridLocator{JuAFEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
+    loc = regular3DGridLocator{JuAFEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{3, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -763,8 +763,8 @@ function gridContext{3}(::Type{JuAFEM.QuadraticTetrahedron},
         @warn "Using non-Lagrange interpolation with P2 Elements may or may not work"
     end
     #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JuAFEM.generate_grid(JuAFEM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
-    loc = regular3DGridLocator{JuAFEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Tensors.Vec{3}(LL), Tensors.Vec{3}(UR))
+    grid = JuAFEM.generate_grid(JuAFEM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
+    loc = regular3DGridLocator{JuAFEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
     dh = JuAFEM.DofHandler(grid)
     qr = JuAFEM.QuadratureRule{3, JuAFEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -826,28 +826,28 @@ function project_in_xin(
 
     if !project_in
         if dim == 1
-            x = Tensors.Vec{dim,T}((x_in[1],))
+            x = Vec{dim,T}((x_in[1],))
         elseif dim == 2
-            x = Tensors.Vec{dim,T}((x_in[1], x_in[2]))
+            x = Vec{dim,T}((x_in[1], x_in[2]))
         elseif dim == 3
-            x = Tensors.Vec{dim,T}((x_in[1], x_in[2], x_in[3]))
+            x = Vec{dim,T}((x_in[1], x_in[2], x_in[3]))
         else
             error("dim = $dim not supported")
         end
     else
         if dim == 1
-            x = Tensors.Vec{dim,T}(
+            x = Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1])),
                 ))
         elseif dim == 2
             #TODO: replace this with a macro maybe
-            x = Tensors.Vec{dim,T}(
+            x = Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ))
         elseif dim == 3
             #TODO: replace this with a macro maybe
-            x = Tensors.Vec{dim,T}(
+            x = Vec{dim,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3], x_in[3]))
@@ -877,7 +877,7 @@ function evaluate_function_from_node_or_cellvals(
 
     @assert length(vals) == ctx.n
 
-    local_coordinates::Tensors.Vec{dim,Float64}, nodes::Vector{Int}, cellid::Int = try
+    local_coordinates::Vec{dim,Float64}, nodes::Vector{Int}, cellid::Int = try
          locatePoint(ctx, x)
     catch y
         if isa(y,DomainError)
@@ -944,7 +944,7 @@ If vals is a diagonal matrix, set `is_diag` to `true` for much faster evaluation
 """
 function evaluate_function_from_node_or_cellvals_multiple(
     ctx::gridContext{dim}, vals::AbstractMatrix{S},
-    x_in::AbstractVector{Tensors.Vec{dim,W}};
+    x_in::AbstractVector{Vec{dim,W}};
     outside_value=NaN, project_in=false,is_diag=false,throw_errors=false
     )::SparseMatrixCSC{S,Int64} where{dim,S,W}
 
@@ -963,7 +963,7 @@ function evaluate_function_from_node_or_cellvals_multiple(
         rows_tmp = Int[]
         vals_tmp = S[]
         try
-            local_coordinates::Tensors.Vec{dim,Float64}, nodes::Vector{Int},cellid::Int = locatePoint(ctx,x[current_point])
+            local_coordinates::Vec{dim,Float64}, nodes::Vector{Int},cellid::Int = locatePoint(ctx,x[current_point])
 
             if isa(ctx.ip, JuAFEM.Lagrange)
                 if !is_diag
@@ -1038,7 +1038,7 @@ If caught exceptions should be rethrown, set `throw_errors=true`
 """
 function evaluate_function_from_dofvals_multiple(
     ctx::gridContext{dim}, dofvals::AbstractMatrix{S},
-    x_in::AbstractVector{Tensors.Vec{dim,W}};
+    x_in::AbstractVector{Vec{dim,W}};
     outside_value=0.0, project_in=false,throw_errors=false
     ) where { dim,S,W, }
     u_vals = zeros(S,size(dofvals))
@@ -1128,7 +1128,7 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
     NumberedPoint2D(x::Float64,y::Float64,k::Int64) = new(x,y,k)
     NumberedPoint2D(x::Float64,y::Float64) = new(x, y, 0)
     NumberedPoint2D(p::VD.Point2D) = new(p.x, p.y, 0)
-    NumberedPoint2D(p::Tensors.Vec{2,Float64}) = new(p[1], p[2], 0)
+    NumberedPoint2D(p::Vec{2,Float64}) = new(p[1], p[2], 0)
 end
 GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
 GP.Point2D(p::NumberedPoint2D) = Point2D(p.x,p.y)
@@ -1137,7 +1137,7 @@ GP.getx(p::NumberedPoint2D) = p.x
 
 #More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
 
-function delaunay2(x::Vector{Tensors.Vec{2,Float64}})
+function delaunay2(x::Vector{Vec{2,Float64}})
     width = VD.max_coord - VD.min_coord
     max_x = maximum(map(v->v[1], x))
     min_x = minimum(map(v->v[1], x))
@@ -1224,7 +1224,7 @@ Calls VoronoiDelaunay for delaunay triangulation. Makes a periodic triangulation
 if `on_torus` is set to `true`.
 """
 function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
-     nodes_in::Vector{Tensors.Vec{2,Float64}};
+     nodes_in::Vector{Vec{2,Float64}};
      on_torus=false,LL=nothing,UR=nothing
      )
     if on_torus
@@ -1236,7 +1236,7 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
 
     #What nodes to triangulate. If we are working on the torus,
     #this includes copies of the nodes on the covering space.
-    nodes_to_triangulate = Vector{Tensors.Vec{2,Float64}}()
+    nodes_to_triangulate = Vector{Vec{2,Float64}}()
 
     #points_mapping[i] = j means that nodes_to_triangulate[i]
     #Should be identified with nodes_in[j]
@@ -1248,7 +1248,7 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
             for j in [0,1,-1]
                 for (index,node) in enumerate(nodes_in)
                     new_point = node .+ (i*dx,j*dy)
-                    push!(nodes_to_triangulate,Tensors.Vec{2}((new_point[1],new_point[2])))
+                    push!(nodes_to_triangulate,Vec{2}((new_point[1],new_point[2])))
                     push!(points_mapping,index)
                 end
             end
@@ -1401,9 +1401,9 @@ function JuAFEM.generate_grid(::Type{JuAFEM.Triangle},
     return grid, locator
 end
 
-function JuAFEM.generate_grid(::Type{JuAFEM.QuadraticTriangle}, nodes_in::Vector{Tensors.Vec{2,Float64}})
+function JuAFEM.generate_grid(::Type{JuAFEM.QuadraticTriangle}, nodes_in::Vector{Vec{2,Float64}})
 
-    nodes_to_triangulate = Vector{Tensors.Vec{2,Float64}}[]
+    nodes_to_triangulate = Vector{Vec{2,Float64}}[]
     dx = UR[1] - LL[1]
     dy = UR[2] - LL[2]
 

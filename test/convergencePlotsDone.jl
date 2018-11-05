@@ -991,8 +991,8 @@ makeOceanFlowResults()
 
 function bickleyInvFlow(u0)
   LL = [0.0,-3.0]; UR=[6.371π,3.0]
-  tmp =Tensors.Vec{2}(flow(bickleyJet,u0,[tf,t0]; tolerance=1e-8)[end])
-  return Tensors.Vec{2}((mod(tmp[1],UR[1]),tmp[2]))
+  tmp =Vec{2}(flow(bickleyJet,u0,[tf,t0]; tolerance=1e-8)[end])
+  return Vec{2}((mod(tmp[1],UR[1]),tmp[2]))
 end
 
 ctx.m

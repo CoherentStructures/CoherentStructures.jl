@@ -25,10 +25,10 @@ end
 
 2π/500
 
-function sminv(x::Tensors.Vec{2,Float64})::Tensors.Vec{2,Float64}
+function sminv(x::Vec{2,Float64})::Vec{2,Float64}
     ϵ::Float64 = 1.0
     ρ::Float64 = 0.3
-    return Tensors.Vec{2,Float64}((
+    return Vec{2,Float64}((
         mod(x[1] - x[2] - 0.5, 1.0),
         mod(x[2] - ρ*sin(2π*(x[1] - x[2] - 0.5)) , 1.0)
         ))

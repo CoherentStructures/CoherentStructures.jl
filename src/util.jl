@@ -56,13 +56,13 @@ Returns pointwise invariants of the 2D symmetric tensor field `T`, i.e.,
 smallest and largest eigenvalues, corresponding eigenvectors, trace and determinant.
 # Example
 ```
-T = [Tensors.SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
+T = [SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(T)
 ```
 All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
-function tensor_invariants(T::Tensors.SymmetricTensor{2,2,S,3}) where S <: Real
+function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
     E = LinearAlgebra.eigen(T)
     λ₁ = LinearAlgebra.eigvals(E)[1]
     λ₂ = LinearAlgebra.eigvals(E)[2]
@@ -72,7 +72,7 @@ function tensor_invariants(T::Tensors.SymmetricTensor{2,2,S,3}) where S <: Real
     detT = LinearAlgebra.det(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
-function tensor_invariants(T::AbstractArray{Tensors.SymmetricTensor{2,2,S,3}}) where S <: Real
+function tensor_invariants(T::AbstractArray{SymmetricTensor{2,2,S,3}}) where S <: Real
     E = LinearAlgebra.eigen.(T)
     λ₁ = [ev[1] for ev in LinearAlgebra.eigvals.(E)]
     λ₂ = [ev[2] for ev in LinearAlgebra.eigvals.(E)]
@@ -129,8 +129,8 @@ end
 
 
 #Unit Vectors in R^2
-const e1 = Tensors.basevec(Tensors.Vec{2}, 1)
-const e2 = Tensors.basevec(Tensors.Vec{2}, 2)
+const e1 = Tensors.basevec(Vec{2}, 1)
+const e2 = Tensors.basevec(Vec{2}, 2)
 
 function rawInvCGTensor(args...; kwargs...)
     result = invCGTensor(args...; kwargs...)
@@ -138,7 +138,7 @@ function rawInvCGTensor(args...; kwargs...)
 end
 
 function AFromPrecomputedRaw(x, index, q)
-    @views return Tensors.SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
+    @views return SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
 end
 
 

@@ -15,8 +15,8 @@ function ulam(ctx::gridContext{2}, f, nx, ny)
     for x in xs
         for y in ys
             idx += 1
-            m::Int = locatePoint(ctx, Tensors.Vec{2}((x, y)))[3]
-            pointImage = f(Tensors.Vec{2}((x, y))) # TODO: why Vec{2}?
+            m::Int = locatePoint(ctx, Vec{2}((x, y)))[3]
+            pointImage = f(Vec{2}((x, y))) # TODO: why Vec{2}?
             # this assumes that pointImage is contained in ctx
             m2::Int = locatePoint(ctx, pointImage)[3]
             Is[idx] = ctx.cell_to_dof[m]

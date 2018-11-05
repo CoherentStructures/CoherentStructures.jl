@@ -38,7 +38,7 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=tr
     n = size(M)[1]
     Δτ = step(tspan)
     # TODO: think about pmap-parallelization
-    # @everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
+    # Distributed.@everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
     P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, δ; bdata=bdata)
         ΔM = M - Δτ * κ * K
@@ -99,7 +99,7 @@ function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=boundaryData())
     end
     p = sol(t)
     function Afun(x, index, p)
-        Df = Tensors.Tensor{2,2}(
+        Df = Tensor{2,2}(
             (p[(8*(index-1) + 1):(8*(index-1) + 4)] -
                     p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ) )
         return Tensors.dott(inv(Df))
@@ -153,7 +153,7 @@ function extendedRHSStiff!(A, u, p, t)
     n = p["n"]
     δ = p["δ"]
     DF = map(1:n_quadpoints) do i
-        DF[i] = Tensors.Tensor{2,2}(
+        DF[i] = Tensor{2,2}(
             (u[(4*(i-1) +1):(4*i)] - u[(4*n_quadpoints +1 +4*(i-1)):(4*n_quadpoints+4*i)])/2δ
             )
     end

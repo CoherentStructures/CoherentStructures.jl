@@ -100,7 +100,7 @@ function standardMapInv(Tu::AbstractArray{T}) where T <: Number
 end
 function DstandardMap(u)
     a = 0.971635
-    return Tensors.Tensor{2,2}((
+    return Tensor{2,2}((
         1.0 + a*cos(u[1])   , a*cos(u[1]), 1.0                 , 1.0
         ))
 end
@@ -111,7 +111,7 @@ function standardMap8(u)
         ))
 end
 function DstandardMap8(u)
-    return Tensors.Tensor{2,2}((
+    return Tensor{2,2}((
         1., 8*cos(u[1] + u[2]), 1., 1. + 8*cos(u[1] + u[2])
     ))
 end

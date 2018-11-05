@@ -5,17 +5,20 @@
 const one2D = e1 + e2
 
 """
-    nonAdaptiveTOCollocation(ctx_domain,inverse_flow_map,[ctx_codomain; bdata_domain,bdata_codomain,project_in,outside_value,volume_preserving=true])
+    nonAdaptiveTOCollocation(ctx_domain, inverse_flow_map, [ctx_codomain; bdata_domain, bdata_codomain, project_in, outside_value, volume_preserving=true])
 
-Compute a represenation matrix for ``I_h T`` where ``T`` is the Transfer-Operator for the inverse of `inverse_flow_map`,
-and ``I_h`` is (nodal) interpolation onto `ctx_codomain`.
+Compute a represenation matrix for ``I_h T`` where ``T`` is the transfer operator
+for the inverse of `inverse_flow_map`, and ``I_h`` is (nodal) interpolation onto
+`ctx_codomain`.
 
-For (periodic) boundary conditions on the domain or codomain, set `bdata_domain` and `bdata_codomain` appropriately.
+For (periodic) boundary conditions on the domain or codomain, set `bdata_domain`
+and `bdata_codomain` appropriately.
 
-The parameters `project_in` and `outside_value` determine what to do if inverse images of points
-fall outside the domain. See also `evaluate_function_from_dofvals`.
+The parameters `project_in` and `outside_value` determine what to do if inverse
+images of points fall outside the domain. See also `evaluate_function_from_dofvals`.
 
-The parameter `volume_preserving` determines whether to attempt to correct for non-volume-preserving maps.
+The parameter `volume_preserving` determines whether to attempt to correct for
+non-volume-preserving maps.
 """
 function nonAdaptiveTOCollocation(
         ctx_domain::gridContext{dim},
@@ -41,13 +44,13 @@ function nonAdaptiveTOCollocation(
     ### Calculate inverse images of points
     for j in 1:n_codomain
         current_point = ctx_codomain.grid.nodes[j].x
-        pointPullBack::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(inverse_flow_map(current_point))
+        pointPullBack::Vec{dim,Float64} = Vec{dim}(inverse_flow_map(current_point))
         push!(pointsInvImages,pointPullBack)
     end
 
     #Calculate the integral of shape function in the domain (dof order)
     shape_function_weights_domain_original = undoBCS(ctx_domain,
-            vec(sum(assembleMassMatrix(ctx_domain,bdata=bdata_domain),dims=1)),
+            vec(sum(assembleMassMatrix(ctx_domain, bdata=bdata_domain), dims=1)),
             bdata_domain)
     #Calculate the integral of shape functions in the codomain (dof order)
     #Do not include boundary conditions here, as we end up summing over this later
@@ -86,12 +89,12 @@ function nonAdaptiveTOCollocation(
         end
     end
 
-    result = applyBCS(ctx_codomain,result,nothing;
-                    ctx_col=ctx_domain,bdata_col=bdata_domain,
+    result = applyBCS(ctx_codomain, result, nothing;
+                    ctx_col=ctx_domain, bdata_col=bdata_domain,
                     add_vals=true)
 
-    return applyBCS(ctx_codomain,result,bdata_codomain;
-                    ctx_col=ctx_domain,bdata_col=nothing,
+    return applyBCS(ctx_codomain, result, bdata_codomain;
+                    ctx_col=ctx_domain, bdata_col=nothing,
                     add_vals=false), vec(applyBCS(
                         ctx_domain,
                         (pullback_shape_function_weights./shape_function_weights_domain_original)[:,:],bdata_domain; bdata_col=nothing,add_vals=true)
@@ -197,7 +200,7 @@ function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
 
     if !on_torus
         n = ctx.n
-        new_nodes_in_dof_order = [ Tensors.Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
+        new_nodes_in_dof_order = [ Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
         new_ctx = gridContext{2}(JuAFEM.Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
         new_bdata = boundaryData()
 
@@ -213,7 +216,7 @@ function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
 
         n_nodes = ctx.n - length(bdata.periodic_dofs_from)
         new_nodes_in_node_order = [
-                    Tensors.Vec{2}(flow_map(ctx.grid.nodes[j].x))
+                    Vec{2}(flow_map(ctx.grid.nodes[j].x))
                     for j in 1:n_nodes ]
 
         new_ctx, new_bdata = irregularDelaunayGrid(new_nodes_in_node_order;on_torus=true,LL=LL,UR=UR)
@@ -318,7 +321,7 @@ function L2GalerkinTOFromInverse(
                 ) where dim
 
     #See http://blog.marmakoide.org/?p=1
-    stencil::Vector{Tensors.Vec{2,Float64}} = Tensors.Vec{dim,Float64}[]
+    stencil::Vector{Vec{2,Float64}} = Vec{dim,Float64}[]
     stencil_density::Float64 = 0.0
     φ = π*(3 - √5)
     if ϵ ≠ 0.0
@@ -328,15 +331,15 @@ function L2GalerkinTOFromInverse(
         for i in 0:(n_stencil_points-1)
             θ::Float64 = i * φ
             r::Float64 = ϵ*(√i / √(n_stencil_points-1))
-            push!(stencil,Tensors.Vec{2}((r*cos(θ), r*sin(θ))))
+            push!(stencil,Vec{2}((r*cos(θ), r*sin(θ))))
         end
     else
         stencil_density = 1.0
-        push!(stencil, zero(Tensors.Vec{dim}))
+        push!(stencil, zero(Vec{dim}))
     end
 
-    LL_domain::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(ctx_domain.spatialBounds[1])
-    UR_domain::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(ctx_domain.spatialBounds[2])
+    LL_domain::Vec{dim,Float64} = Vec{dim}(ctx_domain.spatialBounds[1])
+    UR_domain::Vec{dim,Float64} = Vec{dim}(ctx_domain.spatialBounds[2])
 
     cv::JuAFEM.CellScalarValues{dim} = JuAFEM.CellScalarValues(ctx_codomain.qr, ctx_codomain.ip,ctx_codomain.ip_geom)
     nshapefuncs::Int = JuAFEM.getnbasefunctions(cv)         # number of basis functions
@@ -352,14 +355,14 @@ function L2GalerkinTOFromInverse(
         #Iterate over all quadrature points in the cell
         for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
             dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
-            TQ::Tensors.Vec{dim,Float64} = Tensors.Vec{dim}(inverse_flow_map(ctx_codomain.quadrature_points[index]))
+            TQ::Vec{dim,Float64} = Vec{dim}(inverse_flow_map(ctx_codomain.quadrature_points[index]))
             for s in stencil
-                current_point::Tensors.Vec{dim,Float64} = TQ + s
-                current_point = Tensors.Vec{dim,Float64}( i ->
+                current_point::Vec{dim,Float64} = TQ + s
+                current_point = Vec{dim,Float64}( i ->
                     periodic_directions[i] ? LL_domain[i] + (mod(current_point[i] - LL_domain[i],UR_domain[i] - LL_domain[i])) : current_point[i]
                     )
                 try
-                    local_coords::Tensors.Vec{dim,Float64}, nodes::Vector{Int},TQinvCellNumber = locatePoint(ctx_domain,current_point)
+                    local_coords::Vec{dim,Float64}, nodes::Vector{Int},TQinvCellNumber = locatePoint(ctx_domain,current_point)
                     if isa(ctx_domain.ip, JuAFEM.Lagrange)
                         for (shape_fun_num,j) in enumerate(nodes)
                                 for i in 1:nshapefuncs
@@ -419,9 +422,9 @@ function L2GalerkinTO(
         #Iterate over all quadrature points in the cell
         for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
             dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
-            TQ::Tensors.Vec{2,Float64} = Tensors.Vec{2}(flow_map(ctx_domain.quadrature_points[index]))
+            TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx_domain.quadrature_points[index]))
             try
-                local_coordsTQ::Tensors.Vec{2,Float64}, nodesTQ::Vector{Int},cellIndexTQ = locatePoint(ctx_codomain,TQ)
+                local_coordsTQ::Vec{2,Float64}, nodesTQ::Vector{Int},cellIndexTQ = locatePoint(ctx_codomain,TQ)
                 if isa(ctx_codomain.ip,JuAFEM.Lagrange)
                         for (shape_fun_num,i) in enumerate(nodesTQ)
                             ψ::Float64 = JuAFEM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)

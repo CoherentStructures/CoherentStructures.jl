@@ -4,8 +4,8 @@
 const JFM = JuAFEM
 
 #Works in n=2 and n=3
-function tensorIdentity(x::Tensors.Vec{dim},i::Int,p) where dim
-        return one(Tensors.SymmetricTensor{2,dim,Float64,3*(dim-1)})
+function tensorIdentity(x::Vec{dim},i::Int,p) where dim
+        return one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
 end
 
 
@@ -17,7 +17,7 @@ Assemble the stiffness-matrix for a symmetric bilinear form
 a(u,v) = \\int \\nabla u(x)\\cdot A(x)\\nabla v(x)f(x) dx
 ```
 The integral is approximated using quadrature.
-`A` is a function that returns a `Tensors.SymmetricTensor{2,dim}` and has one of the following forms:
+`A` is a function that returns a `SymmetricTensor{2,dim}` and has one of the following forms:
    * `A(x::Vector{Float64})`
    * `A(x::Vec{dim})`
    * `A(x::Vec{dim}, index::Int, p)`. Here x is equal to `ctx.quadrature_points[index]`, and `p` is that which is passed to `assembleStiffnessMatrix`
@@ -31,7 +31,7 @@ function assembleStiffnessMatrix(
         bdata=boundaryData() #Default to natural BCs
         ) where  dim
 
-        Aqcoords = zero(Tensors.SymmetricTensor{2,dim,Float64})
+        Aqcoords = zero(SymmetricTensor{2,dim,Float64})
         CoherentStructures.assembleStiffnessMatrixInternal(ctx,A,p,Aqcoords,bdata=bdata)
 end
 
@@ -60,9 +60,9 @@ function assembleStiffnessMatrixInternal(
     A_type::Int = 0 #What type of function A is.
     if A == tensorIdentity
         A_type = 3
-    elseif !isempty(methods(A,(Tensors.Vec{dim},)))
+    elseif !isempty(methods(A,(Vec{dim},)))
         A_type = 0
-    elseif !isempty(methods(A,(Tensors.Vec{dim},Int,Any)))
+    elseif !isempty(methods(A,(Vec{dim},Int,Any)))
         A_type = 1
     elseif !isempty(methods(A,(Vector{Float64},)))
         A_type = 2
@@ -82,13 +82,13 @@ function assembleStiffnessMatrixInternal(
             elseif A_type == 2
                 Aqcoords = A(Vector{Float64}(ctx.quadrature_points[index]))
             elseif A_type == 3
-                Aqcoords = one(Tensors.SymmetricTensor{2,dim,Float64,3*(dim-1)})
+                Aqcoords = one(SymmetricTensor{2,dim,Float64,3*(dim-1)})
             end
             dΩ::Float64 = JFM.getdetJdV(cv,q) * ctx.mass_weights[index]
             for i in 1:n
-                ∇φ::Tensors.Vec{dim,Float64} = JFM.shape_gradient(cv,q,i)
+                ∇φ::Vec{dim,Float64} = JFM.shape_gradient(cv,q,i)
                 for j in 1:(i-1)
-                    ∇ψ::Tensors.Vec{dim,Float64} = JFM.shape_gradient(cv,q,j)
+                    ∇ψ::Vec{dim,Float64} = JFM.shape_gradient(cv,q,j)
                     Ke[i,j] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aqcoords⋅∇ψ)) * dΩ
                 end
@@ -184,13 +184,13 @@ function getQuadPoints(ctx::gridContext{dim}) where dim
     dh::JFM.DofHandler{dim} = ctx.dh
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
     dofs = zeros(Int, JFM.ndofs_per_cell(dh))
-    result = Tensors.Vec{dim,Float64}[]
+    result = Vec{dim,Float64}[]
 
     n::Int = JFM.getnbasefunctions(cv)         # number of basis functions
     @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
         JuAFEM.reinit!(cv,cell)
         for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
-    	    q_coords = zero(Tensors.Vec{dim})
+    	    q_coords = zero(Vec{dim})
             for j in 1:n
                 q_coords +=cell.coords[j] * cv.M[j,q]
             end

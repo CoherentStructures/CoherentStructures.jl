@@ -52,8 +52,8 @@ function get_full_dofvals(ctx,dof_vals; bdata=nothing)
     return dof_values
 end
 
-@userplot Plot_U_Eulerian
-@recipe function f(
+RecipesBase.@userplot Plot_U_Eulerian
+RecipesBase.@recipe function f(
         as::Plot_U_Eulerian;
         bdata=nothing,
         euler_to_lagrange_points=nothing,
@@ -88,9 +88,9 @@ end
         x2 = range(LL[2],stop=UR[2],length=ny)
         if euler_to_lagrange_points == nothing
             euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1,x2],throw_errors=throw_errors)
-            euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
+            euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
             for i in 1:nx, j in 1:ny
-                euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
+                euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
     	    end
     	end
 
@@ -126,9 +126,9 @@ end
 
         if euler_to_lagrange_points == nothing
             euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1])
-            euler_to_lagrange_points = [zero(Tensors.Vec{1}) for x in x1]
+            euler_to_lagrange_points = [zero(Vec{1}) for x in x1]
             for i in 1:nx
-                euler_to_lagrange_points[i] = Tensors.Vec{1}([euler_to_lagrange_points_raw[i]])
+                euler_to_lagrange_points[i] = Vec{1}([euler_to_lagrange_points_raw[i]])
     	    end
     	end
 
@@ -218,16 +218,16 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,xi; throw_errors=fals
 end
 
 
-@userplot Plot_Spectrum
-@recipe function  f(as::Plot_Spectrum)
+RecipesBase.@userplot Plot_Spectrum
+RecipesBase.@recipe function  f(as::Plot_Spectrum)
     λ = as.args[1]
     seriestype --> :scatter
     (real.(λ),imag.(λ))
 end
 
 
-@userplot Plot_Real_Spectrum
-@recipe function  f(as::Plot_Real_Spectrum)
+RecipesBase.@userplot Plot_Real_Spectrum
+RecipesBase.@recipe function  f(as::Plot_Real_Spectrum)
     λ = as.args[1]
     seriestype --> :scatter
     (1:length(λ),real.(λ))
@@ -268,9 +268,9 @@ function eulerian_videos(ctx,
         x1 = range(LL[1],stop=UR[1],length=nx)
         x2 = range(LL[2],stop=UR[2],length=ny)
         euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(current_inv_flow_map,[x1,x2],throw_errors=throw_errors)
-        euler_to_lagrange_points = [zero(Tensors.Vec{2}) for y in x2, x in x1]
+        euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
         for i in 1:nx, j in 1:ny
-            euler_to_lagrange_points[j,i] = Tensors.Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
+            euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
 	    end
 
         zs_all = SharedArray{Float64}(ny,nx,num_videos)
@@ -409,8 +409,8 @@ end
 =#
 
 
-@userplot Plot_FTLE
-@recipe function f(
+RecipesBase.@userplot Plot_FTLE
+RecipesBase.@recipe function f(
             as::Plot_FTLE;
     	   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
 		   #existing_plot=nothing, TODO 1.0

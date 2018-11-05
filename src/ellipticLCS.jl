@@ -9,7 +9,7 @@ Detects tensor singularities of the tensor field `T`, given as a matrix of
 `SymmetricTensor{2,2}`. `xspan` and `yspan` correspond to the uniform
 grid vectors over which `T` is given. Returns a list of static 2-vectors.
 """
-function singularity_location_detection(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
+function singularity_location_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S}) where S
 
@@ -87,7 +87,7 @@ function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
         end
     end
     pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
-    return [Statistics.mean(singularities[indWedges[p]]) for p in pairind]
+    return [mean(singularities[indWedges[p]]) for p in pairind]
 end
 
 """
@@ -118,8 +118,8 @@ function compute_returning_orbit(calT::Float64,
                                  seed::AbstractVector{T},
                                  λ₁::AbstractMatrix{T},
                                  λ₂::AbstractMatrix{T},
-                                 ξ₁::AbstractMatrix{Tensors.Tensor{1,2,T,2}},
-                                 ξ₂::AbstractMatrix{Tensors.Tensor{1,2,T,2}},
+                                 ξ₁::AbstractMatrix{Tensor{1,2,T,2}},
+                                 ξ₂::AbstractMatrix{Tensor{1,2,T,2}},
                                  s::Int,
                                  xspan::AbstractVector{T},
                                  yspan::AbstractVector{T}) where T <: Real
@@ -145,8 +145,8 @@ function Poincaré_return_distance(calT::Float64,
                                     seed::AbstractVector{T},
                                     λ₁::AbstractMatrix{T},
                                     λ₂::AbstractMatrix{T},
-                                    ξ₁::AbstractMatrix{Tensors.Tensor{1,2,T,2}},
-                                    ξ₂::AbstractMatrix{Tensors.Tensor{1,2,T,2}},
+                                    ξ₁::AbstractMatrix{Tensor{1,2,T,2}},
+                                    ξ₂::AbstractMatrix{Tensor{1,2,T,2}},
                                     signum::Int,
                                     xspan::AbstractVector{T},
                                     yspan::AbstractVector{T}) where T <: Real
@@ -191,7 +191,7 @@ and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
 shift parameters in which closed orbits are sought.
 """
 function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
-                                        T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
+                                        T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
                                         pmin::Float64 = .7,
@@ -204,8 +204,8 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                         yspan,xspan)
 
     # for computational tractability, pre-orient the eigenvector fields
-    Ω = Tensors.Tensor{2,2}([0., -1., 1., 0.])
-    relP = [Tensors.Tensor{1,2}([x, y] .- pSection[1]) for y in yspan, x in xspan]
+    Ω = Tensor{2,2}([0., -1., 1., 0.])
+    relP = [Tensor{1,2}([x, y] .- pSection[1]) for y in yspan, x in xspan]
     n = [Ω⋅dx for dx in relP]
     ξ₁ .= sign.(n .⋅ ξ₁) .* ξ₁
     ξ₂ .= sign.(relP .⋅ ξ₂) .* ξ₂
@@ -285,7 +285,7 @@ Returns a list of tuples, each tuple containing
    * the sign used in the η-formula,
    * the outermost closed orbit for the corresponding λ and sign.
 """
-function ellipticLCS(T::AbstractMatrix{Tensors.SymmetricTensor{2,2,S,3}},
+function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractVector{S},
                         yspan::AbstractVector{S},
                         p) where S <: Real
