@@ -48,7 +48,7 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=tr
         else
             matmul = (u, v) -> u .= IterativeSolvers.cg(ΔM, v)
         end
-        LinearMaps.LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
+        LMs.LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
     end
     return prod(reverse(P))
 end

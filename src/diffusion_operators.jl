@@ -127,7 +127,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `dim`: the columns are interpreted as concatenations of `dim`-
      dimensional points, to which `metric` is applied individually;
    * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
-     `P -> prod(LinearMaps.LinearMap,Iterators.reverse(P))` (default)
+     `P -> prod(LMs.LinearMap,Iterators.reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
@@ -136,7 +136,7 @@ function sparse_diff_op_family( data::AbstractMatrix,
                                 sp_method::S,
                                 kernel = gaussian_kernel,
                                 dim::Int = 2;
-                                op_reduce::Function = (P -> prod(reverse(LinearMaps.LinearMap.(P)))),
+                                op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P)))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
                                 ) where {S <: SparsificationMethod}
@@ -380,24 +380,24 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
      return Π
  end
 
- @inline function L_mul_Lt(L::LinearMaps.LinearMap{T},
-                            Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::LMs.LinearMap{T},
+                            Π::Vector{T})::LMs.LinearMap{T} where T <: Real
 
      Πsqrt = Diagonal(sqrt.(Π))
      Πinv  = Diagonal(inv.(Π))
-     return LinearMaps.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
+     return LMs.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
 
  @inline function L_mul_Lt(L::AbstractMatrix{T},
-                            Π::Vector{T})::LinearMaps.LinearMap{T} where T <: Real
+                            Π::Vector{T})::LMs.LinearMap{T} where T <: Real
 
      Πsqrt = Diagonal(sqrt.(Π))
      Πinvsqrt = Diagonal(inv.(Πsqrt))
      lmul!(Πsqrt, L)
      rmul!(L, Πinvsqrt)
-     LMap = LinearMaps.LinearMap(L)
-     return LinearMaps.LinearMap(LMap * transpose(LMap); issymmetric=true,
+     LMap = LMs.LinearMap(L)
+     return LMs.LinearMap(LMap * transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
  end
 

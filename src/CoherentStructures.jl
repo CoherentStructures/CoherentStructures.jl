@@ -26,6 +26,7 @@ const ITP = Interpolations
 
 # import linear algebra related packages
 import LinearMaps
+const LMs = LinearMaps
 import IterativeSolvers
 import Arpack
 
