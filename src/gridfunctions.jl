@@ -201,7 +201,7 @@ const regular1dGridTypes = [
 
 
 """
-    regular1dGrd(numnodes,left=0.0,right=1.0; [quadrature_order, PC=false])
+    regular1dGrid(numnodes,left=0.0,right=1.0; [quadrature_order, PC=false])
 
 Create a regular grid with `numnodes` nodes on the interval `[left,right]` in 1d.
 If `PC==false`, uses P1-Lagrange basis functions. If `PC=true`, uses piecewise-constant
