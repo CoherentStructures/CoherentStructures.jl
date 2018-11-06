@@ -3,9 +3,13 @@
 const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
 
+struct Trajectory{dim,T}
+    F::Vector{SVector{dim,T}}
+    DF::Vector{Tensor{2,dim,T}}
+end
+
 struct LinFlowMap{dim,T}
-    F::Vector{Vector{SVector{dim,T}}}
-    DF::Vector{Vector{Tensor{2,dim,T}}}
+    p::AbstractArray{Trajectory{dim,T}}
 end
 
 """
