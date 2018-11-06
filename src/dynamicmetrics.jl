@@ -193,7 +193,7 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 
 ########### parallel pairwise computation #################
 
-# function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
+# function Dists.pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix, b::AbstractMatrix) where T <: Real
 #     ma, na = size(a)
 #     mb, nb = size(b)
 #     size(r) == (na, nb) || throw(DimensionMismatch("Incorrect size of r."))
@@ -211,7 +211,7 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 #     r
 # end
 #
-# function Dists.pairwise!(r::SharedArrays.SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
+# function Dists.pairwise!(r::SharedMatrix{T}, d::STmetric, a::AbstractMatrix) where T <: Real
 #     m, n = size(a)
 #     size(r) == (n, n) || throw(DimensionMismatch("Incorrect size of r."))
 #     q, s = divrem(m, d.dim)
@@ -240,13 +240,13 @@ stmetric(a::AbstractArray, b::AbstractArray) =
 # function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
 #     m = size(a, 2)
 #     n = size(b, 2)
-#     r = SharedArrays.SharedArray{result_type(metric, a, b)}(m, n)
+#     r = SharedArray{result_type(metric, a, b)}(m, n)
 #     pairwise!(r, metric, a, b)
 # end
 #
 # function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
 #     n = size(a, 2)
-#     r = SharedArrays.SharedArray{result_type(metric, a, a)}(n, n)
+#     r = SharedArray{result_type(metric, a, a)}(n, n)
 #     pairwise!(r, metric, a)
 # end
 

@@ -77,7 +77,7 @@ function parallel_flow(flow_fun,P::AbstractArray{S}) where S <: AbstractArray
     dummy = flow_fun(P[1])
     q::Int = length(dummy)
 
-    sol_shared = SharedArrays.SharedArray{T,2}(dim*q, length(P))
+    sol_shared = SharedArray{T,2}(dim*q, length(P))
     @inbounds @sync Distributed.@distributed for index in eachindex(P)
             u = flow_fun(P[index])
             for t=1:q
@@ -245,7 +245,7 @@ same size as `P`.
 function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
 
     dim = length(P[1])
-    T_shared = SharedArrays.SharedArray{eltype(T)}(div(dim*(dim+1), 2), length(P))
+    T_shared = SharedArray{eltype(T)}(div(dim*(dim+1), 2), length(P))
     idxs = tril(ones(Bool,dim,dim))
     Distributed.@everywhere @eval idxs = $idxs
     @sync Distributed.@distributed for index in eachindex(P)
