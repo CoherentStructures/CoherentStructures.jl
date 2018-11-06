@@ -1,7 +1,7 @@
 # (c) 2018 Daniel Karrasch
 
 """
-    singularity_location_detection(T,xspan,yspan)
+    singularity_location_detection(T, xspan, yspan)
 
 Detects tensor singularities of the tensor field `T`, given as a matrix of
 `SymmetricTensor{2,2}`. `xspan` and `yspan` correspond to the uniform
@@ -16,31 +16,30 @@ function singularity_location_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
     zdiff = z1-z2
     # C = Contour.contours(xspan,yspan,zdiff,[0.])
     cl = Contour.levels(Contour.contours(yspan, xspan, zdiff, [0.]))[1]
-    itp = ITP.interpolate(z1, ITP.BSpline(ITP.Linear()))
-    sitp = ITP.extrapolate(ITP.scale(itp, yspan, xspan), (Reflect(),Reflect(),Reflect()))
+    sitp = ITP.LinearInterpolation((yspan, xspan), z1)
+    # itp = ITP.interpolate(z1, ITP.BSpline(ITP.Linear()))
+    # sitp = ITP.extrapolate(ITP.scale(itp, yspan, xspan), (ITP.Reflect(), ITP.Reflect(), ITP.Reflect()))
     Xs, Ys = Float64[], Float64[]
     for line in Contour.lines(cl)
         yL, xL = Contour.coordinates(line)
         zL = [sitp(yL[i], xL[i]) for i in eachindex(xL, yL)]
-        ind = findall(zL[1:end-1] .* zL[2:end].<=0.)
+        ind = findall(zL[1:end-1] .* zL[2:end] .<= 0)
         zLind = -zL[ind] ./ (zL[ind .+ 1] - zL[ind])
         Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
         Ys = append!(Ys, yL[ind] + (yL[ind .+ 1] - yL[ind]) .* zLind)
     end
-    return [[Xs[i], Ys[i]] for i in eachindex(Xs,Ys)]
+    return [SVector{2}(Xs[i], Ys[i]) for i in eachindex(Xs, Ys)]
 end
 
 """
-    singularity_type_detection(singularity,T,radius,xspan,yspan)
+    singularity_type_detection(singularity, T, radius, xspan, yspan)
 
 Determines the singularity type of the singularity candidate `singularity`
 by querying the tensor eigenvector field of `T` in a circle of radius `radius`
 around the singularity. `xspan` and `yspan` correspond to the computational grid.
 Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
-function singularity_type_detection(singularity::AbstractVector{S},
-                                    ξ::I,
-                                    radius::Float64) where {S,I} #TODO: Maybe restrict type of I
+function singularity_type_detection(singularity::SVector{2,S}, ξ, radius::Real) where {S <: Real}
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
     circle = [SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
@@ -56,7 +55,7 @@ function singularity_type_detection(singularity::AbstractVector{S},
 end
 
 """
-    detect_elliptic_region(singularities,singularityTypes,MaxWedgeDist,MinWedgeDist,Min2ndDist)
+    detect_elliptic_region(singularities, singularityTypes, MaxWedgeDist, MinWedgeDist, Min2ndDist)
 
 Determines candidate regions for closed tensor line orbits.
    * `singularities`: list of all singularities
@@ -66,7 +65,7 @@ Determines candidate regions for closed tensor line orbits.
    * `Min2ndDist`: minimal distance to second closest wedge
 Returns a list of vortex centers.
 """
-function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
+function detect_elliptic_region(singularities::AbstractVector{SVector{2,S}},
                                 singularity_types::AbstractVector{Int},
                                 MaxWedgeDist::Float64,
                                 MinWedgeDist::Float64,
@@ -85,11 +84,12 @@ function detect_elliptic_region(singularities::AbstractVector{Vector{S}},
         end
     end
     pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
-    return [mean(singularities[indWedges[p]]) for p in pairind]
+    centers = [mean(singularities[indWedges[p]]) for p in pairind]
+    return SVector{2}.(centers)
 end
 
 """
-    set_Poincaré_section(vc,p_length,n_seeds,xspan,yspan)
+    set_Poincaré_section(vc, p_length, n_seeds, xspan, yspan)
 
 Generates a horizontal Poincaré section, centered at the vortex center `vc`
 of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
@@ -127,8 +127,10 @@ function compute_returning_orbit(calT::Float64,
     β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [SVector{2,T}(n[1],n[2]) for n in η]
-    ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
-                        yspan, xspan)
+
+    ηitp = ITP.CubicSplineInterpolation((yspan, xspan), η)
+    # ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+    #                     yspan, xspan)
     ηfield = (u,p,t) -> ηitp(u[2], u[1])
 
     prob = OrdinaryDiffEq.ODEProblem(ηfield, SVector{2}(seed[1], seed[2]), (0.,20.))
@@ -196,10 +198,12 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                                         pmax::Float64 = 1.3) where S <: Real
 
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear())),
-                        yspan,xspan)
-    l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear())),
-                        yspan,xspan)
+    l1itp = ITP.LinearInterpolation((yspan, xspan), λ₁)
+    # l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear())),
+    #                     yspan,xspan)
+    l2itp = ITP.LinearInterpolation((yspan, xspan), λ₂)
+    # l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear())),
+    #                     yspan,xspan)
 
     # for computational tractability, pre-orient the eigenvector fields
     Ω = Tensor{2,2}([0., -1., 1., 0.])
@@ -267,7 +271,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
 end
 
 """
-    ellipticLCS(T,xspan,yspan,p)
+    ellipticLCS(T, xspan, yspan, p)
 
 Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
 field given by shifted versions of `T` on the 2D computational grid spanned
@@ -296,9 +300,10 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
 
     ξ = [eigvecs(t)[:,1] for t in T]
     ξrad = atan.([v[2]./v[1] for v in ξ])
-    ξraditp = ITP.extrapolate(ITP.scale(ITP.interpolate(ξrad,
-                        ITP.BSpline(ITP.Linear())),
-                        yspan,xspan),Reflect())
+    ξraditp = ITP.LinearInterpolation((yspan, xspan), ξrad, extrapolation_bc = ITP.Line())
+    # ξraditp = ITP.extrapolate(ITP.scale(ITP.interpolate(ξrad,
+    #                     ITP.BSpline(ITP.Linear())),
+    #                     yspan,xspan), ITP.Reflect())
     singularitytypes = map(singularities) do s
         singularity_type_detection(s, ξraditp, radius)
     end
