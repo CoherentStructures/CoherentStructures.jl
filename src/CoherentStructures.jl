@@ -4,8 +4,8 @@ module CoherentStructures
 using LinearAlgebra
 using SparseArrays
 using Distributed
-import SharedArrays
-import Markdown
+using SharedArrays: SharedArray
+using Markdown
 using Statistics: mean
 
 # import data type packages
