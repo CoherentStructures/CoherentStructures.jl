@@ -51,7 +51,7 @@ function assembleStiffnessMatrixInternal(
         ) where {T,dim}
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
-    K::SparseArrays.SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
+    K::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
     a_K::JFM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(K)
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
     n::Int64 = JFM.getnbasefunctions(cv)         # number of basis functions
@@ -131,7 +131,7 @@ function assembleMassMatrix(
         ) where dim
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
-    M::SparseArrays.SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
+    M::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
     a_M::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(M)
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
     n::Int64 = JFM.getnbasefunctions(cv)         # number of basis functions

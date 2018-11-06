@@ -2,7 +2,7 @@ module CoherentStructures
 
 # import standard libraries
 using LinearAlgebra
-import SparseArrays
+using SparseArrays
 using Distributed
 import SharedArrays
 import Markdown

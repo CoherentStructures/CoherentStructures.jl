@@ -70,14 +70,14 @@ function diff_op(data::AbstractMatrix{T},
                     kernel = gaussian_kernel;
                     α=1.0,
                     metric::Distances.Metric = Distances.Euclidean()
-                )::SparseArrays.SparseMatrixCSC{T,Int} where T <: Real
+                )::SparseMatrixCSC{T,Int} where T <: Real
 
     N = size(data, 2)
     D = Distances.pairwise(metric,data)
     CIs::Vector{CartesianIndex{2}} = findall(D .<= sp_method.ε)
     Vs::Vector{T} = kernel.(D[CIs])
     CIs´ = reinterpret(Int, reshape(CIs, 1, :)) # to avoid allocation
-    P = SparseArrays.sparse(view(CIs´, 1, :), view(CIs´, 2, :), Vs, N, N)
+    P = sparse(view(CIs´, 1, :), view(CIs´, 2, :), Vs, N, N)
     (α != 0) && kde_normalize!(P, α)
     wLap_normalize!(P)
     return P
@@ -88,7 +88,7 @@ function diff_op(data::AbstractMatrix{T},
                     kernel = gaussian_kernel;
                     α=1.0,
                     metric::Distances.Metric = Distances.Euclidean()
-                )::SparseArrays.SparseMatrixCSC{T,Int} where T <: Real
+                )::SparseMatrixCSC{T,Int} where T <: Real
 
     N, k = size(data, 2), sp_method.k
     D = Distances.pairwise(metric,data)
@@ -104,7 +104,7 @@ function diff_op(data::AbstractMatrix{T},
         Js[(i-1)*(k+1)+1:i*(k+1)] = index
         Vs[(i-1)*(k+1)+1:i*(k+1)] = kernel.(di[index])
     end
-    P = SparseArrays.sparse(Is, Js, Vs, N, N)
+    P = sparse(Is, Js, Vs, N, N)
     if sp_method isa KNN
         @. P = max(P, PermutedDimsArray(P, (2,1)))
     else # sp_method isa mutualKNN
@@ -205,8 +205,8 @@ Default metric is `Euclidean()`.
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
     Vs = kernel.(vcat(dists...))
-    W = SparseArrays.sparse(Is, Js, Vs, N, N)
-    SparseArrays.droptol!(W, eps(eltype(W)))
+    W = sparse(Is, Js, Vs, N, N)
+    droptol!(W, eps(eltype(W)))
     if typeof(sp_method) <: KNN
         return max.(W, permutedims(W))
     else
@@ -230,7 +230,7 @@ end
     Js = vcat(idxs...)
     Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
     Vs = kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
-    return SparseArrays.sparse(Is, Js, Vs, N, N)
+    return sparse(Is, Js, Vs, N, N)
 end
 
 """
@@ -239,7 +239,7 @@ Normalize rows and columns of `A` in-place with the respective row-sum to the α
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
-@inline function kde_normalize!(A::SparseArrays.SparseMatrixCSC{T}, α=1.0) where {T <: Real}
+@inline function kde_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
     # TODO: remove this function in Julia 1.0.2
     n = LinearAlgebra.checksquare(A)
     qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
@@ -264,7 +264,7 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function wLap_normalize!(A::SparseArrays.SparseMatrixCSC{T}) where {T <: Real}
+@inline function wLap_normalize!(A::SparseMatrixCSC{T}) where {T <: Real}
     # TODO: remove this function in Julia 1.0.2
     n = LinearAlgebra.checksquare(A)
     # dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
@@ -304,7 +304,7 @@ metric is applied to the whole columns of `data`.
 """
 function sparse_adjacency(data::AbstractMatrix{T}, ε, dim::Int;
                             metric::Distances.Metric = Distances.Euclidean()
-                        )::SparseArrays.SparseMatrixCSC{Float64,Int} where {T <: Real}
+                        )::SparseMatrixCSC{Float64,Int} where {T <: Real}
     dimt, N = size(data)
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
@@ -317,18 +317,18 @@ function sparse_adjacency(data::AbstractMatrix{T}, ε, dim::Int;
     Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
     Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
     Vs::Vector{Float64} = fill(1.0, length(Is))
-    return SparseArrays.sparse(Is, Js, Vs, N, N, *)
+    return sparse(Is, Js, Vs, N, N, *)
 end
 
 function sparse_adjacency(data::AbstractMatrix, ε;
                             metric::Distances.Metric = Distances.Euclidean()
-                            )::SparseArrays.SparseMatrixCSC{Float64,Int}
+                            )::SparseMatrixCSC{Float64,Int}
     dimt, N = size(data)
     q, r = divrem(dimt, dim)
     @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
     Is, Js = sparse_adjacency_list(data, ε; metric=metric)
     Vs = fill(1.0, length(I))
-    return SparseArrays.sparse(Is, Js, Vs, N, N, *)
+    return sparse(Is, Js, Vs, N, N, *)
 end
 
 """
