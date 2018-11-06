@@ -52,9 +52,9 @@ function interpolateVF(xspan::AbstractVector{S1},
     Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
     T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
 
-    UI = ITP.scale(ITP.interpolate(u,interpolation_type),X,Y,T)
+    UI = ITP.scale(ITP.interpolate(u, interpolation_type), X, Y, T)
     #UE = extrapolate(UI,(Flat(),Flat(),Flat()))
-    VI = ITP.scale(ITP.interpolate(v,interpolation_type),X,Y,T)
+    VI = ITP.scale(ITP.interpolate(v, interpolation_type), X, Y, T)
     #VE = extrapolate(VI,(Flat(),Flat(),Flat()))
     return UI, VI
 end
