@@ -18,10 +18,14 @@
     c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
-bickleyJet = @velo_from_stream Ψ_bickley
-bickleyJet!(du,u,p,t) = du .= bickleyJet(u,p,t)
-bickleyJetEqVari = @var_velo_from_stream Ψ_bickley
-bickleyJetEqVari!(DU,U,p,t) = bickleyJetEqVari(U,p,t)
+bj = @velo_from_stream Ψ_bickley
+bickleyJet = OrdinaryDiffEq.ODEFunction(bj)
+bj!(du,u,p,t) = du .= bickleyJet(u,p,t)
+bickleyJet! = OrdinaryDiffEq.ODEFunction(bj!)
+bjev = @var_velo_from_stream Ψ_bickley
+bickleyJetEqVari = OrdinaryDiffEq.ODEFunction(bjev)
+bjev!(DU,U,p,t) = DU .= bickleyJetEqVari(U,p,t)
+bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction(bjev!)
 
 # rotating double gyre flow  [Mosovsky & Meiss, 2011]
 @define_stream Ψ_rot_dgyre begin
@@ -30,10 +34,14 @@ bickleyJetEqVari!(DU,U,p,t) = bickleyJetEqVari(U,p,t)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre
-rot_double_gyre!(du,u,p,t) = du .= rot_double_gyre(u,p,t)
-rot_double_gyreEqVari   = @var_velo_from_stream Ψ_rot_dgyre
-rot_double_gyreEqVari!(DU,U,p,t) = DU .= rot_double_gyreEqVari(U,p,t)
+rdg = @velo_from_stream Ψ_rot_dgyre
+rot_double_gyre = OrdinaryDiffEq.ODEFunction(rdg)
+rdg!(du,u,p,t) = du .= rot_double_gyre(u,p,t)
+rot_double_gyre! = OrdinaryDiffEq.ODEFunction(rdg!)
+rdgev = @var_velo_from_stream Ψ_rot_dgyre
+rot_double_gyreEqVari = OrdinaryDiffEq.ODEFunction(rdgev)
+rdgev!(DU,U,p,t) = DU .= rot_double_gyreEqVari(U,p,t)
+rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction(rdgev!)
 
 # interpolated vector field components
 """
@@ -70,11 +78,12 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 `UI` and `VI` are the interpolants for the x- and y-components of the velocity
 field.
 """
-function interp_rhs(u, p, t)
+function interpolated_velocity(u, p, t)
     du1 = p[1](u[1], u[2], t)
     du2 = p[2](u[1], u[2], t)
     return SVector{2}(du1, du2)
 end
+interp_rhs = OrdinaryDiffEq.ODEFunction(interpolated_velocity)
 
 """
     interp_rhs!(du, u, p, t) -> Vector
@@ -85,11 +94,12 @@ assumes that the interpolants are provided as a 2-tuple `(UI, VI)` via the
 parameter `p`. Here, `UI` and `VI` are the interpolants for the x- and
 y-components of the velocity field.
 """
-function interp_rhs!(du, u, p, t)
+function interpolated_velocity!(du, u, p, t)
     du[1] = p[1](u[1], u[2], t)
     du[2] = p[2](u[1], u[2], t)
     return du
 end
+interp_rhs! = OrdinaryDiffEq.ODEFunction(interpolated_velocity!)
 
 # standard map
 function standardMap(u)
@@ -131,28 +141,30 @@ function standardMap8Inv(Tu)
 end
 
 # ABC flow
-function abcFlow(u,p,t)
+function ABC_flow(u, p, t)
     A, B, C = p
     return SVector{3,Float64}((
-        A + 0.5*t*sin(π*t))*sin(u[3]) + C*cos(u[2]),
-        B*sin(u[1]) + (A + 0.5*t*sin(π*t))*cos(u[3]),
-        C*sin(u[2]) + B*cos(u[1])
+        A + 0.5 * t * sin(π * t)) * sin(u[3]) + C * cos(u[2]),
+        B * sin(u[1]) + (A + 0.5 * t * sin(π * t)) * cos(u[3]),
+        C * sin(u[2]) + B * cos(u[1])
         )
 end
+abcFlow = OrdinaryDiffEq.ODEFunction(ABC_flow)
 
 # cylinder flow [Froyland, Lloyd, and Santitissadeekorn, 2010]
-function cylinder_flow(u,p,t)
+function _cylinder_flow(u, p, t)
     c, ν, ε = p
     # c = 0.5
     # ν = 0.25
     # ϵ = 0.25
-    A(t) = 1.0 + 0.125*sin(2*√5.0*t)
-    G(ψ) = 1.0 / (ψ^2 + 1.0)^2
-    g(x,y,t) = sin(x-ν*t)*sin(y) + y/2 - π/4
+    A(t) = 1.0 + 0.125 * sin(2 * √5.0 * t)
+    G(ψ) = 1.0 / (ψ ^ 2 + 1.0) ^ 2
+    g(x,y,t) = sin(x - ν * t) * sin(y) + y / 2 - π / 4
     x = u[1]
     y = u[2]
     return SVector{2,Float64}(
-        c - A(t)*sin(x - ν*t)*cos(y) + ε*G(g(x,y,t))+sin(t/2),
-        A(t)*cos(x - ν*t)*sin(y)
+        c - A(t) * sin(x - ν * t) * cos(y) + ε * G(g(x, y, t)) + sin(t / 2),
+        A(t) * cos(x - ν * t) * sin(y)
         )
 end
+cylinder_flow = OrdinaryDiffEq.ODEFunction(_cylinder_flow)
