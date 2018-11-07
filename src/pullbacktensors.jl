@@ -105,133 +105,106 @@ function linearized_flow(odefun, x::AbstractVector{T}, tspan, δ; kwargs...) whe
     linearized_flow(OrdinaryDiffEq.ODEFunction(odefun), convert(SVector{dim, T}, x), tspan, δ; kwargs...)
 end
 function linearized_flow(
-            odefun::OrdinaryDiffEq.ODEFunction{true},
+            odefun::OrdinaryDiffEq.ODEFunction{iip},
             x::SVector{2,T},
             tspan::AbstractVector{Float64},
             δ::Real;
             tolerance=default_tolerance,
             solver=default_solver,
             p=nothing
-        ) where {T <: Real}
+        ) where {iip, T <: Real}
 
-    if δ != 0 # use finite differencing
-        stencil::Vector{T} = [x[1], x[2],
+    if iip
+        if δ != 0 # use finite differencing
+            stencil::Vector{T} = [x[1], x[2],
                                 x[1] + δ, x[2], x[1], x[2] + δ,
                                 x[1] - δ, x[2], x[1], x[2] - δ]
-
-        rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 5, 2)
-        prob = OrdinaryDiffEq.ODEProblem(rhs, stencil, (tspan[1], tspan[end]), p)
-        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                save_everystep=false, dense=false,
-                reltol=tolerance, abstol=tolerance).u
-        return (map(s -> SVector{2}(s[1], s[2]), sol),
-                map(s -> Tensor{2,2}((s[3:6] - s[7:10]) / 2δ), sol))
-    else # δ == 0, solve the variational equation
-        error("Variational approach not yet implemented for inplace functions")
-    end
+            rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 5, 2)
+            sol = _flow(rhs, stencil, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{2}(s[1], s[2]), sol),
+                    map(s -> Tensor{2,2}((s[3:6] - s[7:10]) / 2δ), sol))
+        else # δ = 0
+            u0 = [x[1] one(T) zero(T);
+                  x[2] zero(T) one(T)]
+            evsol = _flow(odefun, u0, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{2}(s[1,1], s[2,1]), evsol),
+                    map(s -> Tensor{2,2}((s[1,2], s[2,2], s[1,3], s[2,3])), evsol))
+        end # δ
+    else # !iip
+        if δ != 0 # use finite differencing
+            sstencil::SVector{10,T} = SVector{10}(x[1], x[2],
+                                                    x[1] + δ, x[2], x[1], x[2] + δ,
+                                                    x[1] - δ, x[2], x[1], x[2] - δ)
+            srhs = (u, p, t) -> arraymap2(u, p, t, odefun)
+            ssol = _flow(srhs, sstencil, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{2}(s[1], s[2]), ssol),
+                    map(s -> Tensor{2,2}((s[3:6] - s[7:10]) / 2δ), ssol))
+        else
+            v0 = @SMatrix [x[1] one(T) zero(T);
+                           x[2] zero(T) one(T)]
+            eqvsol = _flow(odefun, v0, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{2}(s[1,1], s[2,1]), eqvsol),
+                    map(s -> Tensor{2,2}((s[1,2], s[2,2], s[1,3], s[2,3])), eqvsol))
+        end # δ
+    end # iip
 end
 function linearized_flow(
-            odefun::OrdinaryDiffEq.ODEFunction{false},
-            x::SVector{2,T},
-            tspan::AbstractVector{Float64},
-            δ::Real;
-            tolerance=default_tolerance,
-            solver=default_solver,
-            p=nothing
-        ) where {T <: Real}
-
-    if δ != 0 # use finite differencing
-        sstencil::SVector{10,T} = SVector{10}(x[1], x[2],
-                                                x[1] + δ, x[2], x[1], x[2] + δ,
-                                                x[1] - δ, x[2], x[1], x[2] - δ)
-        srhs = (u, p, t) -> arraymap2(u, p, t, odefun)
-        sprob = OrdinaryDiffEq.ODEProblem(srhs, sstencil, (tspan[1], tspan[end]), p)
-        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan,
-                    save_everystep=false, dense=false,
-                    reltol=tolerance, abstol=tolerance).u
-        return (map(s -> SVector{2}(s[1], s[2]), ssol),
-                map(s -> Tensor{2,2}((s[3:6] - s[7:10]) / 2δ), ssol))
-    else # δ == 0, i.e., solve the variational equation
-        u0 = @SMatrix [x[1] one(T) zero(T);
-                       x[2] zero(T) one(T)]
-
-        tprob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1],tspan[end]), p)
-        tsol = OrdinaryDiffEq.solve(tprob, solver, saveat=tspan,
-                              save_everystep=false, dense=false,
-                              reltol=tolerance, abstol=tolerance).u
-        return (map(s -> SVector{2}(s[1,1], s[2,1]), tsol),
-                map(s -> Tensor{2,2}((s[1,2], s[2,2], s[1,3], s[2,3])), tsol))
-    end
-end
-function linearized_flow(
-            odefun::OrdinaryDiffEq.ODEFunction{true},
+            odefun::OrdinaryDiffEq.ODEFunction{iip},
             x::SVector{3,T},
             tspan::AbstractVector{Float64},
             δ::Real;
             tolerance=default_tolerance,
             solver=default_solver,
             p=nothing
-        ) where {T <: Real}
+        ) where {iip, T <: Real}
 
-    if δ != 0 # use finite differencing
-        stencil::Vector{T} = [x[1], x[2], x[3],
+    if iip
+        if δ != 0 # use finite differencing
+            stencil::Vector{T} = [x[1], x[2], x[3],
                               x[1] + δ, x[2], x[3],
                               x[1], x[2] + δ, x[3],
                               x[1], x[2], x[3] + δ,
                               x[1] - δ, x[2], x[3],
                               x[1], x[2] - δ, x[3],
                               x[1], x[2], x[3] - δ]
-
-        rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3)
-        prob = OrdinaryDiffEq.ODEProblem(rhs, stencil, (tspan[1], tspan[end]), p)
-        sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                save_everystep=false, dense=false,
-                reltol=tolerance, abstol=tolerance).u
-        return (map(s -> SVector{3}(s[1], s[2], s[3]), sol),
-                map(s -> Tensor{2,3}((s[4:12] - s[13:21]) / 2δ), sol))
-    else # δ == 0, i.e., solve the variational equation
-        error("Variational approach not yet implemented for inplace functions")
-    end
-end
-function linearized_flow(
-            odefun::OrdinaryDiffEq.ODEFunction{false},
-            x::SVector{3,T},
-            tspan::AbstractVector{Float64},
-            δ::Real;
-            tolerance=default_tolerance,
-            solver=default_solver,
-            p=nothing
-        ) where {T <: Real}
-
-    if δ != 0 # use finite differencing
-        sstencil::SVector{18,Float64} = SVector{18,T}(
-                x[1] + δ, x[2], x[3],
-                x[1], x[2] + δ, x[3],
-                x[1], x[2], x[3] + δ,
-                x[1] - δ, x[2], x[3],
-                x[1], x[2] - δ, x[3],
-                x[1], x[2], x[3] - δ
-                )
-        srhs = (u, p, t) -> arraymap3(u, p, t, odefun)
-        sprob = OrdinaryDiffEq.ODEProblem(srhs, sstencil, (tspan[1],tspan[end]), p)
-        ssol = OrdinaryDiffEq.solve(sprob, solver, saveat=tspan, save_everystep=false,
-                                dense=false, reltol=tolerance, abstol=tolerance).u
-        return (map(s -> SVector{3}(s[1], s[2], s[3]), ssol),
-                map(s -> Tensor{2,3}((s[4:12] - s[13:21]) / 2δ), ssol))
-    else # δ == 0, i.e., solve the variational equation
-        u0 = @SMatrix [x[1] one(T) zero(T) zero(T);
-                       x[2] zero(T) one(T) zero(T);
-                       x[3] zero(T) zero(T) one(T)]
-
-        tprob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1], tspan[end]), p)
-        tsol = OrdinaryDiffEq.solve(tprob, solver, saveat=tspan,
-                              save_everystep=false, dense=false,
-                              reltol=tolerance, abstol=tolerance).u
-        return (map(s -> SVector{3}(s[1,1], s[2,1], s[3,1]), tsol),
-                map(s -> Tensor{2,3}((s[1,2], s[2,2], s[3,2],
-                                      s[1,3], s[2,3], s[3,3],
-                                      s[1,4], s[2,4], s[3,4])), tsol))
-    end
+            rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3)
+            sol = _flow(rhs, stencil, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{3}(s[1], s[2], s[3]), sol),
+                    map(s -> Tensor{2,3}((s[4:12] - s[13:21]) / 2δ), sol))
+        else # δ = 0
+            V0 = [x[1] one(T) zero(T) zero(T);
+                  x[2] zero(T) one(T) zero(T);
+                  x[3] zero(T) zero(T) one(T)]
+            eqvsol = _flow(odefun, V0, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{3}(s[1,1], s[2,1], s[3,1]), eqvsol),
+                    map(s -> Tensor{2,3}((s[1,2], s[2,2], s[3,2],
+                                          s[1,3], s[2,3], s[3,3],
+                                          s[1,4], s[2,4], s[3,4])), eqvsol))
+        end # δ
+    else # !iip
+        if δ != 0 # use finite differencing
+            sstencil::SVector{21,T} = SVector{21,T}(x[1], x[2], x[3],
+                              x[1] + δ, x[2], x[3],
+                              x[1], x[2] + δ, x[3],
+                              x[1], x[2], x[3] + δ,
+                              x[1] - δ, x[2], x[3],
+                              x[1], x[2] - δ, x[3],
+                              x[1], x[2], x[3] - δ)
+            srhs = (u, p, t) -> arraymap3(u, p, t, odefun)
+            ssol = _flow(srhs, sstencil, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{3}(s[1], s[2], s[3]), ssol),
+                    map(s -> Tensor{2,3}((s[4:12] - s[13:21]) / 2δ), ssol))
+        else # δ = 0
+            u0 = @SMatrix [x[1] one(T) zero(T) zero(T);
+                           x[2] zero(T) one(T) zero(T);
+                           x[3] zero(T) zero(T) one(T)]
+            evsol = _flow(odefun, u0, tspan; tolerance=tolerance, solver=solver, p=p)
+            return (map(s -> SVector{3}(s[1,1], s[2,1], s[3,1]), evsol),
+                    map(s -> Tensor{2,3}((s[1,2], s[2,2], s[3,2],
+                                          s[1,3], s[2,3], s[3,3],
+                                          s[1,4], s[2,4], s[3,4])), evsol))
+        end # δ
+    end # iip
 end
 
 """
