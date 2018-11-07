@@ -1,6 +1,6 @@
 module CoherentStructures
 
-# import standard libraries
+# use standard libraries
 using LinearAlgebra
 using SparseArrays
 using Distributed
@@ -38,6 +38,7 @@ const VD = VoronoiDelaunay
 import ForwardDiff
 
 import JuAFEM
+const JFM = JuAFEM
 import RecipesBase
 import SymEngine
 

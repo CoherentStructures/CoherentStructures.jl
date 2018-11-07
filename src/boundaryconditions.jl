@@ -38,29 +38,29 @@ Return `boundaryData` object corresponding to homogeneous Dirichlet Boundary Con
 `which="all"` is shorthand for `["left","right","top","bottom"]`.
 """
 function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
-    dbcs = JuAFEM.ConstraintHandler(ctx.dh)
+    dbcs = JFM.ConstraintHandler(ctx.dh)
     #TODO: See if newer version of JuAFEM export a "boundary" nodeset
     if which == "all"
         if dim == 1
-            dbc = JuAFEM.Dirichlet(:T,
-                    union(JuAFEM.getfaceset(ctx.grid, "left"),
-                     JuAFEM.getfaceset(ctx.grid, "right")
+            dbc = JFM.Dirichlet(:T,
+                    union(JFM.getfaceset(ctx.grid, "left"),
+                     JFM.getfaceset(ctx.grid, "right")
                        ), (x, t) -> 0)
         elseif dim == 2
-            dbc = JuAFEM.Dirichlet(:T,
-                    union(JuAFEM.getfaceset(ctx.grid, "left"),
-                     JuAFEM.getfaceset(ctx.grid, "right"),
-                     JuAFEM.getfaceset(ctx.grid, "top"),
-                     JuAFEM.getfaceset(ctx.grid, "bottom"),
+            dbc = JFM.Dirichlet(:T,
+                    union(JFM.getfaceset(ctx.grid, "left"),
+                     JFM.getfaceset(ctx.grid, "right"),
+                     JFM.getfaceset(ctx.grid, "top"),
+                     JFM.getfaceset(ctx.grid, "bottom"),
                        ), (x, t) -> 0)
        elseif dim == 3
-            dbc = JuAFEM.Dirichlet(:T,
-                    union(JuAFEM.getfaceset(ctx.grid, "left"),
-                     JuAFEM.getfaceset(ctx.grid, "right"),
-                     JuAFEM.getfaceset(ctx.grid, "top"),
-                     JuAFEM.getfaceset(ctx.grid, "bottom"),
-                     JuAFEM.getfaceset(ctx.grid, "front"),
-                     JuAFEM.getfaceset(ctx.grid, "back"),
+            dbc = JFM.Dirichlet(:T,
+                    union(JFM.getfaceset(ctx.grid, "left"),
+                     JFM.getfaceset(ctx.grid, "right"),
+                     JFM.getfaceset(ctx.grid, "top"),
+                     JFM.getfaceset(ctx.grid, "bottom"),
+                     JFM.getfaceset(ctx.grid, "front"),
+                     JFM.getfaceset(ctx.grid, "back"),
                        ), (x, t) -> 0)
        else
            throw(AssertionError("dim ∉ [1,2,3]"))
@@ -68,14 +68,14 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
    elseif isempty(which)
        return boundaryData(Vector{Int}())
    else
-       dbc = JuAFEM.Dirichlet(:T,
-               union([JuAFEM.getfaceset(ctx.grid, str) for str in which]...),
+       dbc = JFM.Dirichlet(:T,
+               union([JFM.getfaceset(ctx.grid, str) for str in which]...),
                (x, t) -> 0
                )
    end
-    JuAFEM.add!(dbcs, dbc)
-    JuAFEM.close!(dbcs)
-    JuAFEM.update!(dbcs, 0.0)
+    JFM.add!(dbcs, dbc)
+    JFM.close!(dbcs)
+    JFM.update!(dbcs, 0.0)
     return boundaryData(dbcs.prescribed_dofs)
 end
 

@@ -1,8 +1,6 @@
 # Strongly inspired by an example provided on JuAFEM's github page, modified and
 # extended by Nathanael Schilling
 
-const JFM = JuAFEM
-
 #Works in n=2 and n=3
 function tensorIdentity(x::Vec{dim}, i::Int, p) where dim
         return one(SymmetricTensor{2, dim, Float64, 3*(dim-1)})
@@ -132,7 +130,7 @@ function assembleMassMatrix(
     cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh::JFM.DofHandler{dim} = ctx.dh
     M::SparseMatrixCSC{Float64,Int64} = JFM.create_sparsity_pattern(dh)
-    a_M::JuAFEM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(M)
+    a_M::JFM.AssemblerSparsityPattern{Float64,Int64} = JFM.start_assemble(M)
     dofs::Vector{Int} = zeros(Int, JFM.ndofs_per_cell(dh))
     n::Int64 = JFM.getnbasefunctions(cv)         # number of basis functions
     Me::Array{Float64,2} = zeros(n, n)   # Local stiffness and mass matrix
@@ -188,7 +186,7 @@ function getQuadPoints(ctx::gridContext{dim}) where dim
 
     n::Int = JFM.getnbasefunctions(cv)         # number of basis functions
     @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
-        JuAFEM.reinit!(cv, cell)
+        JFM.reinit!(cv, cell)
         for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
     	    q_coords = zero(Vec{dim})
             for j in 1:n
