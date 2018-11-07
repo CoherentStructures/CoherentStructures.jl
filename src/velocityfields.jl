@@ -75,7 +75,16 @@ function interp_rhs(u, p, t)
     du2 = p[2](u[1], u[2], t)
     return SVector{2}(du1, du2)
 end
-#TODO: think of adding @inbounds here
+
+"""
+    interp_rhs!(du, u, p, t) -> Vector
+
+Defines a mutating/inplace 2D vector field that is readily usable for trajectory
+integration from vector field interpolants of the x- and y-direction, resp. It
+assumes that the interpolants are provided as a 2-tuple `(UI, VI)` via the
+parameter `p`. Here, `UI` and `VI` are the interpolants for the x- and
+y-components of the velocity field.
+"""
 function interp_rhs!(du, u, p, t)
     du[1] = p[1](u[1], u[2], t)
     du[2] = p[2](u[1], u[2], t)
