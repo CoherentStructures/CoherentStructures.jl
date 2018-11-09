@@ -135,9 +135,7 @@ macro vorticity_from_stream(H::Symbol, formulas::Expr)
     _, DV = streamline_derivatives(H, formulas)
 
     quote
-        (x, y, t) -> begin
-            return $(DV[1,1]) + $(DV[2,2])
-        end
+        (x, y, t) -> $(DV[2,1]) - $(DV[1,2])
     end
 end
 macro vorticity_from_stream(name::Symbol)
