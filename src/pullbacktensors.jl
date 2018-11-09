@@ -8,8 +8,8 @@ struct Trajectory{dim,T}
     DF::Vector{Tensor{2,dim,T}}
 end
 
-struct LinFlowMap{dim,T}
-    p::AbstractArray{Trajectory{dim,T}}
+struct LinFlowMap{dim,T,N}
+    p::Array{Trajectory{dim,T},N}
 end
 
 """
@@ -25,18 +25,28 @@ which is determined by `solver`.
 end
 @inline function flow(odefun::OrdinaryDiffEq.ODEFunction{true}, u0::AbstractVector{T},
                 tspan::AbstractVector{S}; kwargs...) where {T <: Real, S <: Real}
-    _flow(odefun, convert(Vector{T}, u0), tspan; kwargs...)
+    v0 = convert(Vector{T}, u0)::Vector{T}
+    _flow(odefun, v0, tspan; kwargs...)
+end
+@inline function flow(odefun::OrdinaryDiffEq.ODEFunction{true}, u0::Vector{T},
+                tspan::AbstractVector{S}; kwargs...) where {T <: Real, S <: Real}
+    _flow(odefun, u0, tspan; kwargs...)
 end
 @inline function flow(odefun::OrdinaryDiffEq.ODEFunction{false}, u0::AbstractVector{T},
                 tspan::AbstractVector{S}; kwargs...) where {T <: Real, S <: Real}
-    _flow(odefun, convert(SVector{length(u0), T}, u0), tspan; kwargs...)
+    v0 = convert(SVector{length(u0), T}, u0)
+    _flow(odefun, v0, tspan; kwargs...)
 end
-@inline function _flow(odefun, u0, tspan;
+@inline function flow(odefun::OrdinaryDiffEq.ODEFunction{false}, u0::SVector{dim,T},
+                tspan::AbstractVector{S}; kwargs...) where {dim, T <: Real, S <: Real}
+    _flow(odefun, u0, tspan; kwargs...)
+end
+@inline function _flow(odefun, u0::T, tspan;
                 tolerance=default_tolerance,
                 p=nothing,
                 solver=default_solver,
                 #ctx_for_boundscheck=nothing,
-                force_dtmin=false) where {T <: Real, S <: Real}
+                force_dtmin=false)::Vector{T} where {T}
 
     # if needed, add callback to ODEProblems
     #callback = nothing
@@ -112,7 +122,7 @@ function linearized_flow(
             tolerance=default_tolerance,
             solver=default_solver,
             p=nothing
-        ) where {iip, T <: Real}
+        )::Tuple{Vector{SVector{2,T}}, Vector{Tensor{2,2,T,4}}} where {iip, T <: Real}
 
     if iip
         if δ != 0 # use finite differencing
@@ -156,7 +166,7 @@ function linearized_flow(
             tolerance=default_tolerance,
             solver=default_solver,
             p=nothing
-        ) where {iip, T <: Real}
+        )::Tuple{Vector{SVector{3,T}}, Vector{Tensor{2,3,T,9}}} where {iip, T <: Real}
 
     if iip
         if δ != 0 # use finite differencing
