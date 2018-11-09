@@ -2,7 +2,8 @@
 
 stream_dict = Dict()
 
-""" @define_stream(name::Symbol, code::Expr)
+"""
+    @define_stream(name::Symbol, code::Expr)
 
 Define a scalar stream function on ``R^2``. The defining code can be a series of
 definitions in an enclosing `begin ... end`-block and is treated as a series of
@@ -27,7 +28,8 @@ macro define_stream(name::Symbol, code::Expr)
     end
 end
 
-""" @velo_from_stream(name::Symbol, [code::Expr])
+"""
+    @velo_from_stream(name::Symbol, [code::Expr])
 
 Get the velocity field corresponding to a stream function on ``R^2``.  The defining
 code can be a series of definitions (in an enclosing `begin ... end`-block and
