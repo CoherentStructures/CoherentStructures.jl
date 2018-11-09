@@ -109,6 +109,7 @@ export
     @define_stream,
     @velo_from_stream,
     @var_velo_from_stream,
+	@vorticity_from_stream,
 
 	#TO.jl
 	nonAdaptiveTOCollocation,

@@ -31,16 +31,16 @@ end
 """
     @velo_from_stream(name::Symbol, [code::Expr])
 
-Get the velocity field corresponding to a stream function on ``R^2``.  The defining
+Get the velocity field corresponding to a stream function on ``R^2``. The defining
 code can be a series of definitions (in an enclosing `begin ... end`-block and
 is treated as a series of symbolic substitutions. Starting from the symbol
 `name`, substitutions are performed until the resulting expression only depends
 on `x`, `y` and `t`.
 
-The macro returns an anonymous function f(u,p,t) that returns a SVector{2} holding
-the vector field at u at time t.
+The macro returns an anonymous function `f(u,p,t)`` that returns a `SVector{2}``
+corresponding to the vector field at position `u` at time `t`.
 
-The macro can be called without the `code` if the stream `name` has been define
+The macro can be called without the `code` if the stream `name` has been defined
 beforehand via `@define_stream`.
 
 ### Examples
@@ -81,10 +81,10 @@ julia> f2([1.0,1.0], nothing, 0.0)
 
 """
 macro velo_from_stream(H::Symbol, formulas::Expr)
-    F, _ = streamline_derivatives(H, formulas)
-    F = sym_subst.( F, [[:x,:y]], [[:(u[1]), :(u[2])]])
+    V, _ = streamline_derivatives(H, formulas)
+    V = sym_subst.(V, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
-        (u, p, t) -> SVector($(F[1]), $(F[2]))
+        (u, p, t) -> SVector{2}($(V[1]), $(V[2]))
     end
 end
 macro velo_from_stream(name::Symbol)
@@ -95,27 +95,26 @@ macro velo_from_stream(name::Symbol)
 end
 
 macro var_velo_from_stream(H::Symbol, formulas::Expr)
-    F, DF = streamline_derivatives(H, formulas)
+    V, DV = streamline_derivatives(H, formulas)
 
-    # substiute :x and :y by access to the first column
-    # of a matrix u
-     F = sym_subst.( F, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
-    DF = sym_subst.(DF, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
+    # substitute :x and :y by access to the first column of a matrix u
+     V = sym_subst.( V, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
+    DV = sym_subst.(DV, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
 
     quote
-         (u, p, t)  -> begin
+        (u, p, t) -> begin
             # take as input a  2x3 matrix which is interpreted the following way:
-            # [ x[1] A[1,1] A[1,2]
-            #   x[2] A[2,1] A[2,2] ]
+            # [ x[1] X[1,1] X[1,2]
+            #   x[2] X[2,1] X[2,2] ]
 
             # current
-            A = @SMatrix [ u[1,2] u[1,3]
+            X = @SMatrix [ u[1,2] u[1,3]
                            u[2,2] u[2,3] ]
-            DF = @SMatrix [ $(DF[1,1]) $(DF[1,2])
-                            $(DF[2,1]) $(DF[2,2]) ]
-            DA = DF * A
-            return @SMatrix [ $(F[1]) DA[1,1] DA[1,2]
-                              $(F[2]) DA[2,1] DA[2,2] ]
+            DV = @SMatrix [ $(DV[1,1]) $(DV[1,2])
+                            $(DV[2,1]) $(DV[2,2]) ]
+            DX = DV * X
+            return @SMatrix [ $(V[1]) DX[1,1] DX[1,2]
+                              $(V[2]) DX[2,1] DX[2,2] ]
         end
     end
 end
@@ -123,6 +122,28 @@ macro var_velo_from_stream(name::Symbol)
     haskey(stream_dict, name) || (@error "stream $name not defined")
     quote
         @var_velo_from_stream $(name) $(stream_dict[name])
+    end
+end
+
+"""
+    @vorticity_from_stream(name::Symbol, [code::Expr])
+
+Get the vorticity field as a function of `(x, y, t)` corresponding to a stream
+function on ``R^2``.
+"""
+macro vorticity_from_stream(H::Symbol, formulas::Expr)
+    _, DV = streamline_derivatives(H, formulas)
+
+    quote
+        (x, y, t) -> begin
+            return $(DV[1,1]) + $(DV[2,2])
+        end
+    end
+end
+macro vorticity_from_stream(name::Symbol)
+    haskey(stream_dict, name) || (@error "stream $name not defined")
+    quote
+        @vorticity_from_stream $(name) $(stream_dict[name])
     end
 end
 
@@ -138,15 +159,14 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
     ∇²H = expr_diff.(∇H,   [:x :y])
 
     # formula for streamlines (perpendicular to gradient)
-    F  = [:(-$(∇H[2])), ∇H[1]]
+    V  = [:(-$(∇H[2])), ∇H[1]]
 
     # equation of variation for streamlines
-    DF = [:(-$(∇²H[2,1])) :(-$(∇²H[2,2]))
+    DV = [:(-$(∇²H[2,1])) :(-$(∇²H[2,2]))
                ∇²H[1,1]        ∇²H[1,2]  ]
 
-    return F, DF
+    return V, DV
 end
-
 
 ########################################################################################
 #            symbolic differentiation of expressions using SymEngine                   #
