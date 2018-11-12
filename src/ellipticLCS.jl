@@ -16,13 +16,13 @@ function singularity_location_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
     zdiff = z1-z2
     # C = Contour.contours(xspan,yspan,zdiff,[0.])
     cl = Contour.levels(Contour.contours(yspan, xspan, zdiff, [0.]))[1]
-    sitp = ITP.LinearInterpolation((yspan, xspan), z1)
+    sitp = ITP.LinearInterpolation((xspan, yspan), permutedims(z1))
     # itp = ITP.interpolate(z1, ITP.BSpline(ITP.Linear()))
     # sitp = ITP.extrapolate(ITP.scale(itp, yspan, xspan), (ITP.Reflect(), ITP.Reflect(), ITP.Reflect()))
     Xs, Ys = Float64[], Float64[]
     for line in Contour.lines(cl)
         yL, xL = Contour.coordinates(line)
-        zL = [sitp(yL[i], xL[i]) for i in eachindex(xL, yL)]
+        zL = [sitp(xL[i], yL[i]) for i in eachindex(xL, yL)]
         ind = findall(zL[1:end-1] .* zL[2:end] .<= 0)
         zLind = -zL[ind] ./ (zL[ind .+ 1] - zL[ind])
         Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
@@ -128,10 +128,10 @@ function compute_returning_orbit(calT::Float64,
     η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
     η = [SVector{2,T}(n[1],n[2]) for n in η]
 
-    ηitp = ITP.CubicSplineInterpolation((yspan, xspan), η)
+    ηitp = ITP.CubicSplineInterpolation((xspan, yspan), permutedims(η))
     # ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
     #                     yspan, xspan)
-    ηfield = (u,p,t) -> ηitp(u[2], u[1])
+    ηfield = (u,p,t) -> ηitp(u[1], u[2])
 
     prob = OrdinaryDiffEq.ODEProblem(ηfield, SVector{2}(seed[1], seed[2]), (0.,20.))
     condition(u,t,integrator) = u[2] - seed[2]
@@ -198,10 +198,10 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                                         pmax::Float64 = 1.3) where S <: Real
 
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    l1itp = ITP.LinearInterpolation((yspan, xspan), λ₁)
+    l1itp = ITP.LinearInterpolation((xspan, yspan), permutedims(λ₁))
     # l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear())),
     #                     yspan,xspan)
-    l2itp = ITP.LinearInterpolation((yspan, xspan), λ₂)
+    l2itp = ITP.LinearInterpolation((xspan, yspan), permutedims(λ₂))
     # l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear())),
     #                     yspan,xspan)
 
@@ -232,7 +232,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
             # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
             orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, 1, xspan, yspan)
             closed = norm(orbit[1] - orbit[end]) <= 1e-2
-            uniform = all([l1itp(p[2], p[1]) .<= Tsol .<= l2itp(p[2], p[1]) for p in orbit])
+            uniform = all([l1itp(p[1], p[2]) .<= Tsol .<= l2itp(p[1], p[2]) for p in orbit])
             # @show (closed, uniform)
             if (closed && uniform)
                 Tval[i] = Tsol
@@ -251,7 +251,7 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                 # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
                 orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, -1, xspan, yspan)
                 closed = norm(orbit[1] - orbit[end]) <= 1e-2
-                uniform = all([l1itp(p[2], p[1]) .<= Tsol .<= l2itp(p[2], p[1]) for p in orbit])
+                uniform = all([l1itp(p[1], p[2]) .<= Tsol .<= l2itp(p[1], p[2]) for p in orbit])
                 # @show (closed, uniform)
                 if (closed && uniform)
                     Tval[i] = Tsol
