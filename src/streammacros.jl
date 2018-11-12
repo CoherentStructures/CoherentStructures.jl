@@ -37,11 +37,20 @@ is treated as a series of symbolic substitutions. Starting from the symbol
 `name`, substitutions are performed until the resulting expression only depends
 on `x`, `y` and `t`.
 
-The macro returns an anonymous function `f(u,p,t)`` that returns a `SVector{2}``
-corresponding to the vector field at position `u` at time `t`.
+The macro returns an anonymous function with signature `(u,p,t)` that returns an
+`SVector{2}` corresponding to the vector field at position `u` at time `t`. The
+parameter slot is not used and can be filled with `nothing` when calling.
 
 The macro can be called without the `code` if the stream `name` has been defined
 beforehand via `@define_stream`.
+
+!!! note "Sign convention"
+    We follow the "oceanographic" sign convention, whereby the velocity ``v``
+    is derived from the stream function ``\\psi`` by
+
+    $$
+    v = (-\partial_y\psi, \partial_x\psi).
+    $$
 
 ### Examples
 ```jldoctest
@@ -78,7 +87,6 @@ julia> f2([1.0,1.0], nothing, 0.0)
  -2.0
   2.0
 ```
-
 """
 macro velo_from_stream(H::Symbol, formulas::Expr)
     V, _ = streamline_derivatives(H, formulas)
@@ -130,6 +138,16 @@ end
 
 Get the vorticity field as a function of `(x, y, t)` corresponding to a stream
 function on ``R^2``.
+
+!!! note "Sign convention"
+    The vorticity ``\\omega`` of the velocity field ``v = (v_x, v_y)`` is defined
+    as derived from the stream function ``\\psi`` by
+
+    $$
+    \omega = \partial_x v_x - \partial_y v_y) = trace(\nabla^2\psi),
+    $$
+
+    i.e., the trace of the Hessian of the stream function.
 """
 macro vorticity_from_stream(H::Symbol, formulas::Expr)
     _, DV = streamline_derivatives(H, formulas)
