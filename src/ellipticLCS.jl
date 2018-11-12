@@ -1,5 +1,13 @@
 # (c) 2018 Daniel Karrasch
 
+struct EllipticVortex{T <: Real}
+    curve::Vector{Tuple{T,T}}
+    p::Float64
+    s::Bool
+end
+# EllipticVortex(c::Vector{Tuple{T,T}}, p::Float64, s::Bool) where {T <: Real} =
+#     EllipticVortex{T}(c, p, s)
+
 """
     singularity_location_detection(T, xspan, yspan)
 
@@ -96,7 +104,7 @@ of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
 eastwards. All points are guaranteed to lie in the computational domain given
 by `xspan` and `yspan`.
 """
-function set_Poincaré_section(vc::AbstractVector{S},
+function set_Poincaré_section(vc::SVector{2,S},
                                 p_length::Float64,
                                 n_seeds::Int,
                                 xspan::AbstractVector{S},
@@ -104,8 +112,8 @@ function set_Poincaré_section(vc::AbstractVector{S},
 
     xmin, xmax = extrema(xspan)
     ymin, ymax = extrema(yspan)
-    p_section::Vector{Vector{S}} = [vc]
-    eₓ = [1., 0.]
+    p_section::Vector{SVector{2,S}} = [vc]
+    eₓ = SVector{2,S}(1., 0.)
     pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
     idxs = [all(p .<= [xmax, ymax]) && all(p .>= [xmin, ymin]) for p in pspan]
     append!(p_section, pspan[idxs])
@@ -118,20 +126,20 @@ function compute_returning_orbit(calT::Float64,
                                  λ₂::AbstractMatrix{T},
                                  ξ₁::AbstractMatrix{Tensor{1,2,T,2}},
                                  ξ₂::AbstractMatrix{Tensor{1,2,T,2}},
-                                 s::Int,
+                                 s::Bool,
                                  xspan::AbstractVector{T},
                                  yspan::AbstractVector{T}) where T <: Real
 
     Δλ = λ₂ - λ₁
     α = real.(sqrt.(Complex.((λ₂ .- calT) ./ Δλ)))
     β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
-    η = isposdef(s) ? α .* ξ₁ + β .* ξ₂ : α .* ξ₁ - β .* ξ₂
+    η = α .* ξ₁ + (-1) ^ s * β .* ξ₂
     η = [SVector{2,T}(n[1],n[2]) for n in η]
 
     ηitp = ITP.CubicSplineInterpolation((xspan, yspan), permutedims(η))
     # ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
     #                     yspan, xspan)
-    ηfield = (u,p,t) -> ηitp(u[1], u[2])
+    ηfield = (u, p, t) -> ηitp(u[1], u[2])
 
     prob = OrdinaryDiffEq.ODEProblem(ηfield, SVector{2}(seed[1], seed[2]), (0.,20.))
     condition(u,t,integrator) = u[2] - seed[2]
@@ -147,11 +155,11 @@ function Poincaré_return_distance(calT::Float64,
                                     λ₂::AbstractMatrix{T},
                                     ξ₁::AbstractMatrix{Tensor{1,2,T,2}},
                                     ξ₂::AbstractMatrix{Tensor{1,2,T,2}},
-                                    signum::Int,
+                                    signum::Bool,
                                     xspan::AbstractVector{T},
                                     yspan::AbstractVector{T}) where T <: Real
 
-    sol = compute_returning_orbit(calT,seed,λ₁,λ₂,ξ₁,ξ₂,signum,xspan,yspan)
+    sol = compute_returning_orbit(calT, seed, λ₁, λ₂, ξ₁, ξ₂, signum, xspan, yspan)
     if abs(sol[end][2] - seed[2]) <= 1e-2
         return sol[end][1] - seed[1]
     else
@@ -190,7 +198,7 @@ tensor field `T`, where the total computational domain is spanned by `xspan`
 and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
 shift parameters in which closed orbits are sought.
 """
-function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
+function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
                                         T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
@@ -214,15 +222,16 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
 
     # go along the Poincaré section and solve for T
     # first, define a nonlinear root finding problem
-    Tval = zeros(length(pSection)-1)
-    s = zeros(Int,length(pSection)-1)
-    orbits = Vector{Vector{Vector{Float64}}}(undef, length(pSection)-1)
+    Tval = zeros(length(pSection) - 1)
+    s = falses(length(pSection) - 1)
+    orbits = Vector{Vector{Tuple{S,S}}}(undef, length(pSection) - 1)
     for i in eachindex(pSection[2:end])
         # println(i)
         Tsol = zero(Float64)
-        prd(calT,signum) = Poincaré_return_distance(calT,pSection[i+1],λ₁,λ₂,ξ₁,ξ₂,signum,xspan,yspan)
-        prd_plus(calT) = prd(calT,1)
-        prd_minus(calT) = prd(calT,-1)
+        prd(calT, signum) = Poincaré_return_distance(calT, pSection[i+1], λ₁, λ₂,
+                                                    ξ₁, ξ₂, signum, xspan, yspan)
+        prd_plus(calT)  = prd(calT, false)
+        prd_minus(calT) = prd(calT, true)
         try
             Tsol = bisection(prd_plus, pmin, pmax)
             # @show Tsol
@@ -230,14 +239,14 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
             # Tsol = fzero(prd_plus,pmin,pmax,order=2,abstol=5e-3,reltol=1e-4)
             # Tsol = fzero(prd_plus,1.,[pmin,pmax])
             # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
-            orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, 1, xspan, yspan)
+            orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, false, xspan, yspan)
             closed = norm(orbit[1] - orbit[end]) <= 1e-2
             uniform = all([l1itp(p[1], p[2]) .<= Tsol .<= l2itp(p[1], p[2]) for p in orbit])
             # @show (closed, uniform)
             if (closed && uniform)
                 Tval[i] = Tsol
-                orbits[i] = orbit
-                s[i] = 1
+                orbits[i] = [p.data for p in orbit]
+                s[i] = false
             end
         catch
         end
@@ -249,22 +258,22 @@ function compute_outermost_closed_orbit(pSection::Vector{Vector{S}},
                 # Tsol = fzero(prd_plus,pmin,pmax,order=2,abstol=5e-3,reltol=1e-4)
                 # Tsol = fzero(prd_plus,1.,[pmin,pmax])
                 # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
-                orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, -1, xspan, yspan)
+                orbit = compute_returning_orbit(Tsol, pSection[i+1], λ₁, λ₂, ξ₁, ξ₂, true, xspan, yspan)
                 closed = norm(orbit[1] - orbit[end]) <= 1e-2
                 uniform = all([l1itp(p[1], p[2]) .<= Tsol .<= l2itp(p[1], p[2]) for p in orbit])
                 # @show (closed, uniform)
                 if (closed && uniform)
                     Tval[i] = Tsol
-                    orbits[i] = orbit
-                    s[i] = -1
+                    orbits[i] = [p.data for p in orbit]
+                    s[i] = true
                 end
             catch
             end
         end
     end
     outerInd = findlast(!iszero, Tval)
-    if outerInd != nothing
-        return Tval[outerInd], s[outerInd], orbits[outerInd]
+    if outerInd !== nothing
+        return EllipticVortex(orbits[outerInd], Tval[outerInd], s[outerInd])
     else
         return nothing
     end
@@ -322,17 +331,12 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     end
 
     # closed orbits extraction
-    calTs = Vector{Float64}()
-    signs = Vector{Int}()
-    orbits = Vector{Array{Float64,2}}()
+    vortices = Vector{EllipticVortex}()
     for co in closedorbits
-        try
-            push!(calTs,co[1])
-            push!(signs,co[2])
-            push!(orbits,hcat(co[3]...))
-        catch
+        if co !== nothing
+            push!(vortices, co)
         end
     end
-    println("Found $(length(signs)) vortices.")
-    return calTs, signs, orbits
+    println("Found $(length(vortices)) vortices.")
+    return vortices
 end
