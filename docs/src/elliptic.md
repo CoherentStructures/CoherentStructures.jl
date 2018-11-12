@@ -13,7 +13,7 @@ which was written in the context of the [SIAM Review paper](https://doi.org/10.1
 tensor field used, the functions below yield the following types of coherent structures:
    * black-hole/Lagrangian coherent vortices ([Haller & Beron-Vera, 2012](https://doi.org/10.1017/jfm.2013.391))
    * elliptic objective Eulerian coherent structures (OECSs) ([Serra & Haller, 2016](https://dx.doi.org/10.1063/1.4951720))
-   * material diffusive transport barriers (Haller, Karrasch, and Kogelbauer, 2018)
+   * material diffusive transport barriers ([Haller, Karrasch, and Kogelbauer, 2018](https://doi.org/10.1073/pnas.1720177115))
 The general procedure is the following. Assume $T$ is the symmetric tensor field of interest, say, (i) the Cauchy-Green strain tensor field $C$, (ii) the rate-of-strain tensor field $S$, or (iii) the averaged diffusion-weighted Cauchy-Green tensor field $\bar{C}_D$; cf. the references above. Denote by $0<\lambda_1\leq\lambda_2$ the eigenvalue and by $\xi_1$ and $\xi_2$ the corresponding eigenvector fields of $T$. Then the direction fields of interest are given by
 
 $\eta_{\lambda}^{\pm} := \sqrt{\frac{\lambda_2 - \lambda}{\lambda_2-\lambda_1}}\xi_1 \pm \sqrt{\frac{\lambda - \lambda_1}{\lambda_2-\lambda_1}}\xi_2.$
@@ -29,13 +29,19 @@ Then, the algorithm put forward in [Karrasch et al., 2015](https://dx.doi.org/10
 
 ## Function documentation
 
-The fully automated meta-function is the following:
+The fully automated high-level function is:
 
 ```@docs
 ellipticLCS
 ```
 
-Essentially, it calls sequentially the following functions.
+Its output is a vector of objects of type `EllipticVortex`.
+
+```@docs
+EllipticVortex
+```
+
+The function `ellipticLCS` calls sequentially the following functions.
 
 ```@docs
 singularity_location_detection

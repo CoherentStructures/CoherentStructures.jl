@@ -1,5 +1,21 @@
 # (c) 2018 Daniel Karrasch
 
+```
+    struct EllipticVortex
+
+This is a container for coherent vortex boundaries. An object `vortex` of type
+`EllipticVortex` can be easily plotted by `plot(vortex.curve)`, or
+`plot!([figure, ]vortex.curve; plotting keywords)` if it is to be overlaid on an
+existing plot.
+
+## Fields
+* `curve`: a list of tuples; contains the coordinates of coherent vortex boundary
+  points.
+* `p`: contains the parameter value of the direction field $\eta_{\lambda}^{\pm}$,
+  for the `curve` is a closed orbit.
+* `s`: a `Bool` value, which encodes the sign in the formula of the direction
+  field $\eta_{\lambda}^{\pm}$ via the formula ``(-1)^s``.
+```
 struct EllipticVortex{T <: Real}
     curve::Vector{Tuple{T,T}}
     p::Float64
