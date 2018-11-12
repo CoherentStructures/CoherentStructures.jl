@@ -47,10 +47,7 @@ beforehand via `@define_stream`.
 !!! note "Sign convention"
     We follow the "oceanographic" sign convention, whereby the velocity ``v``
     is derived from the stream function ``\\psi`` by
-
-    $$
-    v = (-\partial_y\psi, \partial_x\psi).
-    $$
+    ``v = (-\\partial_y\\psi, \\partial_x\\psi).``
 
 ### Examples
 ```jldoctest
@@ -87,6 +84,7 @@ julia> f2([1.0,1.0], nothing, 0.0)
  -2.0
   2.0
 ```
+
 """
 macro velo_from_stream(H::Symbol, formulas::Expr)
     V, _ = streamline_derivatives(H, formulas)
@@ -141,13 +139,9 @@ function on ``R^2``.
 
 !!! note "Sign convention"
     The vorticity ``\\omega`` of the velocity field ``v = (v_x, v_y)`` is defined
-    as derived from the stream function ``\\psi`` by
-
-    $$
-    \omega = \partial_x v_x - \partial_y v_y) = trace(\nabla^2\psi),
-    $$
-
-    i.e., the trace of the Hessian of the stream function.
+    as derived from the stream function ``\\psi`` by ``\\omega = \\partial_x v_x -
+    \\partial_y v_y) = trace(\\nabla^2\\psi)``, i.e., the trace of the Hessian of
+    the stream function.
 """
 macro vorticity_from_stream(H::Symbol, formulas::Expr)
     _, DV = streamline_derivatives(H, formulas)
