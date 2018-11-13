@@ -6,6 +6,8 @@ export
 	ADimplicitEulerStep,
 
 	#ellipticLCS.jl
+	EllipticVortex,
+	LCSParameters,
 	singularity_location_detection,
 	singularity_type_detection,
 	detect_elliptic_region,
