@@ -69,8 +69,8 @@ function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
     E = eigen(T)
     λ₁ = eigvals(E)[1]
     λ₂ = eigvals(E)[2]
-    ξ₁ = eigvecs(E)[:,1]
-    ξ₂ = eigvecs(E)[:,2]
+    ξ₁ = SVector{2}(eigvecs(E)[:,1])
+    ξ₂ = SVector{2}(eigvecs(E)[:,2])
     traceT = tr(T)
     detT = det(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
@@ -79,8 +79,8 @@ function tensor_invariants(T::AbstractArray{SymmetricTensor{2,2,S,3}}) where S <
     E = eigen.(T)
     λ₁ = [ev[1] for ev in eigvals.(E)]
     λ₂ = [ev[2] for ev in eigvals.(E)]
-    ξ₁ = [ev[:,1] for ev in eigvecs.(E)]
-    ξ₂ = [ev[:,2] for ev in eigvecs.(E)]
+    ξ₁ = [SVector{2}(ev[:,1]) for ev in eigvecs.(E)]
+    ξ₂ = [SVector{2}(ev[:,2]) for ev in eigvecs.(E)]
     traceT = tr.(T)
     detT = det.(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
