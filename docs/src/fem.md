@@ -81,48 +81,66 @@ given a series of coefficients that represent a function in the approximation sp
 ```@example 6
 using CoherentStructures #hide
 using Plots
-ctx = regularP2TriangularGrid((10,10))
+ctx = regularP2TriangularGrid((10, 10))
 u = zeros(ctx.n)
 u[45] = 1.0
-Plots.heatmap(range(0,stop=1,length=200),range(0,stop=1,length=200), (x,y)->evaluate_function_from_nodevals(ctx,u,[x,y]))
+Plots.heatmap(range(0, stop=1, length=200),range(0, stop=1, length=200),
+    (x, y) -> evaluate_function_from_nodevals(ctx, u, [x, y]))
 ```
-For more details, consult the API: [`evaluate_function_from_dofvals`](@ref), [`evaluate_function_from_nodevals`](@ref)
+
+For more details, consult the API: [`evaluate_function_from_dofvals`](@ref),
+[`evaluate_function_from_nodevals`](@ref)
 
 ## Nodal Interpolation
 
-To perform nodal interpolation of a grid, use the [`nodal_interpolation`](@ref) function.
+To perform nodal interpolation of a grid, use the [`nodal_interpolation`](@ref)
+function.
 
 ## Boundary Conditions
 
-To use something other than the natural homogeneous von Neumann boundary conditions, the `CoherentStructures.boundaryData` type can be used. This currently supports combinations of homogeneous Dirichlet and periodic boundary conditions.
- - Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass matrices to be deleted
- - Periodic boundary conditions require rows and columns of the stiffness/mass matrices to be added to each other.
+To use something other than the natural homogeneous von Neumann boundary
+conditions, the `CoherentStructures.boundaryData` type can be used. This currently
+supports combinations of homogeneous Dirichlet and periodic boundary conditions.
+ - Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass
+   matrices to be deleted
+ - Periodic boundary conditions require rows and columns of the stiffness/mass
+   matrices to be added to each other.
 
- This means that the coefficient vectors for elements of the approximation space that satisfy the boundary conditions are potentially smaller and in a different order. Given a `bdata` argument, functions like `plot_u` will take this into account.
+This means that the coefficient vectors for elements of the approximation space
+that satisfy the boundary conditions are potentially smaller and in a different
+order. Given a `bdata` argument, functions like `plot_u` will take this into
+account.
 
 ### Constructing Boundary Conditions
 
 Natural von-Neumann boundary conditions can be constructed with:
 `boundaryData()` and are generally the default
 
-Homogeneous Dirichlet boundary conditions can be constructed with the `getHomDBCS(ctx,[which="all"])` function. The optional `which` parameter is a vector of strings, corresponding to `JuAFEM` face-sets, e.g. `getHomDBCS(ctx,which=["left","right"])`
+Homogeneous Dirichlet boundary conditions can be constructed with the
+`getHomDBCS(ctx[, which="all"])` function. The optional `which` parameter is a
+vector of strings, corresponding to `JuAFEM` face-sets, e.g.
+`getHomDBCS(ctx, which=["left", "right"])`
 
-Periodic boundary conditions are constructed by calling `boundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a function that should return `true` if and only if two points should be identified. Due to floating-point rounding errors, note that using exact comparisons (`==`) should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are considered. If this is too restrictive, use the `boundaryData(dbc_dofs, periodic_dofs_from,periodic_dofs_to)` constructor.
+Periodic boundary conditions are constructed by calling `boundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a
+function that should return `true` if and only if two points should be identified.
+Due to floating-point rounding errors, note that using exact comparisons (`==`)
+should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are
+considered. If this is too restrictive, use the
+`boundaryData(dbc_dofs, periodic_dofs_from, periodic_dofs_to)` constructor.
 
-For details, see [`boundaryData`](@ref)
-
+For details, see [`boundaryData`](@ref).
 
 ### Example
 
-Here we apply Homogeneous DBC to top and bottom, and identify the left and right side:
+Here we apply homogeneous DBC to top and bottom, and identify the left and right side:
 ```@example 6
 using CoherentStructures
-ctx = regularQuadrilateralGrid((10,10))
-predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1],p2[1],1.0) < 1e-10
-bdata = boundaryData(ctx,predicate,["top","bottom"])
-u = ones(nDofs(ctx,bdata))
+ctx = regularQuadrilateralGrid((10, 10))
+predicate = (p1, p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 1.0) < 1e-10
+bdata = boundaryData(ctx, predicate, ["top", "bottom"])
+u = ones(nDofs(ctx, bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
-plot_u(ctx,u,200,200,bdata=bdata,colorbar=:none)
+plot_u(ctx, u, 200, 200, bdata=bdata, colorbar=:none)
 ```
 
 To apply boundary conditions to a stiffness/mass matrix, use the `applyBCS` function. Note that `assembleStiffnessMatrix` and `assembleMassMatrix` take a `bdata` argument that does this internally.
@@ -139,12 +157,10 @@ Many of the plotting functions support parallelism internally.
 Tensor fields can be constructed in parallel, and then passed to [`assembleStiffnessMatrix`](@ref). For an example that does this, see
 TODO: Add this example
 
-
 ## FEM-API
 ```@meta
 CurrentModule = CoherentStructures
 ```
-
 
 ### Stiffness and Mass Matrices
 ```@docs
@@ -181,6 +197,7 @@ All of these methods return a `gridContext` object.
 ```@docs
 CoherentStructures.gridContext
 ```
+
 #### Irregular grids
 The constructors for `CoherentStructures.gridContext`, including one for irregular Delaunay grids, are not exported by default, the documentation is available through the REPL:
 
