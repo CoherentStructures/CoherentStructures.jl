@@ -38,7 +38,7 @@ vortices = ellipticLCS(C̅, xspan, yspan, LCSparams);
 The result is visualized as follows:
 ```@example 1
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
+fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
             title="DBS-field and transport barriers", xlims=(xmin, xmax), ylims=(ymin, ymax), leg=true)
 for vortex in vortices
     Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
