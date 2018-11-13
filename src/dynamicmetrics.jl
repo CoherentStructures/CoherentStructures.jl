@@ -3,10 +3,6 @@
 import Distances: result_type, evaluate, eval_start, eval_op
 import Distances: eval_reduce, eval_end, pairwise, pairwise!
 
-struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
-    periods::W
-end
-
 """
     PEuclidean(L)
 Create a Euclidean metric on a rectangular periodic domain.
@@ -20,10 +16,13 @@ julia> using Distances
 julia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]
 ([0.0, 0.0], [0.7, 0.0], [0.5, Inf])
 
-julia> evaluate(PEuclidean(L),x,y)
+julia> evaluate(CoherentStructures.PEuclidean(L),x,y)
 0.19999999999999996
 ```
 """
+struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
+    periods::W
+end
 PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
