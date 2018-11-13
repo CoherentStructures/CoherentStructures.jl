@@ -242,14 +242,13 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
     # for computational tractability, pre-orient the eigenvector fields
     Ω = SMatrix{2,2}(0., -1., 1., 0.)
     relP = [SVector{2}(x, y) - pSection[1] for y in yspan, x in xspan]
-    n = [Ω * p for p in relP]
+    n = [Ω] .* relP
     ξ₁ .= sign.(n .⋅ ξ₁) .* ξ₁
     ξ₂ .= sign.(relP .⋅ ξ₂) .* ξ₂
     ηfield(calT::Float64, signum::Bool) = begin
-        α = real.(sqrt.(Complex.((λ₂ .- calT) ./ Δλ)))
-        β = real.(sqrt.(Complex.((calT .- λ₁) ./ Δλ)))
+        α = real.(sqrt.(complex.((λ₂ .- calT) ./ Δλ)))
+        β = real.(sqrt.(complex.((calT .- λ₁) ./ Δλ)))
         η = α .* ξ₁ .+ (-1) ^ signum * β .* ξ₂
-        # η = [SVector{2,S}(n[1], n[2]) for n in η]
         ηitp = ITP.CubicSplineInterpolation((xspan, yspan), permutedims(η))
         # ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
         #                     yspan, xspan)
@@ -266,15 +265,9 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
     s = falses(length(pSection) - 1)
     orbits = Vector{Vector{Tuple{S,S}}}(undef, length(pSection) - 1)
     for i in eachindex(pSection[2:end])
-        # println(i)
         Tsol = zero(Float64)
         try
             Tsol = bisection(λ -> prd(λ, false, pSection[i+1]), pmin, pmax)
-            # @show Tsol
-            # Tsol = fzero(prd_plus,pmin,pmax,abstol=5e-3,reltol=1e-4)
-            # Tsol = fzero(prd_plus,pmin,pmax,order=2,abstol=5e-3,reltol=1e-4)
-            # Tsol = fzero(prd_plus,1.,[pmin,pmax])
-            # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
             orbit = compute_returning_orbit(ηfield(Tsol, false), pSection[i+1])
             closed = norm(orbit[1] - orbit[end]) <= 1e-2
             uniform = all([l1itp(p[1], p[2]) <= Tsol <= l2itp(p[1], p[2]) for p in orbit])
@@ -290,11 +283,6 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
         if iszero(Tsol)
             try
                 Tsol = bisection(λ -> prd(λ, true, pSection[i+1]), pmin, pmax)
-                # @show Tsol
-                # Tsol = fzero(prd_plus,pmin,pmax,abstol=5e-3,reltol=1e-4)
-                # Tsol = fzero(prd_plus,pmin,pmax,order=2,abstol=5e-3,reltol=1e-4)
-                # Tsol = fzero(prd_plus,1.,[pmin,pmax])
-                # Tsol = find_zero(prd_plus,1.,Order2(),bracket=[pmin,pmax],abstol=5e-3,reltol=1e-4)
                 orbit = compute_returning_orbit(ηfield(Tsol, true), pSection[i+1])
                 closed = norm(orbit[1] - orbit[end]) <= 1e-2
                 uniform = all([l1itp(p[1], p[2]) <= Tsol <= l2itp(p[1], p[2]) for p in orbit])
