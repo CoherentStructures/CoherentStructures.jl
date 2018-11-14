@@ -1,10 +1,10 @@
 # (c) 2018 Daniel Karrasch
 
 """
-    struct EllipticVortex
+    struct EllipticBarrier
 
 This is a container for coherent vortex boundaries. An object `vortex` of type
-`EllipticVortex` can be easily plotted by `plot(vortex.curve)`, or
+`EllipticBarrier` can be easily plotted by `plot(vortex.curve)`, or
 `plot!([figure, ]vortex.curve)` if it is to be overlaid over an existing plot.
 
 ## Fields
@@ -15,7 +15,7 @@ This is a container for coherent vortex boundaries. An object `vortex` of type
 * `s`: a `Bool` value, which encodes the sign in the formula of the direction
   field ``\\eta_{\\lambda}^{\\pm}`` via the formula ``(-1)^s``.
 """
-struct EllipticVortex{T <: Real}
+struct EllipticBarrier{T <: Real}
     curve::Vector{Tuple{T,T}}
     p::Float64
     s::Bool
@@ -299,7 +299,7 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
     end
     outerInd = findlast(!iszero, Tval)
     if outerInd !== nothing
-        return EllipticVortex(orbits[outerInd], Tval[outerInd], s[outerInd])
+        return EllipticBarrier(orbits[outerInd], Tval[outerInd], s[outerInd])
     else
         return nothing
     end
@@ -354,7 +354,7 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     end
 
     # closed orbits extraction
-    vortices = Vector{EllipticVortex}()
+    vortices = Vector{EllipticBarrier}()
     for co in closedorbits
         if co !== nothing
             push!(vortices, co)
