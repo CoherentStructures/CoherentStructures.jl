@@ -542,9 +542,9 @@ If
 function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),LL::AbstractVector=[0.0,0.0], UR::AbstractVector=[1.0,1.0];
                                 quadrature_order::Int=default_quadrature_order, PC=false)
     if PC == false
-        ip = JFM.Lagrange{2,JFM.RefTetrahedron,1}
+        ip = JFM.Lagrange{2,JFM.RefTetrahedron,1}()
     else
-        ip = JFM.PiecewiseConstant{2,JuAFEMRefTetrahedron,1}
+        ip = JFM.PiecewiseConstant{2,JuAFEMRefTetrahedron,1}()
     end
     ctx =  gridContext{2}(JFM.Triangle,
             numnodes, LL, UR;
@@ -648,9 +648,9 @@ function regularQuadrilateralGrid(
             PC=false
         )
     if !PC
-        ip = JFM.Lagrange{2,JFM.RefCube,1}
+        ip = JFM.Lagrange{2,JFM.RefCube,1}()
     else
-        ip = JFM.PiecewiseConstant{2,JFM.RefCube,1}
+        ip = JFM.PiecewiseConstant{2,JFM.RefCube,1}()
     end
     ctx = gridContext{2}(JFM.Quadrilateral,
          numnodes, LL, UR;
@@ -1096,9 +1096,9 @@ function sample_to(u::AbstractArray{T,2},
     u_node_or_cellvals = zeros(T, ctx_old.n,ncols)
     for j in 1:ncols
         if isa(ctx_old.ip, JFM.Lagrange)
-            u_node_or_cellvals[:,j] = undoBCS(ctx_old,u[:,j],bdata)[ctx.node_to_dof]
+            u_node_or_cellvals[:,j] = undoBCS(ctx_old,u[:,j],bdata)[ctx_old.node_to_dof]
         else
-            u_node_or_cellvals[:,j] = undoBCS(ctx_old,u[:,j],bdata)[ctx.node_to_dof]
+            u_node_or_cellvals[:,j] = undoBCS(ctx_old,u[:,j],bdata)[ctx_old.cell_to_dof]
         end
     end
 

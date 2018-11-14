@@ -77,19 +77,20 @@ See [Stiffness and Mass Matrices](@ref) from the [FEM-API](@ref) section.
 
 ## Evaluating Functions in the Approximation Space
 
-given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_nodevals` or `evaluate_function_from_dofvals` functions.
+given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_node_or_cellvals` or `evaluate_function_from_dofvals` functions.
 ```@example 6
 using CoherentStructures #hide
 using Plots
-ctx = regularP2TriangularGrid((10, 10))
+ctx, _ = regularP2TriangularGrid((10, 10))
 u = zeros(ctx.n)
 u[45] = 1.0
 Plots.heatmap(range(0, stop=1, length=200),range(0, stop=1, length=200),
-    (x, y) -> evaluate_function_from_nodevals(ctx, u, [x, y]))
+    (x, y) -> evaluate_function_from_dofvals(ctx, u, [x, y]))
 ```
 
 For more details, consult the API: [`evaluate_function_from_dofvals`](@ref),
-[`evaluate_function_from_nodevals`](@ref)
+[`evaluate_function_from_node_or_cellvals`](@ref)
+[`evaluate_function_from_node_or_cellvals_multiple`](@ref)
 
 ## Nodal Interpolation
 
@@ -135,7 +136,7 @@ For details, see [`boundaryData`](@ref).
 Here we apply homogeneous DBC to top and bottom, and identify the left and right side:
 ```@example 6
 using CoherentStructures
-ctx = regularQuadrilateralGrid((10, 10))
+ctx, _ = regularQuadrilateralGrid((10, 10))
 predicate = (p1, p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 1.0) < 1e-10
 bdata = boundaryData(ctx, predicate, ["top", "bottom"])
 u = ones(nDofs(ctx, bdata))
@@ -171,8 +172,14 @@ assembleMassMatrix
 ### Constructing Grids
 
 There are several helper functions available for constructing grids. The simplest is:
+#### In 1D
 ```@docs
-regular2DGrid
+regular1dGrid
+regular1dP2Grid
+```
+### In 2D
+```@docs
+regular2dGrid
 ```
 Supported values for the `gridType` argument are:
 ```@example
@@ -182,27 +189,23 @@ CoherentStructures.regular2DGridTypes
 The following functions are conceptually similar:
 ```@docs
 regularTriangularGrid
-#regularDelaunayGrid #TODO 1.0
+regularDelaunayGrid
+irregularDelaunayGrid
 regularP2TriangularGrid
-#regularP2DelaunayGrid #TODO 1.0
+regularP2DelaunayGrid
 regularQuadrilateralGrid
 regularP2QuadrilateralGrid
+
 ```
 In 3D we have
 ```@docs
 regularTetrahedralGrid
 regularP2TetrahedralGrid
 ```
-All of these methods return a `gridContext` object.
+All of these methods return a `gridContext` object and a `boundaryData` object. The latter is only relevant when using
+a Delaunay grid with `on_torus==true`.
 ```@docs
 CoherentStructures.gridContext
-```
-
-#### Irregular grids
-The constructors for `CoherentStructures.gridContext`, including one for irregular Delaunay grids, are not exported by default, the documentation is available through the REPL:
-
-``` #TODO: add @docs here once it works
-help?> (::Type{CoherentStructures.gridContext{2}})
 ```
 
 ### Boundary Conditions API
@@ -221,7 +224,8 @@ getDofCoordinates
 
 ```@docs
 evaluate_function_from_dofvals
-evaluate_function_from_nodevals
+evaluate_function_from_node_or_cellvals
+evaluate_function_from_node_or_cellvals_multiple
 ```
 
 ```@docs

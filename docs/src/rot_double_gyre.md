@@ -22,7 +22,7 @@ The following code-snippet shows how these methods can be used.
 ```@example 1
 using CoherentStructures, Arpack
 LL = [0.0, 0.0]; UR = [1.0, 1.0];
-ctx = regularTriangularGrid((50, 50), LL, UR)
+ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 
 A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
 K = assembleStiffnessMatrix(ctx, A)
@@ -52,7 +52,7 @@ We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) pack
 ```@example 1
 using Clustering
 
-ctx2 = regularTriangularGrid((200, 200))
+ctx2, _ = regularTriangularGrid((200, 200))
 v_upsampled = sample_to(v, ctx, ctx2)
 
 numclusters=2
@@ -66,10 +66,10 @@ Here, we demonstrate how to calculate black-hole vortices, see
 [Geodesic elliptic material vortices](@ref) for references and details.
 ```@example 2
 using CoherentStructures
-using Tensors, OrdinaryDiffEq, Plots
+using Tensors, OrdinaryDiffEq, Plots,StaticArrays
 
 const q = 51
-const tspan = range(0., stop=1., length=q))
+const tspan = range(0., stop=1., length=q)
 ny = 101
 nx = 101
 N = nx * ny

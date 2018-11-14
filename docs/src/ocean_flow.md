@@ -73,7 +73,7 @@ Next we set up the domain. We want to use zero Dirichlet boundary conditions her
 ```@example 5
 LL = [-4.0, -34.0]
 UR = [6.0, -28.0]
-ctx = regularTriangularGrid((150, 90), LL, UR)
+ctx, _  = regularTriangularGrid((150, 90), LL, UR)
 bdata = getHomDBCS(ctx, "all");
 ```
 

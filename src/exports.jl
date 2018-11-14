@@ -44,6 +44,8 @@ export
 	assembleMassMatrix,
 
 	#gridfunctions.jl
+	regular1dGridTypes,
+	regular2dGridTypes,
 	regular1dGrid,
 	regular1dP2Grid,
 	regularTriangularGrid,
@@ -57,11 +59,9 @@ export
 	regularTetrahedralGrid,
 	regularP2TetrahedralGrid,
 	regularGrid,
-	periodicDelaunayGrid,
-	randomPeriodicDelaunayGrid,
-	aperiodicDelaunayGrid,
+	randomDelaunayGrid,
 	evaluate_function_from_dofvals,
-	evaluate_function_from_nodevals,
+	evaluate_function_from_node_or_cellvals,
 	locatePoint,
 	nodal_interpolation,
     sample_to,

@@ -25,7 +25,7 @@ Plots.scatter([x[1] for x in to_plot],[x[2] for x in to_plot],
 Approximating the Dynamical Laplacian by FEM methods is straightforward:
 ```@example 1
 using Tensors, Plots, Arpack, Printf
-ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
+ctx, _ = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
 pred  = (x,y) -> peuclidean(x[1],y[1],2π) < 1e-9 && peuclidean(x[2],y[2],2π) < 1e-9
 bdata = boundaryData(ctx,pred) #Periodic boundary
 
