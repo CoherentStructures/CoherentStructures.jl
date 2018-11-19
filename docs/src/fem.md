@@ -87,17 +87,17 @@ See [Stiffness and Mass Matrices](@ref) from the [FEM-API](@ref) section.
 given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_node_or_cellvals` or `evaluate_function_from_dofvals` functions.
 ```@example 6
 using CoherentStructures #hide
-using Plots
+using Plots, Tensors
 ctx, _ = regularP2TriangularGrid((10, 10))
 u = zeros(ctx.n)
 u[45] = 1.0
 Plots.heatmap(range(0, stop=1, length=200),range(0, stop=1, length=200),
-    (x, y) -> evaluate_function_from_dofvals(ctx, u, [x, y]))
+    (x, y) -> evaluate_function_from_dofvals(ctx, u, Vec(x, y)))
 ```
 
 For more details, consult the API: [`evaluate_function_from_dofvals`](@ref),
-[`evaluate_function_from_node_or_cellvals`](@ref).
-![`evaluate_function_from_node_or_cellvals_multiple`](@ref)
+[`evaluate_function_from_node_or_cellvals`](@ref),
+[`evaluate_function_from_node_or_cellvals_multiple`](@ref)
 
 ## Nodal Interpolation
 
