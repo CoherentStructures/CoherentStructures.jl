@@ -191,7 +191,7 @@ regular2dGrid
 Supported values for the `gridType` argument are:
 ```@example
 using CoherentStructures #hide
-CoherentStructures.regular2DGridTypes
+CoherentStructures.regular2dGridTypes
 ```
 The following functions are conceptually similar:
 ```@docs
