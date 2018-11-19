@@ -195,7 +195,6 @@ regularP2TriangularGrid
 regularP2DelaunayGrid
 regularQuadrilateralGrid
 regularP2QuadrilateralGrid
-
 ```
 In 3D we have
 ```@docs

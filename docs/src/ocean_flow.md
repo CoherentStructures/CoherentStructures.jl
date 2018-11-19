@@ -94,7 +94,7 @@ where $S_0$ is the stiffness matrix for the triangulation at initial time, and $
 ```@example 5
 M = assembleMassMatrix(ctx, bdata=bdata)
 S0 = assembleStiffnessMatrix(ctx)
-S1 = adaptiveTO(ctx, flow_map)
+S1 = adaptiveTOCollocationStiffnessMatrix(ctx, flow_map)
 
 #Average matrices and apply boundary conditions
 S = applyBCS(ctx, 0.5(S0 + S1), bdata);
@@ -110,7 +110,7 @@ We upsample the eigenfunctions and then cluster.
 ```@example 5
 using Clustering
 
-ctx2 = regularTriangularGrid((200, 120), LL, UR)
+ctx2,_ = regularTriangularGrid((200, 120), LL, UR)
 v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
 
 #Run k-means several times, keep the best result
