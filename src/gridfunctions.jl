@@ -857,17 +857,15 @@ end
 
 
 """
-    evaluate_function_from_node_or_cellvals(ctx,vals,x_in; [outside_value=0, project_in=false])
+    evaluate_function_from_node_or_cellvals(ctx, vals, x_in; outside_value=0, project_in=false)
 
-Like `evaluate_function_from_dofvals`, but the coefficients from `vals` are assumed to be in node order.
-This is more efficient than `evaluate_function_from_dofvals`
+Like `evaluate_function_from_dofvals`, but the coefficients from `vals` are
+assumed to be in node order. This is more efficient than
+`evaluate_function_from_dofvals`.
 """
 function evaluate_function_from_node_or_cellvals(
-    ctx::gridContext{dim}, vals::AbstractVector{S},
-    x_in::Vec{dim,W}; outside_value=0.0, project_in=false
-    )::W where {
-        dim,S,W,
-        }
+    ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
+    outside_value=0.0, project_in=false)::W where {dim,S,W}
 
     x::Vec{dim,W} = project_in_xin(ctx,x_in,project_in)
 
@@ -913,18 +911,16 @@ For evaluation at many points, or for many dofvals, the function `evaluate_funct
 is more efficient.
 """
 function evaluate_function_from_dofvals(
-    ctx::gridContext{dim}, vals::AbstractVector{S},
-    x_in::Vec{dim,W}; outside_value=0.0, project_in=false
-    )::W where {
-        dim,S,W,
-        }
+    ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
+    outside_value=0.0, project_in=false)::W where {dim,S,W}
+
     if isa(ctx.ip, JFM.Lagrange)
         vals_reorder = vals[ctx.node_to_dof]
     else
         vals_reorder = vals[ctx.cell_to_dof]
     end
     return evaluate_function_from_node_or_cellvals(
-            ctx,vals_reorder, x_in;
+            ctx, vals_reorder, x_in;
             outside_value=outside_value,
             project_in=project_in
             )
@@ -932,7 +928,7 @@ end
 
 
 """
-    evaluate_function_from_node_or_cellvals_multiple(ctx,vals,xin;is_diag=false,kwargs...)
+    evaluate_function_from_node_or_cellvals_multiple(ctx, vals, xin; is_diag=false, kwargs...)
 
 Like `evaluate_function_from_dofvals_multiple` but uses node- (or cell- if piecewise constant interpolation)
 ordering for `vals`, which makes it slightly more efficient.
@@ -941,11 +937,11 @@ If vals is a diagonal matrix, set `is_diag` to `true` for much faster evaluation
 function evaluate_function_from_node_or_cellvals_multiple(
     ctx::gridContext{dim}, vals::AbstractMatrix{S},
     x_in::AbstractVector{Vec{dim,W}};
-    outside_value=NaN, project_in=false,is_diag=false,throw_errors=false
-    )::SparseMatrixCSC{S,Int64} where{dim,S,W}
+    outside_value=NaN, project_in=false, is_diag=false, throw_errors=false
+    )::SparseMatrixCSC{S,Int64} where {dim,S,W}
 
 
-    x::Vector{Vec{dim,W}} = [project_in_xin(ctx,x_cur,project_in) for x_cur in x_in]
+    x::Vector{Vec{dim,W}} = [project_in_xin(ctx, x_cur, project_in) for x_cur in x_in]
 
     @assert size(vals)[1] == ctx.n
     npoints = length(x_in)
@@ -1017,7 +1013,7 @@ function evaluate_function_from_node_or_cellvals_multiple(
         ctr += length(rows_tmp)
         push!(result_colptr,ctr)
     end
-    return SparseMatrixCSC(size(vals)[2],npoints,result_colptr,result_rows,result_vals)
+    return SparseMatrixCSC(size(vals)[2], npoints, result_colptr, result_rows, result_vals)
 end
 
 

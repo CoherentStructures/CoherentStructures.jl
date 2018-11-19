@@ -12,9 +12,9 @@ function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100
                 ) where dim
     id = x -> x
     if dim == 1
-        plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx,  bdata=bdata; kwargs...)
+        plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx, bdata=bdata; kwargs...)
     elseif dim==2
-        plot_u_eulerian(ctx, dof_vals, id, LL,UR, nx,ny, bdata=bdata; kwargs...)
+        plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx, ny, bdata=bdata; kwargs...)
     else
         throw(AssertionError("Not yet implemented"))
     end
@@ -29,7 +29,7 @@ function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=10
     if dim == 1
         plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
     elseif dim==2
-        plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1],ctx.spatialBounds[2], nx, bdata=bdata; kwargs...)
+        plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, bdata=bdata; kwargs...)
     else
         throw(AssertionError("Not yet implemented"))
     end
