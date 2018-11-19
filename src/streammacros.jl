@@ -50,7 +50,7 @@ beforehand via `@define_stream`.
     ``v = (-\\partial_y\\psi, \\partial_x\\psi).``
 
 ### Examples
-```jldoctest
+```
 julia> using CoherentStructures
 
 julia> f = @velo_from_stream Ψ_ellipse begin
@@ -65,7 +65,7 @@ julia> f([1.0,1.0], nothing, 1.0)
  -6.0
   2.0
 ```
-```jldoctest
+```
 julia> using CoherentStructures
 
 julia> @define_stream Ψ_circular begin
@@ -100,6 +100,29 @@ macro velo_from_stream(name::Symbol)
     end
 end
 
+"""
+    @var_velo_from_stream(name::Symbol, [code::Expr])
+
+Get the (state and tangent space) velocity field corresponding to a stream
+function on ``R^2``. The defining code can be a series of definitions (in an
+enclosing `begin ... end`-block and is treated as a series of symbolic
+substitutions. Starting from the symbol `name`, substitutions are performed
+until the resulting expression only depends on `x`, `y` and `t`.
+
+The macro returns an anonymous function with signature `(U,p,t)` that returns an
+`SMatrix{2,3}`: in the first column, one has the usual velocity, in the second
+to third column, one has the linearized velocity, both at position `u = U[:,1]`
+at time `t`. The parameter slot is not used and can be filled with `nothing`
+when calling.
+
+The macro can be called without the `code` if the stream `name` has been defined
+beforehand via `@define_stream`.
+
+!!! note "Sign convention"
+    We follow the "oceanographic" sign convention, whereby the velocity ``v``
+    is derived from the stream function ``\\psi`` by
+    ``v = (-\\partial_y\\psi, \\partial_x\\psi).``
+"""
 macro var_velo_from_stream(H::Symbol, formulas::Expr)
     V, DV = streamline_derivatives(H, formulas)
 

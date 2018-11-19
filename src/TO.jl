@@ -250,46 +250,43 @@ function adaptiveTOCollocation(ctx::gridContext{dim}, flow_map::Function;
      ) where dim
 
     if on_torus
-            if bdata == nothing
-                    throw(AssertionError("bdata == nothing"))
-            end
+        if bdata === nothing
+            throw(AssertionError("bdata == nothing"))
+        end
         npoints = ctx.n - length(bdata.periodic_dofs_from)
-        ctx_new, bdata_new,volume_change = CoherentStructures.adaptiveTOFutureGrid(ctx,flow_map,
+        ctx_new, bdata_new, volume_change = adaptiveTOFutureGrid(ctx, flow_map;
              on_torus=on_torus, LL=LL, UR=UR,bdata=bdata)
         if projection_method == :naTO
             ALPHA_bc, _ = nonAdaptiveTOCollocation(ctx_new,x->x,ctx;
-                volume_preserving=true,bdata_domain=bdata_new,bdata_codomain=bdata
-            )
+                volume_preserving=true,bdata_domain=bdata_new,bdata_codomain=bdata)
         elseif projection_method == :L2Ginv
-            ALPHA_bc  = L2GalerkinTOFromInverse(ctx_new,x->x,ctx;
-                bdata_domain=bdata_new,bdata_codomain=bdata
-            )
+            ALPHA_bc  = L2GalerkinTOFromInverse(ctx_new, x->x, ctx;
+                bdata_domain=bdata_new, bdata_codomain=bdata)
         elseif projection_method == :L2G
-            ALPHA_bc, _ = L2GalerkinTO(ctx_new,x->x,ctx;
-                volume_preserving=volume_preserving,bdata_domain=bdata_new,bdata_codomain=bdata
-            )
+            ALPHA_bc, _ = L2GalerkinTO(ctx_new, x->x, ctx;
+                volume_preserving=volume_preserving, bdata_domain=bdata_new, bdata_codomain=bdata)
         else
             throw(AssertionError("Invalid projection_method"))
         end
         if volume_preserving
-                L = sparse(I,npoints,npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
-                result = ALPHA_bc*L
+            L = sparse(I, npoints, npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
+            result = ALPHA_bc*L
         else
-                volume_change_pdof = volume_change[pdof_to_node(ctx,bdata)]
-                K = assembleStiffnessMatrix(ctx,bdata=bdata)
-                M = assembleMassMatrix(ctx,bdata=bdata)
-                volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
-                volume_change = volume_change_pdof[node_to_pdof(ctx,bdata)]
+            volume_change_pdof = volume_change[pdof_to_node(ctx,bdata)]
+            K = assembleStiffnessMatrix(ctx,bdata=bdata)
+            M = assembleMassMatrix(ctx,bdata=bdata)
+            volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
+            volume_change = volume_change_pdof[node_to_pdof(ctx,bdata)]
 
-                L = sparse(1.0*I,npoints,npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
-                for j in 1:(size(L)[2])
-                    L[:,j] *= volume_change_pdof[j]
-                end
-                result = ALPHA_bc*L
+            L = sparse(1.0*I,npoints,npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
+            for j in 1:(size(L)[2])
+                L[:,j] *= volume_change_pdof[j]
+            end
+            result = ALPHA_bc*L
         end
         return result, volume_change
-    else
-            throw(AssertionError("Not yet implemented"))
+    else # not on torus
+        throw(AssertionError("Not yet implemented"))
     end
 end
 

@@ -91,19 +91,19 @@ function singularity_location_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
 end
 
 """
-    singularity_type_detection(singularity, T, radius, xspan, yspan)
+    singularity_type_detection(singularity, ξ, radius)
 
 Determines the singularity type of the singularity candidate `singularity`
-by querying the tensor eigenvector field of `T` in a circle of radius `radius`
-around the singularity. `xspan` and `yspan` correspond to the computational grid.
-Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
+by querying the direction field `ξ` in a circle of radius `radius` around the
+singularity. Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
 """
 function singularity_type_detection(singularity::SVector{2,S}, ξ, radius::Real) where {S <: Real}
 
     Ntheta = 360   # number of points used to construct a circle around each singularity
-    circle = [SVector{2,S}(radius*cos(t), radius*sin(t)) for t in range(-π, stop=π, length=Ntheta)]
-    pnts = [singularity + c for c in circle]
-    radVals = [ξ(p[2], p[1]) for p in pnts]
+    θ = range(-π, stop=π, length=Ntheta)
+    circle = map(t -> SVector{2,S}(radius * cos(t), radius * sin(t)), θ)
+    pnts = [singularity] .+ circle
+    radVals = [ξ(p[1], p[2]) for p in pnts]
     singularity_type = 0
     if (sum(diff(radVals) .< 0) / Ntheta > 0.62)
         singularity_type = -1  # trisector
@@ -131,15 +131,16 @@ function detect_elliptic_region(singularities::AbstractVector{SVector{2,S}},
                                 Min2ndDist::Float64) where S <: Number
 
     indWedges = findall(singularity_types .== 1)
-    wedgeDist = Distances.pairwise(Distances.Euclidean(), hcat(singularities[indWedges]...))
+    wedges = singularities[indWedges]
+    wedgeDist = Dists.evaluate.([Dists.Euclidean()], wedges, wedges')
     idx = zeros(Int64, size(wedgeDist,1), 2)
     pairs = Vector{Int}[]
-    for i=1:size(wedgeDist,1)
+    for i=1:size(wedgeDist, 1)
         idx = partialsortperm(wedgeDist[i,:], 2:3)
         if (wedgeDist[i,idx[1]] <= MaxWedgeDist &&
             wedgeDist[i,idx[1]] >= MinWedgeDist &&
-            wedgeDist[i,idx[2]]>=Min2ndDist)
-            push!(pairs,[i, idx[1]])
+            wedgeDist[i,idx[2]] >= Min2ndDist)
+            push!(pairs, [i, idx[1]])
         end
     end
     pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
@@ -332,7 +333,8 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
 
     ξ = [eigvecs(t)[:,1] for t in T]
     ξrad = atan.([v[2]./v[1] for v in ξ])
-    ξraditp = ITP.LinearInterpolation((yspan, xspan), ξrad, extrapolation_bc = ITP.Line())
+    ξraditp = ITP.LinearInterpolation((xspan, yspan), permutedims(ξrad);
+                                                extrapolation_bc=ITP.Line())
     # ξraditp = ITP.extrapolate(ITP.scale(ITP.interpolate(ξrad,
     #                     ITP.BSpline(ITP.Linear())),
     #                     yspan,xspan), ITP.Reflect())

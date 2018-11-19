@@ -69,6 +69,12 @@ end
 
 #The rhs for an ODE on interpolated vector fields
 #The interpolant is passed via the p argument
+function interpolated_velocity(u, p, t)
+    du1 = p[1](u[1], u[2], t)
+    du2 = p[2](u[1], u[2], t)
+    return SVector{2}(du1, du2)
+end
+
 """
     interp_rhs(u, p, t) -> SVector{2}
 
@@ -78,12 +84,13 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 `UI` and `VI` are the interpolants for the x- and y-components of the velocity
 field.
 """
-function interpolated_velocity(u, p, t)
-    du1 = p[1](u[1], u[2], t)
-    du2 = p[2](u[1], u[2], t)
-    return SVector{2}(du1, du2)
-end
 interp_rhs = OrdinaryDiffEq.ODEFunction(interpolated_velocity)
+
+function interpolated_velocity!(du, u, p, t)
+    du[1] = p[1](u[1], u[2], t)
+    du[2] = p[2](u[1], u[2], t)
+    return du
+end
 
 """
     interp_rhs!(du, u, p, t) -> Vector
@@ -94,11 +101,6 @@ assumes that the interpolants are provided as a 2-tuple `(UI, VI)` via the
 parameter `p`. Here, `UI` and `VI` are the interpolants for the x- and
 y-components of the velocity field.
 """
-function interpolated_velocity!(du, u, p, t)
-    du[1] = p[1](u[1], u[2], t)
-    du[2] = p[2](u[1], u[2], t)
-    return du
-end
 interp_rhs! = OrdinaryDiffEq.ODEFunction(interpolated_velocity!)
 
 # standard map

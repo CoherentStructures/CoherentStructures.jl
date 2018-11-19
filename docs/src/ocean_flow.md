@@ -25,21 +25,23 @@ nx = 500
 ny = Int(floor(0.6 * nx))
 N = nx * ny
 xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
-xspan, yspan = range(xmin,stop=xmax,length=nx), range(ymin,stop=ymax,length=ny)
-P = SVector{2}.(xspan',yspan)
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = SVector{2}.(xspan', yspan)
 const δ = 1.e-5
 mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-    p=p, tolerance=1e-6, solver=OrdinaryDiffEq.Tsit5())
+    p=p, tolerance=1e-6, solver=Tsit5())
 
 C̅ = map(mCG_tensor, P)
-LCSparams = (.09, 0.5, 0.05, 0.5, 1.0, 60)
-vortices = ellipticLCS(C̅, xspan, yspan, LCSparams);
+params = LCSParameters(.09, 0.5, 0.05, 0.5, 1.0, 60, 0.7, 1.3)
+vortices = ellipticLCS(C̅, xspan, yspan, params)
 ```
 The result is visualized as follows:
 ```@example 1
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan,yspan,log10.(l₁.+l₂),aspect_ratio=1,color=:viridis,
-            title="DBS-field and transport barriers", xlims=(xmin, xmax), ylims=(ymin, ymax), leg=true)
+fig = Plots.heatmap(xspan, yspan, log10.(λ₁ .+ λ₂);
+            aspect_ratio=1, color=:viridis, leg=true,
+            title="DBS field and transport barriers")
 for vortex in vortices
     Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
 end
@@ -94,7 +96,11 @@ where $S_0$ is the stiffness matrix for the triangulation at initial time, and $
 ```@example 5
 M = assembleMassMatrix(ctx, bdata=bdata)
 S0 = assembleStiffnessMatrix(ctx)
+<<<<<<< HEAD
 S1 = adaptiveTOCollocationStiffnessMatrix(ctx, flow_map)
+=======
+S1 = adaptiveTOCollocation(ctx, flow_map)
+>>>>>>> 21eb5e413f8c1dec3c1f3c6783ceedd3f2b4c867
 
 #Average matrices and apply boundary conditions
 S = applyBCS(ctx, 0.5(S0 + S1), bdata);
@@ -104,7 +110,7 @@ We can now solve the eigenproblem.
 ```@example 5
 using Arpack
 
-λ,v = eigs(S, M, which=:SM, nev=6);
+λ, v = eigs(S, M, which=:SM, nev=6);
 ```
 We upsample the eigenfunctions and then cluster.
 ```@example 5
