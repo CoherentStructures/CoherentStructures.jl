@@ -50,7 +50,7 @@ beforehand via `@define_stream`.
     ``v = (-\\partial_y\\psi, \\partial_x\\psi).``
 
 ### Examples
-```jldoctest
+```
 julia> using CoherentStructures
 
 julia> f = @velo_from_stream Ψ_ellipse begin
@@ -65,7 +65,7 @@ julia> f([1.0,1.0], nothing, 1.0)
  -6.0
   2.0
 ```
-```jldoctest
+```
 julia> using CoherentStructures
 
 julia> @define_stream Ψ_circular begin
