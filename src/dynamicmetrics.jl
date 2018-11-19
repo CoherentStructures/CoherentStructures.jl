@@ -9,14 +9,14 @@ Create a Euclidean metric on a rectangular periodic domain.
 Periods per dimension are contained in the vector `L`.
 For dimensions without periodicity put `Inf` in the respective component.
 
-# Example
-```jldoctest
+## Example
+```
 julia> using Distances
 
 julia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]
 ([0.0, 0.0], [0.7, 0.0], [0.5, Inf])
 
-julia> evaluate(CoherentStructures.PEuclidean(L),x,y)
+julia> evaluate(PEuclidean(L), x, y)
 0.19999999999999996
 ```
 """
@@ -104,7 +104,7 @@ peuclidean(a::Number, b::Number, p::Number) = begin d = mod(abs(a - b), p); d = 
 
 Creates a spatiotemporal, averaged in time metric.
 
-# Properties
+## Properties
 
    * `Smetric` is a metric as defined in the `Distances` package, e.g.,
      `Euclidean`, `PEuclidean`, or `Haversine`;
@@ -116,7 +116,7 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = -1`: harmonic mean (does not yield a metric!)
      - `p = -Inf`: minimum (does not yield a metric!)
 
-# Example
+## Example
 ```julia
 julia> x, y = rand(10), rand(10)
 
