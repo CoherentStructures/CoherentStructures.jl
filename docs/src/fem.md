@@ -1,4 +1,4 @@
-# FEM-based Methods
+# FEM-Based Methods
 
 These methods rely on the theory outlined by Froyland's [*Dynamical Laplacian*]
 (http://arxiv.org/pdf/1411.7186v4.pdf)
@@ -22,31 +22,38 @@ See the [Examples](@ref) section for examples of how these methods can be used.
 
 ## Features
 ### CG and TO methods
-The standard Galerkin formulation of the weak dynamical Laplace is refered to as the CG-method here, due to the fact that the inverse Cauchy-Green tensor appears in the weak formulation. This gives a bilinear form
+The standard Galerkin formulation of the weak dynamical Laplace is referred to
+as the CG-method here, due to the fact that the inverse Cauchy-Green tensor
+appears in the weak formulation. This gives a bilinear form
 $\overline a(u,v) := \sum_{t \in \mathcal T}a^t(P_t u, P_t v)$
-Here $P_t$ is the Transfer-Operator (or pushforward) to time-$t$, and $a^t$ is the weak-form of the Laplacian on the range of the time-$t$ map being considered.
-  There are also a range of Transfer-Operator based approaches implemented here. These approximate the weak form of the Dynamical-Laplace by a bilinear-form:
+Here $P_t$ is the Transfer-Operator (or pushforward) to time-$t$, and $a^t$ is
+the weak-form of the Laplacian on the range of the time-$t$ map being
+considered.
+
+There is also a range of transfer operator-based approaches implemented here.
+These approximate the weak form of the Dynamical-Laplace by a bilinear-form:
 
 $\tilde a_h(u,v) = \sum_{t \in \mathcal T} a^t(I_hP_t u, I_h P_t v)$
 
 where $I_h$ is a suitable interpolation operator depending on the mesh-width $h$. Options for $I_h$ implemented in this package are:
-- Collocation (pointwise interpolation)...
-    - Points used are mesh points from domain grid ("adaptive TO")
-    - Points usedare arbitrary("non-adaptive TO")
-- the $L^2$-orthogonal projection onto a FEM-space
-    - Using the forwards flow map (currently gives poor results)
-    - Using the inverse flow map
-Note that the $L^2$-Galerkin methods currently perform very poorly on larger problems.
+- collocation (pointwise interpolation):
+    - points used are mesh points from domain grid ("adaptive TO"),
+    - points used are arbitrary ("non-adaptive TO");
+- the $L^2$-orthogonal projection onto an FEM-space:
+    - using the forward-flow map (currently gives poor results),
+    - using the inverse flow map.
+Note that the $L^2$-Galerkin methods currently perform very poorly on larger
+problems.
 
-For more details, see [this paper](https://arxiv.org/pdf/1705.03640.pdf).
+For more details, see [Froyland & Junge, 2018](https://arxiv.org/pdf/1705.03640.pdf).
 
 ### Grids
 
 Various types of regular and irregular meshes (with Delaunay triangulation using [VoronoiDelaunay.jl](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) and include:
- - Triangular P1-Lagrange elements in 2D (all methods)
- - Quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
- - Triangular and Quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
- - Tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)
+ - triangular P1-Lagrange elements in 2D (all methods)
+ - quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
+ - triangular and quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
+ - tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)
 
 ## The `gridContext` Type
 
@@ -89,8 +96,8 @@ Plots.heatmap(range(0, stop=1, length=200),range(0, stop=1, length=200),
 ```
 
 For more details, consult the API: [`evaluate_function_from_dofvals`](@ref),
-[`evaluate_function_from_node_or_cellvals`](@ref)
-[`evaluate_function_from_node_or_cellvals_multiple`](@ref)
+[`evaluate_function_from_node_or_cellvals`](@ref).
+![`evaluate_function_from_node_or_cellvals_multiple`](@ref)
 
 ## Nodal Interpolation
 

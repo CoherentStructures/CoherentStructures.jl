@@ -42,22 +42,23 @@ using CoherentStructures
 using Tensors, OrdinaryDiffEq, StaticArrays
 
 const q = 81
-const tspan = range(0., stop=3456000., length=q))
+const tspan = range(0., stop=3456000., length=q)
 ny = 120
 nx = div(ny*22, 6)
 N = nx * ny
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-xspan, yspan = range(xmin, stop=xmax, length=nx), range(ymin, stop=ymax, length=ny)
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
 P = SVector{2}.(xspan', yspan)
 const δ = 1.e-6
 const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
 mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
           D=DiffTensor, tolerance=1e-6, solver=Tsit5())
 
-C̅ = map(mCG_tensor,P)
+C̅ = map(mCG_tensor, P)
 
-LCSparams = (.1, 0.5, 0.04, 0.5, 1.8, 60)
-vortices = ellipticLCS(C̅, xspan, yspan, LCSparams);
+p = LCSParameters(.1, 0.5, 0.04, 0.5, 1.8, 60, 0.7, 1.3)
+vortices = ellipticLCS(C̅, xspan, yspan, p)
 ```
 
 The result is visualized as follows:
@@ -65,10 +66,9 @@ The result is visualized as follows:
 import Plots
 Plots.clibrary(:misc) #hide
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, log10.(l₁.+l₂);
-                    aspect_ratio=1, color=:viridis,
-                    xlims=(0., 6.371π),ylims=(-3., 3.),
-                    title="DBS-field and transport barriers", leg=true)
+fig = Plots.heatmap(xspan, yspan, log10.(λ₁ .+ λ₂);
+                    aspect_ratio=1, color=:viridis, leg=true,
+                    title="DBS field and transport barriers")
 foreach(vortices) do vortex
     Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
 end
@@ -87,9 +87,9 @@ bdata = CoherentStructures.boundaryData(ctx, predicate, []);
 ```
 Using a FEM-based method to compute coherent structures:
 ```@example 2
-using Arpack, Statistics
+using Arpack
 cgfun = (x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81),
-     1.e-8; tolerance=1.e-5)))
+     1.e-8; tolerance=1.e-5))
 
 K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
 M = assembleMassMatrix(ctx, bdata=bdata)
@@ -100,12 +100,12 @@ plot_real_spectrum(λ)
 ```
 K-means clustering yields the coherent vortices.
 ```@example 2
-ctx2 = regularTriangularGrid((200,60),LL,UR)
-v_upsampled = sample_to(v, ctx,ctx2,bdata=bdata)
+ctx2, _ = regularTriangularGrid((200,60), LL, UR)
+v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
 
-function iterated_kmeans(numiterations,args...)
+function iterated_kmeans(numiterations, args...)
     best = kmeans(args...)
-    for i in 1:(numiterations-1)
+    for i in 1:(numiterations - 1)
         cur = kmeans(args...)
         if cur.totalcost < best.totalcost
             best = cur
@@ -114,9 +114,10 @@ function iterated_kmeans(numiterations,args...)
     return best
 end
 
-res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]),n_partition)
+n_partition = 8
+res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]), n_partition)
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx2, u_combined, 400, 400;
-    color=:rainbow,colorbar=:none, title="$n_partition-partition of Bickley Jet")
+    color=:rainbow, colorbar=:none, title="$n_partition-partition of Bickley jet")
 ```

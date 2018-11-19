@@ -26,11 +26,13 @@ function vectorfield3d(u, p, t)
     return StaticArrays.SVector{3}(du1, du2, du3)
 end
 ```
-Furthermore, there is a convenience macro to define two-dimensional velocity
-fields from stream functions.
+Furthermore, there are convenience macros to define two-dimensional velocity
+and vorticity fields from stream functions.
 ```@docs
 @define_stream
 @velo_from_stream
+@var_velo_from_stream
+@vorticity_from_stream
 ```
 In fact, two of the predefined velocity fields, the rotating double gyre
 `rot_double_gyre`, and the Bickley jet flow `bickleyJet`, are generated from
@@ -45,6 +47,7 @@ enter via the parameter argument `p`; see below for examples.
 ```@docs
 interpolateVF
 interp_rhs
+interp_rhs!
 ```
 
 ### Flow maps
