@@ -35,10 +35,13 @@ The fully automated high-level function is:
 ellipticLCS
 ```
 
-Its output is a vector of objects of type `EllipticVortex`.
+One of its arguments is a list of parameters used in the LCS detection. This
+list is combined in a data type called `LCSParameters`. Its output is a vector
+of objects of type `EllipticBarrier`.
 
 ```@docs
-EllipticVortex
+LCSParameters
+EllipticBarrier
 ```
 
 The function `ellipticLCS` calls sequentially the following functions.
