@@ -96,7 +96,7 @@ where $S_0$ is the stiffness matrix for the triangulation at initial time, and $
 ```@example 5
 M = assembleMassMatrix(ctx, bdata=bdata)
 S0 = assembleStiffnessMatrix(ctx)
-S1 = adaptiveToCollocation(ctx, flow_map)
+S1 = adaptiveTOCollocation(ctx, flow_map)
 
 #Average matrices and apply boundary conditions
 S = applyBCS(ctx, 0.5(S0 + S1), bdata);

@@ -100,7 +100,8 @@ plot_real_spectrum(λ)
 ```
 K-means clustering yields the coherent vortices.
 ```@example 2
-ctx2, _ = regularTriangularGrid((200,60), LL, UR)
+using Clustering
+ctx2, _ = regularTriangularGrid((200, 60), LL, UR)
 v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
 
 function iterated_kmeans(numiterations, args...)
