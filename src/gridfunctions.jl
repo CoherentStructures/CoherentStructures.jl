@@ -1053,7 +1053,7 @@ end
 
 
 """
-    sample_to(u::Vector{T},ctx_old,ctx_new)
+    sample_to(u::Vector{T},ctx_old,ctx_new;[bdata=boundaryData(),project_in=true,outside_value=NaN])
 
 Perform nodal_interpolation of a function onto a different grid.
 """
@@ -1075,7 +1075,7 @@ function sample_to(u::Vector{T}, ctx_old::CoherentStructures.gridContext, ctx_ne
 end
 
 """
-    sample_to(u::AbstractArray{2,T},ctx_old,ctx_new)
+    sample_to(u::AbstractArray{2,T},ctx_old,ctx_new; [bdata=boundaryData(),project_in=true,outside_value=NaN])
 
 Perform nodal_interpolation of a function onto a different grid for a set of columns of a matrix.
 Returns a matrix
@@ -1096,21 +1096,18 @@ function sample_to(u::AbstractArray{T,2},
     u_node_or_cellvals = zeros(T, ctx_old.n,ncols)
     for j in 1:ncols
         if isa(ctx_old.ip, JFM.Lagrange)
-            u_node_or_cellvals[:,j] = undoBCS(ctx_old,u[:,j],bdata)[ctx_old.node_to_dof]
+            u_node_or_cellvals[:,j] .= undoBCS(ctx_old,u[:,j],bdata)[ctx_old.node_to_dof]
         else
-            u_node_or_cellvals[:,j] = undoBCS(ctx_old,u[:,j],bdata)[ctx_old.cell_to_dof]
+            u_node_or_cellvals[:,j] .= undoBCS(ctx_old,u[:,j],bdata)[ctx_old.cell_to_dof]
         end
     end
-
     #TODO: Maybe make this more efficient by calling evaluate_function_from_node_or_cellvals_multiple
+    ctx_new_gridpoints = [x.x for x in ctx_new.grid.nodes]
     u_new::Array{T,2} = zeros(T,ctx_new.n,ncols)*NaN
-    for i in 1:ctx_new.n
-        for j in 1:ncols
-            u_new[ctx_new.node_to_dof[i],j] = evaluate_function_from_node_or_cellvals(
-                ctx_old,u_node_or_cellvals[:,j],
-                ctx_new.grid.nodes[i].x, outside_value=outside_value,project_in=project_in
-                )
-        end
+    for j in 1:ncols
+        u_new[:,j] = evaluate_function_from_node_or_cellvals_multiple(ctx_old, u_node_or_cellvals[:,j:j], ctx_new_gridpoints;
+            outside_value=outside_value, project_in=project_in
+            )[ctx_new.dof_to_node]
     end
     return u_new
 end
@@ -1495,6 +1492,7 @@ Perform nodal interpolation of a function. Returns a vector of coefficients in d
 """
 function nodal_interpolation(ctx::gridContext, f::Function)
     nodal_values = [f(ctx.grid.nodes[ctx.dof_to_node[j]].x) for j in 1:ctx.n]
+    return nodal_values
 end
 
 

@@ -120,7 +120,7 @@ function adaptiveTOCollocationStiffnessMatrix(
         on_torus::Bool=false,
         LL::AbstractVector{Float64}=ctx.spatialBounds[1],
         UR::AbstractVector{Float64}=ctx.spatialBounds[2],
-        bdata::boundaryData=boundaryData,
+        bdata::boundaryData=boundaryData(),
         volume_preserving=true
         )
     if !on_torus  && length(bdata.periodic_dofs_from) != 0
@@ -194,7 +194,8 @@ end
 
 
 function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
-        on_torus=false,bdata=nothing,LL=[0.0,0.0], UR=[1.0,1.0]
+        on_torus=false,bdata=nothing,LL=[0.0,0.0], UR=[1.0,1.0],
+        quadrature_order=default_quadrature_order
         ) where dim
 
 
@@ -219,7 +220,7 @@ function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
                     Vec{2}(flow_map(ctx.grid.nodes[j].x))
                     for j in 1:n_nodes ]
 
-        new_ctx, new_bdata = irregularDelaunayGrid(new_nodes_in_node_order;on_torus=true,LL=LL,UR=UR)
+        new_ctx, new_bdata = irregularDelaunayGrid(new_nodes_in_node_order;on_torus=true,LL=LL,UR=UR,quadrature_order=quadrature_order)
     end
 
     #Do volume corrections
@@ -406,14 +407,17 @@ T_{i,j} = \\int φ_i ∘ F φ_j dx
 function L2GalerkinTO(
     ctx_domain::gridContext{dim},
     flow_map::Function,
-    ctx_codomain::gridContext{dim}=ctx_domain,
-    ; bdata=boundaryData()
+    ctx_codomain::gridContext{dim}=ctx_domain;
+    bdata_domain=boundaryData(),
+    bdata_codomain=bdata_domain,
+    verbosity=1
     ) where dim
     DL2 = spzeros(ctx_codomain.n,ctx_domain.n)
     cv::JuAFEM.CellScalarValues{dim} = JuAFEM.CellScalarValues(ctx_domain.qr,ctx_domain.ip, ctx_domain.ip_geom)
     nbasefuncs = JuAFEM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nbasefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
+    badcounter = 0
 
     #TODO: Make this more efficient
     @inbounds for (cellnumber, cell) in enumerate(JuAFEM.CellIterator(ctx_domain.dh))
@@ -423,29 +427,50 @@ function L2GalerkinTO(
         for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
             dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
             TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx_domain.quadrature_points[index]))
-            try
-                local_coordsTQ::Vec{2,Float64}, nodesTQ::Vector{Int},cellIndexTQ = locatePoint(ctx_codomain,TQ)
-                if isa(ctx_codomain.ip,JuAFEM.Lagrange)
-                        for (shape_fun_num,i) in enumerate(nodesTQ)
-                            ψ::Float64 = JuAFEM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)
-                            for j in 1:nbasefuncs
-                                φ::Float64 = JuAFEM.shape_value(cv,q,j)
-                                DL2[ctx_domain.node_to_dof[i],dofs[j]] += dΩ*φ*ψ
-                            end
-                        end
-                else
-                        indexi = ctx_codomain.cell_to_dof[cellIndexTQ]
-                        indexj = ctx_codomain.cell_to_dof[cellnumber]
-                        DL2[indexi,indexj] +=  dΩ
-                end
+            local_coordsTQ::Vec{2,Float64}, nodesTQ::Vector{Int},cellIndexTQ = try
+                    locatePoint(ctx_codomain,TQ)
             catch y
                 if !isa(y,DomainError)
                     rethrow(y)
                 end
-                print("Flow map gave result $TQ outside of domain!")
+                (verbosity >= 2) && @warn("Flow map gave result $TQ outside of domain!")
+                badcounter += 1
+                continue
             end
-            index += 1
+            if isa(ctx_codomain.ip,JuAFEM.Lagrange)
+                    for (shape_fun_num,i) in enumerate(nodesTQ)
+                        ψ::Float64 = JuAFEM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)
+                        indexi = ctx_domain.node_to_dof[i]
+                        for j in 1:nbasefuncs
+                            indexj::Int64 = 0
+                            if isa(ctx_domain.ip,JuAFEM.Lagrange)
+                                indexj=dofs[j]
+                                φ::Float64 = JuAFEM.shape_value(cv,q,j)
+                            else
+                                indexj=ctx_domain.cell_to_dof[cellnumber]
+                                φ = 1.0
+                            end
+                            DL2[indexi,indexj] += dΩ*φ*ψ
+                        end
+                    end
+            else
+                    indexi = ctx_codomain.cell_to_dof[cellIndexTQ]
+                    ψ = 1.0
+                    for j in 1:nbasefuncs
+                        indexj::Int64 = 0
+                        if isa(ctx_domain.ip,JuAFEM.Lagrange)
+                            indexj=dofs[j]
+                            φ::Float64 = JuAFEM.shape_value(cv,q,j)
+                        else
+                            indexj=ctx_domain.cell_to_dof[cellnumber]
+                            φ = 1.0
+                        end
+                        DL2[indexi, indexj] += dΩ*φ*ψ
+                    end
+            end
+        index += 1
         end
     end
+    (verbosity >= 1 && badcounter > 0) && @warn "$badcounter results outside of domain"
     return applyBCS(ctx_codomain,DL2,bdata_codomain; ctx_col=ctx_domain,bdata_col=bdata_domain)
 end
