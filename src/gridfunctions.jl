@@ -818,7 +818,8 @@ sure it is within `ctx.spatialBounds` (if `project_in==true`).
 Helper function.
 """
 function project_in_xin(
-    ctx::gridContext{dim}, x_in::AbstractVector{T},project_in) where {dim,T}
+    ctx::gridContext{dim}, x_in::AbstractVector{T},project_in
+    )::Vec{dim,T} where {dim,T}
 
     if !project_in
         if dim == 1
@@ -865,7 +866,7 @@ assumed to be in node order. This is more efficient than
 """
 function evaluate_function_from_node_or_cellvals(
     ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
-    outside_value=0.0, project_in=false)::W where {dim,S,W}
+    outside_value=0.0, project_in=false,throw_errors=true)::W where {dim,S,W}
 
     x::Vec{dim,W} = project_in_xin(ctx,x_in,project_in)
 
