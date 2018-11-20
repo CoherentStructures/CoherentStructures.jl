@@ -36,18 +36,18 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=tr
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     n = size(M)[1]
-    Δτ = step(tspan)
+    scale = -step(tspan) * κ
     # TODO: think about pmap-parallelization
     # Distributed.@everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
     P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, δ; bdata=bdata)
-        ΔM = M - Δτ * κ * K
+        lmul!(scale, K)
+        K .= M + K
         if factor
-            ΔM = factorize(ΔM)
-            # TODO: check for ldiv!-methods!!!
-            matmul = (u, v) -> copyto!(u, ΔM \ v) # LinearAlgebra.ldiv!(u, ΔM, v) #
+            ΔM = factorize(K)
+            matmul = v -> ΔM \ v
         else
-            matmul = (u, v) -> u .= IterativeSolvers.cg(ΔM, v)
+            matmul = (u, v) -> copyto!(u, IterativeSolvers.cg(K, v))
         end
         LMs.LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
     end
