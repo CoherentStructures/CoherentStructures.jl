@@ -35,6 +35,7 @@ end
 function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=true, bdata=boundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
+    nnzM = nonzeros(M)
     n = size(M)[1]
     scale = -step(tspan) * κ
     # TODO: think about pmap-parallelization
@@ -42,7 +43,9 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=tr
     P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, δ; bdata=bdata)
         lmul!(scale, K)
-        K .= M + K
+        nnzK = nonzeros(K)
+        nnzK .+= nnzM
+        # K .= M + K
         if factor
             ΔM = factorize(K)
             matmul = v -> ΔM \ v
