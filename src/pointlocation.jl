@@ -213,7 +213,7 @@ function locatePoint(
                 return tM⋅Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1, lr+1], (2*n1 + 2*n2*(loc.nx-1)) +2
             end
         elseif S == JuAFEM.Quadrilateral
-            return Vec{2,T}([2 * loc1 - 1, 2 * loc2 - 1]), [ll+1, lr+1, ur+1, ul+1], (ll+1)
+            return Vec{2,T}((2 * loc1 - 1, 2 * loc2 - 1)), [ll+1, lr+1, ur+1, ul+1], (ll+1)
         else
             throw(AssertionError("Case should not be reached"))
         end

@@ -114,6 +114,94 @@ function singularity_type_detection(singularity::SVector{2,S}, ξ, radius::Real)
 end
 
 """
+    discrete_singularity_detection(T, combine_distance,[xspan,yspan])
+
+Calculates integral-field singularities of the first eigenvector of `T` by taking
+a discrete differential-geometric approach.
+Singularities are calculated on each cell. Singularities with distance less or equal
+to `combine_difference` are combined by averaging the location and adding the index.
+Returns a vector of coordinates and a vector of corresponding indexes.
+Still under development.
+"""
+function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
+                                        combine_distance::Float64,
+                                        xspan=1:(size(T)[2]), yspan=1:(size(T)[1])
+                                        ) where S
+    ξ = [eigvecs(t)[:,1] for t in T]
+    ξrad = atan.([v[2]./v[1] for v in ξ]) .+ π/2
+
+    nx,ny = size(T)
+    cell_contents = zeros(Int,nx-1,ny-1)
+    for j in 1:(ny-1)
+        for i in 1:(nx-1)
+            toadd = 0.0
+            toadd += periodic_diff(ξrad[i+1,j],ξrad[i,j],π)
+            toadd += periodic_diff(ξrad[i+1,j+1],ξrad[i+1,j],π)
+            toadd += periodic_diff(ξrad[i,j+1],ξrad[i+1,j+1],π)
+            toadd += periodic_diff(ξrad[i,j],ξrad[i,j+1],π)
+            cell_contents[i,j] = round(Int,toadd/π)
+        end
+    end
+
+    #Do a breath-first search of all singularities
+    #that are "connected" in the sense of
+    #there being a path of singularities with each
+    #segment less than `combine_distance` to it
+    #Average the coordinates, add the indices
+
+    sing_i,sing_j = unzip(Tuple.(findall(x->x != 0, cell_contents)))
+    n_sing =length(sing_i)
+    #Coordinates of singularities
+    sing_y = yspan[sing_i] .+ 0.5*(yspan[sing_i] - yspan[sing_i .+ 1])
+    sing_x = xspan[sing_j] .+ 0.5*(xspan[sing_j] - xspan[sing_j .+ 1])
+    #Make a balltree of them.
+    singularities_in = vcat(sing_x', sing_y')
+    singularities_tree = NN.BallTree(singularities_in,Distances.Euclidean())
+    #Which singularities we've already dealt with
+    singularities_seen = zeros(Bool,n_sing)
+
+    #Result will go here
+    singularities_out = Vector{Float64}[]
+    singularities_out_weight = Int64[]
+
+    #Iterate over all singularities
+    for i in 1:n_sing
+        if singularities_seen[i]
+            continue
+        end
+        singularities_seen[i] = true
+
+        current_weight = 0
+        current_coords = [0.0,0.0]
+        num_combined = 0
+
+        #Breadth-first-search
+        stack = Int64[]
+        push!(stack, i)
+        while !isempty(stack)
+            current_singularity = pop!(stack)
+            singularities_seen[i] = true
+            closeby_singularities = NN.inrange(singularities_tree, singularities_in[:,current_singularity], combine_distance)
+            for neighbour_index ∈ closeby_singularities
+                if ! singularities_seen[neighbour_index]
+                    singularities_seen[neighbour_index] = true
+                    push!(stack,neighbour_index)
+                end
+            end
+            #Average coordinates & add indices
+            current_weight += cell_contents[sing_i[current_singularity],sing_j[current_singularity]]
+            current_coords = (num_combined * current_coords + singularities_in[:,current_singularity])/(num_combined + 1)
+            num_combined += 1
+        end
+        if current_weight != 0
+            push!(singularities_out, current_coords)
+            push!(singularities_out_weight, current_weight)
+        end
+    end
+    return singularities_out,singularities_out_weight
+end
+
+"""
     detect_elliptic_region(singularities, singularityTypes, MaxWedgeDist, MinWedgeDist, Min2ndDist)
 
 Determines candidate regions for closed tensor line orbits.
