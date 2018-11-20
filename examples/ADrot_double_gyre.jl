@@ -1,7 +1,7 @@
 using CoherentStructures, OrdinaryDiffEq#, DiffEqOperators, Sundials
 
-ctx, _ = regularTriangularGrid((100,100))
-
+ctx, _ = regularTriangularGrid((100, 100))
+M = assembleMassMatrix(ctx)
 @time U = FEM_heatflow(rot_double_gyre!, ctx, range(0., stop=1., length=11), 1e-3; factor=true)
 @time λ, V = diffusion_coordinates(U, 6)
 plot_u(ctx, V[:,4], 200, 200)
