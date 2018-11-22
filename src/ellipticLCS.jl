@@ -305,14 +305,14 @@ function bisection(f, a::T, b::T, tol::Float64=1.e-4, maxiter::Integer=15) where
 end
 
 """
-    compute_outermost_closed_orbit(pSection, T, xspan, yspan; pmin = .7, pmax = 1.3)
+    compute_closed_orbits(pSection, T, xspan, yspan; pmin = .7, pmax = 1.3)
 
 Compute the outermost closed orbit for a given Poincaré section `pSection`,
 tensor field `T`, where the total computational domain is spanned by `xspan`
 and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
 shift parameters in which closed orbits are sought.
 """
-function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
+function compute_closed_orbits(pSection::Vector{SVector{2,S}},
                                         T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
@@ -350,6 +350,7 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
 
     # go along the Poincaré section and solve for T
     # first, define a nonlinear root finding problem
+    vortices = EllipticBarrier[]
     Tval = zeros(length(pSection) - 1)
     s = falses(length(pSection) - 1)
     orbits = Vector{Vector{Tuple{S,S}}}(undef, length(pSection) - 1)
@@ -363,9 +364,7 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
             # @show (closed, uniform)
             # @show length(orbit)
             if (closed && uniform)
-                Tval[i] = Tsol
-                orbits[i] = [p.data for p in orbit]
-                s[i] = false
+                push!(vortices, EllipticBarrier([p.data for p in orbit], Tsol, false))
             end
         catch
         end
@@ -378,46 +377,35 @@ function compute_outermost_closed_orbit(pSection::Vector{SVector{2,S}},
                 # @show (closed, uniform)
                 # @show length(orbit)
                 if (closed && uniform)
-                    Tval[i] = Tsol
-                    orbits[i] = [p.data for p in orbit]
-                    s[i] = true
+                    push!(vortices, EllipticBarrier([p.data for p in orbit], Tsol, true))
                 end
             catch
             end
         end
     end
-    outerInd = findlast(!iszero, Tval)
-    if outerInd !== nothing
-        return EllipticBarrier(orbits[outerInd], Tval[outerInd], s[outerInd])
-    else
-        return nothing
-    end
+    return vortices
 end
 
 """
-    ellipticLCS(T, xspan, yspan, p)
+    ellipticLCS(T, xspan, yspan, p; outermost=true)
 
 Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
 field given by shifted versions of `T` on the 2D computational grid spanned
-by `xspan` and `yspan`. `p` is a tuple of the following parameters (in that order):
-   * radius: radius in tensor singularity type detection,
-   * MaxWdgeDist: maximal distance to nearest wedge-type singularity,
-   * MinWedgeDist: minimal distance to nearest wedge-type singularity,
-   * Min2ndDist: minimal distance to second-nearest wedge-type singularity,
-   * p_length: length of Poincaré section,
-   * n_seeds: number of seeding points along the Poincaré section,
-Returns a list of tuples, each tuple containing
-   * the parameter value λ in the η-formula,
-   * the sign used in the η-formula,
-   * the outermost closed orbit for the corresponding λ and sign.
+by `xspan` and `yspan`. `p` is a [`LCSParameters`](@ref)-type container of
+computational parameters.
+
+Returns a list of `EllipticBarrier`-type objects: if the optional keyword
+argument `outermost` is true, then only the outermost barriers, i.e., the vortex
+boundaries, otherwise all detected transport barrieres are returned.
 """
 function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractVector{S},
                         yspan::AbstractVector{S},
-                        p::LCSParameters) where S <: Real
+                        p::LCSParameters;
+                        outermost::Bool=true) where S <: Real
 
     singularities = singularity_location_detection(T, xspan, yspan)
-    println("Detected $(length(singularities)) singularity candidates...")
+    @info "Detected $(length(singularities)) singularity candidates..."
 
     ξ = [eigvecs(t)[:,1] for t in T]
     ξrad = atan.([v[2]./v[1] for v in ξ])
@@ -429,27 +417,30 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     singularitytypes = map(singularities) do s
         singularity_type_detection(s, ξraditp, p.radius)
     end
-    println("Determined $(sum(abs.(singularitytypes))) nondegenerate singularities...")
+    @info "Determined $(sum(abs.(singularitytypes))) nondegenerate singularities..."
 
     vortexcenters = detect_elliptic_region(singularities, singularitytypes,
                                 p.MaxWedgeDist, p.MinWedgeDist, p.Min2ndDist)
-    println("Defined $(length(vortexcenters)) Poincaré sections...")
-
     p_section = map(vortexcenters) do vc
         set_Poincaré_section(vc, p.p_length, p.n_seeds, xspan, yspan)
     end
+    @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    closedorbits = pmap(p_section) do ps
-        compute_outermost_closed_orbit(ps, T, xspan, yspan; pmin=p.pmin, pmax=p.pmax)
+    vortexlists = pmap(p_section) do ps
+        compute_closed_orbits(ps, T, xspan, yspan; pmin=p.pmin, pmax=p.pmax)
     end
 
     # closed orbits extraction
-    vortices = Vector{EllipticBarrier}()
-    for co in closedorbits
-        if co !== nothing
-            push!(vortices, co)
+    if outermost
+        outer_vortices = EllipticBarrier[]
+        for vortexlist in vortexlists
+            !isempty(vortexlist) && push!(outer_vortices, last(vortexlist))
         end
+        @info "Found $(length(outer_vortices)) coherent vortices."
+        return outer_vortices
+    else
+        vortexlist = vcat(vortexlists...)
+        @info "Found $(length(vortexlist)) elliptic barriers."
+        return vortexlist
     end
-    println("Found $(length(vortices)) vortices.")
-    return vortices
 end
