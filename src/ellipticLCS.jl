@@ -114,32 +114,15 @@ function singularity_type_detection(singularity::SVector{2,S}, ξ, radius::Real)
 end
 
 """
-    discrete_singularity_detection(T, combine_distance,[xspan,yspan])
+    combine_singularities(sing_coordinates, sing_indices, combine_distance)
 
-Calculates integral-field singularities of the first eigenvector of `T` by taking
-a discrete differential-geometric approach. Singularities are calculated on each
-cell. Singularities with distance less or equal to `combine_difference` are
-combined by averaging the location and adding the index. Returns a vector of
-coordinates and a vector of corresponding indices.
-Still under development!
+This function does the equivalent of:
+    Build a graph where singularities are vertices, and two vertices share
+    an edge iff the coordinates of the corresponding vertices (given by `sing_coordinates`)
+    have a distance leq `combine_distance`. Find all connected components of this graph,
+    and return a list of their mean coordinate and sum of `sing_indices`
 """
-function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
-                                        combine_distance::Float64,
-                                        xspan=1:(size(T)[2]), yspan=1:(size(T)[1])
-                                        ) where S
-    ξ = [eigvecs(t)[:,1] for t in T]
-    ξrad = [atan(v[2], v[1]) for v in ξ] .+ π/2
-
-    nx, ny = size(T)
-    cell_contents = zeros(Int, nx-1, ny-1)
-    for j in 1:(ny-1), i in 1:(nx-1)
-        toadd = 0.0
-        toadd += periodic_diff(ξrad[i+1,j], ξrad[i,j], π)
-        toadd += periodic_diff(ξrad[i+1,j+1], ξrad[i+1,j], π)
-        toadd += periodic_diff(ξrad[i,j+1], ξrad[i+1,j+1], π)
-        toadd += periodic_diff(ξrad[i,j], ξrad[i,j+1], π)
-        cell_contents[i,j] = round(Int, toadd/π)
-    end
+function combine_singularities(sing_coordinates,sing_indices,combine_distance)
 
     #Do a breath-first search of all singularities
     #that are "connected" in the sense of
@@ -147,19 +130,15 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
     #segment less than `combine_distance` to it
     #Average the coordinates, add the indices
 
-    sing_i, sing_j = unzip(Tuple.(findall(x -> x != 0, cell_contents)))
-    n_sing = length(sing_i)
-    #Coordinates of singularities
-    sing_y = yspan[sing_i] .+ 0.5 * (yspan[sing_i] - yspan[sing_i .+ 1])
-    sing_x = xspan[sing_j] .+ 0.5 * (xspan[sing_j] - xspan[sing_j .+ 1])
-    #Make a kdtree of them.
-    sing_in = SVector{2}.(sing_x, sing_y)
-    sing_tree = NN.KDTree(sing_in, Dists.Euclidean())
+
+    n_sing = length(sing_coordinates)
+
+    sing_tree = NN.KDTree(sing_coordinates, Dists.Euclidean())
     #Which singularities we've already dealt with
     sing_seen = falses(n_sing)
 
     #Result will go here
-    sing_out = Vector{Float64}[]
+    sing_out = SVector{2,Float64}[]
     sing_out_weight = Int64[]
 
     #Iterate over all singularities
@@ -170,7 +149,7 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
         sing_seen[i] = true
 
         current_weight = 0
-        current_coords = [0.0, 0.0]
+        current_coords = @SVector [0.0,0.0]
         num_combined = 0
 
         #Breadth-first-search
@@ -179,7 +158,7 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
         while !isempty(stack)
             current_singularity = pop!(stack)
             sing_seen[i] = true
-            closeby_sings = NN.inrange(sing_tree, sing_in[current_singularity], combine_distance)
+            closeby_sings = NN.inrange(sing_tree, sing_coordinates[current_singularity], combine_distance)
             for neighbour_index ∈ closeby_sings
                 if !(sing_seen[neighbour_index])
                     sing_seen[neighbour_index] = true
@@ -187,8 +166,8 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
                 end
             end
             #Average coordinates & add indices
-            current_weight += cell_contents[sing_i[current_singularity], sing_j[current_singularity]]
-            current_coords = (num_combined * current_coords + sing_in[current_singularity])/(num_combined + 1)
+            current_weight += sing_indices[current_singularity]
+            current_coords = (num_combined * current_coords + sing_coordinates[current_singularity])/(num_combined + 1)
             num_combined += 1
         end
         if current_weight != 0
@@ -196,7 +175,109 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
             push!(sing_out_weight, current_weight)
         end
     end
+
     return sing_out, sing_out_weight
+end
+
+function combine_isolated_wedge_pairs(sing_coordinates, sing_indices)
+    n_sing = length(sing_coordinates)
+    sing_tree = NN.KDTree(sing_coordinates, Dists.Euclidean())
+    sing_seen = falses(n_sing)
+
+    sing_out = SVector{2,Float64}[]
+    sing_out_weight = Int64[]
+
+    for i in 1:n_sing
+        if sing_seen[i] == true
+            continue
+        end
+        sing_seen[i] = true
+
+        if sing_indices[i] != 1
+            push!(sing_out,sing_coordinates[i])
+            push!(sing_out_weight,sing_indices[i])
+            continue
+        end
+        #We have an index +1/2 singularity
+        idxs,dists = NN.knn(sing_tree, sing_coordinates[i], 2,true)
+        nn_idx = idxs[2]
+
+        #We've already dealt with the nearest neighbor (but didn't find
+        #this one as nearest neighbor), or it isn't a wedge
+        if sing_seen[nn_idx]  || sing_indices[nn_idx] != 1
+            push!(sing_out,sing_coordinates[i])
+            push!(sing_out_weight,sing_indices[i])
+            continue
+        end
+
+        #See if the nearest neighbor of the nearest neighbor is i
+        idxs2,dists2 = NN.knn(sing_tree,sing_coordinates[nn_idx],2,true)
+        if idxs2[2] != i
+            push!(sing_out,sing_coordinates[i])
+            push!(sing_out_weight,sing_indices[i])
+            continue
+        end
+
+        sing_seen[nn_idx] = true
+        push!(sing_out,0.5*(sing_coordinates[i] + sing_coordinates[nn_idx]))
+        push!(sing_out_weight, 2)
+    end
+    return sing_out, sing_out_weight
+end
+
+"""
+    discrete_singularity_detection(T, combine_distance,[xspan,yspan])
+
+Calculates integral-field singularities of the first eigenvector of `T` by taking
+a discrete differential-geometric approach. Singularities are calculated on each
+cell. Singularities with distance less or equal to `combine_difference` are
+combined by averaging the location and adding the index. Returns a vector of
+coordinates and a vector of corresponding indices. Indices multiplied by 2 to get
+integer values.
+"""
+function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
+                                        combine_distance::Float64,
+                                        xspan=1:(size(T)[2]), yspan=1:(size(T)[1]);
+                                        combine_isolated_wedges=true
+                                        ) where S
+    ξ = [eigvecs(t)[:,1] for t in T]
+    ξrad = [atan(v[2], v[1]) for v in ξ] .+ π/2
+
+    nx, ny = size(T)
+    cell_contents = zeros(Int, nx-1, ny-1)
+    for j in 1:(ny-1), i in 1:(nx-1)
+        toadd = 0.0
+        toadd -= periodic_diff(ξrad[i+1,j], ξrad[i,j], π)
+        toadd -= periodic_diff(ξrad[i+1,j+1], ξrad[i+1,j], π)
+        toadd -= periodic_diff(ξrad[i,j+1], ξrad[i+1,j+1], π)
+        toadd -= periodic_diff(ξrad[i,j], ξrad[i,j+1], π)
+        cell_contents[i,j] = round(Int, toadd/π)
+    end
+
+    sing_locations = findall(x-> x!= 0, cell_contents)
+    sing_indices = cell_contents[sing_locations]
+
+    sing_i, sing_j = unzip(Tuple.(sing_locations))
+
+    #"coordinates" of singularities at cell-midpoints
+    sing_y = yspan[sing_i] .+ 0.5 * (yspan[sing_i .+ 1] - yspan[sing_i])
+    sing_x = xspan[sing_j] .+ 0.5 * (xspan[sing_j .+ 1] - xspan[sing_j])
+    sing_coordinates = SVector{2}.(sing_x, sing_y)
+
+    sing_combined, sing_combined_weights = combine_singularities(
+            sing_coordinates,
+            sing_indices,
+            combine_distance
+            )
+
+    if combine_isolated_wedges
+        #There could still be wedge-singularities that
+        #are separated by more than combine_distance
+        #It would be a shame if we missed these
+        return combine_isolated_wedge_pairs(sing_combined,sing_combined_weights)
+    else
+        return sing_combined,sing_combined_weights
+    end
 end
 
 """
