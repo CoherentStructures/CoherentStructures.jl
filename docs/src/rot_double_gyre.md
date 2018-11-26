@@ -64,33 +64,36 @@ Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i
 
 Here, we demonstrate how to calculate black-hole vortices, see
 [Geodesic elliptic material vortices](@ref) for references and details.
-```@example 2
-using CoherentStructures
-using Tensors, OrdinaryDiffEq, Plots, StaticArrays
+```
+using Distributed
+nprocs() == 1 && addprocs()
 
-const q = 51
-const tspan = range(0., stop=1., length=q)
-ny = 101
-nx = 101
-xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
-xspan = range(xmin, stop=xmax, length=nx)
-yspan = range(ymin, stop=ymax, length=ny)
-P = SVector{2}.(xspan', yspan)
-const δ = 1.e-6
-mCG_tensor = u -> CG_tensor(rot_double_gyre, u, tspan, δ;
-        tolerance=1e-6, solver=Tsit5())
+@everywhere begin
+    using CoherentStructures, OrdinaryDiffEq, StaticArrays
+    const q = 51
+    const tspan = range(0., stop=1., length=q)
+    ny = 101
+    nx = 101
+    xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
+    xspan = range(xmin, stop=xmax, length=nx)
+    yspan = range(ymin, stop=ymax, length=ny)
+    P = SVector{2}.(xspan', yspan)
+    const δ = 1.e-6
+    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
+            tolerance=1e-6, solver=Tsit5())
+end
 
-C = map(mCG_tensor, P)
-
+C̅ = pmap(mCG_tensor, P; batch_size=ny)
 p = LCSParameters(.1, 0.5, 0.01, 0.2, 0.3, 60, 0.7, 1.3)
-vortices = ellipticLCS(C, xspan, yspan, p)
+vortices = ellipticLCS(C̅, xspan, yspan, p)
 ```
 The results are then visualized as follows.
-```@example 2
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C)
-fig = Plots.heatmap(xspan, yspan, log10.(λ₂);
+```
+using Plots
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+fig = Plots.heatmap(xspan, yspan, log10.(traceT);
             aspect_ratio=1, color=:viridis, leg=true,
-            title="FTLE field and transport barriers")
+            title="DBS field and transport barriers")
 foreach(vortices) do vortex
     Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
 end

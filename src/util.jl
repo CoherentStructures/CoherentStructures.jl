@@ -46,7 +46,7 @@ but `du` is returned as a StaticVector.
     p4::SVector{3,T} = odefun(SVector{3}(u[13], u[14], u[15]), p, t)
     p5::SVector{3,T} = odefun(SVector{3}(u[16], u[17], u[18]), p, t)
     p6::SVector{3,T} = odefun(SVector{3}(u[19], u[20], u[21]), p, t)
-    return SVector{18,T}(p0[1], p0[2], p0[3],
+    return SVector{21,T}(p0[1], p0[2], p0[3],
                          p1[1], p1[2], p1[3], p2[1], p2[2], p2[3],
                          p3[1], p3[2], p3[3], p4[1], p4[2], p4[3],
                          p5[1], p5[2], p5[3], p6[1], p6[2], p6[3])

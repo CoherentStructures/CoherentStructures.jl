@@ -1,4 +1,4 @@
-# (c) 2018 Daniel Karrasch
+# (c) 2018 Daniel Karrasch & Nathanael Schilling
 
 """
     struct EllipticBarrier
@@ -122,7 +122,7 @@ This function does the equivalent of:
     have a distance leq `combine_distance`. Find all connected components of this graph,
     and return a list of their mean coordinate and sum of `sing_indices`
 """
-function combine_singularities(sing_coordinates,sing_indices,combine_distance)
+function combine_singularities(sing_coordinates, sing_indices, combine_distance)
 
     #Do a breath-first search of all singularities
     #that are "connected" in the sense of
@@ -149,7 +149,7 @@ function combine_singularities(sing_coordinates,sing_indices,combine_distance)
         sing_seen[i] = true
 
         current_weight = 0
-        current_coords = @SVector [0.0,0.0]
+        current_coords = @SVector [0.0, 0.0]
         num_combined = 0
 
         #Breadth-first-search
@@ -167,7 +167,8 @@ function combine_singularities(sing_coordinates,sing_indices,combine_distance)
             end
             #Average coordinates & add indices
             current_weight += sing_indices[current_singularity]
-            current_coords = (num_combined * current_coords + sing_coordinates[current_singularity])/(num_combined + 1)
+            current_coords = (num_combined * current_coords + sing_coordinates[current_singularity]) /
+                                    (num_combined + 1)
             num_combined += 1
         end
         if current_weight != 0
@@ -194,32 +195,32 @@ function combine_isolated_wedge_pairs(sing_coordinates, sing_indices)
         sing_seen[i] = true
 
         if sing_indices[i] != 1
-            push!(sing_out,sing_coordinates[i])
-            push!(sing_out_weight,sing_indices[i])
+            push!(sing_out, sing_coordinates[i])
+            push!(sing_out_weight, sing_indices[i])
             continue
         end
         #We have an index +1/2 singularity
-        idxs,dists = NN.knn(sing_tree, sing_coordinates[i], 2,true)
+        idxs, dists = NN.knn(sing_tree, sing_coordinates[i], 2, true)
         nn_idx = idxs[2]
 
         #We've already dealt with the nearest neighbor (but didn't find
         #this one as nearest neighbor), or it isn't a wedge
-        if sing_seen[nn_idx]  || sing_indices[nn_idx] != 1
-            push!(sing_out,sing_coordinates[i])
-            push!(sing_out_weight,sing_indices[i])
+        if sing_seen[nn_idx] || sing_indices[nn_idx] != 1
+            push!(sing_out, sing_coordinates[i])
+            push!(sing_out_weight, sing_indices[i])
             continue
         end
 
         #See if the nearest neighbor of the nearest neighbor is i
-        idxs2,dists2 = NN.knn(sing_tree,sing_coordinates[nn_idx],2,true)
+        idxs2,dists2 = NN.knn(sing_tree, sing_coordinates[nn_idx], 2, true)
         if idxs2[2] != i
-            push!(sing_out,sing_coordinates[i])
-            push!(sing_out_weight,sing_indices[i])
+            push!(sing_out, sing_coordinates[i])
+            push!(sing_out_weight, sing_indices[i])
             continue
         end
 
         sing_seen[nn_idx] = true
-        push!(sing_out,0.5*(sing_coordinates[i] + sing_coordinates[nn_idx]))
+        push!(sing_out, 0.5 * (sing_coordinates[i] + sing_coordinates[nn_idx]))
         push!(sing_out_weight, 2)
     end
     return sing_out, sing_out_weight
@@ -254,7 +255,7 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
         cell_contents[i,j] = round(Int, toadd/π)
     end
 
-    sing_locations = findall(x-> x!= 0, cell_contents)
+    sing_locations = findall(!iszero, cell_contents)
     sing_indices = cell_contents[sing_locations]
 
     sing_i, sing_j = unzip(Tuple.(sing_locations))
@@ -274,9 +275,9 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
         #It would be a shame if we missed these
-        return combine_isolated_wedge_pairs(sing_combined,sing_combined_weights)
+        return combine_isolated_wedge_pairs(sing_combined, sing_combined_weights)
     else
-        return sing_combined,sing_combined_weights
+        return sing_combined, sing_combined_weights
     end
 end
 

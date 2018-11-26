@@ -7,39 +7,45 @@ times in the literature.
 ## Geodesic vortices
 
 Here, we demonstrate how to detect material barriers to diffusive transport.
-```@example 1
-using CoherentStructures
-using JLD2, OrdinaryDiffEq, Plots, StaticArrays
-###################### load and interpolate velocity data sets #############
-JLD2.@load("../../examples/Ocean_geostrophic_velocity.jld2")
+```
+using Distributed
+nprocs() == 1 && addprocs()
 
+@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays
+
+###################### load and interpolate velocity data sets #############
+using JLD2
+JLD2.@load("Ocean_geostrophic_velocity.jld2")
 UI, VI = interpolateVF(Lon, Lat, Time, UT, VT)
-p = (UI, VI)
+const p = (UI, VI)
 
 ############################ integration set up ################################
-q = 91
-t_initial = minimum(Time)
-t_final = t_initial + 90
-const tspan = range(t_initial, stop=t_final, length=q)
-nx = 500
-ny = Int(floor(0.6 * nx))
-N = nx * ny
-xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
-xspan = range(xmin, stop=xmax, length=nx)
-yspan = range(ymin, stop=ymax, length=ny)
-P = SVector{2}.(xspan', yspan)
-const δ = 1.e-5
-mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-    p=p, tolerance=1e-6, solver=Tsit5())
+@everywhere begin
+    q = 91
+    t_initial = minimum(Time)
+    t_final = t_initial + 90
+    const tspan = range(t_initial, stop=t_final, length=q)
+    nx = 500
+    ny = Int(floor(0.6 * nx))
+    xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
+    xspan = range(xmin, stop=xmax, length=nx)
+    yspan = range(ymin, stop=ymax, length=ny)
+    P = SVector{2}.(xspan', yspan)
+    const δ = 1.e-5
+    mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+        p=p, tolerance=1e-6, solver=Tsit5())
+end
 
-C̅ = map(mCG_tensor, P)
+############################ compute elliptic LCSs #############################
+C̅ = pmap(mCG_tensor, P; batch_size=ny)
 params = LCSParameters(.09, 0.5, 0.05, 0.5, 1.0, 60, 0.7, 1.3)
 vortices = ellipticLCS(C̅, xspan, yspan, params)
 ```
 The result is visualized as follows:
-```@example 1
+```
+using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, log10.(λ₁ .+ λ₂);
+fig = Plots.heatmap(xspan, yspan, log10.(traceT);
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
 for vortex in vortices
