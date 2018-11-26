@@ -8,7 +8,8 @@ The Bickley jet is described by a time-dependent velocity field arising from a
 stream-function. The corresponding velocity field is provided by the package and
 callable as `bickleyJet`.
 
-Instead of using the `bickleyJet` function to get this velocity field, we could also use the `@velo_from_stream` macro:
+Instead of using the `bickleyJet` function to get this velocity field, we could
+also use the `@velo_from_stream` macro:
 ```@example 2
 using CoherentStructures
 bickley = @velo_from_stream stream begin
@@ -37,37 +38,38 @@ signature `(u, p, t)` with state `u`, (unused) parameter `p` and time `t`.
 
 Here we briefly demonstrate how to find material barriers to diffusive transport;
 see [Geodesic elliptic material vortices](@ref) for references and details.
-```@example 1
-using CoherentStructures
-using Tensors, OrdinaryDiffEq, StaticArrays
+```
+using Distributed
+nprocs() == 1 && addprocs()
 
-const q = 81
-const tspan = range(0., stop=3456000., length=q)
-ny = 120
-nx = div(ny*22, 6)
-N = nx * ny
-xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-xspan = range(xmin, stop=xmax, length=nx)
-yspan = range(ymin, stop=ymax, length=ny)
-P = SVector{2}.(xspan', yspan)
-const δ = 1.e-6
-const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
-mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
-          D=DiffTensor, tolerance=1e-6, solver=Tsit5())
+@everywhere begin
+    using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays
+    const q = 81
+    const tspan = range(0., stop=3456000., length=q)
+    ny = 120
+    nx = (22ny) ÷ 6
+    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
+    xspan = range(xmin, stop=xmax, length=nx)
+    yspan = range(ymin, stop=ymax, length=ny)
+    P = SVector{2}.(xspan', yspan)
+    const δ = 1.e-6
+    const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
+    mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
+              D=DiffTensor, tolerance=1e-6, solver=Tsit5())
+end
 
-C̅ = map(mCG_tensor, P)
-
+C̅ = pmap(mCG_tensor, P; batch_size=ny)
 p = LCSParameters(.1, 0.5, 0.04, 0.5, 1.8, 60, 0.7, 1.3)
 vortices = ellipticLCS(C̅, xspan, yspan, p)
 ```
-
 The result is visualized as follows:
-```@example 1
+```
 import Plots
 Plots.clibrary(:misc) #hide
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, log10.(λ₁ .+ λ₂);
+fig = Plots.heatmap(xspan, yspan, log10.(traceT);
                     aspect_ratio=1, color=:viridis, leg=true,
+                    xlims=(0, 6.371π), ylims=(-3, 3),
                     title="DBS field and transport barriers")
 foreach(vortices) do vortex
     Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")

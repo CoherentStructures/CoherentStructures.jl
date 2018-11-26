@@ -69,10 +69,6 @@ linearized_flow
 ### Cauchy-Green and other pullback tensors
 
 ```@docs
-parallel_tensor
-```
-
-```@docs
 CG_tensor
 ```
 
