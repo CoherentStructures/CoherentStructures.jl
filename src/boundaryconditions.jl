@@ -112,6 +112,12 @@ function getDofCoordinates(ctx::gridContext{dim}, dofindex::Int) where dim
     return ctx.grid.nodes[ctx.dof_to_node[dofindex]].x
 end
 
+"""
+    BCTable(ctx,bdata)
+
+Return a vector `res` so that `res[i] = j` means that dof `i` should be identified with bcdof `j` if
+`j` != 0 and if `j = 0` that dof `i` is part of zero Dirichlet boundary conditions.
+"""
 function BCTable(ctx::gridContext{dim},bdata::boundaryData) where dim
     dbcs_prescribed_dofs = bdata.dbc_dofs
     periodic_dofs_from   = bdata.periodic_dofs_from
@@ -171,7 +177,7 @@ end
 
 Get the number of dofs that are left after the boundary conditions in `bdata` have been applied.
 """
-function nDofs(ctx::gridContext{dim}, bdata::boundaryData) where dim
+function nBCDofs(ctx::gridContext{dim}, bdata::boundaryData) where dim
     return length(unique(BCTable(ctx, bdata)))
 end
 
@@ -336,4 +342,8 @@ function identifyPoints(ctx::gridContext{dim}, predicate::Distances.Metric) wher
         end
     end
     return identify_from, identify_to
+end
+
+function isEmptyBC(bdata::boundaryData)
+    return isempty(bdata.dbc_dofs) && isempty(bdata.periodic_dofs_from)
 end

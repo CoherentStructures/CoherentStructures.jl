@@ -102,7 +102,7 @@ function nonAdaptiveTOCollocation(
 end
 
 """
-    adaptiveToCollocationStiffnessMatrix(ctx,flow_map; [quadrature_order, on_torus, LL,UR, bdata, volume_preserving=true] )
+    adaptiveTOCollocationStiffnessMatrix(ctx,flow_map; [quadrature_order, on_torus, LL,UR, bdata, volume_preserving=true] )
 
 Calculate the matrix-representation of the bilinear form ``a(u,v) = a_1(I_hTu,I_hTv)`` where
 ``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay triangulation on images of grid points from ctx
@@ -118,8 +118,8 @@ function adaptiveTOCollocationStiffnessMatrix(
         flow_map::Function;
         quadrature_order=default_quadrature_order,
         on_torus::Bool=false,
-        LL::AbstractVector{Float64}=ctx.spatialBounds[1],
-        UR::AbstractVector{Float64}=ctx.spatialBounds[2],
+        LL_future::AbstractVector{Float64}=ctx.spatialBounds[1],
+        UR_future::AbstractVector{Float64}=ctx.spatialBounds[2],
         bdata::boundaryData=boundaryData(),
         volume_preserving=true
         )
@@ -127,43 +127,35 @@ function adaptiveTOCollocationStiffnessMatrix(
         @warn "This function probably doesn't work for this case"
     end
     #Push forward the points, perform the triangulation
-    new_ctx,new_bdata,new_density_nodevals = adaptiveTOFutureGrid(ctx,flow_map;
-                            on_torus=on_torus,LL=LL,UR=UR,bdata=bdata
+    new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx,flow_map;
+                            on_torus=on_torus,LL_future=LL_future,UR_future=UR_future,bdata=bdata
                             )
 
 
+    translation_table = bcdof_to_node(new_ctx,new_bdata)
     #Assemble stiffness matrix
-    if !on_torus
-        if !volume_preserving
-            new_ctx.mass_weights = [
-                    evaluate_function_from_node_or_cellvals(ctx_new,new_density_nodevals,q)
-                    for q in new_ctx.quadrature_points
-                    ]
+    if !volume_preserving
+        #This is allowed because new_ctx is a (possibly periodic) delaunay grid,
+        #with the node ordering of the first n nodes being the bcdof ordering of
+        #the old grid
+        new_density_nodevals = new_density_bcdofvals
+        while length(new_density_nodevals) != new_ctx.n
+            push!(new_density_nodevals,0.0)
         end
-        n = ctx.n
-        I, J, V = findnz(assembleStiffnessMatrix(new_ctx))
 
-        #Now we just need to reorder K2 to have the ordering of the dofs of the original ctx
-        I .= new_ctx.dof_to_node[I]
-        J .= new_ctx.dof_to_node[J]
-       return applyBCS(ctx,sparse(I,J,V,n,n),bdata)
-    else
-        if !volume_preserving
-            while length(new_density_nodevals) != new_ctx.n
-                push!(new_density_nodevals,0.0)
-            end
-
-            new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
-                       for q in new_ctx.quadrature_points ]
-        end
-        K = assembleStiffnessMatrix(new_ctx,bdata=new_bdata)
-        return  pdofNewToPdofOld(ctx,bdata,new_ctx,new_bdata,K)
+        new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
+                   for q in new_ctx.quadrature_points ]
     end
+    I, J, V = findnz(assembleStiffnessMatrix(new_ctx,bdata=new_bdata))
+    I .= translation_table[I]
+    J .= translation_table[J]
+    n = ctx.n - length(bdata.periodic_dofs_from)
+    return sparse(I,J,V,n,n)
 end
 
 
 #Reordering in the periodic case is slightly more tricky
-function pdofNewToPdofOld(
+function bcdofNewToBcdofOld(
         old_ctx::gridContext{dim},bdata::boundaryData,
         new_ctx::gridContext{dim},new_bdata::boundaryData,K
         ) where dim
@@ -172,8 +164,8 @@ function pdofNewToPdofOld(
 
         #Here I,J are in pdof order for new_ctx
 
-        bcdof_to_node_new = pdof_to_node(new_ctx,new_bdata)
-        node_to_bcdof_old = node_to_pdof(old_ctx,bdata)
+        bcdof_to_node_new = bcdof_to_node(new_ctx,new_bdata)
+        node_to_bcdof_old = node_to_bcdof(old_ctx,bdata)
         I .= node_to_bcdof_old[bcdof_to_node_new[I]]
         J .= node_to_bcdof_old[bcdof_to_node_new[J]]
 
@@ -182,51 +174,58 @@ function pdofNewToPdofOld(
         return sparse(I,J,V,old_pdof_n,old_pdof_n)
 end
 
-function node_to_pdof(ctx::gridContext{dim},bdata::boundaryData) where dim
+function node_to_bcdof(ctx::gridContext{dim},bdata::boundaryData) where dim
         n_nodes = ctx.n - length(bdata.periodic_dofs_from)
         bdata_table = BCTable(ctx,bdata)
-        return bdata_table[ctx.node_to_dof[1:n_nodes]]
+        return bdata_table[ctx.node_to_dof]
 end
 
-function pdof_to_node(ctx::gridContext{dim},bdata::boundaryData) where dim
-        return sortperm(node_to_pdof(ctx,bdata))
+function bcdof_to_node(ctx::gridContext{dim},bdata::boundaryData) where dim
+        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+        bdata_table = BCTable(ctx,bdata)
+        result = zeros(Int,n_nodes)
+        for i in 1:ctx.n
+            if result[bdata_table[ctx.node_to_dof[i]]] == 0
+                result[bdata_table[ctx.node_to_dof[i]]] = i
+            end
+        end
+        return result
 end
 
 
+"""
+    adaptiveTOFutureGrid(ctx, flow_map;[on_torus=false,bdata=nothing,LL,UR,quadrature_order])
+
+Takes the (non-periodic) grid points from `ctx` (in bcdof order), applies `flow_map` to them,
+and (periodic) delaunay triangulates them and returns a P1-Delaunay `gridContext,bdata, volchange` tuple for that,
+where `volchange` is a vector of relative volumes of the nodal basis functions.
+"""
 function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
-        on_torus=false,bdata=nothing,LL=[0.0,0.0], UR=[1.0,1.0],
+        on_torus=false,bdata=boundaryData(),LL_future=ctx.spatialBounds[1], UR_future=ctx.spatialBounds[2],
         quadrature_order=default_quadrature_order
         ) where dim
 
-
-    if !on_torus
-        n = ctx.n
-        new_nodes_in_dof_order = [ Vec{2}(flow_map(ctx.grid.nodes[ctx.dof_to_node[j]].x)) for j in 1:n ]
-        new_ctx = gridContext{2}(JuAFEM.Triangle, new_nodes_in_dof_order, quadrature_order=quadrature_order)
-        new_bdata = boundaryData()
-
-    else
-        if bdata == nothing
-            throw(AssertionError("Require bdata parameter if on_torus==true"))
-        end
-
-        #Push forward "original" nodes
-        # (There are additional nodes from the periodic dofs, but
-        #by construction of the periodic delaunay triangulation, they
-        #are at the end)
-
-        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
-        new_nodes_in_node_order = [
-                    Vec{2}(flow_map(ctx.grid.nodes[j].x))
-                    for j in 1:n_nodes ]
-
-        new_ctx, new_bdata = irregularDelaunayGrid(new_nodes_in_node_order;on_torus=true,LL=LL,UR=UR,quadrature_order=quadrature_order)
+    if isEmptyBC(bdata) && on_torus==true
+        throw(AssertionError("Require bdata parameter if on_torus==true"))
     end
 
+    #Push forward "original" nodes
+
+    new_nodes_in_bcdof_order = [
+        Vec{2}(flow_map(ctx.grid.nodes[j].x))
+        for j in bcdof_to_node(ctx,bdata)
+            ]
+    new_ctx, new_bdata = irregularDelaunayGrid(
+                            new_nodes_in_bcdof_order;
+                            on_torus=on_torus,LL=LL_future,UR=UR_future,
+                            quadrature_order=quadrature_order
+                            )
+
     #Do volume corrections
-    #All values are in node order, which is the same for ctx and new_ctx
-    vols_new = sum(assembleMassMatrix(new_ctx,bdata=new_bdata),dims=1)[node_to_pdof(new_ctx,new_bdata)]
-    vols_old = sum(assembleMassMatrix(ctx,bdata=bdata),dims=1)[node_to_pdof(ctx,bdata)]
+    #All values are in node order for new_ctx, which is the same as bcdof order for ctx2
+    n_nodes = length(new_nodes_in_bcdof_order)
+    vols_new = sum(assembleMassMatrix(new_ctx,bdata=new_bdata),dims=1)[1,node_to_bcdof(new_ctx,new_bdata)[1:n_nodes]]
+    vols_old = sum(assembleMassMatrix(ctx,bdata=bdata),dims=1)[1,1:n_nodes]
 
     return new_ctx,new_bdata, vols_new ./ vols_old
 
@@ -269,16 +268,16 @@ function adaptiveTOCollocation(ctx::gridContext{dim}, flow_map::Function;
             throw(AssertionError("Invalid projection_method"))
         end
         if volume_preserving
-            L = sparse(I, npoints, npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
+            L = sparse(I, npoints, npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             result = ALPHA_bc*L
         else
-            volume_change_pdof = volume_change[pdof_to_node(ctx,bdata)]
+            volume_change_pdof = volume_change[bcdof_to_node(ctx,bdata)]
             K = assembleStiffnessMatrix(ctx,bdata=bdata)
             M = assembleMassMatrix(ctx,bdata=bdata)
             volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
-            volume_change = volume_change_pdof[node_to_pdof(ctx,bdata)]
+            volume_change = volume_change_pdof[node_to_bcdof(ctx,bdata)]
 
-            L = sparse(1.0*I,npoints,npoints)[node_to_pdof(ctx,bdata)[pdof_to_node(ctx_new,bdata_new)],:]
+            L = sparse(1.0*I,npoints,npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             for j in 1:(size(L)[2])
                 L[:,j] *= volume_change_pdof[j]
             end

@@ -369,7 +369,7 @@ function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
         ip = JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
     end
     ctx = CoherentStructures.gridContext{2}(JFM.Triangle,
-        nodes_in,on_torus=on_torus,LL=LL,UR=UR,ip=ip,
+        nodes_in;on_torus=on_torus,LL=LL,UR=UR,ip=ip,
         kwargs...
         )
     if !on_torus

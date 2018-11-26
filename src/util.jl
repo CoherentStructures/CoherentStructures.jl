@@ -230,7 +230,7 @@ end
 """
     periodic_diff(x,y,p)
 
-Return the number `z` with minimum absolute value so that x + z = y (mod p)
+Return the number `z` with minimum absolute value so that y + z = x (mod p)
 """
 function periodic_diff(xin,yin,p)
     x = Base.mod(xin,p)
