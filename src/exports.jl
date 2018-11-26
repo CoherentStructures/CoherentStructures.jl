@@ -98,7 +98,6 @@ export
 	flow,
 	parallel_flow,
 	linearized_flow,
-	parallel_tensor,
 	mean_diff_tensor,
 	CG_tensor,
 	pullback_tensors,
