@@ -90,7 +90,7 @@ macro velo_from_stream(H::Symbol, formulas::Expr)
     V, _ = streamline_derivatives(H, formulas)
     V = sym_subst.(V, [[:x,:y]], [[:(u[1]), :(u[2])]])
     quote
-        (u, p, t) -> SVector{2}($(V[1]), $(V[2]))
+        OrdinaryDiffEq.ODEFunction((u, p, t) -> SVector{2}($(V[1]), $(V[2])))
     end
 end
 macro velo_from_stream(name::Symbol)
@@ -131,7 +131,7 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     DV = sym_subst.(DV, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
 
     quote
-        (u, p, t) -> begin
+        OrdinaryDiffEq.ODEFunction((u, p, t) -> begin
             # take as input a  2x3 matrix which is interpreted the following way:
             # [ x[1] X[1,1] X[1,2]
             #   x[2] X[2,1] X[2,2] ]
@@ -145,6 +145,7 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
             return @SMatrix [ $(V[1]) DX[1,1] DX[1,2]
                               $(V[2]) DX[2,1] DX[2,2] ]
         end
+        )
     end
 end
 macro var_velo_from_stream(name::Symbol)
