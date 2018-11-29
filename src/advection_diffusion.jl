@@ -62,7 +62,7 @@ end
 
 Single step with implicit Euler method.
 """
-function ADimplicitEulerStep(ctx::gridContext, u::AbstractVector, edt::Real, Afun, q=nothing, M=nothing, K=nothing)
+function ADimplicitEulerStep(ctx::gridContext, u::AbstractVector, edt::Real; Afun=nothing, q=nothing, M=nothing, K=nothing)
     if M == nothing
         M = assembleMassMatrix(ctx)
     end

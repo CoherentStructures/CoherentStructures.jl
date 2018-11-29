@@ -45,7 +45,7 @@ rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction(rdgev!)
 
 # interpolated vector field components
 """
-    interpolateVF(xspan,yspan,tspan,u,v,interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> UI, VI
+    interpolateVF(xspan, yspan, tspan, u, v, interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> UI, VI
 """
 function interpolateVF(xspan::AbstractVector{S1},
                         yspan::AbstractVector{S1},
@@ -55,24 +55,12 @@ function interpolateVF(xspan::AbstractVector{S1},
                         interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
                         ) where {S1 <: Real, S2 <: Real}
 
-    # convert arrays into linspace-form for interpolation
+    # convert arrays into range-form for interpolation
     X = range(minimum(xspan), stop=maximum(xspan), length=length(xspan))
     Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
     T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
-
-    UI = ITP.scale(ITP.interpolate(u, interpolation_type), X, Y, T)
-    #UE = extrapolate(UI,(Flat(),Flat(),Flat()))
-    VI = ITP.scale(ITP.interpolate(v, interpolation_type), X, Y, T)
-    #VE = extrapolate(VI,(Flat(),Flat(),Flat()))
-    return UI, VI
-end
-
-#The rhs for an ODE on interpolated vector fields
-#The interpolant is passed via the p argument
-function interpolated_velocity(u, p, t)
-    du1 = p[1](u[1], u[2], t)
-    du2 = p[2](u[1], u[2], t)
-    return SVector{2}(du1, du2)
+    V = SVector{2}.(u, v)
+    return ITP.scale(ITP.interpolate(V, interpolation_type), X, Y, T)
 end
 
 """
@@ -84,13 +72,7 @@ interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
 `UI` and `VI` are the interpolants for the x- and y-components of the velocity
 field.
 """
-interp_rhs = OrdinaryDiffEq.ODEFunction(interpolated_velocity)
-
-function interpolated_velocity!(du, u, p, t)
-    du[1] = p[1](u[1], u[2], t)
-    du[2] = p[2](u[1], u[2], t)
-    return du
-end
+interp_rhs = OrdinaryDiffEq.ODEFunction((u, p, t) -> p(u[1], u[2], t))
 
 """
     interp_rhs!(du, u, p, t) -> Vector
@@ -101,7 +83,7 @@ assumes that the interpolants are provided as a 2-tuple `(UI, VI)` via the
 parameter `p`. Here, `UI` and `VI` are the interpolants for the x- and
 y-components of the velocity field.
 """
-interp_rhs! = OrdinaryDiffEq.ODEFunction(interpolated_velocity!)
+interp_rhs! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= p(u[1], u[2], t))
 
 # standard map
 function standardMap(u)
