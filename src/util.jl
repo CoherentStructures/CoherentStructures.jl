@@ -245,3 +245,11 @@ function periodic_diff(xin,yin,p)
     #@assert Base.mod(yin + result - xin,p) == 0.0
     return result
 end
+
+#= TODO: Move this somewhere
+#Tests: these should all return 2
+periodic_diff(5,3,10)
+-periodic_diff(3,5,10)
+-periodic_diff(9,1,10)
+periodic_diff(1,9,10)
+=#

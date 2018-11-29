@@ -343,8 +343,8 @@ function locatePoint(
             M[:,2] = p3-p1
             M[:,3] = p4-p1
             tMI::Tensor{2,3,Float64,9} =  Tensor{2,3,Float64}(M)
-            if T == JuAFEM.Tetrahedron
-                return inv(tMI) ⋅ Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])), nodes[tet] .+ 1, 1
+            if S == JuAFEM.Tetrahedron
+                return inv(tMI) ⋅ Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])), collect(nodes[tet]) .+ 1, 1
             else
                 avg(x,y) = (x == 1 && y == 3) || (x == 3 && y == 1) ? 2 : x
                 indexavg(x,y) = CartesianIndex(avg.(Tuple(x),Tuple(y)))

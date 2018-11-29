@@ -663,7 +663,7 @@ end
 
 #= TODO 1.0
 """
-    gridContext{2}(JUAFEM.QuadraticQuadrilateral, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
+    gridContext{2}(JuAFEM.QuadraticQuadrilateral, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
 
 Constructor for regular P2 quadrilateral grids.
 """
@@ -729,7 +729,7 @@ function gridContext{3}(::Type{JFM.Tetrahedron},
     qr = JFM.QuadratureRule{3, JFM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JFM.close!(dh)
-    result =  gridContext{3}(grid, ip,JFM.Lagrange{3,JFM.RefCube,1}(), dh, qr, loc)
+    result =  gridContext{3}(grid, ip,JFM.Lagrange{3,JFM.RefTetrahedron,1}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
     if isa(ip, JFM.Lagrange)
@@ -755,7 +755,7 @@ function gridContext{3}(::Type{JFM.QuadraticTetrahedron},
                          quadrature_order::Int=default_quadrature_order3D,
                          ip=JFM.Lagrange{3, JFM.RefTetrahedron, 2}()
                          )
-    if !isa(ip, JUAFEM.Lagrange)
+    if !isa(ip, JuAFEM.Lagrange)
         @warn "Using non-Lagrange interpolation with P2 Elements may or may not work"
     end
     #The -1 below is needed because JuAFEM internally then goes on to increment it
@@ -765,7 +765,7 @@ function gridContext{3}(::Type{JFM.QuadraticTetrahedron},
     qr = JFM.QuadratureRule{3, JFM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JFM.close!(dh)
-    result =  gridContext{3}(grid, ip,JFM.Lagrange{3,RefCube,2}(), dh, qr, loc)
+    result =  gridContext{3}(grid, ip,JFM.Lagrange{3,JFM.RefTetrahedron,2}(), dh, qr, loc)
     result.spatialBounds = [LL, UR]
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
     result.gridType = "3D regular P2 tetrahedral grid"
@@ -876,13 +876,13 @@ function evaluate_function_from_node_or_cellvals(
          locatePoint(ctx, x)
     catch y
         if isa(y,DomainError)
-            return spzeros(T,size(vals)[2]) .+ outside_value
+            return outside_value
         end
         if throw_errors
             print("Unexpected error for $x")
             rethrow(y)
         else
-            return spzeros(T,size(vals)[2]) .+ outside_value
+            return outside_value
         end
     end
 

@@ -109,7 +109,9 @@ If δ==0, attempts to solve variational equation (odefun is assumed to be the rh
 variational equation in this case).
 Return time-resolved linearized flow maps.
 """
-function linearized_flow(odefun, x::AbstractVector{T}, tspan, δ; kwargs...) where {T <: Real}
+function linearized_flow(
+        odefun, x::AbstractVector{T}, tspan, δ; kwargs...
+    ) where {T <: Real}
     dim = length(x)
     !(dim ∈ (2, 3)) && error("length(u) ∉ [2,3]")
     linearized_flow(OrdinaryDiffEq.ODEFunction(odefun), convert(SVector{dim, T}, x), tspan, δ; kwargs...)
