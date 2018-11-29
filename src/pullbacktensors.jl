@@ -220,31 +220,6 @@ function linearized_flow(
 end
 
 """
-    parallel_tensor(tensor_fun,P) -> Array{SymmetricTensor}
-
-Computes a tensor field via `tensor_fun` for each element of `P`, which is an
-array of vectors. `tensor_fun` is a function that takes initial conditions as
-input and returns a *symmetric* tensor. The final tensor field array has the
-same size as `P`.
-"""
-function parallel_tensor(tensor_fun,P::AbstractArray{T,N}) where T where N
-
-    dim = length(P[1])
-    T_shared = SharedArray{eltype(T)}(div(dim*(dim+1), 2), length(P))
-    idxs = tril(ones(Bool,dim,dim))
-    Distributed.@everywhere @eval idxs = $idxs
-    @sync Distributed.@distributed for index in eachindex(P)
-        T_shared[:,index] = tensor_fun(P[index])[idxs]
-    end
-
-    Tfield = Array{SymmetricTensor{2,dim,eltype(T),div(dim*(dim+1),2)}}(undef, size(P))
-    for index in eachindex(P)
-        Tfield[index] = SymmetricTensor{2,dim}(T_shared[:,index])
-    end
-    return Tfield
-end
-
-"""
     mean_diff_tensor(odefun, u, tspan, δ; kwargs...) -> SymmetricTensor
 
 Returns the averaged diffusion tensor at a point along a set of times.
@@ -398,7 +373,7 @@ function pullback_diffusion_tensor_function(
 end
 
 """
-    pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...) -> Vector{SymmetricTensor}
+    pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B, kwargs...) -> Vector{SymmetricTensor}
 
 Returns the time-resolved pullback tensors of the diffusion tensor in SDEs.
 Derivatives are computed with finite differences.
@@ -407,7 +382,7 @@ Derivatives are computed with finite differences.
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences
-   * `D`: (constant) diffusion tensor
+   * `B`: (constant) SDE tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
 @inline function pullback_SDE_diffusion_tensor(
@@ -424,7 +399,7 @@ Derivatives are computed with finite differences.
 end
 
 """
-    av_weighted_CG_tensor(odefun, u, tspan, δ; G, kwargs...) -> SymmetricTensor
+    av_weighted_CG_tensor(odefun, u, tspan, δ; D, kwargs...) -> SymmetricTensor
 
 Returns the transport tensor of a trajectory, aka  time-averaged,
 di ffusivity-structure-weighted version of the classic right Cauchy–Green strain
@@ -434,7 +409,7 @@ tensor. Derivatives are computed with finite differences.
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences
-   * `G`: (constant) metric tensor
+   * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
 function av_weighted_CG_tensor(
