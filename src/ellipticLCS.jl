@@ -385,17 +385,20 @@ function bisection(f, a::T, b::T, tol::Float64=1.e-4, maxiter::Integer=15) where
 end
 
 """
-    compute_closed_orbits(pSection, T, xspan, yspan; pmin = .7, pmax = 1.3)
+    compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=.7, pmax=1.3)
 
 Compute the outermost closed orbit for a given Poincaré section `pSection`,
 tensor field `T`, where the total computational domain is spanned by `xspan`
 and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
-shift parameters in which closed orbits are sought.
+shift parameters in which closed orbits are sought; `rev` determines whether
+closed orbits are sought from the outside inwards (`true`) or from the inside
+outwards (`false`).
 """
 function compute_closed_orbits(pSection::Vector{SVector{2,S}},
                                         T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
+                                        rev::Bool=true,
                                         pmin::Float64=.7,
                                         pmax::Float64=1.3) where S <: Real
 
@@ -431,10 +434,8 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     # go along the Poincaré section and solve for T
     # first, define a nonlinear root finding problem
     vortices = EllipticBarrier[]
-    Tval = zeros(length(pSection) - 1)
-    s = falses(length(pSection) - 1)
-    orbits = Vector{Vector{Tuple{S,S}}}(undef, length(pSection) - 1)
-    for i in eachindex(pSection[2:end])
+    idxs = rev ? (length(pSection):-1:2) : (2:length(pSection))
+    for i in idxs
         Tsol = zero(Float64)
         try
             Tsol = bisection(λ -> prd(λ, false, pSection[i+1]), pmin, pmax)
@@ -445,6 +446,7 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
             # @show length(orbit)
             if (closed && uniform)
                 push!(vortices, EllipticBarrier([p.data for p in orbit], Tsol, false))
+                rev && break
             end
         catch
         end
@@ -458,6 +460,7 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
                 # @show length(orbit)
                 if (closed && uniform)
                     push!(vortices, EllipticBarrier([p.data for p in orbit], Tsol, true))
+                    rev && break
                 end
             catch
             end
@@ -507,20 +510,12 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortexlists = pmap(p_section) do ps
-        compute_closed_orbits(ps, T, xspan, yspan; pmin=p.pmin, pmax=p.pmax)
+        compute_closed_orbits(ps, T, xspan, yspan;
+                                rev=outermost, pmin=p.pmin, pmax=p.pmax)
     end
 
     # closed orbits extraction
-    if outermost
-        outer_vortices = EllipticBarrier[]
-        for vortexlist in vortexlists
-            !isempty(vortexlist) && push!(outer_vortices, last(vortexlist))
-        end
-        @info "Found $(length(outer_vortices)) coherent vortices."
-        return outer_vortices
-    else
-        vortexlist = vcat(vortexlists...)
-        @info "Found $(length(vortexlist)) elliptic barriers."
-        return vortexlist
-    end
+    vortexlist = vcat(vortexlists...)
+    @info "Found $(length(vortexlist)) elliptic barriers."
+    return vortexlist
 end
