@@ -1,6 +1,10 @@
+using Test
 using CoherentStructures
 
-include("fem_tests.jl")
+@testset "CoherentStructures" begin
+    
+    include("fem_tests.jl")
 
+    include("test_pullback_tensors.jl")
 
-#TODO add a test
+end
