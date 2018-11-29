@@ -45,22 +45,22 @@ rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction(rdgev!)
 
 # interpolated vector field components
 """
-    interpolateVF(xspan, yspan, tspan, u, v, interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> UI, VI
-"""
-function interpolateVF(xspan::AbstractVector{S1},
-                        yspan::AbstractVector{S1},
-                        tspan::AbstractVector{S1},
-                        u::AbstractArray{S2,3},
-                        v::AbstractArray{S2,3},
-                        interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
-                        ) where {S1 <: Real, S2 <: Real}
+    interpolateVF(xspan, yspan, tspan, u, v, interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> VI
 
-    # convert arrays into range-form for interpolation
-    X = range(minimum(xspan), stop=maximum(xspan), length=length(xspan))
-    Y = range(minimum(yspan), stop=maximum(yspan), length=length(yspan))
-    T = range(minimum(tspan), stop=maximum(tspan), length=length(tspan))
-    V = SVector{2}.(u, v)
-    return ITP.scale(ITP.interpolate(V, interpolation_type), X, Y, T)
+`xspan`, `yspan` and `tspan` span the space-time domain on which the
+velocity-components `u` and `v` are given. `u` corresponds to the ``x``- or
+eastward component, `v` corresponds to the ``y``- or northward component.
+For interpolation, the `Interpolations.jl` package is used; see their
+documentation for how to declare other interpolation types.
+"""
+function interpolateVF(X::AbstractRange{S1},
+                       Y::AbstractRange{S1},
+                       T::AbstractRange{S1},
+                       U::AbstractArray{S2,3},
+                       V::AbstractArray{S2,3},
+                       interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
+                       ) where {S1 <: Real, S2 <: Real}
+    ITP.scale(ITP.interpolate(SVector{2}.(U, V), interpolation_type), X, Y, T)
 end
 
 """
