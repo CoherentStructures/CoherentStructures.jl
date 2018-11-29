@@ -485,6 +485,16 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         yspan::AbstractVector{S},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true) where S <: Real
+    #= NEW METHOD
+    #TODO: specify combine_distance from LCSParameters() somehow
+
+    singularities_coordinates, singularity_indices =
+            discrete_singularity_detection(T,combine_distance,xspan,yspan)
+
+    vortexcenters = singularities_coordinates[findall(x->x==2,singularity_indices)]
+
+
+    =#
     # EVERYTHING FROM HERE ...
     singularities = singularity_location_detection(T, xspan, yspan)
     @info "Detected $(length(singularities)) singularity candidates..."
