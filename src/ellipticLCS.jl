@@ -35,6 +35,7 @@ Container for parameters used in elliptic LCS computations.
 * `n_seeds::Int64=40`: number of seed points on the Poincaré section
 * `pmin::Float64=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax::Float64=1.3`: upper bound on the parameter in the ``\\eta``-field
+* `rdist::Float64=1e-4`: required return distances for closed orbits
 """
 struct LCSParameters
     radius::Float64
@@ -45,6 +46,7 @@ struct LCSParameters
     n_seeds::Int64
     pmin::Float64
     pmax::Float64
+    rdist::Float64
 end
 function LCSParameters(;
             radius::Float64=0.1,
@@ -54,9 +56,10 @@ function LCSParameters(;
             p_length::Float64=0.5,
             n_seeds::Int64=40,
             pmin::Float64=0.7,
-            pmax::Float64=1.3)
+            pmax::Float64=1.3,
+            rdist::Float64=1e-4)
 
-    LCSParameters(radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, p_length, n_seeds, pmin, pmax)
+    LCSParameters(radius, MaxWedgeDist, MinWedgeDist, Min2ndDist, p_length, n_seeds, pmin, pmax, rdist)
 end
 
 """
@@ -282,21 +285,17 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
 end
 
 """
-    detect_elliptic_region(singularities, singularityTypes, MaxWedgeDist, MinWedgeDist, Min2ndDist)
+    detect_elliptic_region(singularities, singularityTypes, p)
 
 Determines candidate regions for closed tensor line orbits.
    * `singularities`: list of all singularities
    * `singularityTypes`: list of corresponding singularity types
-   * `MaxWedgeDist`: maximum distance to closest wedge
-   * `MinWedgeDist`: minimal distance to closest wedge
-   * `Min2ndDist`: minimal distance to second closest wedge
+   * `p`: parameter container of type `LCSParameters`
 Returns a list of vortex centers.
 """
 function detect_elliptic_region(singularities::AbstractVector{SVector{2,S}},
                                 singularity_types::AbstractVector{Int},
-                                MaxWedgeDist::Float64,
-                                MinWedgeDist::Float64,
-                                Min2ndDist::Float64) where S <: Number
+                                p::LCSParameters=LCSParameters()) where S <: Number
 
     indWedges = findall(singularity_types .== 1)
     wedges = singularities[indWedges]
@@ -305,9 +304,9 @@ function detect_elliptic_region(singularities::AbstractVector{SVector{2,S}},
     pairs = Vector{Int}[]
     for i=1:size(wedgeDist, 1)
         idx = partialsortperm(wedgeDist[i,:], 2:3)
-        if (wedgeDist[i,idx[1]] <= MaxWedgeDist &&
-            wedgeDist[i,idx[1]] >= MinWedgeDist &&
-            wedgeDist[i,idx[2]] >= Min2ndDist)
+        if (wedgeDist[i,idx[1]] <= p.MaxWedgeDist &&
+            wedgeDist[i,idx[1]] >= p.MinWedgeDist &&
+            wedgeDist[i,idx[2]] >= p.Min2ndDist)
             push!(pairs, [i, idx[1]])
         end
     end
@@ -317,25 +316,24 @@ function detect_elliptic_region(singularities::AbstractVector{SVector{2,S}},
 end
 
 """
-    set_Poincaré_section(vc, p_length, n_seeds, xspan, yspan)
+    set_Poincaré_section(vc, xspan, yspan, p::LCSParameters)
 
 Generates a horizontal Poincaré section, centered at the vortex center `vc`
-of length `p_length` consisting of `n_seeds` starting at `0.2*p_length`
+of length `p.p_length` consisting of `p.n_seeds` starting at `0.2*p_length`
 eastwards. All points are guaranteed to lie in the computational domain given
 by `xspan` and `yspan`.
 """
 function set_Poincaré_section(vc::SVector{2,S},
-                                p_length::Float64,
-                                n_seeds::Int,
                                 xspan::AbstractVector{S},
-                                yspan::AbstractVector{S}) where S <: Real
+                                yspan::AbstractVector{S},
+                                p::LCSParameters=LCSParameters()) where S <: Real
 
     xmin, xmax = extrema(xspan)
     ymin, ymax = extrema(yspan)
     p_section::Vector{SVector{2,S}} = [vc]
     eₓ = SVector{2,S}(1., 0.)
-    pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
-    idxs = [all(p .<= [xmax, ymax]) && all(p .>= [xmin, ymin]) for p in pspan]
+    pspan = range(vc + .2p.p_length*eₓ, stop=vc + p.p_length*eₓ, length=p.n_seeds)
+    idxs = [all(ps .<= [xmax, ymax]) && all(ps .>= [xmin, ymin]) for ps in pspan]
     append!(p_section, pspan[idxs])
     return p_section
 end
@@ -361,7 +359,7 @@ function Poincaré_return_distance(vf, seed::SVector{2,T}) where T <: Real
     end
 end
 
-function bisection(f, a::T, b::T, tol::Float64=1.e-4, maxiter::Integer=15) where T <: Real
+function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Real
     fa, fb = f(a), f(b)
     fa*fb <= 0 || error("No real root in [a,b]")
     i = 0
@@ -385,22 +383,23 @@ function bisection(f, a::T, b::T, tol::Float64=1.e-4, maxiter::Integer=15) where
 end
 
 """
-    compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=.7, pmax=1.3)
+    compute_closed_orbits(pSection, T, xspan, yspan; rev=true, p=LCSParameters())
 
 Compute the outermost closed orbit for a given Poincaré section `pSection`,
 tensor field `T`, where the total computational domain is spanned by `xspan`
 and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
 shift parameters in which closed orbits are sought; `rev` determines whether
 closed orbits are sought from the outside inwards (`true`) or from the inside
-outwards (`false`).
+outwards (`false`). `rdist` sets the required return distance for an orbit to be
+considered as closed.
 """
 function compute_closed_orbits(pSection::Vector{SVector{2,S}},
                                         T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
                                         rev::Bool=true,
-                                        pmin::Float64=.7,
-                                        pmax::Float64=1.3) where S <: Real
+                                        p::LCSParameters=LCSParameters()
+                                        ) where S <: Real
 
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
     Δλ = λ₂ - λ₁
@@ -438,28 +437,28 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     for i in idxs
         Tsol = zero(Float64)
         try
-            Tsol = bisection(λ -> prd(λ, false, pSection[i+1]), pmin, pmax)
-            orbit = compute_returning_orbit(ηfield(Tsol, false), pSection[i+1])
-            closed = norm(orbit[1] - orbit[end]) <= 1e-2
-            uniform = all([l1itp(p[1], p[2]) <= Tsol <= l2itp(p[1], p[2]) for p in orbit])
+            Tsol = bisection(λ -> prd(λ, false, pSection[i]), p.pmin, p.pmax, p.rdist)
+            orbit = compute_returning_orbit(ηfield(Tsol, false), pSection[i])
+            closed = norm(orbit[1] - orbit[end]) <= p.rdist
+            uniform = all([l1itp(ps[1], ps[2]) <= Tsol <= l2itp(ps[1], ps[2]) for ps in orbit])
             # @show (closed, uniform)
             # @show length(orbit)
             if (closed && uniform)
-                push!(vortices, EllipticBarrier([p.data for p in orbit], Tsol, false))
+                push!(vortices, EllipticBarrier([ps.data for ps in orbit], Tsol, false))
                 rev && break
             end
         catch
         end
         if iszero(Tsol)
             try
-                Tsol = bisection(λ -> prd(λ, true, pSection[i+1]), pmin, pmax)
-                orbit = compute_returning_orbit(ηfield(Tsol, true), pSection[i+1])
-                closed = norm(orbit[1] - orbit[end]) <= 1e-2
-                uniform = all([l1itp(p[1], p[2]) <= Tsol <= l2itp(p[1], p[2]) for p in orbit])
+                Tsol = bisection(λ -> prd(λ, true, pSection[i]), p.pmin, p.pmax, p.rdist)
+                orbit = compute_returning_orbit(ηfield(Tsol, true), pSection[i])
+                closed = norm(orbit[1] - orbit[end]) <= p.rdist
+                uniform = all([l1itp(ps[1], ps[2]) <= Tsol <= l2itp(ps[1], ps[2]) for ps in orbit])
                 # @show (closed, uniform)
                 # @show length(orbit)
                 if (closed && uniform)
-                    push!(vortices, EllipticBarrier([p.data for p in orbit], Tsol, true))
+                    push!(vortices, EllipticBarrier([ps.data for ps in orbit], Tsol, true))
                     rev && break
                 end
             catch
@@ -484,9 +483,9 @@ boundaries, otherwise all detected transport barrieres are returned.
 function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractVector{S},
                         yspan::AbstractVector{S},
-                        p::LCSParameters;
+                        p::LCSParameters=LCSParameters();
                         outermost::Bool=true) where S <: Real
-
+    # EVERYTHING FROM HERE ...
     singularities = singularity_location_detection(T, xspan, yspan)
     @info "Detected $(length(singularities)) singularity candidates..."
 
@@ -502,16 +501,15 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     end
     @info "Determined $(sum(abs.(singularitytypes))) nondegenerate singularities..."
 
-    vortexcenters = detect_elliptic_region(singularities, singularitytypes,
-                                p.MaxWedgeDist, p.MinWedgeDist, p.Min2ndDist)
+    vortexcenters = detect_elliptic_region(singularities, singularitytypes, p)
+    # ... TO HERE SHOULD BE REPLACED BY THE NEW METHOD
     p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc, p.p_length, p.n_seeds, xspan, yspan)
+        set_Poincaré_section(vc, xspan, yspan, p)
     end
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortexlists = pmap(p_section) do ps
-        compute_closed_orbits(ps, T, xspan, yspan;
-                                rev=outermost, pmin=p.pmin, pmax=p.pmax)
+        compute_closed_orbits(ps, T, xspan, yspan; rev=outermost, p=p)
     end
 
     # closed orbits extraction
