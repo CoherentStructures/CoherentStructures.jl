@@ -26,18 +26,25 @@ are given by
 $\eta_{\lambda}^{\pm} := \sqrt{\frac{\lambda_2 - \lambda}{\lambda_2-\lambda_1}}\xi_1 \pm \sqrt{\frac{\lambda - \lambda_1}{\lambda_2-\lambda_1}}\xi_2.$
 
 Tensor singularities are defined as points at which $\lambda_2=\lambda_1$, i.e.,
-at which the two characteristic directions $\xi_1$ and $\xi_2$ are not well-defined.
-Then, the algorithm put forward in [Karrasch et al., 2015](https://dx.doi.org/10.1098/rspa.2014.0639)
-consists of the following steps:
-   1. locate singularities of the tensor field $T$;
-   2. determine the type of the singularities (only non-degenerate types like
-      wedges and trisectors are detected);
-   3. look for wedge pairs that are reasonably isolated from other singularities;
+at which the two characteristic directions $\xi_1$ and $\xi_2$ are not
+well-defined. As described and exploited in
+[Karrasch et al., 2015](https://dx.doi.org/10.1098/rspa.2014.0639),
+non-negligible tensor singularities express themselves by an angle gap when
+tracking (the angle of) tensor eigenvector fields along closed paths surrounding
+the singularity. Our approach here avoids computing singularities directly, but
+rather computes the index for each grid cell and then combines nearby
+singularities, i.e., adds non-vanishing indices of nearby grid cells.
+
+In summary, the implementation consists of the following steps:
+   1. compute the index for each grid cell and combine nearby singular grid cells
+      to "singularity candidates";
+   3. look for elliptic singularity candidates (and potentially isolated wedge
+      pairs);
    4. place an eastwards oriented Poincaré section at the pair center;
-   5. for each point on the discretized Poincaré section, scan through the parameter
-      space such that the corresponding η-orbit closes at that point;
-   6. for each Poincaré section, take the outermost closed orbit as the coherent
-      vortex barrier (if there exist any).
+   5. for each point on the discretized Poincaré section, scan through the given
+      parameter interval such that the corresponding η-orbit closes at that point;
+   6. if desired: for each Poincaré section, take the outermost closed orbit as
+      the coherent vortex barrier (if there exist any).
 
 ## Function documentation
 
@@ -61,21 +68,7 @@ EllipticBarrier
 The function `ellipticLCS` calls sequentially the following functions.
 
 ```@docs
-singularity_location_detection
-```
-
-```@docs
-singularity_type_detection
-```
-
-```@docs
-detect_elliptic_region
-```
-
-```@docs
+discrete_singularity_detection
 set_Poincaré_section
-```
-
-```@docs
 compute_closed_orbits
 ```

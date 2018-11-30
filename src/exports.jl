@@ -8,12 +8,14 @@ export
 	#ellipticLCS.jl
 	EllipticBarrier,
 	LCSParameters,
-	singularity_location_detection,
-	singularity_type_detection,
-	detect_elliptic_region,
+	discrete_singularity_detection,
+	combine_singularities,
+	# singularity_location_detection,
+	# singularity_type_detection,
+	# detect_elliptic_region,
 	set_Poincaré_section,
 	compute_returning_orbit,
-	compute_outermost_closed_orbit,
+	compute_closed_orbits,
 	ellipticLCS,
 
 	#diffusion_operators.jl
