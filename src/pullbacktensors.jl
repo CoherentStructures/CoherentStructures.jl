@@ -313,9 +313,7 @@ Derivatives are computed with finite differences.
             tspan::AbstractVector{S},
             δ::Float64;
             G::SymmetricTensor{2,dim,T,N}=one(SymmetricTensor{2,2,T,3}),
-            p = nothing,
-            tolerance = 1.e-3,
-            solver = OrdinaryDiffEq.BS5()
+            kwargs...
         ) where {T <: Real, S <: Real, dim, N}
 
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
@@ -418,13 +416,11 @@ function av_weighted_CG_tensor(
             tspan::AbstractVector{S},
             δ::Float64;
             D::SymmetricTensor{2,dim,T,N}=one(SymmetricTensor{2,2,T,3}),
-            p = nothing,
-            tolerance = 1.e-3,
-            solver = OrdinaryDiffEq.BS5()
+            kwargs...
         ) where {T <: Real, S <: Real, dim, N}
 
     G = inv(D)
-    DF = linearized_flow(odefun, u, tspan, δ; p=p,tolerance=tolerance, solver=solver)[2]
+    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
     return det(D) * mean([Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
 end
 
