@@ -7,8 +7,8 @@
 * `coords::SVector{2,Float64}`: coordinates of the singularity
 * `index::Int`: index of the singularity
 """
-struct Singularity
-    coords::SVector{2,Float64}
+struct Singularity{T <: Real}
+    coords::SVector{2,T}
     index::Int64
 end
 
@@ -70,9 +70,9 @@ function LCSParameters(;
             # MinWedgeDist::Float64=0.04,
             # Min2ndDist::Float64=0.5,
             p_length::Float64=0.5,
-            n_seeds::Int64=40,
+            n_seeds::Int64=60,
             pmin::Float64=0.7,
-            pmax::Float64=1.3,
+            pmax::Float64=1.5,
             rdist::Float64=1e-4)
 
     LCSParameters(radius,
@@ -143,7 +143,7 @@ an edge iff the coordinates of the corresponding vertices (given by `sing_coordi
 have a distance leq `combine_distance`. Find all connected components of this graph,
 and return a list of their mean coordinate and sum of `sing_indices`
 """
-function combine_singularities(singularities::Vector{Singularity}, combine_distance::Real)
+function combine_singularities(singularities::Vector{Singularity{T}}, combine_distance::Real) where {T}
 
     #Do a breath-first search of all singularities
     #that are "connected" in the sense of
@@ -159,7 +159,7 @@ function combine_singularities(singularities::Vector{Singularity}, combine_dista
     sing_seen = falses(N)
 
     #Result will go here
-    combined_singularities = Singularity[]
+    combined_singularities = Singularity{T}[]
 
     #Iterate over all singularities
     for i in 1:N
@@ -199,12 +199,12 @@ function combine_singularities(singularities::Vector{Singularity}, combine_dista
     return combined_singularities
 end
 
-function combine_isolated_wedge_pairs(singularities::Vector{Singularity})
+function combine_isolated_wedge_pairs(singularities::Vector{Singularity{T}}) where T
     N = length(singularities)
     sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
     sing_seen = falses(N)
 
-    new_singularities = Singularity[] # sing_out
+    new_singularities = Singularity{T}[] # sing_out
     sing_out_weight = Int64[]
 
     for i in 1:N
@@ -325,7 +325,7 @@ end
 # end
 
 """
-    set_Poincaré_section(vc, xspan, yspan, p::LCSParameters)
+    set_Poincaré_section(vc, xspan, yspan, p_length=1.0, n_seeds=60)
 
 Generates a horizontal Poincaré section, centered at the vortex center `vc`
 of length `p.p_length` consisting of `p.n_seeds` starting at `0.2*p_length`
@@ -335,13 +335,14 @@ by `xspan` and `yspan`.
 function set_Poincaré_section(vc::SVector{2,S},
                                 xspan::AbstractVector{S},
                                 yspan::AbstractVector{S},
-                                p::LCSParameters=LCSParameters()) where S <: Real
+                                p_length::Real=1.0,
+                                n_seeds::Int=60) where S <: Real
 
     xmin, xmax = extrema(xspan)
     ymin, ymax = extrema(yspan)
     p_section::Vector{SVector{2,S}} = [vc]
     eₓ = SVector{2,S}(1., 0.)
-    pspan = range(vc + .2p.p_length*eₓ, stop=vc + p.p_length*eₓ, length=p.n_seeds)
+    pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
     idxs = [all(ps .<= [xmax, ymax]) && all(ps .>= [xmin, ymin]) for ps in pspan]
     append!(p_section, pspan[idxs])
     return p_section
@@ -392,7 +393,7 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Re
 end
 
 """
-    compute_closed_orbits(pSection, T, xspan, yspan; rev=true, p=LCSParameters())
+    compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
 
 Compute the outermost closed orbit for a given Poincaré section `pSection`,
 tensor field `T`, where the total computational domain is spanned by `xspan`
@@ -407,7 +408,9 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
                                         xspan::AbstractVector{S},
                                         yspan::AbstractVector{S};
                                         rev::Bool=true,
-                                        p::LCSParameters=LCSParameters()
+                                        pmin::Real=0.7,
+                                        pmax::Real=1.5,
+                                        rdist::Real=1e-4
                                         ) where S <: Real
 
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
@@ -446,9 +449,9 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     for i in idxs
         Tsol = zero(Float64)
         try
-            Tsol = bisection(λ -> prd(λ, false, pSection[i]), p.pmin, p.pmax, p.rdist)
+            Tsol = bisection(λ -> prd(λ, false, pSection[i]), pmin, pmax, rdist)
             orbit = compute_returning_orbit(ηfield(Tsol, false), pSection[i])
-            closed = norm(orbit[1] - orbit[end]) <= p.rdist
+            closed = norm(orbit[1] - orbit[end]) <= rdist
             uniform = all([l1itp(ps[1], ps[2]) <= Tsol <= l2itp(ps[1], ps[2]) for ps in orbit])
             # @show (closed, uniform)
             # @show length(orbit)
@@ -460,9 +463,9 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
         end
         if iszero(Tsol)
             try
-                Tsol = bisection(λ -> prd(λ, true, pSection[i]), p.pmin, p.pmax, p.rdist)
+                Tsol = bisection(λ -> prd(λ, true, pSection[i]), pmin, pmax, rdist)
                 orbit = compute_returning_orbit(ηfield(Tsol, true), pSection[i])
-                closed = norm(orbit[1] - orbit[end]) <= p.rdist
+                closed = norm(orbit[1] - orbit[end]) <= rdist
                 uniform = all([l1itp(ps[1], ps[2]) <= Tsol <= l2itp(ps[1], ps[2]) for ps in orbit])
                 # @show (closed, uniform)
                 # @show length(orbit)
@@ -520,12 +523,13 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
 
     vortexcenters = singularities[get_indices(singularities) .== 2]
     p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc.coords, xspan, yspan, p)
+        set_Poincaré_section(vc.coords, xspan, yspan, p.p_length, p.n_seeds)
     end
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortexlists = pmap(p_section) do ps
-        compute_closed_orbits(ps, T, xspan, yspan; rev=outermost, p=p)
+        compute_closed_orbits(ps, T, xspan, yspan;
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
     end
 
     # closed orbits extraction
