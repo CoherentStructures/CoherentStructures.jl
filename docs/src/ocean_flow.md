@@ -38,8 +38,8 @@ end
 
 ############################ compute elliptic LCSs #############################
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-params = LCSParameters(.09, 0.5, 0.05, 0.5, 1.0, 60, 0.7, 1.3)
-vortices = ellipticLCS(C̅, xspan, yspan, params)
+params = LCSParameters(3*max(step(xspan), step(yspan)), 1.0, 60, 0.7, 1.5, 1e-4)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, params)
 ```
 The result is visualized as follows:
 ```

@@ -1,6 +1,25 @@
 # (c) 2018 Daniel Karrasch & Nathanael Schilling
 
 """
+    struct Singularity
+
+## Fields
+* `coords::SVector{2,Float64}`: coordinates of the singularity
+* `index::Int`: index of the singularity
+"""
+struct Singularity
+    coords::SVector{2,Float64}
+    index::Int64
+end
+
+function get_coords(singularities::Vector{Singularity})
+    return [s.coords for s in singularities]
+end
+function get_indices(singularities::Vector{Singularity})
+    return [s.index for s in singularities]
+end
+
+"""
     struct EllipticBarrier
 
 This is a container for coherent vortex boundaries. An object `vortex` of type
@@ -124,7 +143,7 @@ an edge iff the coordinates of the corresponding vertices (given by `sing_coordi
 have a distance leq `combine_distance`. Find all connected components of this graph,
 and return a list of their mean coordinate and sum of `sing_indices`
 """
-function combine_singularities(sing_coordinates, sing_indices, combine_distance)
+function combine_singularities(singularities::Vector{Singularity}, combine_distance::Real)
 
     #Do a breath-first search of all singularities
     #that are "connected" in the sense of
@@ -133,24 +152,23 @@ function combine_singularities(sing_coordinates, sing_indices, combine_distance)
     #Average the coordinates, add the indices
 
 
-    n_sing = length(sing_coordinates)
+    N = length(singularities)
 
-    sing_tree = NN.KDTree(sing_coordinates, Dists.Euclidean())
+    sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
     #Which singularities we've already dealt with
-    sing_seen = falses(n_sing)
+    sing_seen = falses(N)
 
     #Result will go here
-    sing_out = SVector{2,Float64}[]
-    sing_out_weight = Int64[]
+    combined_singularities = Singularity[]
 
     #Iterate over all singularities
-    for i in 1:n_sing
+    for i in 1:N
         if sing_seen[i]
             continue
         end
         sing_seen[i] = true
 
-        current_weight = 0
+        current_index = 0
         current_coords = @SVector [0.0, 0.0]
         num_combined = 0
 
@@ -160,7 +178,7 @@ function combine_singularities(sing_coordinates, sing_indices, combine_distance)
         while !isempty(stack)
             current_singularity = pop!(stack)
             sing_seen[i] = true
-            closeby_sings = NN.inrange(sing_tree, sing_coordinates[current_singularity], combine_distance)
+            closeby_sings = NN.inrange(sing_tree, singularities[current_singularity].coords, combine_distance)
             for neighbour_index ∈ closeby_sings
                 if !(sing_seen[neighbour_index])
                     sing_seen[neighbour_index] = true
@@ -168,64 +186,59 @@ function combine_singularities(sing_coordinates, sing_indices, combine_distance)
                 end
             end
             #Average coordinates & add indices
-            current_weight += sing_indices[current_singularity]
-            current_coords = (num_combined * current_coords + sing_coordinates[current_singularity]) /
-                                    (num_combined + 1)
+            current_index += singularities[current_singularity].index
+            current_coords = (num_combined * current_coords +
+                    singularities[current_singularity].coords) / (num_combined + 1)
             num_combined += 1
         end
-        if current_weight != 0
-            push!(sing_out, current_coords)
-            push!(sing_out_weight, current_weight)
+        if current_index != 0
+            push!(combined_singularities, Singularity(current_coords, current_index))
         end
     end
 
-    return sing_out, sing_out_weight
+    return combined_singularities
 end
 
-function combine_isolated_wedge_pairs(sing_coordinates, sing_indices)
-    n_sing = length(sing_coordinates)
-    sing_tree = NN.KDTree(sing_coordinates, Dists.Euclidean())
-    sing_seen = falses(n_sing)
+function combine_isolated_wedge_pairs(singularities::Vector{Singularity})
+    N = length(singularities)
+    sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
+    sing_seen = falses(N)
 
-    sing_out = SVector{2,Float64}[]
+    new_singularities = Singularity[] # sing_out
     sing_out_weight = Int64[]
 
-    for i in 1:n_sing
+    for i in 1:N
         if sing_seen[i] == true
             continue
         end
         sing_seen[i] = true
 
-        if sing_indices[i] != 1
-            push!(sing_out, sing_coordinates[i])
-            push!(sing_out_weight, sing_indices[i])
+        if singularities[i].index != 1
+            push!(new_singularities, singularities[i])
             continue
         end
         #We have an index +1/2 singularity
-        idxs, dists = NN.knn(sing_tree, sing_coordinates[i], 2, true)
+        idxs, dists = NN.knn(sing_tree, singularities[i].coords, 2, true)
         nn_idx = idxs[2]
 
         #We've already dealt with the nearest neighbor (but didn't find
         #this one as nearest neighbor), or it isn't a wedge
-        if sing_seen[nn_idx] || sing_indices[nn_idx] != 1
-            push!(sing_out, sing_coordinates[i])
-            push!(sing_out_weight, sing_indices[i])
+        if sing_seen[nn_idx] || singularities[nn_idx].index != 1
+            push!(new_singularities, singularities[i])
             continue
         end
 
         #See if the nearest neighbor of the nearest neighbor is i
-        idxs2, dists2 = NN.knn(sing_tree, sing_coordinates[nn_idx], 2, true)
+        idxs2, dists2 = NN.knn(sing_tree, singularities[nn_idx].coords, 2, true)
         if idxs2[2] != i
-            push!(sing_out, sing_coordinates[i])
-            push!(sing_out_weight, sing_indices[i])
+            push!(new_singularities, singularities[i])
             continue
         end
 
         sing_seen[nn_idx] = true
-        push!(sing_out, 0.5 * (sing_coordinates[i] + sing_coordinates[nn_idx]))
-        push!(sing_out_weight, 2)
+        push!(new_singularities, Singularity(0.5 * (singularities[i].coords + singularities[nn_idx].coords), 2))
     end
-    return sing_out, sing_out_weight
+    return new_singularities
 end
 
 """
@@ -247,39 +260,36 @@ function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,
     ξrad = [atan(v[2], v[1]) for v in ξ] .+ π/2
 
     nx, ny = size(T)
-    cell_contents = zeros(Int, nx-1, ny-1)
+    cell_index = zeros(Int, nx-1, ny-1)
     for j in 1:(ny-1), i in 1:(nx-1)
         toadd = 0.0
         toadd -= periodic_diff(ξrad[i+1,j], ξrad[i,j], π)
         toadd -= periodic_diff(ξrad[i+1,j+1], ξrad[i+1,j], π)
         toadd -= periodic_diff(ξrad[i,j+1], ξrad[i+1,j+1], π)
         toadd -= periodic_diff(ξrad[i,j], ξrad[i,j+1], π)
-        cell_contents[i,j] = round(Int, toadd/π)
+        cell_index[i,j] = round(Int, toadd/π)
     end
 
-    sing_locations = findall(!iszero, cell_contents)
-    sing_indices = cell_contents[sing_locations]
+    sing_idxs = findall(!iszero, cell_index)
+    sing_indices = cell_index[sing_idxs]
 
-    sing_i, sing_j = unzip(Tuple.(sing_locations))
+    sing_i = [s[1] for s in sing_idxs]
+    sing_j = [s[2] for s in sing_idxs]
 
     #"coordinates" of singularities at cell-midpoints
-    sing_y = yspan[sing_i] .+ 0.5 * (yspan[sing_i .+ 1] - yspan[sing_i])
-    sing_x = xspan[sing_j] .+ 0.5 * (xspan[sing_j .+ 1] - xspan[sing_j])
-    sing_coordinates = SVector{2}.(sing_x, sing_y)
+    sing_y = yspan[sing_i] .+ 0.5 * (yspan[sing_i .+ 1] .- yspan[sing_i])
+    sing_x = xspan[sing_j] .+ 0.5 * (xspan[sing_j .+ 1] .- xspan[sing_j])
+    singularities = Singularity.(SVector{2}.(sing_x, sing_y), sing_indices)
 
-    sing_combined, sing_combined_weights = combine_singularities(
-            sing_coordinates,
-            sing_indices,
-            combine_distance
-            )
+    new_singularities = combine_singularities(singularities, combine_distance)
 
     if combine_isolated_wedges
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
         #It would be a shame if we missed these
-        return combine_isolated_wedge_pairs(sing_combined, sing_combined_weights)
+        return combine_isolated_wedge_pairs(new_singularities)
     else
-        return sing_combined, sing_combined_weights
+        return new_singularities
     end
 end
 
@@ -484,16 +494,7 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         yspan::AbstractVector{S},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true) where S <: Real
-    #= NEW METHOD
-    #TODO: specify combine_distance from LCSParameters() somehow
 
-    singularities_coordinates, singularity_indices =
-            discrete_singularity_detection(T,combine_distance,xspan,yspan)
-
-    vortexcenters = singularities_coordinates[findall(x->x==2,singularity_indices)]
-
-
-    =#
     # EVERYTHING FROM HERE ...
     # singularities = singularity_location_detection(T, xspan, yspan)
     # @info "Detected $(length(singularities)) singularity candidates..."
@@ -512,14 +513,14 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     #
     # vortexcenters = detect_elliptic_region(singularities, singularitytypes, p)
     # ... TO HERE SHOULD BE REPLACED BY THE NEW METHOD
-    singularities, singularitytypes = discrete_singularity_detection(T, p.radius,
+    singularities = discrete_singularity_detection(T, p.radius,
                                             xspan, yspan;
                                             combine_isolated_wedges=true)
     @info "Found $(length(singularities)) interesting singularities..."
 
-    vortexcenters = SVector{2}.(singularities[singularitytypes .== 2])
+    vortexcenters = singularities[get_indices(singularities) .== 2]
     p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc, xspan, yspan, p)
+        set_Poincaré_section(vc.coords, xspan, yspan, p)
     end
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
@@ -530,5 +531,5 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     # closed orbits extraction
     vortexlist = vcat(vortexlists...)
     @info "Found $(length(vortexlist)) elliptic barriers."
-    return vortexlist
+    return vortexlist, singularities
 end

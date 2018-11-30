@@ -6,6 +6,9 @@ export
 	ADimplicitEulerStep,
 
 	#ellipticLCS.jl
+	Singularity,
+	get_coords,
+	get_indices,
 	EllipticBarrier,
 	LCSParameters,
 	discrete_singularity_detection,

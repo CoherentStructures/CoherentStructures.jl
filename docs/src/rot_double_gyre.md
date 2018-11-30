@@ -84,8 +84,8 @@ nprocs() == 1 && addprocs()
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(.1, 0.5, 0.01, 0.2, 0.3, 60, 0.7, 1.3)
-vortices = ellipticLCS(C̅, xspan, yspan, p)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 0.3, 60, 0.7, 1.5, 1e-4)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 ```
 The results are then visualized as follows.
 ```
@@ -97,5 +97,6 @@ fig = Plots.heatmap(xspan, yspan, log10.(traceT);
 foreach(vortices) do vortex
     Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
 end
+scatter!(get_coords(singularities), color=:red)
 Plots.plot(fig)
 ```

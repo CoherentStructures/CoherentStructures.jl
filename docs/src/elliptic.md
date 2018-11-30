@@ -56,16 +56,17 @@ ellipticLCS
 
 One of its arguments is a list of parameters used in the LCS detection. This
 list is combined in a data type called `LCSParameters`. The output of
-`ellipticLCS` is a vector of objects of type `EllipticBarrier`. There is an
-option to retrieve all closed barriers (`outermost=false`), in contrast to
-extracting only the outermost vortex boundaries (`outermost=true`).
+`ellipticLCS` is a list of `EllipticBarrier`'s and a list of `Singularity`'s.
+There is an option to retrieve all closed barriers (`outermost=false`), in
+contrast to extracting only the outermost vortex boundaries (`outermost=true`).
 
 ```@docs
+Singularity
 LCSParameters
 EllipticBarrier
 ```
 
-The function `ellipticLCS` calls sequentially the following functions.
+The function [`ellipticLCS`](@ref) calls sequentially the following functions.
 
 ```@docs
 discrete_singularity_detection
