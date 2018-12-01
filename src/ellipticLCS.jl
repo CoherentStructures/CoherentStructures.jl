@@ -12,10 +12,10 @@ struct Singularity{T <: Real}
     index::Int64
 end
 
-function get_coords(singularities::Vector{Singularity})
+function get_coords(singularities::Vector{Singularity{T}}) where T
     return [s.coords for s in singularities]
 end
-function get_indices(singularities::Vector{Singularity})
+function get_indices(singularities::Vector{Singularity{T}}) where T
     return [s.index for s in singularities]
 end
 
@@ -251,12 +251,12 @@ combined by averaging the location and adding the index. Returns a vector of
 coordinates and a vector of corresponding indices. Indices are multiplied by 2
 to get integer values.
 """
-function discrete_singularity_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
-                                        combine_distance::Float64,
-                                        xspan=1:(size(T)[2]), yspan=1:(size(T)[1]);
+function discrete_singularity_detection(T::SymmetricTensorField{2},
+                                        combine_distance::Float64;
                                         combine_isolated_wedges=true
                                         ) where S
-    ξ = [eigvecs(t)[:,1] for t in T]
+    xspan, yspan = T.grid_axes
+    ξ = [eigvecs(t)[:,1] for t in T.tensors]
     ξrad = [atan(v[2], v[1]) for v in ξ] .+ π/2
 
     nx, ny = size(T)
@@ -403,38 +403,41 @@ closed orbits are sought from the outside inwards (`true`) or from the inside
 outwards (`false`). `rdist` sets the required return distance for an orbit to be
 considered as closed.
 """
+function compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
+    compute_closed_orbits(pSection, SymmetricTensorField((xspan, yspan), T);
+                                    rev=rev, pmin=pmin, pmax=pmax, rdist=rdist)
+end
 function compute_closed_orbits(pSection::Vector{SVector{2,S}},
-                                        T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
-                                        xspan::AbstractVector{S},
-                                        yspan::AbstractVector{S};
+                                        T::SymmetricTensorField{2};
                                         rev::Bool=true,
                                         pmin::Real=0.7,
                                         pmax::Real=1.5,
                                         rdist::Real=1e-4
                                         ) where S <: Real
 
+    xspan, yspan = T.grid_axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
     Δλ = λ₂ - λ₁
-    l1itp = ITP.LinearInterpolation((xspan, yspan), permutedims(λ₁))
+    l1itp = ITP.LinearInterpolation(T.grid_axes, permutedims(λ₁.vals))
     # l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear())),
     #                     yspan,xspan)
-    l2itp = ITP.LinearInterpolation((xspan, yspan), permutedims(λ₂))
+    l2itp = ITP.LinearInterpolation(T.grid_axes, permutedims(λ₂.vals))
     # l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear())),
     #                     yspan,xspan)
 
     # for computational tractability, pre-orient the eigenvector fields
     Ω = SMatrix{2,2}(0., -1., 1., 0.)
-    relP = [SVector{2}(x, y) - pSection[1] for y in yspan, x in xspan]
-    n = [Ω] .* relP
-    ξ₁ .= sign.(n .⋅ ξ₁) .* ξ₁
-    ξ₂ .= sign.(relP .⋅ ξ₂) .* ξ₂
-    ηfield(calT::Float64, signum::Bool) = begin
-        α = real.(sqrt.(complex.((λ₂ .- calT) ./ Δλ)))
-        β = real.(sqrt.(complex.((calT .- λ₁) ./ Δλ)))
-        η = α .* ξ₁ .+ (-1) ^ signum * β .* ξ₂
-        ηitp = ITP.CubicSplineInterpolation((xspan, yspan), permutedims(η))
-        # ηitp = ITP.scale(ITP.interpolate(η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
-        #                     yspan, xspan)
+    relP = VectorField(T.grid_axes, [SVector{2}(x, y) - pSection[1] for y in yspan, x in xspan])
+    n = Ω * relP
+    ξ₁.vecs .= sign.(dot.(n.vecs, ξ₁.vecs)) .* ξ₁.vecs
+    ξ₂.vecs .= sign.(dot.(relP.vecs, ξ₂.vecs)) .* ξ₂.vecs
+    @inline ηfield(calT::Float64, signum::Bool) = begin
+        α = sqrt((λ₂ - calT) / Δλ)
+        β = sqrt((calT - λ₁) / Δλ)
+        η = α * ξ₁ + (((-1) ^ signum) * β) * ξ₂
+        ηitp = ITP.CubicSplineInterpolation(T.grid_axes, permutedims(η.vecs))
+        # ηitp = ITP.scale(ITP.interpolate(permutedims(η.vecs), ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+        #                     xspan, yspan)
         return OrdinaryDiffEq.ODEFunction((u, p, t) -> ηitp(u[1], u[2]))
     end
     prd(calT::Float64, signum::Bool, seed::SVector{2,S}) = begin
@@ -444,6 +447,7 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
 
     # go along the Poincaré section and solve for T
     # first, define a nonlinear root finding problem
+    # @show prd(pmin, false, pSection[25])
     vortices = EllipticBarrier[]
     idxs = rev ? (length(pSection):-1:2) : (2:length(pSection))
     for i in idxs
@@ -493,8 +497,25 @@ argument `outermost` is true, then only the outermost barriers, i.e., the vortex
 boundaries, otherwise all detected transport barrieres are returned.
 """
 function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
-                        xspan::AbstractVector{S},
-                        yspan::AbstractVector{S},
+                        xspan::AbstractRange{S},
+                        yspan::AbstractRange{S},
+                        p::LCSParameters=LCSParameters();
+                        outermost::Bool=true) where S <: Real
+    F = SymmetricTensorField((xspan, yspan), T)
+    return ellipticLCS(F, p, outermost=outermost)
+end
+"""
+    function ellipticLCS(T, p; outermost=true)
+
+Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
+field given by (pointwise) shifted versions of the [`SymmetricTensorField`](@ref)
+`T`. `p` is a [`LCSParameters`](@ref)-type container of computational parameters.
+
+Returns a list of `EllipticBarrier`-type objects: if the optional keyword
+argument `outermost` is true, then only the outermost barriers, i.e., the vortex
+boundaries, otherwise all detected transport barrieres are returned.
+"""
+function ellipticLCS(T::SymmetricTensorField{2},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true) where S <: Real
 
@@ -516,8 +537,8 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     #
     # vortexcenters = detect_elliptic_region(singularities, singularitytypes, p)
     # ... TO HERE SHOULD BE REPLACED BY THE NEW METHOD
-    singularities = discrete_singularity_detection(T, p.radius,
-                                            xspan, yspan;
+    xspan, yspan = T.grid_axes
+    singularities = discrete_singularity_detection(T, p.radius;
                                             combine_isolated_wedges=true)
     @info "Found $(length(singularities)) interesting singularities..."
 
@@ -528,7 +549,7 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortexlists = pmap(p_section) do ps
-        compute_closed_orbits(ps, T, xspan, yspan;
+        compute_closed_orbits(ps, T;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
     end
 
