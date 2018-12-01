@@ -189,8 +189,8 @@ function gooddivrem(x, y)
         return Int(a), b
 end
 
-function goodmod(a,b)
-    return Base.mod(a,b)
+function goodmod(a, b)
+    return Base.mod(a, b)
 end
 
 
@@ -205,10 +205,10 @@ function gooddivrem(x::ForwardDiff.Dual, y)
 end
 
 
-function goodmod(x::ForwardDiff.Dual,y)
-    a,b = gooddivrem(x,y)
+function goodmod(x::ForwardDiff.Dual, y)
+    a,b = gooddivrem(x, y)
     if b < 0
-        return b+y
+        return b + y
     else
         return b
     end
@@ -228,28 +228,20 @@ end
 
 
 """
-    periodic_diff(x,y,p)
+    periodic_diff(x, y, p)
 
-Return the number `z` with minimum absolute value so that y + z = x (mod p)
+Return the number `z` with minimum absolute value so that `y + z ≡ x (mod p)``.
 """
-function periodic_diff(xin,yin,p)
-    x = Base.mod(xin,p)
-    y = Base.mod(yin,p)
+function periodic_diff(xin, yin, p)
+    x = Base.mod(xin, p)
+    y = Base.mod(yin, p)
     if x >= y
-        dplus = x-y
+        dplus = x - y
         dminus = y - (x - p)
         result = abs(dplus) < abs(dminus) ? dplus : -dminus
     else
-        result = -periodic_diff(y,x,p)
+        result = -periodic_diff(y, x, p)
     end
     #@assert Base.mod(yin + result - xin,p) == 0.0
     return result
 end
-
-#= TODO: Move this somewhere
-#Tests: these should all return 2
-periodic_diff(5,3,10)
--periodic_diff(3,5,10)
--periodic_diff(9,1,10)
-periodic_diff(1,9,10)
-=#
