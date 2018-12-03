@@ -80,6 +80,17 @@ function LCSParameters(;
         p_length, n_seeds, pmin, pmax, rdist)
 end
 
+struct LCScache{Ts <: Real, Tv <: SVector{2,<:Real}}
+    λ₁::Array{Ts, 2}
+    λ₂::Array{Ts, 2}
+    Δ::Array{Ts, 2}
+    α::Array{Ts, 2}
+    β::Array{Ts, 2}
+    ξ₁::Array{Tv, 2}
+    ξ₂::Array{Tv, 2}
+    η::Array{Tv, 2}
+end
+
 # """
 #     singularity_location_detection(T, xspan, yspan)
 #
@@ -348,7 +359,7 @@ function set_Poincaré_section(vc::SVector{2,S},
     return p_section
 end
 
-function compute_returning_orbit(vf, seed::SVector{2,T}) where T <: Real
+function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
     condition(u,t,integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
@@ -356,12 +367,13 @@ function compute_returning_orbit(vf, seed::SVector{2,T}) where T <: Real
     # return _flow(vf, seed, range(0., stop=20., length=200); tolerance=1e-8, callback=cb, verbose=false)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., 20.))
     sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=2e3,
-            dense=false, reltol=1e-8, abstol=1e-8, callback=cb, verbose=false).u
+            dense=false, save_everystep=save, reltol=1e-8, abstol=1e-8,
+            callback=cb, verbose=false).u
 end
 
-function Poincaré_return_distance(vf, seed::SVector{2,T}) where T <: Real
+function Poincaré_return_distance(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
-    sol = compute_returning_orbit(vf, seed)
+    sol = compute_returning_orbit(vf, seed, save)
     if abs(sol[end][2] - seed[2]) <= 1e-2
         return sol[end][1] - seed[1]
     else
@@ -389,7 +401,21 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Re
             b = c  # Root is in the left half of [a,b].
         end
     end
+    # @info "needed $(2+i) function evaluations"
     return c
+end
+
+function orient(T::SymmetricTensorField{2}, center::SVector{2,S}) where {S <: Real}
+    xspan, yspan = T.grid_axes
+    λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
+    Δλ = λ₂ - λ₁
+    Ω = SMatrix{2,2}(0., -1., 1., 0.)
+    star = VectorField(T.grid_axes, [SVector{2}(x, y) - center for y in yspan, x in xspan])
+    c1 = sign.(dot.([Ω] .* star.vecs, ξ₁.vecs))
+    ξ₁.vecs .= c1 .* ξ₁.vecs
+    c2 = sign.(dot.(star.vecs, ξ₂.vecs))
+    ξ₂.vecs .= c2 .* ξ₂.vecs
+    LCScache(λ₁.vals, λ₂.vals, Δλ.vals, c1, c2, ξ₁.vecs, ξ₂.vecs, star.vecs)
 end
 
 """
@@ -416,68 +442,70 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
                                         ) where S <: Real
 
     xspan, yspan = T.grid_axes
-    λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    Δλ = λ₂ - λ₁
-    l1itp = ITP.LinearInterpolation(T.grid_axes, permutedims(λ₁.vals))
-    # l1itp = ITP.scale(ITP.interpolate(λ₁, ITP.BSpline(ITP.Linear())),
-    #                     yspan,xspan)
-    l2itp = ITP.LinearInterpolation(T.grid_axes, permutedims(λ₂.vals))
-    # l2itp = ITP.scale(ITP.interpolate(λ₂, ITP.BSpline(ITP.Linear())),
-    #                     yspan,xspan)
-
     # for computational tractability, pre-orient the eigenvector fields
-    Ω = SMatrix{2,2}(0., -1., 1., 0.)
-    relP = VectorField(T.grid_axes, [SVector{2}(x, y) - pSection[1] for y in yspan, x in xspan])
-    n = Ω * relP
-    ξ₁.vecs .= sign.(dot.(n.vecs, ξ₁.vecs)) .* ξ₁.vecs
-    ξ₂.vecs .= sign.(dot.(relP.vecs, ξ₂.vecs)) .* ξ₂.vecs
-    @inline ηfield(calT::Float64, signum::Bool) = begin
-        α = sqrt((λ₂ - calT) / Δλ)
-        β = sqrt((calT - λ₁) / Δλ)
-        η = α * ξ₁ + (((-1) ^ signum) * β) * ξ₂
-        ηitp = ITP.CubicSplineInterpolation(T.grid_axes, permutedims(η.vecs))
-        # ηitp = ITP.scale(ITP.interpolate(permutedims(η.vecs), ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
-        #                     xspan, yspan)
-        return OrdinaryDiffEq.ODEFunction((u, p, t) -> ηitp(u[1], u[2]))
-    end
-    prd(calT::Float64, signum::Bool, seed::SVector{2,S}) = begin
-        vf = ηfield(calT, signum)
-        Poincaré_return_distance(vf, seed)
-    end
+    # restrict search to star-shaped coherent vortices
+    # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
+    cache = orient(T, pSection[1])
+    l1itp = ITP.scale(ITP.interpolate(permutedims(cache.λ₁), ITP.BSpline(ITP.Linear())),
+                        xspan, yspan)
+    l2itp = ITP.scale(ITP.interpolate(permutedims(cache.λ₂), ITP.BSpline(ITP.Linear())),
+                        xspan, yspan)
 
-    # go along the Poincaré section and solve for T
+    # define local helper functions for the η⁺/η⁻ closed orbit detection
+    @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
+        c.α .= min.(sqrt.(max.(c.λ₂ .- λ, 0) ./ c.Δ), 1)
+        c.β .= min.(sqrt.(max.(λ .- c.λ₁, 0) ./ c.Δ), 1)
+        c.η .= c.α .* c.ξ₁ .+ ((-1) ^ σ) .* c.β .* c.ξ₂
+        # itp = ITP.CubicSplineInterpolation(T.grid_axes, permutedims(c.η))
+        itp = ITP.scale(ITP.interpolate(permutedims(c.η), ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+                            xspan, yspan)
+        return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
+    end
+    prd(λ::Float64, σ::Bool, seed::SVector{2,S}, cache::LCScache) =
+            Poincaré_return_distance(ηfield(λ, σ, cache), seed)
+
+    # VERSION 2: 3D-interpolant
+    # η(λ::Float64, signum::Bool) = begin
+    #     α = min.(sqrt.(max.(λ₂.vals .- λ, 0) ./ Δλ.vals), 1)
+    #     β = min.(sqrt.(max.(λ .- λ₁.vals, 0) ./ Δλ.vals), 1)
+    #     return α .* ξ₁.vecs .+ (-1)^signum .* β .* ξ₂.vecs
+    # end
+    # λrange = range(pmin, stop=pmax, length=20)
+    # ηdata = cat([η(λ, false) for λ in λrange]..., dims=3)
+    # ηitp = ITP.scale(ITP.interpolate(permutedims(ηdata, (2, 1, 3)),
+    #         (ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
+    #          ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
+    #          ITP.BSpline(ITP.Linear()))),
+    #                 xspan, yspan, λrange)
+    # ηfield(λ::Float64) = OrdinaryDiffEq.ODEFunction((u, p, t) -> ηitp(u[1], u[2], λ))
+    # prd(λ::Float64, seed::SVector{2,S}) = Poincaré_return_distance(ηfield(λ), seed)
+    # END OF VERSION 2
+
+    # go along the Poincaré section and solve for λ
     # first, define a nonlinear root finding problem
-    # @show prd(pmin, false, pSection[25])
     vortices = EllipticBarrier[]
     idxs = rev ? (length(pSection):-1:2) : (2:length(pSection))
     for i in idxs
-        Tsol = zero(Float64)
+        λ⁰ = 0.0
         try
-            Tsol = bisection(λ -> prd(λ, false, pSection[i]), pmin, pmax, rdist)
-            orbit = compute_returning_orbit(ηfield(Tsol, false), pSection[i])
+            global σ = false
+            λ⁰ = bisection(λ -> prd(λ, σ, pSection[i], cache), pmin, pmax, rdist)
+        catch
+            global σ = true
+            try
+                λ⁰ = bisection(λ -> prd(λ, σ, pSection[i], cache), pmin, pmax, rdist)
+            catch
+            end
+        end
+        if !iszero(λ⁰)
+            orbit = compute_returning_orbit(ηfield(λ⁰, σ, cache), pSection[i], true)
             closed = norm(orbit[1] - orbit[end]) <= rdist
-            uniform = all([l1itp(ps[1], ps[2]) <= Tsol <= l2itp(ps[1], ps[2]) for ps in orbit])
+            uniform = all([l1itp(ps[1], ps[2]) <= λ⁰ <= l2itp(ps[1], ps[2]) for ps in orbit])
             # @show (closed, uniform)
             # @show length(orbit)
             if (closed && uniform)
-                push!(vortices, EllipticBarrier([ps.data for ps in orbit], Tsol, false))
+                push!(vortices, EllipticBarrier([ps.data for ps in orbit], λ⁰, σ))
                 rev && break
-            end
-        catch
-        end
-        if iszero(Tsol)
-            try
-                Tsol = bisection(λ -> prd(λ, true, pSection[i]), pmin, pmax, rdist)
-                orbit = compute_returning_orbit(ηfield(Tsol, true), pSection[i])
-                closed = norm(orbit[1] - orbit[end]) <= rdist
-                uniform = all([l1itp(ps[1], ps[2]) <= Tsol <= l2itp(ps[1], ps[2]) for ps in orbit])
-                # @show (closed, uniform)
-                # @show length(orbit)
-                if (closed && uniform)
-                    push!(vortices, EllipticBarrier([ps.data for ps in orbit], Tsol, true))
-                    rev && break
-                end
-            catch
             end
         end
     end

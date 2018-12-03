@@ -10,7 +10,7 @@ Base.getindex(F::AbstractField, inds...) = getindex(getfield(F, 2), inds...)
 Base.setindex!(F::AbstractField, inds...) = setindex!(getfield(F, 2), inds...)
 Base.size(F::AbstractField) = size(getfield(F, 2))
 Base.length(F::AbstractField) = length(getfield(F, 2))
-Base.iterate(F::AbstractField) = iterate(getfield(F, 2))
+# Base.iterate(F::AbstractField) = iterate(getfield(F, 2))
 
 function Base.:(+)(F1::TF, F2::TF) where {TF <: AbstractField{dim, Ta, Tv} where {dim, Ta, Tv}}
     @assert F1.grid_axes == F2.grid_axes
@@ -28,13 +28,12 @@ Base.:(*)(F::AbstractField, x::Real) = x * F
 """
     struct ScalarField <: AbstractField{dim, Ta, Tv}
 """
-
-struct ScalarField{dim, Ta <: AbstractRange{<:Real}, Tv <: AbstractArray{<: Real,dim}} <: AbstractField{dim, Ta, Tv}
+struct ScalarField{dim, Ta <: AbstractRange{<:Real}, Tv <: Real} <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim, Ta}
-    vals::Tv
+    vals::Array{Tv, dim}
 end
 Base.sign(f::ScalarField) = ScalarField(f.grid_axes, sign.(f.vals))
-Base.sqrt(f::ScalarField) = ScalarField(f.grid_axes, real.(sqrt.(complex.(f.vals))))
+# Base.sqrt(f::ScalarField) = ScalarField(f.grid_axes, real.(sqrt.(complex.(f.vals))))
 
 function Base.:(+)(x::Real, g::ScalarField{dim, Ta, Tv}) where {dim, Ta, Tv}
     ScalarField(f.grid_axes, x .+ g.vals)
@@ -58,17 +57,17 @@ end
 """
     struct VectorField <: AbstractField{dim, Ta, Tv}
 """
-struct VectorField{dim, Ta <: AbstractRange{<:Real}, Tv <: AbstractArray{<:SVector{dim,<:Real},dim}}  <: AbstractField{dim, Ta, Tv}
+struct VectorField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}  <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim,Ta}
-    vecs::Tv
+    vecs::Array{Tv, dim}
 end
 
 """
     struct LineField <: AbstractField{dim, Ta, Tv}
 """
-struct LineField{dim, Ta <: AbstractRange{<:Real}, Tv <: AbstractArray{<:SVector{dim,<:Real},dim}}  <: AbstractField{dim, Ta, Tv}
+struct LineField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}  <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim,Ta}
-    vecs::Tv
+    vecs::Array{Tv, dim}
 end
 function Base.:(*)(Ω::SMatrix{dim,dim}, v::Union{VectorField{dim, Ta, Tv},LineField{dim, Ta, Tv}}) where {dim, Ta, Tv}
     typeof(v)(v.grid_axes, [Ω] .* v.vecs)
@@ -81,17 +80,17 @@ end
 """
     struct TensorField <: AbstractField{dim, Ta, Tv}
 """
-struct TensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: AbstractArray{<:Tensor{dim,2,<:Real,N} where N}}  <: AbstractField{dim, Ta, Tv}
+struct TensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}  <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim,Ta}
-    tensors::Tv
+    tensors::Array{Tv, dim}
 end
 
 """
     struct SymmetricTensorField <: AbstractField{dim, Ta, Tv}
 """
-struct SymmetricTensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: AbstractArray{<:SymmetricTensor{dim,2,<:Real,N} where N}}  <: AbstractField{dim, Ta, Tv}
+struct SymmetricTensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}  <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim,Ta}
-    tensors::Tv
+    tensors::Array{Tv, dim}
 end
 
 """

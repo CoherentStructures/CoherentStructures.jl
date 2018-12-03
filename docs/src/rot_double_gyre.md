@@ -83,9 +83,9 @@ nprocs() == 1 && addprocs()
             tolerance=1e-6, solver=Tsit5())
 end
 
-C̅ = pmap(mCG_tensor, P; batch_size=ny)
+C̅ = SymmetricTensorField((xspan, yspan), pmap(mCG_tensor, P; batch_size=ny))
 p = LCSParameters(3*max(step(xspan), step(yspan)), 0.3, 60, 0.7, 1.5, 1e-4)
-vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
+vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 ```
 The results are then visualized as follows.
 ```

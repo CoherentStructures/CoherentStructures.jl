@@ -16,8 +16,7 @@ nprocs() == 1 && addprocs()
 ###################### load and interpolate velocity data sets #############
 using JLD2
 JLD2.@load("Ocean_geostrophic_velocity.jld2")
-UI, VI = interpolateVF(Lon, Lat, Time, UT, VT)
-const p = (UI, VI)
+const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 ############################ integration set up ################################
 @everywhere begin
@@ -33,13 +32,13 @@ const p = (UI, VI)
     P = SVector{2}.(xspan', yspan)
     const δ = 1.e-5
     mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-        p=p, tolerance=1e-6, solver=Tsit5())
+        p=VI, tolerance=1e-6, solver=Tsit5())
 end
 
 ############################ compute elliptic LCSs #############################
-C̅ = pmap(mCG_tensor, P; batch_size=ny)
-params = LCSParameters(3*max(step(xspan), step(yspan)), 1.0, 60, 0.7, 1.5, 1e-4)
-vortices, singularities = ellipticLCS(C̅, xspan, yspan, params)
+C̅ = SymmetricTensorField((xspan, yspan), pmap(mCG_tensor, P; batch_size=ny))
+p = LCSParameters(3*max(step(xspan), step(yspan)), 1.0, 60, 0.7, 1.5, 1e-4)
+vortices, singularities = ellipticLCS(C̅, p)
 ```
 The result is visualized as follows:
 ```
