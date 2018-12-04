@@ -11,6 +11,7 @@ export
 	get_indices,
 	EllipticBarrier,
 	LCSParameters,
+	compute_singularities,
 	discrete_singularity_detection,
 	combine_singularities,
 	# singularity_location_detection,

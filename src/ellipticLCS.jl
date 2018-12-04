@@ -144,9 +144,36 @@ end
 #     end
 #     return singularity_type
 # end
+"""
+    compute_singularities(α::ScalarField{2}, modulus) -> Vector{Singularity}
+
+Computes critical points/singularities of vector and line fields, respectively.
+`α` is a `ScalarField`, which is assumed to contain some consistent angle
+representation of the vector/line field. Choose `modulus` as `2π` for vector
+fields, and as `π` for line fields.
+"""
+function compute_singularities(α::ScalarField{2}, modulus)
+    xspan, yspan = α.grid_axes
+    singularities = Singularity{typeof(step(xspan) / 2)}[] # sing_out
+    xstephalf = step(xspan) / 2
+    ystephalf = step(yspan) / 2
+    # go counter-clockwise around each grid cell and add angles
+    # for cells with non-vanishing index, collect cell midpoints
+    for (j,y) in enumerate(yspan[1:end-1]), (i,x) in enumerate(xspan[1:end-1])
+        temp  = periodic_diff(α[j,i+1], α[j,i], modulus) # to the right
+        temp += periodic_diff(α[j+1,i+1], α[j,i+1], modulus) # to the top
+        temp += periodic_diff(α[j+1,i], α[j+1,i+1], modulus) # to the left
+        temp += periodic_diff(α[j,i], α[j+1,i], modulus) # to the bottom
+        index = round(Int, temp/modulus)
+        if index != 0
+            push!(singularities, Singularity(SVector{2}(x + xstephalf, y + ystephalf), index))
+        end
+    end
+    return singularities
+end
 
 """
-    combine_singularities(sing_coordinates, sing_indices, combine_distance)
+    combine_singularities(sing_coordinates, sing_indices, combine_distance) -> Vector{Singularity}
 
 This function does the equivalent of:
 Build a graph where singularities are vertices, and two vertices share
@@ -253,51 +280,28 @@ function combine_isolated_wedge_pairs(singularities::Vector{Singularity{T}}) whe
 end
 
 """
-    discrete_singularity_detection(T, combine_distance,[xspan,yspan])
+    discrete_singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}
 
 Calculates line-field singularities of the first eigenvector of `T` by taking
 a discrete differential-geometric approach. Singularities are calculated on each
-cell. Singularities with distance less or equal to `combine_difference` are
-combined by averaging the location and adding the index. Returns a vector of
-coordinates and a vector of corresponding indices. Indices are multiplied by 2
-to get integer values.
+cell. Singularities with distance less or equal to `combine_distance` are
+combined by averaging the coordinates and adding the respective indices. If
+`combine_isolated_wedges` is `true, pairs of indices that are mutually the
+closest singularities are included in the final list.
+
+Returns a vector of [`Singularity`](@ref)s. Indices are multiplied by 2 to get
+integer values.
 """
 function discrete_singularity_detection(T::SymmetricTensorField{2},
                                         combine_distance::Float64;
-                                        combine_isolated_wedges=true
-                                        ) where S
-    xspan, yspan = T.grid_axes
+                                        combine_isolated_wedges=true)
     ξ = [eigvecs(t)[:,1] for t in T.tensors]
-    ξrad = [atan(v[2], v[1]) for v in ξ] .+ π/2
-
-    nx, ny = size(T)
-    cell_index = zeros(Int, nx-1, ny-1)
-    for j in 1:(ny-1), i in 1:(nx-1)
-        toadd = 0.0
-        toadd -= periodic_diff(ξrad[i+1,j], ξrad[i,j], π)
-        toadd -= periodic_diff(ξrad[i+1,j+1], ξrad[i+1,j], π)
-        toadd -= periodic_diff(ξrad[i,j+1], ξrad[i+1,j+1], π)
-        toadd -= periodic_diff(ξrad[i,j], ξrad[i,j+1], π)
-        cell_index[i,j] = round(Int, toadd/π)
-    end
-
-    sing_idxs = findall(!iszero, cell_index)
-    sing_indices = cell_index[sing_idxs]
-
-    sing_i = [s[1] for s in sing_idxs]
-    sing_j = [s[2] for s in sing_idxs]
-
-    #"coordinates" of singularities at cell-midpoints
-    sing_y = yspan[sing_i] .+ 0.5 * (yspan[sing_i .+ 1] .- yspan[sing_i])
-    sing_x = xspan[sing_j] .+ 0.5 * (xspan[sing_j .+ 1] .- xspan[sing_j])
-    singularities = Singularity.(SVector{2}.(sing_x, sing_y), sing_indices)
-
+    α = ScalarField(T.grid_axes, [atan(v[2], v[1]) for v in ξ])
+    singularities = compute_singularities(α, π)
     new_singularities = combine_singularities(singularities, combine_distance)
-
     if combine_isolated_wedges
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
-        #It would be a shame if we missed these
         return combine_isolated_wedge_pairs(new_singularities)
     else
         return new_singularities
@@ -419,7 +423,7 @@ function orient(T::SymmetricTensorField{2}, center::SVector{2,S}) where {S <: Re
 end
 
 """
-    compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
+    compute_closed_orbits(pSection, T[, xspan, yspan]; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
 
 Compute the outermost closed orbit for a given Poincaré section `pSection`,
 tensor field `T`, where the total computational domain is spanned by `xspan`
