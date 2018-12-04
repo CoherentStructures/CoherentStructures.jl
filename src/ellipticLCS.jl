@@ -549,7 +549,8 @@ boundaries, otherwise all detected transport barrieres are returned.
 """
 function ellipticLCS(T::SymmetricTensorField{2},
                         p::LCSParameters=LCSParameters();
-                        outermost::Bool=true) where S <: Real
+                        outermost::Bool=true,
+                        verbose::Bool=true) where S <: Real
 
     # EVERYTHING FROM HERE ...
     # singularities = singularity_location_detection(T, xspan, yspan)
@@ -572,7 +573,7 @@ function ellipticLCS(T::SymmetricTensorField{2},
     xspan, yspan = T.grid_axes
     singularities = discrete_singularity_detection(T, p.radius;
                                             combine_isolated_wedges=true)
-    @info "Found $(length(singularities)) interesting singularities..."
+    @info "Found $(length(singularities)) singularities..."
 
     vortexcenters = singularities[get_indices(singularities) .== 2]
     p_section = map(vortexcenters) do vc
@@ -581,12 +582,21 @@ function ellipticLCS(T::SymmetricTensorField{2},
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortexlists = pmap(p_section) do ps
-        compute_closed_orbits(ps, T;
+        if verbose
+            result, t, _ = @timed compute_closed_orbits(ps, T;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+            @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
+                "yielded $(length(result)) transport barrier" *
+                (length(result) > 1 ? "s." : ".")
+            return result
+        else
+            return compute_closed_orbits(ps, T;
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+        end
     end
 
     # closed orbits extraction
     vortexlist = vcat(vortexlists...)
-    @info "Found $(length(vortexlist)) elliptic barriers."
+    @info "Found $(length(vortexlist)) elliptic barriers in total."
     return vortexlist, singularities
 end
