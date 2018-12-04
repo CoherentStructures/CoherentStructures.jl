@@ -276,14 +276,14 @@ function eulerian_videos(ctx,
         zs_all = SharedArray{Float64}(ny,nx,num_videos)
         current_us = SharedArray{Float64}(ctx.n,num_videos)
         for i in 1:num_videos
-            current_us[:,i] = get_full_dofvals(ctx,us(i,t); bdata = bdata)
+	    current_us[:,i] = get_full_dofvals(ctx,us(i,t); bdata = bdata)[ctx.node_to_dof]
         end
         @sync @distributed for xindex in 1:nx
             #@distributed for current_index in eachindex(z_all)
             for yindex in 1:ny
                 for i in 1:num_videos
             	    current_u = current_us[:,i]
-                    zs_all[yindex,xindex, i]= evaluate_function_from_nodevals(
+                    zs_all[yindex,xindex, i]= evaluate_function_from_node_or_cellvals(
                         ctx, current_u,
                         euler_to_lagrange_points[yindex,xindex]
                         )
