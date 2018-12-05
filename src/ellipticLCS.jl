@@ -46,38 +46,30 @@ end
 Container for parameters used in elliptic LCS computations.
 
 ## Fields
-* `radius::Float64=0.1`: radius for singularity type detection
-* `p_length::Float64=0.5`: lenght of the Poincaré section
+* `indexradius::Float64=0.1`: radius for singularity type detection
+* `boxradius::Float64=0.5`: "radius" of localization square for closed orbit detection
 * `n_seeds::Int64=40`: number of seed points on the Poincaré section
 * `pmin::Float64=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax::Float64=1.3`: upper bound on the parameter in the ``\\eta``-field
 * `rdist::Float64=1e-4`: required return distances for closed orbits
 """
 struct LCSParameters
-    radius::Float64
-    # MaxWedgeDist`::Float64 # maximum distance to closest wedge
-    # MinWedgeDist::Float64 # minimal distance to closest wedge
-    # Min2ndDist::Float64 # minimal distance to second closest wedge
-    p_length::Float64
+    indexradius::Float64
+    boxradius::Float64
     n_seeds::Int64
     pmin::Float64
     pmax::Float64
     rdist::Float64
 end
 function LCSParameters(;
-            radius::Float64=0.1,
-            # MaxWedgeDist::Float64=0.5,
-            # MinWedgeDist::Float64=0.04,
-            # Min2ndDist::Float64=0.5,
-            p_length::Float64=0.5,
+            indexradius::Float64=0.1,
+            boxradius::Float64=0.5,
             n_seeds::Int64=60,
             pmin::Float64=0.7,
             pmax::Float64=1.5,
             rdist::Float64=1e-4)
 
-    LCSParameters(radius,
-        # MaxWedgeDist, MinWedgeDist, Min2ndDist,
-        p_length, n_seeds, pmin, pmax, rdist)
+    LCSParameters(indexradius, boxradius, n_seeds, pmin, pmax, rdist)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<:Real}}
@@ -91,59 +83,6 @@ struct LCScache{Ts <: Real, Tv <: SVector{2,<:Real}}
     η::Array{Tv, 2}
 end
 
-# """
-#     singularity_location_detection(T, xspan, yspan)
-#
-# Detects tensor singularities of the tensor field `T`, given as a matrix of
-# `SymmetricTensor{2,2}`. `xspan` and `yspan` correspond to the uniform
-# grid vectors over which `T` is given. Returns a list of static 2-vectors.
-# """
-# function singularity_location_detection(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
-#                                         xspan::AbstractVector{S},
-#                                         yspan::AbstractVector{S}) where S
-#
-#     z1 = [c[1]-c[4] for c in T]
-#     z2 = [c[2] for c in T]
-#     zdiff = z1-z2
-#     # C = Contour.contours(xspan,yspan,zdiff,[0.])
-#     cl = Contour.levels(Contour.contours(yspan, xspan, zdiff, [0.]))[1]
-#     sitp = ITP.LinearInterpolation((xspan, yspan), permutedims(z1))
-#     # itp = ITP.interpolate(z1, ITP.BSpline(ITP.Linear()))
-#     # sitp = ITP.extrapolate(ITP.scale(itp, yspan, xspan), (ITP.Reflect(), ITP.Reflect(), ITP.Reflect()))
-#     Xs, Ys = Float64[], Float64[]
-#     for line in Contour.lines(cl)
-#         yL, xL = Contour.coordinates(line)
-#         zL = [sitp(xL[i], yL[i]) for i in eachindex(xL, yL)]
-#         ind = findall(zL[1:end-1] .* zL[2:end] .<= 0)
-#         zLind = -zL[ind] ./ (zL[ind .+ 1] - zL[ind])
-#         Xs = append!(Xs, xL[ind] + (xL[ind .+ 1] - xL[ind]) .* zLind)
-#         Ys = append!(Ys, yL[ind] + (yL[ind .+ 1] - yL[ind]) .* zLind)
-#     end
-#     return [SVector{2}(Xs[i], Ys[i]) for i in eachindex(Xs, Ys)]
-# end
-#
-# """
-#     singularity_type_detection(singularity, ξ, radius)
-#
-# Determines the singularity type of the singularity candidate `singularity`
-# by querying the direction field `ξ` in a circle of radius `radius` around the
-# singularity. Returns `1` for a trisector, `-1` for a wedge, and `0` otherwise.
-# """
-# function singularity_type_detection(singularity::SVector{2,S}, ξ, radius::Real) where {S <: Real}
-#
-#     Ntheta = 360   # number of points used to construct a circle around each singularity
-#     θ = range(-π, stop=π, length=Ntheta)
-#     circle = map(t -> SVector{2,S}(radius * cos(t), radius * sin(t)), θ)
-#     pnts = [singularity] .+ circle
-#     radVals = [ξ(p[1], p[2]) for p in pnts]
-#     singularity_type = 0
-#     if (sum(diff(radVals) .< 0) / Ntheta > 0.62)
-#         singularity_type = -1  # trisector
-#     elseif (sum(diff(radVals) .> 0) / Ntheta > 0.62)
-#         singularity_type = 1  # wedge
-#     end
-#     return singularity_type
-# end
 """
     compute_singularities(α::ScalarField{2}, modulus) -> Vector{Singularity}
 
@@ -160,10 +99,10 @@ function compute_singularities(α::ScalarField{2}, modulus)
     # go counter-clockwise around each grid cell and add angles
     # for cells with non-vanishing index, collect cell midpoints
     for (j,y) in enumerate(yspan[1:end-1]), (i,x) in enumerate(xspan[1:end-1])
-        temp  = periodic_diff(α[j,i+1], α[j,i], modulus) # to the right
-        temp += periodic_diff(α[j+1,i+1], α[j,i+1], modulus) # to the top
-        temp += periodic_diff(α[j+1,i], α[j+1,i+1], modulus) # to the left
-        temp += periodic_diff(α[j,i], α[j+1,i], modulus) # to the bottom
+        temp  = periodic_diff(α[i+1,j], α[i,j], modulus) # to the right
+        temp += periodic_diff(α[i+1,j+1], α[i+1,j], modulus) # to the top
+        temp += periodic_diff(α[i,j+1], α[i+1,j+1], modulus) # to the left
+        temp += periodic_diff(α[i,j], α[i,j+1], modulus) # to the bottom
         index = round(Int, temp/modulus)
         if index != 0
             push!(singularities, Singularity(SVector{2}(x + xstephalf, y + ystephalf), index))
@@ -188,7 +127,6 @@ function combine_singularities(singularities::Vector{Singularity{T}}, combine_di
     #there being a path of singularities with each
     #segment less than `combine_distance` to it
     #Average the coordinates, add the indices
-
 
     N = length(singularities)
 
@@ -308,56 +246,25 @@ function discrete_singularity_detection(T::SymmetricTensorField{2},
     end
 end
 
-# """
-#     detect_elliptic_region(singularities, singularityTypes, p)
-#
-# Determines candidate regions for closed tensor line orbits.
-#    * `singularities`: list of all singularities
-#    * `singularityTypes`: list of corresponding singularity types
-#    * `p`: parameter container of type `LCSParameters`
-# Returns a list of vortex centers.
-# """
-# function detect_elliptic_region(singularities::AbstractVector{SVector{2,S}},
-#                                 singularity_types::AbstractVector{Int},
-#                                 p::LCSParameters=LCSParameters()) where S <: Number
-#
-#     indWedges = findall(singularity_types .== 1)
-#     wedges = singularities[indWedges]
-#     wedgeDist = Dists.evaluate.([Dists.Euclidean()], wedges, wedges')
-#     idx = zeros(Int64, size(wedgeDist,1), 2)
-#     pairs = Vector{Int}[]
-#     for i=1:size(wedgeDist, 1)
-#         idx = partialsortperm(wedgeDist[i,:], 2:3)
-#         if (wedgeDist[i,idx[1]] <= p.MaxWedgeDist &&
-#             wedgeDist[i,idx[1]] >= p.MinWedgeDist &&
-#             wedgeDist[i,idx[2]] >= p.Min2ndDist)
-#             push!(pairs, [i, idx[1]])
-#         end
-#     end
-#     pairind = unique(sort!.(intersect(pairs, reverse.(pairs, dims=1))))
-#     centers = [mean(singularities[indWedges[p]]) for p in pairind]
-#     return SVector{2}.(centers)
-# end
-
 """
-    set_Poincaré_section(vc, xspan, yspan, p_length=1.0, n_seeds=60)
+    set_Poincaré_section(vc, xspan, yspan, boxradius=1.0, n_seeds=60)
 
 Generates a horizontal Poincaré section, centered at the vortex center `vc`
-of length `p.p_length` consisting of `p.n_seeds` starting at `0.2*p_length`
-eastwards. All points are guaranteed to lie in the computational domain given
+of length `p.boxradius` consisting of `p.n_seeds` starting at `vc` eastwards.
+All points are guaranteed to lie in the computational domain given
 by `xspan` and `yspan`.
 """
 function set_Poincaré_section(vc::SVector{2,S},
                                 xspan::AbstractVector{S},
                                 yspan::AbstractVector{S},
-                                p_length::Real=1.0,
+                                boxradius::Real=1.0,
                                 n_seeds::Int=60) where S <: Real
 
     xmin, xmax = extrema(xspan)
     ymin, ymax = extrema(yspan)
     p_section::Vector{SVector{2,S}} = [vc]
     eₓ = SVector{2,S}(1., 0.)
-    pspan = range(vc + .2p_length*eₓ, stop=vc + p_length*eₓ, length=n_seeds)
+    pspan = range(vc, stop=vc + boxradius*eₓ, length=n_seeds)
     idxs = [all(ps .<= [xmax, ymax]) && all(ps .>= [xmin, ymin]) for ps in pspan]
     append!(p_section, pspan[idxs])
     return p_section
@@ -414,7 +321,7 @@ function orient(T::SymmetricTensorField{2}, center::SVector{2,S}) where {S <: Re
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
     Δλ = λ₂ - λ₁
     Ω = SMatrix{2,2}(0., -1., 1., 0.)
-    star = VectorField(T.grid_axes, [SVector{2}(x, y) - center for y in yspan, x in xspan])
+    star = VectorField(T.grid_axes, [SVector{2}(x, y) - center for x in xspan, y in yspan])
     c1 = sign.(dot.([Ω] .* star.vecs, ξ₁.vecs))
     ξ₁.vecs .= c1 .* ξ₁.vecs
     c2 = sign.(dot.(star.vecs, ξ₂.vecs))
@@ -450,9 +357,9 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     # restrict search to star-shaped coherent vortices
     # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
     cache = orient(T, pSection[1])
-    l1itp = ITP.scale(ITP.interpolate(permutedims(cache.λ₁), ITP.BSpline(ITP.Linear())),
+    l1itp = ITP.scale(ITP.interpolate(cache.λ₁, ITP.BSpline(ITP.Linear())),
                         xspan, yspan)
-    l2itp = ITP.scale(ITP.interpolate(permutedims(cache.λ₂), ITP.BSpline(ITP.Linear())),
+    l2itp = ITP.scale(ITP.interpolate(cache.λ₂, ITP.BSpline(ITP.Linear())),
                         xspan, yspan)
 
     # define local helper functions for the η⁺/η⁻ closed orbit detection
@@ -460,8 +367,8 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
         c.α .= min.(sqrt.(max.(c.λ₂ .- λ, 0) ./ c.Δ), 1)
         c.β .= min.(sqrt.(max.(λ .- c.λ₁, 0) ./ c.Δ), 1)
         c.η .= c.α .* c.ξ₁ .+ ((-1) ^ σ) .* c.β .* c.ξ₂
-        # itp = ITP.CubicSplineInterpolation(T.grid_axes, permutedims(c.η))
-        itp = ITP.scale(ITP.interpolate(permutedims(c.η), ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+        # itp = ITP.CubicSplineInterpolation(T.grid_axes, c.η)
+        itp = ITP.scale(ITP.interpolate(c.η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
                             xspan, yspan)
         return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
     end
@@ -476,7 +383,7 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     # end
     # λrange = range(pmin, stop=pmax, length=20)
     # ηdata = cat([η(λ, false) for λ in λrange]..., dims=3)
-    # ηitp = ITP.scale(ITP.interpolate(permutedims(ηdata, (2, 1, 3)),
+    # ηitp = ITP.scale(ITP.interpolate(ηdata,
     #         (ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
     #          ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
     #          ITP.BSpline(ITP.Linear()))),
@@ -552,45 +459,28 @@ function ellipticLCS(T::SymmetricTensorField{2},
                         outermost::Bool=true,
                         verbose::Bool=true) where S <: Real
 
-    # EVERYTHING FROM HERE ...
-    # singularities = singularity_location_detection(T, xspan, yspan)
-    # @info "Detected $(length(singularities)) singularity candidates..."
-    #
-    # ξ = [eigvecs(t)[:,1] for t in T]
-    # ξrad = atan.([v[2]./v[1] for v in ξ])
-    # ξraditp = ITP.LinearInterpolation((xspan, yspan), permutedims(ξrad);
-    #                                             extrapolation_bc=ITP.Line())
-    # # ξraditp = ITP.extrapolate(ITP.scale(ITP.interpolate(ξrad,
-    # #                     ITP.BSpline(ITP.Linear())),
-    # #                     yspan,xspan), ITP.Reflect())
-    # singularitytypes = map(singularities) do s
-    #     singularity_type_detection(s, ξraditp, p.radius)
-    # end
-    # @info "Determined $(sum(abs.(singularitytypes))) nondegenerate singularities..."
-    #
-    # vortexcenters = detect_elliptic_region(singularities, singularitytypes, p)
-    # ... TO HERE SHOULD BE REPLACED BY THE NEW METHOD
     xspan, yspan = T.grid_axes
-    singularities = discrete_singularity_detection(T, p.radius;
+    singularities = discrete_singularity_detection(T, p.indexradius;
                                             combine_isolated_wedges=true)
     @info "Found $(length(singularities)) singularities..."
 
     vortexcenters = singularities[get_indices(singularities) .== 2]
+    @show length(vortexcenters)
     p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc.coords, xspan, yspan, p.p_length, p.n_seeds)
+        set_Poincaré_section(vc.coords, xspan, yspan, p.boxradius, p.n_seeds)
     end
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortexlists = pmap(p_section) do ps
         if verbose
-            result, t, _ = @timed compute_closed_orbits(ps, T;
+            result, t, _ = @timed compute_closed_orbits(ps, restrict(T, ps[1], p.boxradius);
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
             @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
                 "yielded $(length(result)) transport barrier" *
                 (length(result) > 1 ? "s." : ".")
             return result
         else
-            return compute_closed_orbits(ps, T;
+            return compute_closed_orbits(ps, restrict(T, ps[1], p.boxradius);
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
         end
     end

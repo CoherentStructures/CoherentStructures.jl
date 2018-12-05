@@ -51,7 +51,7 @@ nprocs() == 1 && addprocs()
     xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
-    P = SVector{2}.(xspan', yspan)
+    P = SVector{2}.(xspan, yspan')
     const δ = 1.e-6
     const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
     mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
@@ -67,7 +67,7 @@ The result is visualized as follows:
 import Plots
 Plots.clibrary(:misc) #hide
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, log10.(traceT);
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT.vals));
                     aspect_ratio=1, color=:viridis, leg=true,
                     xlims=(0, 6.371π), ylims=(-3, 3),
                     title="DBS field and transport barriers")

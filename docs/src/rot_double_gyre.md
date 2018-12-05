@@ -77,7 +77,7 @@ nprocs() == 1 && addprocs()
     xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
-    P = SVector{2}.(xspan', yspan)
+    P = SVector{2}.(xspan, yspan')
     const δ = 1.e-6
     mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
             tolerance=1e-6, solver=Tsit5())
@@ -91,7 +91,7 @@ The results are then visualized as follows.
 ```
 using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, log10.(traceT);
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT.vals));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
 foreach(vortices) do vortex

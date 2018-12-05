@@ -128,6 +128,7 @@ export
 	adaptiveTOCollocation,
 
 	#util.jl
+	restrict,
 	ScalarField,
 	VectorField,
 	LineField,

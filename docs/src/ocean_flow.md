@@ -29,7 +29,7 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
     xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
-    P = SVector{2}.(xspan', yspan)
+    P = SVector{2}.(xspan, yspan')
     const δ = 1.e-5
     mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
         p=VI, tolerance=1e-6, solver=Tsit5())
@@ -44,7 +44,7 @@ The result is visualized as follows:
 ```
 using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, log10.(traceT);
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT.vals));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
 for vortex in vortices

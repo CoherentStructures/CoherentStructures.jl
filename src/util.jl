@@ -12,6 +12,26 @@ Base.size(F::AbstractField) = size(getfield(F, 2))
 Base.length(F::AbstractField) = length(getfield(F, 2))
 # Base.iterate(F::AbstractField) = iterate(getfield(F, 2))
 
+"""
+    restrict(F::AbstractField, center::SVector, r::Real)
+
+Restrict an `AbstractField` to a cube of length `2r` centered at `center.
+
+Currently implemented only for 2-dimensional fields.
+"""
+function restrict(F::AbstractField{dim}, center::SVector{dim}, r::Real) where dim
+    subindices = restrict_axes(F.grid_axes, center.data, r)
+    typeof(F)(getindex.(F.grid_axes, subindices), F[subindices...])
+end
+function restrict_axes(grid_axes, center, r)
+    current_axis = first(grid_axes)
+    current_center = first(center)
+    init = findfirst(x -> x >= current_center - r, current_axis)
+    final = findlast(x -> x <= current_center + r, current_axis)
+    return (init:final, restrict_axes(Base.tail(grid_axes), Base.tail(center), r)...)
+end
+restrict_axes(::Tuple{}, ::Tuple{}, r) = ()
+
 function Base.:(+)(F1::TF, F2::TF) where {TF <: AbstractField{dim, Ta, Tv} where {dim, Ta, Tv}}
     @assert F1.grid_axes == F2.grid_axes
     TF(F1.grid_axes, getfield(F1, 2) .+ getfield(F2, 2))
