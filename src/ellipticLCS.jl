@@ -72,15 +72,15 @@ function LCSParameters(;
     LCSParameters(indexradius, boxradius, n_seeds, pmin, pmax, rdist)
 end
 
-struct LCScache{Ts <: Real, Tv <: SVector{2,<:Real}}
-    λ₁::Array{Ts, 2}
-    λ₂::Array{Ts, 2}
-    Δ::Array{Ts, 2}
-    α::Array{Ts, 2}
-    β::Array{Ts, 2}
-    ξ₁::Array{Tv, 2}
-    ξ₂::Array{Tv, 2}
-    η::Array{Tv, 2}
+struct LCScache
+    λ₁::ScalarField{2}
+    λ₂::ScalarField{2}
+    Δ::ScalarField{2}
+    α::ScalarField{2}
+    β::ScalarField{2}
+    ξ₁::LineField{2}
+    ξ₂::LineField{2}
+    η::VectorField{2}
 end
 
 """
@@ -272,7 +272,7 @@ end
 
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
-    condition(u,t,integrator) = u[2] - seed[2]
+    condition(u, t, integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     # return _flow(vf, seed, range(0., stop=20., length=200); tolerance=1e-8, callback=cb, verbose=false)
@@ -319,14 +319,14 @@ end
 function orient(T::SymmetricTensorField{2}, center::SVector{2,S}) where {S <: Real}
     xspan, yspan = T.grid_axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    Δλ = λ₂ - λ₁
+    Δλ = λ₂ .- λ₁
     Ω = SMatrix{2,2}(0., -1., 1., 0.)
     star = VectorField(T.grid_axes, [SVector{2}(x, y) - center for x in xspan, y in yspan])
-    c1 = sign.(dot.([Ω] .* star.vecs, ξ₁.vecs))
-    ξ₁.vecs .= c1 .* ξ₁.vecs
-    c2 = sign.(dot.(star.vecs, ξ₂.vecs))
-    ξ₂.vecs .= c2 .* ξ₂.vecs
-    LCScache(λ₁.vals, λ₂.vals, Δλ.vals, c1, c2, ξ₁.vecs, ξ₂.vecs, star.vecs)
+    c1 = ScalarField(T.grid_axes, sign.(dot.([Ω] .* star.vecs, ξ₁.vecs)))
+    ξ₁ .*= c1
+    c2 = ScalarField(T.grid_axes, sign.(dot.(star.vecs, ξ₂.vecs)))
+    ξ₂ .*= c2
+    LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
 end
 
 """
@@ -357,19 +357,16 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     # restrict search to star-shaped coherent vortices
     # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
     cache = orient(T, pSection[1])
-    l1itp = ITP.scale(ITP.interpolate(cache.λ₁, ITP.BSpline(ITP.Linear())),
-                        xspan, yspan)
-    l2itp = ITP.scale(ITP.interpolate(cache.λ₂, ITP.BSpline(ITP.Linear())),
-                        xspan, yspan)
+    l1itp = ITP.LinearInterpolation(cache.λ₁)
+    l2itp = ITP.LinearInterpolation(cache.λ₂)
+
 
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
         c.α .= min.(sqrt.(max.(c.λ₂ .- λ, 0) ./ c.Δ), 1)
         c.β .= min.(sqrt.(max.(λ .- c.λ₁, 0) ./ c.Δ), 1)
         c.η .= c.α .* c.ξ₁ .+ ((-1) ^ σ) .* c.β .* c.ξ₂
-        # itp = ITP.CubicSplineInterpolation(T.grid_axes, c.η)
-        itp = ITP.scale(ITP.interpolate(c.η, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
-                            xspan, yspan)
+        itp = ITP.CubicSplineInterpolation(c.η)
         return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
     end
     prd(λ::Float64, σ::Bool, seed::SVector{2,S}, cache::LCScache) =
@@ -465,7 +462,6 @@ function ellipticLCS(T::SymmetricTensorField{2},
     @info "Found $(length(singularities)) singularities..."
 
     vortexcenters = singularities[get_indices(singularities) .== 2]
-    @show length(vortexcenters)
     p_section = map(vortexcenters) do vc
         set_Poincaré_section(vc.coords, xspan, yspan, p.boxradius, p.n_seeds)
     end

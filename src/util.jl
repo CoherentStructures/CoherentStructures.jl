@@ -4,13 +4,29 @@
 """
     abstract type AbstractField
 """
-abstract type AbstractField{dim, Ta, Tv} end
+abstract type AbstractField{dim, Ta, Tv} <: AbstractArray{Tv, dim} end
 
-Base.getindex(F::AbstractField, inds...) = getindex(getfield(F, 2), inds...)
-Base.setindex!(F::AbstractField, inds...) = setindex!(getfield(F, 2), inds...)
+Base.getindex(F::AbstractField, inds::Vararg{Int,N}) where {N} = getindex(getfield(F, 2), inds...)
+Base.setindex!(F::AbstractField, val, inds::Vararg{Int,N}) where {N}= setindex!(getfield(F, 2), val, inds...)
 Base.size(F::AbstractField) = size(getfield(F, 2))
 Base.length(F::AbstractField) = length(getfield(F, 2))
 # Base.iterate(F::AbstractField) = iterate(getfield(F, 2))
+Base.showarg(io::IO, F::AbstractField{dim}, toplevel) where {dim} =
+    print(io, "$dim-dimensional ", typeof(F))
+Base.BroadcastStyle(::Type{T}) where {T <:AbstractField} = Broadcast.ArrayStyle{T}()
+function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}}, ::Type{ElType}) where {ElType, T <:AbstractField}
+    # Scan the inputs for an AbstractField:
+    A = find_af(bc)
+    typeof(A)(A.grid_axes, similar(Array{ElType}, axes(bc)))
+end
+
+# find_af returns the first AbstractField among the arguments
+find_af(bc::Base.Broadcast.Broadcasted) = find_af(bc.args)
+find_af(args::Tuple) = find_af(find_af(args[1]), Base.tail(args))
+find_af(x) = x
+find_af(a::AbstractField, rest) = a
+find_af(::Any, rest) = find_af(rest)
+# TODO: define trace, determinant, dot as ScalarFields
 
 """
     restrict(F::AbstractField, center::SVector, r::Real)
@@ -32,18 +48,15 @@ function restrict_axes(grid_axes, center, r)
 end
 restrict_axes(::Tuple{}, ::Tuple{}, r) = ()
 
-function Base.:(+)(F1::TF, F2::TF) where {TF <: AbstractField{dim, Ta, Tv} where {dim, Ta, Tv}}
-    @assert F1.grid_axes == F2.grid_axes
-    TF(F1.grid_axes, getfield(F1, 2) .+ getfield(F2, 2))
+function ITP.LinearInterpolation(F::AbstractField)
+    @assert !isa(F, LineField) "LineField cannot be interpolated"
+    ITP.scale(ITP.interpolate(getfield(F, 2), ITP.BSpline(ITP.Linear())), F.grid_axes...)
 end
-function Base.:(-)(F1::TF, F2::TF) where {TF <: AbstractField{dim, Ta, Tv} where {dim, Ta, Tv}}
-    @assert F1.grid_axes == F2.grid_axes
-    TF(F1.grid_axes, getfield(F1, 2) .+ getfield(F2, 2))
+function ITP.CubicSplineInterpolation(F::AbstractField)
+    @assert !isa(F, LineField) "LineField cannot be interpolated"
+    ITP.scale(ITP.interpolate(getfield(F, 2), ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+                        F.grid_axes...)
 end
-function Base.:(*)(x::Real, F::AbstractField)
-    typeof(F)(F.grid_axes, x .* getfield(F, 2))
-end
-Base.:(*)(F::AbstractField, x::Real) = x * F
 
 """
     struct ScalarField <: AbstractField{dim, Ta, Tv}
@@ -51,27 +64,6 @@ Base.:(*)(F::AbstractField, x::Real) = x * F
 struct ScalarField{dim, Ta <: AbstractRange{<:Real}, Tv <: Real} <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim, Ta}
     vals::Array{Tv, dim}
-end
-Base.sign(f::ScalarField) = ScalarField(f.grid_axes, sign.(f.vals))
-# Base.sqrt(f::ScalarField) = ScalarField(f.grid_axes, real.(sqrt.(complex.(f.vals))))
-
-function Base.:(+)(x::Real, g::ScalarField{dim, Ta, Tv}) where {dim, Ta, Tv}
-    ScalarField(f.grid_axes, x .+ g.vals)
-end
-Base.:(+)(g::ScalarField{dim, Ta, Tv}, x::Real) where {dim, Ta, Tv} = x + g
-function Base.:(-)(x::Real, f::ScalarField{dim, Ta, Tv}) where {dim, Ta, Tv}
-    ScalarField(f.grid_axes, x .- f.vals)
-end
-function Base.:(-)(f::ScalarField{dim, Ta, Tv}, x::Real) where {dim, Ta, Tv}
-    ScalarField(f.grid_axes, f.vals .- x)
-end
-function Base.:(/)(f::ScalarField{dim, Ta, Tv}, g::ScalarField{dim, Ta, Tv}) where {dim, Ta, Tv}
-    @assert f.grid_axes == g.grid_axes
-    ScalarField(f.grid_axes, f.vals ./ g.vals)
-end
-function Base.:(*)(f::ScalarField{dim, Ta, Ts}, F::AbstractField{dim, Ta, Tv}) where {dim, Ta, Ts, Tv}
-    @assert f.grid_axes == F.grid_axes
-    typeof(F)(f.grid_axes, f.vals .* getfield(F, 2))
 end
 
 """
@@ -88,13 +80,6 @@ end
 struct LineField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}  <: AbstractField{dim, Ta, Tv}
     grid_axes::NTuple{dim,Ta}
     vecs::Array{Tv, dim}
-end
-function Base.:(*)(Ω::SMatrix{dim,dim}, v::Union{VectorField{dim, Ta, Tv},LineField{dim, Ta, Tv}}) where {dim, Ta, Tv}
-    typeof(v)(v.grid_axes, [Ω] .* v.vecs)
-end
-function LinearAlgebra.dot(v::Union{VectorField{dim, Ta, Tv},LineField{dim, Ta, Tv}}, w::Union{VectorField{dim, Ta, Tv},LineField{dim, Ta, Tv}}) where {dim, Ta, Tv}
-    @assert v.grid_axes == w.grid_axes
-    ScalarField(v.grid_axes, dot.(v.vecs, w.vecs))
 end
 
 """
@@ -189,10 +174,12 @@ function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
 end
 function tensor_invariants(T::SymmetricTensorField{2})
     E = eigen.(T.tensors)
-    λ₁ = ScalarField(T.grid_axes, [ev[1] for ev in eigvals.(E)])
-    λ₂ = ScalarField(T.grid_axes, [ev[2] for ev in eigvals.(E)])
-    ξ₁ = LineField(T.grid_axes, [SVector{2}(ev[:,1]) for ev in eigvecs.(E)])
-    ξ₂ = LineField(T.grid_axes, [SVector{2}(ev[:,2]) for ev in eigvecs.(E)])
+    evals = eigvals.(E)
+    λ₁ = ScalarField(T.grid_axes, [ev[1] for ev in evals])
+    λ₂ = ScalarField(T.grid_axes, [ev[2] for ev in evals])
+    evecs = eigvecs.(E)
+    ξ₁ = LineField(T.grid_axes, [SVector{2}(ev[:,1]) for ev in evecs])
+    ξ₂ = LineField(T.grid_axes, [SVector{2}(ev[:,2]) for ev in evecs])
     traceT = ScalarField(T.grid_axes, tr.(T.tensors))
     detT = ScalarField(T.grid_axes, det.(T.tensors))
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
