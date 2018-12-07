@@ -27,15 +27,17 @@ This is a container for coherent vortex boundaries. An object `vortex` of type
 `plot!([figure, ]vortex.curve)` if it is to be overlaid over an existing plot.
 
 ## Fields
-* `curve`: a list of tuples; contains the coordinates of coherent vortex boundary
-  points.
+* `curve`: a list of tuples, contains the coordinates of coherent vortex boundary
+  points;
+* `core`: location of the vortex core;
 * `p`: contains the parameter value of the direction field ``\\eta_{\\lambda}^{\\pm}``,
-  for the `curve` is a closed orbit.
+  for the `curve` is a closed orbit;
 * `s`: a `Bool` value, which encodes the sign in the formula of the direction
   field ``\\eta_{\\lambda}^{\\pm}`` via the formula ``(-1)^s``.
 """
 struct EllipticBarrier{T <: Real}
     curve::Vector{Tuple{T,T}}
+    core::SVector{2,T}
     p::Float64
     s::Bool
 end
@@ -412,7 +414,7 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
             # @show (closed, uniform)
             # @show length(orbit)
             if (closed && uniform)
-                push!(vortices, EllipticBarrier([ps.data for ps in orbit], λ⁰, σ))
+                push!(vortices, EllipticBarrier([ps.data for ps in orbit], pSection[1], λ⁰, σ))
                 rev && break
             end
         end
