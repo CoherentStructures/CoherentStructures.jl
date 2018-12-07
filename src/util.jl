@@ -35,7 +35,7 @@ Restrict an `AbstractField` to a cube of length `2r` centered at `center.
 
 Currently implemented only for 2-dimensional fields.
 """
-function restrict(F::AbstractField{dim}, center::SVector{dim}, r::Real) where dim
+function restrict(F::AbstractField{dim, Ta, Tv}, center::SVector{dim}, r::Real) where {dim, Ta, Tv}
     subindices = restrict_axes(F.grid_axes, center.data, r)
     typeof(F)(getindex.(F.grid_axes, subindices), F[subindices...])
 end
@@ -65,10 +65,13 @@ struct ScalarField{dim, Ta <: AbstractRange{<:Real}, Tv <: Real} <: AbstractFiel
     grid_axes::NTuple{dim, Ta}
     vals::Array{Tv, dim}
 
-    function ScalarField(grid_axes::NTuple{dim, Ta}, vals::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Real}
+    function ScalarField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, vals::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Real}
         @assert length.(grid_axes) == size(vals) "lengths of axes does not match size of array"
         new{dim, Ta, Tv}(grid_axes, vals)
     end
+end
+function ScalarField(grid_axes::NTuple{dim, Ta}, vals::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Real}
+    ScalarField{dim, Ta, Tv}(grid_axes, vals)
 end
 
 """
@@ -78,10 +81,13 @@ struct VectorField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}} 
     grid_axes::NTuple{dim,Ta}
     vecs::Array{Tv, dim}
 
-    function VectorField(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
+    function VectorField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
         @assert length.(grid_axes) == size(vecs) "lengths of axes does not match size of array"
         new{dim, Ta, Tv}(grid_axes, vecs)
     end
+end
+function VectorField(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
+    VectorField{dim, Ta, Tv}(grid_axes, vecs)
 end
 
 """
@@ -91,10 +97,13 @@ struct LineField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}  <
     grid_axes::NTuple{dim,Ta}
     vecs::Array{Tv, dim}
 
-    function LineField(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
+    function LineField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
         @assert length.(grid_axes) == size(vecs) "lengths of axes does not match size of array"
         new{dim, Ta, Tv}(grid_axes, vecs)
     end
+end
+function LineField(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
+    LineField{dim, Ta, Tv}(grid_axes, vecs)
 end
 
 """
@@ -104,10 +113,14 @@ struct TensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N
     grid_axes::NTuple{dim,Ta}
     tensors::Array{Tv, dim}
 
-    function TensorField(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}
+    function TensorField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}
         @assert length.(grid_axes) == size(tensors) "lengths of axes does not match size of array"
         new{dim, Ta, Tv}(grid_axes, tensors)
     end
+end
+function TensorField(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}
+    @assert length.(grid_axes) == size(tensors) "lengths of axes does not match size of array"
+    TensorField{dim, Ta, Tv}(grid_axes, tensors)
 end
 
 """
@@ -117,10 +130,13 @@ struct SymmetricTensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTen
     grid_axes::NTuple{dim,Ta}
     tensors::Array{Tv, dim}
 
-    function SymmetricTensorField(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}
+    function SymmetricTensorField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}
         @assert length.(grid_axes) == size(tensors) "lengths of axes does not match size of array"
         new{dim, Ta, Tv}(grid_axes, tensors)
     end
+end
+function SymmetricTensorField(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}
+    SymmetricTensorField{dim, Ta, Tv}(grid_axes, tensors)
 end
 
 """
