@@ -45,13 +45,13 @@ eastward component, `v` corresponds to the ``y``- or northward component.
 For interpolation, the `Interpolations.jl` package is used; see their
 documentation for how to declare other interpolation types.
 """
-function interpolateVF(X::AbstractRange,#{S1},
-                       Y::AbstractRange,#{S1},
-                       T::AbstractRange,#{S1},
-                       U::AbstractArray,#{S2,3},
-                       V::AbstractArray,#{S2,3},
+function interpolateVF(X::AbstractRange{S1},
+                       Y::AbstractRange{S1},
+                       T::AbstractRange{S1},
+                       U::AbstractArray{S2,3},
+                       V::AbstractArray{S2,3},
                        interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
-                       )# where {S1 <: Real, S2 <: Real}
+                       ) where {S1 <: Real, S2 <: Real}
     ITP.scale(ITP.interpolate(SVector{2}.(U, V), interpolation_type), X, Y, T)
 end
 
