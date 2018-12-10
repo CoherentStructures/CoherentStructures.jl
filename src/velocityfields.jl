@@ -18,14 +18,10 @@
     c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
-bj = @velo_from_stream Ψ_bickley
-bickleyJet = OrdinaryDiffEq.ODEFunction(bj)
-bj!(du,u,p,t) = du .= bickleyJet(u,p,t)
-bickleyJet! = OrdinaryDiffEq.ODEFunction(bj!)
-bjev = @var_velo_from_stream Ψ_bickley
-bickleyJetEqVari = OrdinaryDiffEq.ODEFunction(bjev)
-bjev!(DU,U,p,t) = DU .= bickleyJetEqVari(U,p,t)
-bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction(bjev!)
+bickleyJet = @velo_from_stream Ψ_bickley
+bickleyJet! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= bickleyJet(u, p, t))
+bickleyJetEqVari = @var_velo_from_stream Ψ_bickley
+bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction((DU, U, p, t) -> DU .= bickleyJetEqVari(U, p, t))
 
 # rotating double gyre flow  [Mosovsky & Meiss, 2011]
 @define_stream Ψ_rot_dgyre begin
@@ -34,14 +30,10 @@ bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction(bjev!)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
-rdg = @velo_from_stream Ψ_rot_dgyre
-rot_double_gyre = OrdinaryDiffEq.ODEFunction(rdg)
-rdg!(du,u,p,t) = du .= rot_double_gyre(u,p,t)
-rot_double_gyre! = OrdinaryDiffEq.ODEFunction(rdg!)
-rdgev = @var_velo_from_stream Ψ_rot_dgyre
-rot_double_gyreEqVari = OrdinaryDiffEq.ODEFunction(rdgev)
-rdgev!(DU,U,p,t) = DU .= rot_double_gyreEqVari(U,p,t)
-rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction(rdgev!)
+rot_double_gyre = @velo_from_stream Ψ_rot_dgyre
+rot_double_gyre! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= rot_double_gyre(u, p, t))
+rot_double_gyreEqVari = @var_velo_from_stream Ψ_rot_dgyre
+rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction((DU, U, p, t) -> DU .= rot_double_gyreEqVari(U, p, t))
 
 # interpolated vector field components
 """
@@ -53,13 +45,13 @@ eastward component, `v` corresponds to the ``y``- or northward component.
 For interpolation, the `Interpolations.jl` package is used; see their
 documentation for how to declare other interpolation types.
 """
-function interpolateVF(X::AbstractRange{S1},
-                       Y::AbstractRange{S1},
-                       T::AbstractRange{S1},
-                       U::AbstractArray{S2,3},
-                       V::AbstractArray{S2,3},
+function interpolateVF(X::AbstractRange,#{S1},
+                       Y::AbstractRange,#{S1},
+                       T::AbstractRange,#{S1},
+                       U::AbstractArray,#{S2,3},
+                       V::AbstractArray,#{S2,3},
                        interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
-                       ) where {S1 <: Real, S2 <: Real}
+                       )# where {S1 <: Real, S2 <: Real}
     ITP.scale(ITP.interpolate(SVector{2}.(U, V), interpolation_type), X, Y, T)
 end
 
