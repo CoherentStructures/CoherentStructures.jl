@@ -1,4 +1,4 @@
-using Test, StaticArrays, OrdinaryDiffEq, Tensors, LinearAlgebra, Distributed
+using Test
 using CoherentStructures
 
 @testset "periodic_diff" begin
