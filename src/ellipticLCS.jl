@@ -177,6 +177,11 @@ function combine_singularities(singularities::Vector{Singularity{T}}, combine_di
     return combined_singularities
 end
 
+"""
+    combine_isolated_pairs(singularities)
+Determines singularities which are mutually closest neighbors and combines them
+as one, while adding their indices.
+"""
 function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
     N = length(singularities)
     sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
@@ -248,6 +253,12 @@ function discrete_singularity_detection(T::AxisArray{S,2},
     end
 end
 
+"""
+    compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)
+Computes returning orbits under the velocity field `vf`, originating from `seed`.
+The optional argument `save` controls whether intermediate locations of the
+returning orbit should be saved.
+"""
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
     condition(u, t, integrator) = u[2] - seed[2]

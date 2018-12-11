@@ -173,7 +173,7 @@ end
 
 #TODO: Make this more efficient
 """
-    nDofs(ctx, bdata)
+    nBCDofs(ctx, bdata)
 
 Get the number of dofs that are left after the boundary conditions in `bdata` have been applied.
 """

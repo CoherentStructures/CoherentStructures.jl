@@ -49,27 +49,35 @@ In summary, the implementation consists of the following steps:
 ## Function documentation
 
 The fully automated high-level function is:
-
 ```@docs
 ellipticLCS
 ```
-
 One of its arguments is a list of parameters used in the LCS detection. This
 list is combined in a data type called `LCSParameters`. The output of
 `ellipticLCS` is a list of `EllipticBarrier`'s and a list of `Singularity`'s.
 There is an option to retrieve all closed barriers (`outermost=false`), in
 contrast to extracting only the outermost vortex boundaries (`outermost=true`).
-
 ```@docs
 Singularity
 LCSParameters
 EllipticBarrier
 ```
-
-The function [`ellipticLCS`](@ref) calls sequentially the following functions.
-
+The function [`ellipticLCS`](@ref) consists of two steps. First, the index
+theory-based determination of where to search for closed orbits. This is performed
+by [`discrete_singularity_detection`](@ref).
 ```@docs
 discrete_singularity_detection
-set_Poincaré_section
+```
+In turn, this function takes three steps.
+```@docs
+compute_singularities
+combine_singularities
+combine_isolated_pairs
+```
+From all virtual/merged singularities those with a suitable index are selected.
+Around each elliptic singularity the tensor field is localized and passed on for
+closed orbit detection.
+```@docs
+compute_returning_orbit
 compute_closed_orbits
 ```

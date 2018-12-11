@@ -24,9 +24,9 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
     t_initial = minimum(Time)
     t_final = t_initial + 90
     const tspan = range(t_initial, stop=t_final, length=q)
-    nx = 500
-    ny = Int(floor(0.6 * nx))
-    xmin, xmax, ymin, ymax = -4.0, 6.0, -34.0, -28.0
+    nx = 300
+    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
+    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
     P = SVector{2}.(xspan, yspan')
@@ -37,8 +37,8 @@ end
 
 ############################ compute elliptic LCSs #############################
 C̅ = AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.5, 2.0, 1e-4)
-vortices, singularities = ellipticLCS(C̅, p)
+p = LCSParameters(5*max(step(xspan), step(yspan)), 2.5, 60, 0.5, 2.0, 1e-4)
+@time vortices, singularities = ellipticLCS(C̅, p)
 ```
 The result is visualized as follows:
 ```
@@ -67,15 +67,14 @@ import JLD2, OrdinaryDiffEq, Plots
 #Import and interpolate ocean dataset
 #The @load macro initializes Lon,Lat,Time,UT,VT
 JLD2.@load("../../examples/Ocean_geostrophic_velocity.jld2")
-UI, VI = interpolateVF(Lon, Lat, Time, UT, VT)
-p = (UI,VI)
+VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 #Define a flow function from it
 t_initial = minimum(Time)
 t_final = t_initial + 90
 times = [t_initial, t_final]
 flow_map = u0 -> flow(interp_rhs, u0, times;
-    p=p, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
+    p=VI, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
 ```
 
 Next we set up the domain. We want to use zero Dirichlet boundary conditions here.
@@ -119,7 +118,7 @@ We upsample the eigenfunctions and then cluster.
 ```@example 5
 using Clustering
 
-ctx2,_ = regularTriangularGrid((200, 120), LL, UR)
+ctx2, _ = regularTriangularGrid((200, 120), LL, UR)
 v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
 
 #Run k-means several times, keep the best result

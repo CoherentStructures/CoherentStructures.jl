@@ -146,7 +146,7 @@ using CoherentStructures
 ctx, _ = regularQuadrilateralGrid((10, 10))
 predicate = (p1, p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 1.0) < 1e-10
 bdata = boundaryData(ctx, predicate, ["top", "bottom"])
-u = ones(nDofs(ctx, bdata))
+u = ones(nBCDofs(ctx, bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
 plot_u(ctx, u, 200, 200, bdata=bdata, colorbar=:none)
 ```

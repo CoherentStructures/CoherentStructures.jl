@@ -14,10 +14,6 @@ export
 	compute_singularities,
 	discrete_singularity_detection,
 	combine_singularities,
-	# singularity_location_detection,
-	# singularity_type_detection,
-	# detect_elliptic_region,
-	set_Poincaré_section,
 	compute_returning_orbit,
 	compute_closed_orbits,
 	ellipticLCS,
@@ -77,7 +73,7 @@ export
 	applyBCS,
 	getHomDBCS,
 	boundaryData,
-	nDofs,
+	nBCDofs,
 	getDofCoordinates,
 
 	#numericalExperiments.jl
