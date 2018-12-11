@@ -3,6 +3,7 @@ module CoherentStructures
 # use standard libraries
 using LinearAlgebra
 using SparseArrays
+using AxisArrays
 using Distributed
 using SharedArrays: SharedArray
 using Markdown
