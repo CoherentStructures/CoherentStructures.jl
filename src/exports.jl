@@ -128,12 +128,6 @@ export
 	adaptiveTOCollocation,
 
 	#util.jl
-	restrict,
-	ScalarField,
-	VectorField,
-	LineField,
-	TensorField,
-	SymmetricTensorField,
 	tensor_invariants,
 	dof2node,
 	kmeansresult2LCS,

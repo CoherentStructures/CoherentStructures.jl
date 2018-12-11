@@ -8,7 +8,7 @@ times in the literature.
 
 Here, we demonstrate how to detect material barriers to diffusive transport.
 ```
-using Distributed
+using Distributed, AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays
@@ -36,19 +36,21 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 end
 
 ############################ compute elliptic LCSs #############################
-C̅ = SymmetricTensorField((xspan, yspan), pmap(mCG_tensor, P; batch_size=ny))
-p = LCSParameters(3*max(step(xspan), step(yspan)), 1.0, 60, 0.7, 1.5, 1e-4)
+C̅ = AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.5, 2.0, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p)
 ```
 The result is visualized as follows:
 ```
 using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT.vals));
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
+scatter!(get_coords(singularities), color=:red)
 for vortex in vortices
-    Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
+    plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
+    scatter!(vortex.core, color=:yellow)
 end
 Plots.plot(fig)
 ```
