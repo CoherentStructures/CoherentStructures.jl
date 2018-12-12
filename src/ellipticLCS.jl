@@ -456,8 +456,8 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     vortexlists = pmap(vortexcenters) do vc
         vx = vc.coords[1]
         vy = vc.coords[2]
-        vr = SVector{2}(min(vx + p.boxradius, xmax), vy)
-        ps = range(vc.coords, stop=vr, length=floor(Int, min((xmax - vx) / p.boxradius, 1) * p.n_seeds))
+        v1 = range(vx, stop=vx + p.boxradius, length=p.n_seeds)
+        ps = SVector{2}.(v1[1:findlast(x -> x <= xmax, v1)], vy)
         T_local = T[vx - p.boxradius .. vx + p.boxradius, vy - p.boxradius .. vy + p.boxradius]
         if verbose
             result, t, _ = @timed compute_closed_orbits(ps, T_local;
