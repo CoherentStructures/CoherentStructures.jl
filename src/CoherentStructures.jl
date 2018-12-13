@@ -14,7 +14,7 @@ using StaticArrays: SVector, @SVector, SArray, SMatrix, @SMatrix
 import Tensors
 using Tensors: Vec, Tensor, SymmetricTensor
 import AxisArrays
-const AA = AxisArrays
+using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 import DiffEqBase
 import OrdinaryDiffEq
