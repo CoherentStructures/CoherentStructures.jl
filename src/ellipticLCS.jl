@@ -75,14 +75,14 @@ function LCSParameters(;
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
-    λ₁::AA.AxisArray{Ts,2}
-    λ₂::AA.AxisArray{Ts,2}
-    Δ::AA.AxisArray{Ts,2}
-    α::AA.AxisArray{Ts,2}
-    β::AA.AxisArray{Ts,2}
-    ξ₁::AA.AxisArray{Tv,2}
-    ξ₂::AA.AxisArray{Tv,2}
-    η::AA.AxisArray{Tv,2}
+    λ₁::AxisArray{Ts,2}
+    λ₂::AxisArray{Ts,2}
+    Δ::AxisArray{Ts,2}
+    α::AxisArray{Ts,2}
+    β::AxisArray{Ts,2}
+    ξ₁::AxisArray{Tv,2}
+    ξ₂::AxisArray{Tv,2}
+    η::AxisArray{Tv,2}
 end
 
 """
@@ -93,7 +93,7 @@ Computes critical points/singularities of vector and line fields, respectively.
 representation of the vector/line field. Choose `modulus=2π` for vector
 fields, and as `modulus=π` for line fields.
 """
-function compute_singularities(α::AA.AxisArray{<:Real,2}, modulus)
+function compute_singularities(α::AxisArray{<:Real,2}, modulus)
     xspan, yspan = α.axes
     singularities = Singularity{typeof(step(xspan.val) / 2)}[] # sing_out
     xstephalf = step(xspan.val) / 2
@@ -237,11 +237,11 @@ closest singularities are included in the final list.
 Returns a vector of [`Singularity`](@ref)s. Indices are multiplied by 2 to get
 integer values.
 """
-function discrete_singularity_detection(T::AA.AxisArray{S,2},
+function discrete_singularity_detection(T::AxisArray{S,2},
                                         combine_distance::Float64;
                                         combine_isolated_wedges=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = [eigvecs(t)[:,1] for t in T]
-    α = AA.AxisArray([atan(v[2], v[1]) for v in ξ], T.axes)
+    α = AxisArray([atan(v[2], v[1]) for v in ξ], T.axes)
     singularities = compute_singularities(α, π)
     new_singularities = combine_singularities(singularities, combine_distance)
     if combine_isolated_wedges
@@ -306,15 +306,15 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Re
     return c
 end
 
-function orient(T::AA.AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}) where {S1 <: Real, S2 <: Real}
+function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}) where {S1 <: Real, S2 <: Real}
     xspan, yspan = T.axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    Δλ = AA.AxisArray(λ₂ .- λ₁, T.axes)
+    Δλ = AxisArray(λ₂ .- λ₁, T.axes)
     Ω = SMatrix{2,2}(0., -1., 1., 0.)
-    star = AA.AxisArray([SVector{2}(x, y) - center for x in xspan.val, y in yspan.val], T.axes)
-    c1 = AA.AxisArray(sign.(dot.([Ω] .* star, ξ₁)), T.axes)
+    star = AxisArray([SVector{2}(x, y) - center for x in xspan.val, y in yspan.val], T.axes)
+    c1 = AxisArray(sign.(dot.([Ω] .* star, ξ₁)), T.axes)
     ξ₁ .*= c1
-    c2 = AA.AxisArray(sign.(dot.(star, ξ₂)), T.axes)
+    c2 = AxisArray(sign.(dot.(star, ξ₂)), T.axes)
     ξ₂ .*= c2
     LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
 end
@@ -331,11 +331,11 @@ outwards (`false`). `rdist` sets the required return distance for an orbit to be
 considered as closed.
 """
 function compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
-    compute_closed_orbits(pSection, AA.AxisArray(T, xspan, yspan);
+    compute_closed_orbits(pSection, AxisArray(T, xspan, yspan);
                                     rev=rev, pmin=pmin, pmax=pmax, rdist=rdist)
 end
 function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
-                                T::AA.AxisArray{SymmetricTensor{2,2,S2,3},2};
+                                T::AxisArray{SymmetricTensor{2,2,S2,3},2};
                                 rev::Bool=true,
                                 pmin::Real=0.7,
                                 pmax::Real=1.5,
@@ -425,7 +425,7 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         yspan::AbstractRange{S},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true) where S <: Real
-    F = AA.AxisArray(T, Axis{:x}(xspan), Axis{:y}(yspan))
+    F = AxisArray(T, Axis{:x}(xspan), Axis{:y}(yspan))
     return ellipticLCS(F, p, outermost=outermost)
 end
 """
@@ -439,7 +439,7 @@ Returns a list of `EllipticBarrier`-type objects: if the optional keyword
 argument `outermost` is true, then only the outermost barriers, i.e., the vortex
 boundaries, otherwise all detected transport barrieres are returned.
 """
-function ellipticLCS(T::AA.AxisArray{SymmetricTensor{2,2,S,3},2},
+function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true) where S <: Real
@@ -458,7 +458,7 @@ function ellipticLCS(T::AA.AxisArray{SymmetricTensor{2,2,S,3},2},
         vy = vc.coords[2]
         v1 = range(vx, stop=vx + p.boxradius, length=p.n_seeds)
         ps = SVector{2}.(v1[1:findlast(x -> x <= xmax, v1)], vy)
-        T_local = T[vx - p.boxradius .. vx + p.boxradius, vy - p.boxradius .. vy + p.boxradius]
+        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
         if verbose
             result, t, _ = @timed compute_closed_orbits(ps, T_local;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)

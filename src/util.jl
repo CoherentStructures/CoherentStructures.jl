@@ -75,16 +75,16 @@ function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
     detT = det(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
-function tensor_invariants(T::AA.AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
+function tensor_invariants(T::AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
     E = eigen.(T)
     evals = eigvals.(E)
-    λ₁ = AA.AxisArray([ev[1] for ev in evals], T.axes)
-    λ₂ = AA.AxisArray([ev[2] for ev in evals], T.axes)
+    λ₁ = AxisArray([ev[1] for ev in evals], T.axes)
+    λ₂ = AxisArray([ev[2] for ev in evals], T.axes)
     evecs = eigvecs.(E)
-    ξ₁ = AA.AxisArray([SVector{2}(ev[:,1]) for ev in evecs], T.axes)
-    ξ₂ = AA.AxisArray([SVector{2}(ev[:,2]) for ev in evecs], T.axes)
-    traceT = AA.AxisArray(tr.(T), T.axes)
-    detT = AA.AxisArray(det.(T), T.axes)
+    ξ₁ = AxisArray([SVector{2}(ev[:,1]) for ev in evecs], T.axes)
+    ξ₂ = AxisArray([SVector{2}(ev[:,2]) for ev in evecs], T.axes)
+    traceT = AxisArray(tr.(T), T.axes)
+    detT = AxisArray(det.(T), T.axes)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
 
@@ -94,7 +94,7 @@ end
 
 Returns a linear interpolant of the `AxisArray` `A` (without extrapolation).
 """
-function ITP.LinearInterpolation(A::AA.AxisArray)
+function ITP.LinearInterpolation(A::AxisArray)
     ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Linear())), axisvalues(A)...)
 end
 
@@ -103,7 +103,7 @@ end
 
 Returns a cubic spline interpolant of the `AxisArray` `A` (without extrapolation).
 """
-function ITP.CubicSplineInterpolation(A::AA.AxisArray)
+function ITP.CubicSplineInterpolation(A::AxisArray)
     ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
                         axisvalues(A)...)
 end
