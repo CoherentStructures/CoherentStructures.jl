@@ -1,15 +1,51 @@
-if Base.HOME_PROJECT[] != nothing
-    Base.HOME_PROJECT[] = abspath(Base.HOME_PROJECT[])
-end
+using Documenter
+using Literate
+using CoherentStructures
+using Plots # to not capture precompilation output
+
 ENV["GKSwstype"] = "100"
 
-using Documenter, CoherentStructures
+# generate examples
+EXAMPLE = joinpath(@__DIR__, "..", "examples", "example.jl")
+OUTPUT = joinpath(@__DIR__, "src/generated")
 
-# Before running this, make sure that Plots, Tensors, Distances, JLD2, Printf,
-# Random, OrdinaryDiffEq and Clustering packages are installed and added to your
+Literate.markdown(EXAMPLE, OUTPUT)
+Literate.notebook(EXAMPLE, OUTPUT)
+Literate.script(EXAMPLE, OUTPUT)
+
+# generate the example notebooks for the documentation
+Literate.markdown(joinpath(@__DIR__, "src/bickley.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "src/bickley.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "src/bickley.jl"), OUTPUT)
+
+Literate.markdown(joinpath(@__DIR__, "src/ocean_flow.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "src/ocean_flow.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "src/ocean_flow.jl"), OUTPUT)
+
+Literate.markdown(joinpath(@__DIR__, "src/rot_double_gyre.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "src/rot_double_gyre.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "src/rot_double_gyre.jl"), OUTPUT)
+
+Literate.markdown(joinpath(@__DIR__, "src/standard_map.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "src/standard_map.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "src/standard_map.jl"), OUTPUT)
+
+# replace links (if any)
+# travis_tag = get(ENV, "TRAVIS_TAG", "")
+# folder = isempty(travis_tag) ? "latest" : travis_tag
+# url = "https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/$(folder)/"
+# if get(ENV, "HAS_JOSH_K_SEAL_OF_APPROVAL", "") == "true"
+#     str = read(joinpath(@__DIR__, "src/filename.md"), String)
+#     str = replace(str, "[notebook.ipynb](generated/notebook.ipynb)." => "[notebook.ipynb]($(url)generated/notebook.ipynb).")
+#     write(joinpath(@__DIR__, "src/filename.md"), str)
+# end
+
+
+# Before running this, make sure that Plots, Tensors, Distances, JLD2,
+# OrdinaryDiffEq and Clustering packages are installed and added to your
 # current environment (]add )
 makedocs(
-    format = :html,
+    format = Documenter.HTML(),
     sitename="CoherentStructures.jl",
     pages = Any[
         "Home" => "index.md"
@@ -31,7 +67,6 @@ makedocs(
 deploydocs(
     repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
     target = "build",
-    julia = "1.0",
     deps = nothing,
     make = nothing,
 )
