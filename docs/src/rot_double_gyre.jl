@@ -15,11 +15,11 @@
 # velocity fields, from horizontally to vertically arranged counter-rotating gyres.
 # The corresponding velocity field is provided by the package and callable as
 # `rot_double_gyre`.
-
-![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
-
+#
+# ![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
+#
 # ## FEM-Based Methods
-
+# 
 # The following code demonstrates how to use these methods.
 
 using CoherentStructures, Arpack
