@@ -12,7 +12,7 @@ using CoherentStructures
         voop = ODEFunction((u, p, t) -> zero(SVector{dim}))
         @test fill(xs, q) == @inferred flow(voop, xs, tspan)
         @test fill(xs, q) == @inferred flow(voop, xv, tspan)
-        @test_broken fill(xs, q) == @inferred flow(voop, x0, tspan) # TODO: this does not infer!
+        @test fill(xs, q) == flow(voop, x0, tspan)
 
         viip = ODEFunction((du, u, p, t) -> du .= zeros(dim))
         @test fill(x0, q) == @inferred flow(viip, x0, tspan)
@@ -45,13 +45,11 @@ end
         xv = Vec{dim}(x0)
 
         voop = ODEFunction((u, p, t) -> rhs)
-        @test_broken @inferred linearized_flow(voop, x0, tspan, 0.1) # TODO: this does not infer!
         @test Idspan ≈ linearized_flow(voop, x0, tspan, 0.1)[2]
         @test Idspan ≈ @inferred(linearized_flow(voop, xs, tspan, 0.1))[2]
         @test Idspan ≈ @inferred(linearized_flow(voop, xv, tspan, 0.1))[2]
 
         viip = ODEFunction((du, u, p, t) -> du .= rhs)
-        @test_broken @inferred linearized_flow(viip, x0, tspan, 0.1) # TODO: this does not infer!
         @test Idspan ≈ linearized_flow(viip, x0, tspan, 0.1)[2]
         @test Idspan ≈ @inferred(linearized_flow(viip, xs, tspan, 0.1))[2]
         @test Idspan ≈ @inferred(linearized_flow(viip, xv, tspan, 0.1))[2]
@@ -70,16 +68,16 @@ end
             voop = ODEFunction((u, p, t) -> rhs)
             viip = ODEFunction((du, u, p, t) -> du .= rhs)
 
-            @test_broken Id ≈ @inferred(pb(voop, x0, tspan, 0.1))
-            @test_broken Id ≈ @inferred(pb(viip, x0, tspan, 0.1))
+            @test Id ≈ pb(voop, x0, tspan, 0.1)
+            @test Id ≈ pb(viip, x0, tspan, 0.1)
             # next paragraph can be deleted once inference is fixed
             @test Id ≈ pb(voop, x0, tspan, 0.1)
             @test Id ≈ pb(viip, x0, tspan, 0.1)
 
-            @test Id ≈ @inferred(pb(voop, xs, tspan, 0.1))
-            @test Id ≈ @inferred(pb(viip, xs, tspan, 0.1))
-            @test Id ≈ @inferred(pb(voop, xv, tspan, 0.1))
-            @test Id ≈ @inferred(pb(viip, xv, tspan, 0.1))
+            @test Id ≈ @inferred pb(voop, xs, tspan, 0.1)
+            @test Id ≈ @inferred pb(viip, xs, tspan, 0.1)
+            @test Id ≈ @inferred pb(voop, xv, tspan, 0.1)
+            @test Id ≈ @inferred pb(viip, xv, tspan, 0.1)
         end
 
         x0 = rand(dim)
@@ -91,14 +89,14 @@ end
         B = rand(Tensor{2,dim})
         Sspan = fill(S, length(tspan))
 
-        @test_broken det(S)*inv(S) ≈ @inferred(av_weighted_CG_tensor(voop, x0, tspan, 0.1; D=S))
-        @test_broken det(S)*inv(S) ≈ @inferred(av_weighted_CG_tensor(viip, x0, tspan, 0.1; D=S))
-        @test_broken Sspan ≈ @inferred(pullback_diffusion_tensor(voop, x0, tspan, 0.1; D=S))
-        @test_broken Sspan ≈ @inferred(pullback_diffusion_tensor(viip, x0, tspan, 0.1; D=S))
-        @test_broken Sspan ≈ @inferred(pullback_metric_tensor(voop, x0, tspan, 0.1; G=S))
-        @test_broken Sspan ≈ @inferred(pullback_metric_tensor(viip, x0, tspan, 0.1; G=S))
-        @test_broken fill(B, length(tspan)) ≈ @inferred(pullback_SDE_diffusion_tensor(voop, x0, tspan, 0.1; B=B))
-        @test_broken fill(B, length(tspan)) ≈ @inferred(pullback_SDE_diffusion_tensor(viip, x0, tspan, 0.1; B=B))
+        @test det(S)*inv(S) ≈ av_weighted_CG_tensor(voop, x0, tspan, 0.1; D=S)
+        @test det(S)*inv(S) ≈ av_weighted_CG_tensor(viip, x0, tspan, 0.1; D=S)
+        @test Sspan ≈ pullback_diffusion_tensor(voop, x0, tspan, 0.1; D=S)
+        @test Sspan ≈ pullback_diffusion_tensor(viip, x0, tspan, 0.1; D=S)
+        @test Sspan ≈ pullback_metric_tensor(voop, x0, tspan, 0.1; G=S)
+        @test Sspan ≈ pullback_metric_tensor(viip, x0, tspan, 0.1; G=S)
+        @test fill(B, length(tspan)) ≈ pullback_SDE_diffusion_tensor(voop, x0, tspan, 0.1; B=B)
+        @test fill(B, length(tspan)) ≈ pullback_SDE_diffusion_tensor(viip, x0, tspan, 0.1; B=B)
         # next paragraph can be deleted once inference is fixed
         @test det(S)*inv(S) ≈ av_weighted_CG_tensor(voop, x0, tspan, 0.1; D=S)
         @test det(S)*inv(S) ≈ av_weighted_CG_tensor(viip, x0, tspan, 0.1; D=S)
@@ -141,21 +139,21 @@ end
 
         # test CG_tensor
         CG = exp(sI)'exp(sI)
-        @test_broken CG ≈ @inferred(CG_tensor(voop, x0, tspan, 1e-1)) rtol=1e-7
-        @test_broken CG ≈ @inferred(CG_tensor(viip, x0, tspan, 1e-1)) rtol=1e-7
+        @test CG ≈ CG_tensor(voop, x0, tspan, 1e-1) rtol=1e-5
+        @test CG ≈ CG_tensor(viip, x0, tspan, 1e-1) rtol=1e-5
         # next paragraph can be deleted once inference is fixed
-        @test CG ≈ CG_tensor(voop, x0, tspan, 1e-1) rtol=1e-7
-        @test CG ≈ CG_tensor(viip, x0, tspan, 1e-1) rtol=1e-7
+        @test CG ≈ CG_tensor(voop, x0, tspan, 1e-1) rtol=1e-5
+        @test CG ≈ CG_tensor(viip, x0, tspan, 1e-1) rtol=1e-5
 
-        @test CG ≈ @inferred(CG_tensor(voop, xs, tspan, 1e-1)) rtol=1e-7
-        @test CG ≈ @inferred(CG_tensor(viip, xs, tspan, 1e-1)) rtol=1e-7
-        @test CG ≈ @inferred(CG_tensor(voop, xv, tspan, 1e-1)) rtol=1e-7
-        @test CG ≈ @inferred(CG_tensor(viip, xv, tspan, 1e-1)) rtol=1e-7
+        @test CG ≈ @inferred(CG_tensor(voop, xs, tspan, 1e-1)) rtol=1e-5
+        @test CG ≈ @inferred(CG_tensor(viip, xs, tspan, 1e-1)) rtol=1e-5
+        @test CG ≈ @inferred(CG_tensor(voop, xv, tspan, 1e-1)) rtol=1e-5
+        @test CG ≈ @inferred(CG_tensor(viip, xv, tspan, 1e-1)) rtol=1e-5
 
         # test mean_diff_tensor
         D̅ = 1//2 * (sI + inv(CG))
-        @test_broken D̅ ≈ @inferred(mean_diff_tensor(voop, x0, tspan, 1e-1)) rtol=1e-7
-        @test_broken D̅ ≈ @inferred(mean_diff_tensor(viip, x0, tspan, 1e-1)) rtol=1e-7
+        @test D̅ ≈ mean_diff_tensor(voop, x0, tspan, 1e-1) rtol=1e-7
+        @test D̅ ≈ mean_diff_tensor(viip, x0, tspan, 1e-1) rtol=1e-7
         # next paragraph can be deleted once inference is fixed
         @test D̅ ≈ mean_diff_tensor(voop, x0, tspan, 1e-1) rtol=1e-7
         @test D̅ ≈ mean_diff_tensor(viip, x0, tspan, 1e-1) rtol=1e-7
