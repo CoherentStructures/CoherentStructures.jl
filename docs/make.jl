@@ -8,21 +8,21 @@ ENV["GKSwstype"] = "100"
 # generate the example notebooks for the documentation
 OUTPUT = joinpath(@__DIR__, "..", "src/generated")
 
-Literate.markdown(joinpath(@__DIR__, "..", "src", "src/bickley.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "src", "src/bickley.jl"), OUTPUT)
-Literate.script(joinpath(@__DIR__, "..", "src", "src/bickley.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT)
 
-Literate.markdown(joinpath(@__DIR__, "..", "src", "src/ocean_flow.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "src", "src/ocean_flow.jl"), OUTPUT)
-Literate.script(joinpath(@__DIR__, "..", "src", "src/ocean_flow.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT)
 
-Literate.markdown(joinpath(@__DIR__, "..", "src", "src/rot_double_gyre.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "src", "src/rot_double_gyre.jl"), OUTPUT)
-Literate.script(joinpath(@__DIR__, "..", "src", "src/rot_double_gyre.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT)
 
-Literate.markdown(joinpath(@__DIR__, "..", "src", "src/standard_map.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "src", "src/standard_map.jl"), OUTPUT)
-Literate.script(joinpath(@__DIR__, "..", "src", "src/standard_map.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT)
+Literate.script(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT)
 
 # replace links (if any)
 # travis_tag = get(ENV, "TRAVIS_TAG", "")
