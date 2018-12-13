@@ -8,7 +8,9 @@ times in the literature.
 
 Here, we demonstrate how to detect material barriers to diffusive transport.
 ```
-using Distributed, AxisArrays
+using Distributed
+import AxisArrays
+const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays
@@ -36,7 +38,7 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 end
 
 ############################ compute elliptic LCSs #############################
-C̅ = AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+C̅ = AA.AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
 p = LCSParameters(5*max(step(xspan), step(yspan)), 2.5, 60, 0.5, 2.0, 1e-4)
 @time vortices, singularities = ellipticLCS(C̅, p)
 ```

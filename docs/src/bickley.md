@@ -39,7 +39,9 @@ signature `(u, p, t)` with state `u`, (unused) parameter `p` and time `t`.
 Here we briefly demonstrate how to find material barriers to diffusive transport;
 see [Geodesic elliptic material vortices](@ref) for references and details.
 ```
-using Distributed, AxisArrays
+using Distributed
+import AxisArrays
+const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere begin
@@ -58,7 +60,7 @@ nprocs() == 1 && addprocs()
               D=DiffTensor, tolerance=1e-6, solver=Tsit5())
 end
 
-C̅ = AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+C̅ = AA.AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
 p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p)
 ```

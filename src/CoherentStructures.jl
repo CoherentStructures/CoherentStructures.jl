@@ -3,7 +3,6 @@ module CoherentStructures
 # use standard libraries
 using LinearAlgebra
 using SparseArrays
-using AxisArrays
 using Distributed
 using SharedArrays: SharedArray
 using Markdown
@@ -14,6 +13,8 @@ import StaticArrays
 using StaticArrays: SVector, @SVector, SArray, SMatrix, @SMatrix
 import Tensors
 using Tensors: Vec, Tensor, SymmetricTensor
+import AxisArrays
+const AA = AxisArrays
 
 import DiffEqBase
 import OrdinaryDiffEq

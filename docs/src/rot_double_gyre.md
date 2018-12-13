@@ -65,7 +65,9 @@ Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i
 Here, we demonstrate how to calculate black-hole vortices, see
 [Geodesic elliptic material vortices](@ref) for references and details.
 ```
-using Distributed, AxisArrays
+using Distributed
+import AxisArrays
+const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere begin
@@ -83,7 +85,7 @@ nprocs() == 1 && addprocs()
             tolerance=1e-6, solver=Tsit5())
 end
 
-C̅ = AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+C̅ = AA.AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
 p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 ```
