@@ -53,14 +53,14 @@ nprocs() == 1 && addprocs()
     xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
-    P = SVector{2}.(xspan, yspan')
+    P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
     const δ = 1.e-6
     const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
     mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
               D=DiffTensor, tolerance=1e-6, solver=Tsit5())
 end
 
-C̅ = AA.AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+C̅ = pmap(mCG_tensor, P; batch_size=ny)
 p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p)
 

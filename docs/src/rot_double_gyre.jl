@@ -19,7 +19,7 @@
 # ![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
 #
 # ## FEM-Based Methods
-# 
+#
 # The following code demonstrates how to use these methods.
 
 using CoherentStructures, Arpack
@@ -84,13 +84,13 @@ nprocs() == 1 && addprocs()
     xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
-    P = SVector{2}.(xspan, yspan')
+    P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
     const δ = 1.e-6
     mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
             tolerance=1e-6, solver=Tsit5())
 end
 
-C̅ = AA.AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+C̅ = pmap(mCG_tensor, P; batch_size=ny)
 p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 
