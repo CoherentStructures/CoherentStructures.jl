@@ -152,15 +152,15 @@ end
 
         # test mean_diff_tensor
         D̅ = 1//2 * (sI + inv(CG))
-        @test D̅ ≈ mean_diff_tensor(voop, x0, tspan, 1e-1) rtol=1e-7
-        @test D̅ ≈ mean_diff_tensor(viip, x0, tspan, 1e-1) rtol=1e-7
+        @test D̅ ≈ mean_diff_tensor(voop, x0, tspan, 1e-1) rtol=1e-5
+        @test D̅ ≈ mean_diff_tensor(viip, x0, tspan, 1e-1) rtol=1e-5
         # next paragraph can be deleted once inference is fixed
-        @test D̅ ≈ mean_diff_tensor(voop, x0, tspan, 1e-1) rtol=1e-7
-        @test D̅ ≈ mean_diff_tensor(viip, x0, tspan, 1e-1) rtol=1e-7
+        @test D̅ ≈ mean_diff_tensor(voop, x0, tspan, 1e-1) rtol=1e-5
+        @test D̅ ≈ mean_diff_tensor(viip, x0, tspan, 1e-1) rtol=1e-5
 
-        @test D̅ ≈ @inferred(mean_diff_tensor(voop, xs, tspan, 1e-1)) rtol=1e-7
-        @test D̅ ≈ @inferred(mean_diff_tensor(viip, xs, tspan, 1e-1)) rtol=1e-7
-        @test D̅ ≈ @inferred(mean_diff_tensor(voop, xv, tspan, 1e-1)) rtol=1e-7
-        @test D̅ ≈ @inferred(mean_diff_tensor(viip, xv, tspan, 1e-1)) rtol=1e-7
+        @test D̅ ≈ @inferred(mean_diff_tensor(voop, xs, tspan, 1e-1)) rtol=1e-5
+        @test D̅ ≈ @inferred(mean_diff_tensor(viip, xs, tspan, 1e-1)) rtol=1e-5
+        @test D̅ ≈ @inferred(mean_diff_tensor(voop, xv, tspan, 1e-1)) rtol=1e-5
+        @test D̅ ≈ @inferred(mean_diff_tensor(viip, xv, tspan, 1e-1)) rtol=1e-5
     end
 end
