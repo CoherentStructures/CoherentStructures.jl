@@ -9,4 +9,6 @@ using CoherentStructures
 
     include("test_util.jl")
 
+    include("test_elliptic.jl")
+
 end

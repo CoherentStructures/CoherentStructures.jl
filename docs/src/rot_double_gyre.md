@@ -66,6 +66,8 @@ Here, we demonstrate how to calculate black-hole vortices, see
 [Geodesic elliptic material vortices](@ref) for references and details.
 ```
 using Distributed
+import AxisArrays
+const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere begin
@@ -83,20 +85,21 @@ nprocs() == 1 && addprocs()
             tolerance=1e-6, solver=Tsit5())
 end
 
-C̅ = SymmetricTensorField((xspan, yspan), pmap(mCG_tensor, P; batch_size=ny))
-p = LCSParameters(3*max(step(xspan), step(yspan)), 0.3, 60, 0.7, 1.5, 1e-4)
+C̅ = AA.AxisArray(pmap(mCG_tensor, P; batch_size=ny), xspan, yspan)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 ```
 The results are then visualized as follows.
 ```
 using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT.vals));
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
-foreach(vortices) do vortex
-    Plots.plot!(vortex.curve, w=3, label="T = $(round(vortex.p, digits=2))")
-end
 scatter!(get_coords(singularities), color=:red)
+for vortex in vortices
+    plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
+    scatter!(vortex.core, color=:yellow)
+end
 Plots.plot(fig)
 ```

@@ -9,7 +9,7 @@ using Documenter, CoherentStructures
 # Random, OrdinaryDiffEq and Clustering packages are installed and added to your
 # current environment (]add )
 makedocs(
-    format=:html,
+    format = :html,
     sitename="CoherentStructures.jl",
     pages = Any[
         "Home" => "index.md"

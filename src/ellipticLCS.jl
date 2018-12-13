@@ -74,30 +74,30 @@ function LCSParameters(;
     LCSParameters(indexradius, boxradius, n_seeds, pmin, pmax, rdist)
 end
 
-struct LCScache
-    λ₁::ScalarField{2}
-    λ₂::ScalarField{2}
-    Δ::ScalarField{2}
-    α::ScalarField{2}
-    β::ScalarField{2}
-    ξ₁::LineField{2}
-    ξ₂::LineField{2}
-    η::VectorField{2}
+struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
+    λ₁::AA.AxisArray{Ts,2}
+    λ₂::AA.AxisArray{Ts,2}
+    Δ::AA.AxisArray{Ts,2}
+    α::AA.AxisArray{Ts,2}
+    β::AA.AxisArray{Ts,2}
+    ξ₁::AA.AxisArray{Tv,2}
+    ξ₂::AA.AxisArray{Tv,2}
+    η::AA.AxisArray{Tv,2}
 end
 
 """
-    compute_singularities(α::ScalarField{2}, modulus) -> Vector{Singularity}
+    compute_singularities(α, modulus) -> Vector{Singularity}
 
 Computes critical points/singularities of vector and line fields, respectively.
-`α` is a `ScalarField`, which is assumed to contain some consistent angle
-representation of the vector/line field. Choose `modulus` as `2π` for vector
-fields, and as `π` for line fields.
+`α` is a scalar field (array) which is assumed to contain some consistent angle
+representation of the vector/line field. Choose `modulus=2π` for vector
+fields, and as `modulus=π` for line fields.
 """
-function compute_singularities(α::ScalarField{2}, modulus)
-    xspan, yspan = α.grid_axes
-    singularities = Singularity{typeof(step(xspan) / 2)}[] # sing_out
-    xstephalf = step(xspan) / 2
-    ystephalf = step(yspan) / 2
+function compute_singularities(α::AA.AxisArray{<:Real,2}, modulus)
+    xspan, yspan = α.axes
+    singularities = Singularity{typeof(step(xspan.val) / 2)}[] # sing_out
+    xstephalf = step(xspan.val) / 2
+    ystephalf = step(yspan.val) / 2
     # go counter-clockwise around each grid cell and add angles
     # for cells with non-vanishing index, collect cell midpoints
     for (j,y) in enumerate(yspan[1:end-1]), (i,x) in enumerate(xspan[1:end-1])
@@ -177,7 +177,12 @@ function combine_singularities(singularities::Vector{Singularity{T}}, combine_di
     return combined_singularities
 end
 
-function combine_isolated_wedge_pairs(singularities::Vector{Singularity{T}}) where T
+"""
+    combine_isolated_pairs(singularities)
+Determines singularities which are mutually closest neighbors and combines them
+as one, while adding their indices.
+"""
+function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
     N = length(singularities)
     sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
     sing_seen = falses(N)
@@ -232,46 +237,28 @@ closest singularities are included in the final list.
 Returns a vector of [`Singularity`](@ref)s. Indices are multiplied by 2 to get
 integer values.
 """
-function discrete_singularity_detection(T::SymmetricTensorField{2},
+function discrete_singularity_detection(T::AA.AxisArray{S,2},
                                         combine_distance::Float64;
-                                        combine_isolated_wedges=true)
-    ξ = [eigvecs(t)[:,1] for t in T.tensors]
-    α = ScalarField(T.grid_axes, [atan(v[2], v[1]) for v in ξ])
+                                        combine_isolated_wedges=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
+    ξ = [eigvecs(t)[:,1] for t in T]
+    α = AA.AxisArray([atan(v[2], v[1]) for v in ξ], T.axes)
     singularities = compute_singularities(α, π)
     new_singularities = combine_singularities(singularities, combine_distance)
     if combine_isolated_wedges
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
-        return combine_isolated_wedge_pairs(new_singularities)
+        return combine_isolated_pairs(new_singularities)
     else
         return new_singularities
     end
 end
 
 """
-    set_Poincaré_section(vc, xspan, yspan, boxradius=1.0, n_seeds=60)
-
-Generates a horizontal Poincaré section, centered at the vortex center `vc`
-of length `p.boxradius` consisting of `p.n_seeds` starting at `vc` eastwards.
-All points are guaranteed to lie in the computational domain given
-by `xspan` and `yspan`.
+    compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)
+Computes returning orbits under the velocity field `vf`, originating from `seed`.
+The optional argument `save` controls whether intermediate locations of the
+returning orbit should be saved.
 """
-function set_Poincaré_section(vc::SVector{2,S},
-                                xspan::AbstractVector{S},
-                                yspan::AbstractVector{S},
-                                boxradius::Real=1.0,
-                                n_seeds::Int=60) where S <: Real
-
-    xmin, xmax = extrema(xspan)
-    ymin, ymax = extrema(yspan)
-    p_section::Vector{SVector{2,S}} = [vc]
-    eₓ = SVector{2,S}(1., 0.)
-    pspan = range(vc, stop=vc + boxradius*eₓ, length=n_seeds)
-    idxs = [all(ps .<= [xmax, ymax]) && all(ps .>= [xmin, ymin]) for ps in pspan]
-    append!(p_section, pspan[idxs])
-    return p_section
-end
-
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
     condition(u, t, integrator) = u[2] - seed[2]
@@ -287,7 +274,8 @@ end
 function Poincaré_return_distance(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
     sol = compute_returning_orbit(vf, seed, save)
-    if abs(sol[end][2] - seed[2]) <= 1e-2
+    # check if result due to callback
+    if abs(sol[end][2] - seed[2]) <= 1e-1
         return sol[end][1] - seed[1]
     else
         return NaN
@@ -318,15 +306,15 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Re
     return c
 end
 
-function orient(T::SymmetricTensorField{2}, center::SVector{2,S}) where {S <: Real}
-    xspan, yspan = T.grid_axes
+function orient(T::AA.AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}) where {S1 <: Real, S2 <: Real}
+    xspan, yspan = T.axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    Δλ = λ₂ .- λ₁
+    Δλ = AA.AxisArray(λ₂ .- λ₁, T.axes)
     Ω = SMatrix{2,2}(0., -1., 1., 0.)
-    star = VectorField(T.grid_axes, [SVector{2}(x, y) - center for x in xspan, y in yspan])
-    c1 = ScalarField(T.grid_axes, sign.(dot.([Ω] .* star.vecs, ξ₁.vecs)))
+    star = AA.AxisArray([SVector{2}(x, y) - center for x in xspan.val, y in yspan.val], T.axes)
+    c1 = AA.AxisArray(sign.(dot.([Ω] .* star, ξ₁)), T.axes)
     ξ₁ .*= c1
-    c2 = ScalarField(T.grid_axes, sign.(dot.(star.vecs, ξ₂.vecs)))
+    c2 = AA.AxisArray(sign.(dot.(star, ξ₂)), T.axes)
     ξ₂ .*= c2
     LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
 end
@@ -343,35 +331,33 @@ outwards (`false`). `rdist` sets the required return distance for an orbit to be
 considered as closed.
 """
 function compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
-    compute_closed_orbits(pSection, SymmetricTensorField((xspan, yspan), T);
+    compute_closed_orbits(pSection, AA.AxisArray(T, xspan, yspan);
                                     rev=rev, pmin=pmin, pmax=pmax, rdist=rdist)
 end
-function compute_closed_orbits(pSection::Vector{SVector{2,S}},
-                                        T::SymmetricTensorField{2};
-                                        rev::Bool=true,
-                                        pmin::Real=0.7,
-                                        pmax::Real=1.5,
-                                        rdist::Real=1e-4
-                                        ) where S <: Real
-
-    xspan, yspan = T.grid_axes
+function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
+                                T::AA.AxisArray{SymmetricTensor{2,2,S2,3},2};
+                                rev::Bool=true,
+                                pmin::Real=0.7,
+                                pmax::Real=1.5,
+                                rdist::Real=1e-4
+                                ) where {S1 <: Real, S2 <: Real}
     # for computational tractability, pre-orient the eigenvector fields
     # restrict search to star-shaped coherent vortices
     # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
-    cache = orient(T, pSection[1])
+    cache = orient(T, ps[1])
     l1itp = ITP.LinearInterpolation(cache.λ₁)
     l2itp = ITP.LinearInterpolation(cache.λ₂)
 
 
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-        c.α .= min.(sqrt.(max.(c.λ₂ .- λ, 0) ./ c.Δ), 1)
-        c.β .= min.(sqrt.(max.(λ .- c.λ₁, 0) ./ c.Δ), 1)
-        c.η .= c.α .* c.ξ₁ .+ ((-1) ^ σ) .* c.β .* c.ξ₂
-        itp = ITP.CubicSplineInterpolation(c.η)
+        @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
+        @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
+        @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+        itp = ITP.LinearInterpolation(c.η)
         return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
     end
-    prd(λ::Float64, σ::Bool, seed::SVector{2,S}, cache::LCScache) =
+    prd(λ::Float64, σ::Bool, seed::SVector{2,S1}, cache::LCScache) =
             Poincaré_return_distance(ηfield(λ, σ, cache), seed)
 
     # VERSION 2: 3D-interpolant
@@ -394,27 +380,27 @@ function compute_closed_orbits(pSection::Vector{SVector{2,S}},
     # go along the Poincaré section and solve for λ
     # first, define a nonlinear root finding problem
     vortices = EllipticBarrier[]
-    idxs = rev ? (length(pSection):-1:2) : (2:length(pSection))
+    idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
         λ⁰ = 0.0
         try
             global σ = false
-            λ⁰ = bisection(λ -> prd(λ, σ, pSection[i], cache), pmin, pmax, rdist)
+            λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
         catch
             global σ = true
             try
-                λ⁰ = bisection(λ -> prd(λ, σ, pSection[i], cache), pmin, pmax, rdist)
+                λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
             catch
             end
         end
         if !iszero(λ⁰)
-            orbit = compute_returning_orbit(ηfield(λ⁰, σ, cache), pSection[i], true)
+            orbit = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
             closed = norm(orbit[1] - orbit[end]) <= rdist
-            uniform = all([l1itp(ps[1], ps[2]) <= λ⁰ <= l2itp(ps[1], ps[2]) for ps in orbit])
+            uniform = all([l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) for qs in orbit])
             # @show (closed, uniform)
             # @show length(orbit)
             if (closed && uniform)
-                push!(vortices, EllipticBarrier([ps.data for ps in orbit], pSection[1], λ⁰, σ))
+                push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
                 rev && break
             end
         end
@@ -439,47 +425,50 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         yspan::AbstractRange{S},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true) where S <: Real
-    F = SymmetricTensorField((xspan, yspan), T)
+    F = AA.AxisArray(T, Axis{:x}(xspan), Axis{:y}(yspan))
     return ellipticLCS(F, p, outermost=outermost)
 end
 """
     function ellipticLCS(T, p; outermost=true)
 
 Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
-field given by (pointwise) shifted versions of the [`SymmetricTensorField`](@ref)
+field given by (pointwise) shifted versions of the symmetric tensor field
 `T`. `p` is a [`LCSParameters`](@ref)-type container of computational parameters.
 
 Returns a list of `EllipticBarrier`-type objects: if the optional keyword
 argument `outermost` is true, then only the outermost barriers, i.e., the vortex
 boundaries, otherwise all detected transport barrieres are returned.
 """
-function ellipticLCS(T::SymmetricTensorField{2},
+function ellipticLCS(T::AA.AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true) where S <: Real
 
-    xspan, yspan = T.grid_axes
+    xspan, yspan = T.axes
+    xmax = xspan[end]
     singularities = discrete_singularity_detection(T, p.indexradius;
                                             combine_isolated_wedges=true)
     @info "Found $(length(singularities)) singularities..."
 
     vortexcenters = singularities[get_indices(singularities) .== 2]
-    p_section = map(vortexcenters) do vc
-        set_Poincaré_section(vc.coords, xspan, yspan, p.boxradius, p.n_seeds)
-    end
     @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    vortexlists = pmap(p_section) do ps
+    vortexlists = pmap(vortexcenters) do vc
+        vx = vc.coords[1]
+        vy = vc.coords[2]
+        v1 = range(vx, stop=vx + p.boxradius, length=p.n_seeds)
+        ps = SVector{2}.(v1[1:findlast(x -> x <= xmax, v1)], vy)
+        T_local = T[vx - p.boxradius .. vx + p.boxradius, vy - p.boxradius .. vy + p.boxradius]
         if verbose
-            result, t, _ = @timed compute_closed_orbits(ps, restrict(T, ps[1], p.boxradius);
+            result, t, _ = @timed compute_closed_orbits(ps, T_local;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
             @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
                 "yielded $(length(result)) transport barrier" *
                 (length(result) > 1 ? "s." : ".")
             return result
         else
-            return compute_closed_orbits(ps, restrict(T, ps[1], p.boxradius);
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+            return compute_closed_orbits(ps, T_local;
+                rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
         end
     end
 

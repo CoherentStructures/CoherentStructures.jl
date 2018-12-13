@@ -2,144 +2,6 @@
 #Various utility functions
 
 """
-    abstract type AbstractField
-"""
-abstract type AbstractField{dim, Ta, Tv} <: AbstractArray{Tv, dim} end
-
-Base.getindex(F::AbstractField, inds::Vararg{Int,N}) where {N} = getindex(getfield(F, 2), inds...)
-Base.setindex!(F::AbstractField, val, inds::Vararg{Int,N}) where {N}= setindex!(getfield(F, 2), val, inds...)
-Base.size(F::AbstractField) = size(getfield(F, 2))
-Base.length(F::AbstractField) = length(getfield(F, 2))
-# Base.iterate(F::AbstractField) = iterate(getfield(F, 2))
-Base.showarg(io::IO, F::AbstractField{dim}, toplevel) where {dim} =
-    print(io, "$dim-dimensional ", typeof(F))
-Base.BroadcastStyle(::Type{T}) where {T <:AbstractField} = Broadcast.ArrayStyle{T}()
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}}, ::Type{ElType}) where {ElType, T <:AbstractField}
-    # Scan the inputs for an AbstractField:
-    A = find_af(bc)
-    typeof(A)(A.grid_axes, similar(Array{ElType}, axes(bc)))
-end
-
-# find_af returns the first AbstractField among the arguments
-find_af(bc::Base.Broadcast.Broadcasted) = find_af(bc.args)
-find_af(args::Tuple) = find_af(find_af(args[1]), Base.tail(args))
-find_af(x) = x
-find_af(a::AbstractField, rest) = a
-find_af(::Any, rest) = find_af(rest)
-# TODO: define trace, determinant, dot as ScalarFields
-
-"""
-    restrict(F::AbstractField, center::SVector, r::Real)
-
-Restrict an `AbstractField` to a cube of length `2r` centered at `center.
-
-Currently implemented only for 2-dimensional fields.
-"""
-function restrict(F::AbstractField{dim, Ta, Tv}, center::SVector{dim}, r::Real) where {dim, Ta, Tv}
-    subindices = restrict_axes(F.grid_axes, center.data, r)
-    typeof(F)(getindex.(F.grid_axes, subindices), F[subindices...])
-end
-function restrict_axes(grid_axes, center, r)
-    current_axis = first(grid_axes)
-    current_center = first(center)
-    init = findfirst(x -> x >= current_center - r, current_axis)
-    final = findlast(x -> x <= current_center + r, current_axis)
-    return (init:final, restrict_axes(Base.tail(grid_axes), Base.tail(center), r)...)
-end
-restrict_axes(::Tuple{}, ::Tuple{}, r) = ()
-
-function ITP.LinearInterpolation(F::AbstractField)
-    @assert !isa(F, LineField) "LineField cannot be interpolated"
-    ITP.scale(ITP.interpolate(getfield(F, 2), ITP.BSpline(ITP.Linear())), F.grid_axes...)
-end
-function ITP.CubicSplineInterpolation(F::AbstractField)
-    @assert !isa(F, LineField) "LineField cannot be interpolated"
-    ITP.scale(ITP.interpolate(getfield(F, 2), ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
-                        F.grid_axes...)
-end
-
-"""
-    struct ScalarField <: AbstractField{dim, Ta, Tv}
-"""
-struct ScalarField{dim, Ta <: AbstractRange{<:Real}, Tv <: Real} <: AbstractField{dim, Ta, Tv}
-    grid_axes::NTuple{dim, Ta}
-    vals::Array{Tv, dim}
-
-    function ScalarField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, vals::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Real}
-        @assert length.(grid_axes) == size(vals) "lengths of axes does not match size of array"
-        new{dim, Ta, Tv}(grid_axes, vals)
-    end
-end
-function ScalarField(grid_axes::NTuple{dim, Ta}, vals::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Real}
-    ScalarField{dim, Ta, Tv}(grid_axes, vals)
-end
-
-"""
-    struct VectorField <: AbstractField{dim, Ta, Tv}
-"""
-struct VectorField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}  <: AbstractField{dim, Ta, Tv}
-    grid_axes::NTuple{dim,Ta}
-    vecs::Array{Tv, dim}
-
-    function VectorField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
-        @assert length.(grid_axes) == size(vecs) "lengths of axes does not match size of array"
-        new{dim, Ta, Tv}(grid_axes, vecs)
-    end
-end
-function VectorField(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
-    VectorField{dim, Ta, Tv}(grid_axes, vecs)
-end
-
-"""
-    struct LineField <: AbstractField{dim, Ta, Tv}
-"""
-struct LineField{dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}  <: AbstractField{dim, Ta, Tv}
-    grid_axes::NTuple{dim,Ta}
-    vecs::Array{Tv, dim}
-
-    function LineField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
-        @assert length.(grid_axes) == size(vecs) "lengths of axes does not match size of array"
-        new{dim, Ta, Tv}(grid_axes, vecs)
-    end
-end
-function LineField(grid_axes::NTuple{dim, Ta}, vecs::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SVector{dim,<:Real}}
-    LineField{dim, Ta, Tv}(grid_axes, vecs)
-end
-
-"""
-    struct TensorField <: AbstractField{dim, Ta, Tv}
-"""
-struct TensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}  <: AbstractField{dim, Ta, Tv}
-    grid_axes::NTuple{dim,Ta}
-    tensors::Array{Tv, dim}
-
-    function TensorField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}
-        @assert length.(grid_axes) == size(tensors) "lengths of axes does not match size of array"
-        new{dim, Ta, Tv}(grid_axes, tensors)
-    end
-end
-function TensorField(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: Tensor{dim,2,<:Real,N} where N}
-    @assert length.(grid_axes) == size(tensors) "lengths of axes does not match size of array"
-    TensorField{dim, Ta, Tv}(grid_axes, tensors)
-end
-
-"""
-    struct SymmetricTensorField <: AbstractField{dim, Ta, Tv}
-"""
-struct SymmetricTensorField{dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}  <: AbstractField{dim, Ta, Tv}
-    grid_axes::NTuple{dim,Ta}
-    tensors::Array{Tv, dim}
-
-    function SymmetricTensorField{dim, Ta, Tv}(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}
-        @assert length.(grid_axes) == size(tensors) "lengths of axes does not match size of array"
-        new{dim, Ta, Tv}(grid_axes, tensors)
-    end
-end
-function SymmetricTensorField(grid_axes::NTuple{dim, Ta}, tensors::Array{Tv, dim}) where {dim, Ta <: AbstractRange{<:Real}, Tv <: SymmetricTensor{dim,2,<:Real,N} where N}
-    SymmetricTensorField{dim, Ta, Tv}(grid_axes, tensors)
-end
-
-"""
     arraymap!(du, u, p, t, odefun, N, dim)
 
 Like `map`, but operates on 1d-datastructures.
@@ -213,17 +75,37 @@ function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
     detT = det(T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
-function tensor_invariants(T::SymmetricTensorField{2})
-    E = eigen.(T.tensors)
+function tensor_invariants(T::AA.AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
+    E = eigen.(T)
     evals = eigvals.(E)
-    λ₁ = ScalarField(T.grid_axes, [ev[1] for ev in evals])
-    λ₂ = ScalarField(T.grid_axes, [ev[2] for ev in evals])
+    λ₁ = AA.AxisArray([ev[1] for ev in evals], T.axes)
+    λ₂ = AA.AxisArray([ev[2] for ev in evals], T.axes)
     evecs = eigvecs.(E)
-    ξ₁ = LineField(T.grid_axes, [SVector{2}(ev[:,1]) for ev in evecs])
-    ξ₂ = LineField(T.grid_axes, [SVector{2}(ev[:,2]) for ev in evecs])
-    traceT = ScalarField(T.grid_axes, tr.(T.tensors))
-    detT = ScalarField(T.grid_axes, det.(T.tensors))
+    ξ₁ = AA.AxisArray([SVector{2}(ev[:,1]) for ev in evecs], T.axes)
+    ξ₂ = AA.AxisArray([SVector{2}(ev[:,2]) for ev in evecs], T.axes)
+    traceT = AA.AxisArray(tr.(T), T.axes)
+    detT = AA.AxisArray(det.(T), T.axes)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+end
+
+# Interpolation of AxisArrays
+"""
+    LinearInterpolation(A::AxisArray)
+
+Returns a linear interpolant of the `AxisArray` `A` (without extrapolation).
+"""
+function ITP.LinearInterpolation(A::AA.AxisArray)
+    ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Linear())), axisvalues(A)...)
+end
+
+"""
+    CubicSplineInterpolation(A::AxisArray)
+
+Returns a cubic spline interpolant of the `AxisArray` `A` (without extrapolation).
+"""
+function ITP.CubicSplineInterpolation(A::AA.AxisArray)
+    ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+                        axisvalues(A)...)
 end
 
 """
