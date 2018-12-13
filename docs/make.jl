@@ -6,22 +6,22 @@ using Plots # to not capture precompilation output
 ENV["GKSwstype"] = "100"
 
 # generate the example notebooks for the documentation
-OUTPUT = joinpath(@__DIR__, "..", "src/generated")
+OUTPUT = joinpath(@__DIR__, "..", "docs/examples")
 
 Literate.markdown(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "docs/src/bickley.jl"), OUTPUT)
 
 Literate.markdown(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "docs/src/ocean_flow.jl"), OUTPUT)
 
 Literate.markdown(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "docs/src/rot_double_gyre.jl"), OUTPUT)
 
 Literate.markdown(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT)
-Literate.notebook(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "docs/src/standard_map.jl"), OUTPUT)
 
 # replace links (if any)
