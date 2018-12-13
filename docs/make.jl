@@ -30,6 +30,9 @@ makedocs(
 
 deploydocs(
     repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
+    branch = "gh-pages",
+    devbranch = "master",
+    devurl ="dev",
     target = "build",
     julia = "1.0",
     deps = nothing,
