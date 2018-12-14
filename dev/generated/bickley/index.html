@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bickley jet · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Home</a></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="../rot_double_gyre/">Rotating double gyre</a></li><li><a class="toctext" href="../standard_map/">Standard map</a></li><li class="current"><a class="toctext" href>Bickley jet</a><ul class="internal"><li><a class="toctext" href="#Geodesic-vortices-1">Geodesic vortices</a></li><li><a class="toctext" href="#FEM-based-Methods-1">FEM-based Methods</a></li></ul></li><li><a class="toctext" href="../ocean_flow/">Geostrophic ocean flow</a></li></ul></li><li><a class="toctext" href="../../basics/">Basics</a></li><li><span class="toctext">Methods</span><ul><li><a class="toctext" href="../../fem/">FEM-based methods</a></li><li><a class="toctext" href="../../elliptic/">Geodesic vortices</a></li><li><a class="toctext" href="../../Laplace/">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href>Bickley jet</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/examples/bickley.jl"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Bickley jet</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Bickley-Jet-1" href="#Bickley-Jet-1">Bickley Jet</a></h1><p>The (computable) notebook corresponding to this example is <a href="https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/bickley.ipynb">bickley.ipynb</a>.</p><p>The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by <a href="https://dx.doi.org/10.1175/JAS4036.1">Rypina et al.</a>; cf. also <a href="https://doi.org/10.1063/1.858639">del‐Castillo‐Negrete and Morrison</a>.</p><p>The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field is provided by the package and callable as <code>bickleyJet</code>.</p><p>Instead of using the <code>bickleyJet</code> function to get this velocity field, we could also use the <code>@velo_from_stream</code> macro:</p><div><pre><code class="language-julia">using CoherentStructures
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bickley jet · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Home</a></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="../rot_double_gyre/">Rotating double gyre</a></li><li><a class="toctext" href="../standard_map/">Standard map</a></li><li class="current"><a class="toctext" href>Bickley jet</a><ul class="internal"><li><a class="toctext" href="#Geodesic-vortices-1">Geodesic vortices</a></li><li><a class="toctext" href="#FEM-based-Methods-1">FEM-based Methods</a></li></ul></li><li><a class="toctext" href="../ocean_flow/">Geostrophic ocean flow</a></li></ul></li><li><a class="toctext" href="../../basics/">Basics</a></li><li><span class="toctext">Methods</span><ul><li><a class="toctext" href="../../fem/">FEM-based methods</a></li><li><a class="toctext" href="../../elliptic/">Geodesic vortices</a></li><li><a class="toctext" href="../../Laplace/">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href>Bickley jet</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/src/generated/bickley.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Bickley jet</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Bickley-Jet-1" href="#Bickley-Jet-1">Bickley Jet</a></h1><p>The (computable) notebook for this example can be found <a href="https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/bickley.ipynb">here</a>.</p><p>The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by <a href="https://dx.doi.org/10.1175/JAS4036.1">Rypina et al.</a>; cf. also <a href="https://doi.org/10.1063/1.858639">del‐Castillo‐Negrete and Morrison</a>.</p><p>The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field is provided by the package and callable as <code>bickleyJet</code>.</p><p>Instead of using the <code>bickleyJet</code> function to get this velocity field, we could also use the <code>@velo_from_stream</code> macro:</p><pre><code class="language-julia">using CoherentStructures
 bickley = @velo_from_stream stream begin
     stream = psi₀ + psi₁
     psi₀   = - U₀ * L₀ * tanh(y / L₀)
@@ -17,7 +17,7 @@ bickley = @velo_from_stream stream begin
     c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
 
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
-end</code></pre><pre><code class="language-none">(::DiffEqBase.ODEFunction{false,getfield(Main.ex-bickley, Symbol(&quot;##1#2&quot;)),LinearAlgebra.UniformScaling{Bool},Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing}) (generic function with 7 methods)</code></pre></div><p>Now, <code>bickley</code> is a callable function with the standard <code>OrdinaryDiffEq</code> signature <code>(u, p, t)</code> with state <code>u</code>, (unused) parameter <code>p</code> and time <code>t</code>.</p><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here we briefly demonstrate how to find material barriers to diffusive transport; see <a href="../../elliptic/#Geodesic-elliptic-material-vortices-1">Geodesic elliptic material vortices</a> for references and details.</p><pre><code class="language-">using Distributed
+end</code></pre><p>Now, <code>bickley</code> is a callable function with the standard <code>OrdinaryDiffEq</code> signature <code>(u, p, t)</code> with state <code>u</code>, (unused) parameter <code>p</code> and time <code>t</code>.</p><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here we briefly demonstrate how to find material barriers to diffusive transport; see <a href="../../elliptic/#Geodesic-elliptic-material-vortices-1">Geodesic elliptic material vortices</a> for references and details.</p><pre><code class="language-julia">using Distributed
 import AxisArrays
 const AA = AxisArrays
 nprocs() == 1 &amp;&amp; addprocs()
@@ -40,7 +40,7 @@ end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
 p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.7, 1.5, 1e-4)
-vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>The result is visualized as follows:</p><pre><code class="language-">import Plots
+vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>The result is visualized as follows:</p><pre><code class="language-julia">import Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
                     aspect_ratio=1, color=:viridis, leg=true,
@@ -51,10 +51,10 @@ for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
     scatter!(vortex.core, color=:yellow)
 end
-Plots.plot(fig)</code></pre><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><div><pre><code class="language-julia">LL = [0.0, -3.0]; UR = [6.371π, 3.0]
+Plots.plot(fig)</code></pre><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">LL = [0.0, -3.0]; UR = [6.371π, 3.0]
 ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
 predicate = (p1,p2) -&gt; abs(p1[2] - p2[2]) &lt; 1e-10 &amp;&amp; peuclidean(p1[1], p2[1], 6.371π) &lt; 1e-10
-bdata = CoherentStructures.boundaryData(ctx, predicate, []);</code></pre></div><p>Using a FEM-based method to compute coherent structures:</p><div><pre><code class="language-julia">using Arpack
+bdata = CoherentStructures.boundaryData(ctx, predicate, []);</code></pre><p>Using a FEM-based method to compute coherent structures:</p><pre><code class="language-julia">using Arpack
 cgfun = (x -&gt; mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81),
      1.e-8; tolerance=1.e-5))
 
@@ -63,154 +63,7 @@ M = assembleMassMatrix(ctx, bdata=bdata)
 λ, v = eigs(K, M, which=:SM, nev= 10)
 
 import Plots
-plot_real_spectrum(λ)</code></pre><?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 2400 1600">
-<defs>
-  <clipPath id="clip4700">
-    <rect x="0" y="0" width="2000" height="2000"/>
-  </clipPath>
-</defs>
-<defs>
-  <clipPath id="clip4701">
-    <rect x="0" y="0" width="2400" height="1600"/>
-  </clipPath>
-</defs>
-<polygon clip-path="url(#clip4701)" points="
-0,1600 2400,1600 2400,0 0,0 
-  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
-<defs>
-  <clipPath id="clip4702">
-    <rect x="480" y="0" width="1681" height="1600"/>
-  </clipPath>
-</defs>
-<polygon clip-path="url(#clip4701)" points="
-176.123,1503.47 2321.26,1503.47 2321.26,47.2441 176.123,47.2441 
-  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
-<defs>
-  <clipPath id="clip4703">
-    <rect x="176" y="47" width="2146" height="1457"/>
-  </clipPath>
-</defs>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  461.691,1503.47 461.691,47.2441 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  911.406,1503.47 911.406,47.2441 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  1361.12,1503.47 1361.12,47.2441 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  1810.83,1503.47 1810.83,47.2441 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  2260.55,1503.47 2260.55,47.2441 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  176.123,1311.45 2321.26,1311.45 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  176.123,903.786 2321.26,903.786 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  176.123,496.123 2321.26,496.123 
-  "/>
-<polyline clip-path="url(#clip4703)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
-  176.123,88.4606 2321.26,88.4606 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  176.123,1503.47 2321.26,1503.47 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  176.123,1503.47 176.123,47.2441 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  461.691,1503.47 461.691,1481.63 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  911.406,1503.47 911.406,1481.63 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  1361.12,1503.47 1361.12,1481.63 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  1810.83,1503.47 1810.83,1481.63 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  2260.55,1503.47 2260.55,1481.63 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  176.123,1311.45 208.3,1311.45 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  176.123,903.786 208.3,903.786 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  176.123,496.123 208.3,496.123 
-  "/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  176.123,88.4606 208.3,88.4606 
-  "/>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 461.691, 1557.47)" x="461.691" y="1557.47">2</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 911.406, 1557.47)" x="911.406" y="1557.47">4</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1361.12, 1557.47)" x="1361.12" y="1557.47">6</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1810.83, 1557.47)" x="1810.83" y="1557.47">8</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 2260.55, 1557.47)" x="2260.55" y="1557.47">10</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:end;" transform="rotate(0, 152.123, 1328.95)" x="152.123" y="1328.95">-30</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:end;" transform="rotate(0, 152.123, 921.286)" x="152.123" y="921.286">-20</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:end;" transform="rotate(0, 152.123, 513.623)" x="152.123" y="513.623">-10</text>
-</g>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:end;" transform="rotate(0, 152.123, 105.961)" x="152.123" y="105.961">0</text>
-</g>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="236.834" cy="88.4582" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="236.834" cy="88.4582" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="461.691" cy="267.294" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="461.691" cy="267.294" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="686.549" cy="363.788" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="686.549" cy="363.788" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="911.406" cy="374.466" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="911.406" cy="374.466" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1136.26" cy="399.842" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1136.26" cy="399.842" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1361.12" cy="416.556" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1361.12" cy="416.556" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1585.98" cy="459.623" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1585.98" cy="459.623" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1810.83" cy="477.859" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1810.83" cy="477.859" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="2035.69" cy="1421.2" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="2035.69" cy="1421.2" r="14"/>
-<circle clip-path="url(#clip4703)" style="fill:#000000; stroke:none; fill-opacity:1" cx="2260.55" cy="1462.26" r="18"/>
-<circle clip-path="url(#clip4703)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="2260.55" cy="1462.26" r="14"/>
-<polygon clip-path="url(#clip4701)" points="
-1958.43,251.724 2249.26,251.724 2249.26,130.764 1958.43,130.764 
-  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
-<polyline clip-path="url(#clip4701)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
-  1958.43,251.724 2249.26,251.724 2249.26,130.764 1958.43,130.764 1958.43,251.724 
-  "/>
-<circle clip-path="url(#clip4701)" style="fill:#000000; stroke:none; fill-opacity:1" cx="2066.43" cy="191.244" r="25"/>
-<circle clip-path="url(#clip4701)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="2066.43" cy="191.244" r="21"/>
-<g clip-path="url(#clip4701)">
-<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, 2150.43, 208.744)" x="2150.43" y="208.744">y1</text>
-</g>
-</svg>
-</div><p>K-means clustering yields the coherent vortices.</p><div><pre><code class="language-julia">using Clustering
+plot_real_spectrum(λ)</code></pre><p>K-means clustering yields the coherent vortices.</p><pre><code class="language-julia">using Clustering
 ctx2, _ = regularTriangularGrid((200, 60), LL, UR)
 v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
 
@@ -230,4 +83,4 @@ res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]), n_partition
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
 plot_u(ctx2, u_combined, 400, 400;
-    color=:rainbow, colorbar=:none, title=&quot;$n_partition-partition of Bickley jet&quot;)</code></pre></div><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../standard_map/"><span class="direction">Previous</span><span class="title">Standard map</span></a><a class="next" href="../ocean_flow/"><span class="direction">Next</span><span class="title">Geostrophic ocean flow</span></a></footer></article></body></html>
+    color=:rainbow, colorbar=:none, title=&quot;$n_partition-partition of Bickley jet&quot;)</code></pre><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../standard_map/"><span class="direction">Previous</span><span class="title">Standard map</span></a><a class="next" href="../ocean_flow/"><span class="direction">Next</span><span class="title">Geostrophic ocean flow</span></a></footer></article></body></html>
