@@ -6,7 +6,7 @@ using Plots # to not capture precompilation output
 ENV["GKSwstype"] = "100"
 
 # generate the example notebooks for the documentation
-OUTPUT = joinpath(@__DIR__, "..", "src/generated")
+OUTPUT = joinpath(@__DIR__, "src/generated")
 
 Literate.markdown(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT)
 Literate.notebook(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT; execute=false)
