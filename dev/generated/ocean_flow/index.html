@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Geostrophic ocean flow · CoherentStructures.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>CoherentStructures.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Home</a></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="../rot_double_gyre/">Rotating double gyre</a></li><li><a class="toctext" href="../standard_map/">Standard map</a></li><li><a class="toctext" href="../bickley/">Bickley jet</a></li><li class="current"><a class="toctext" href>Geostrophic ocean flow</a><ul class="internal"><li><a class="toctext" href="#Geodesic-vortices-1">Geodesic vortices</a></li><li><a class="toctext" href="#FEM-based-methods-1">FEM-based methods</a></li></ul></li></ul></li><li><a class="toctext" href="../../basics/">Basics</a></li><li><span class="toctext">Methods</span><ul><li><a class="toctext" href="../../fem/">FEM-based methods</a></li><li><a class="toctext" href="../../elliptic/">Geodesic vortices</a></li><li><a class="toctext" href="../../Laplace/">Graph Laplacian-based methods</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href>Geostrophic ocean flow</a></li></ul><a class="edit-page" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/examples/ocean_flow.jl"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Geostrophic ocean flow</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Geostrophic-Ocean-Flow-1" href="#Geostrophic-Ocean-Flow-1">Geostrophic Ocean Flow</a></h1><p>The (computable) notebook corresponding to this example is <a href="https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/ocean_flow.ipynb">ocean_flow.ipynb</a>.</p><p>For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature.</p><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here, we demonstrate how to detect material barriers to diffusive transport.</p><pre><code class="language-">using Distributed
+import AxisArrays
+const AA = AxisArrays
+nprocs() == 1 &amp;&amp; addprocs()
+
+@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays</code></pre><p>Next, we load and interpolate the velocity data sets.</p><pre><code class="language-">using JLD2
+JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
+const VI = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Since we want to use parallel computing, we set up the integration LCSParameters on all workers, i.e., <code>@everywhere</code>.</p><pre><code class="language-">@everywhere begin
+    q = 91
+    t_initial = minimum(Time)
+    t_final = t_initial + 90
+    const tspan = range(t_initial, stop=t_final, length=q)
+    nx = 300
+    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
+    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
+    xspan = range(xmin, stop=xmax, length=nx)
+    yspan = range(ymin, stop=ymax, length=ny)
+    P = AA.AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
+    const δ = 1.e-5
+    mCG_tensor = u -&gt; av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+        p=VI, tolerance=1e-6, solver=Tsit5())
+end</code></pre><p>Now, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.</p><pre><code class="language-">C̅ = pmap(mCG_tensor, P; batch_size=ny)
+p = LCSParameters(5*max(step(xspan), step(yspan)), 2.5, 60, 0.5, 2.0, 1e-4)
+vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>Finally, the result is visualized as follows.</p><pre><code class="language-">using Plots
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
+            aspect_ratio=1, color=:viridis, leg=true,
+            title=&quot;DBS field and transport barriers&quot;)
+scatter!(get_coords(singularities), color=:red)
+for vortex in vortices
+    plot!(vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
+    scatter!(vortex.core, color=:yellow)
+end
+Plots.plot(fig)</code></pre><h2><a class="nav-anchor" id="FEM-based-methods-1" href="#FEM-based-methods-1">FEM-based methods</a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><div><pre><code class="language-julia">using CoherentStructures
+import JLD2, OrdinaryDiffEq, Plots
+
+#Import and interpolate ocean dataset
+#The @load macro initializes Lon,Lat,Time,UT,VT
+JLD2.@load(&quot;../../examples/Ocean_geostrophic_velocity.jld2&quot;)
+VI = interpolateVF(Lon, Lat, Time, UT, VT)
+
+#Define a flow function from it
+t_initial = minimum(Time)
+t_final = t_initial + 90
+times = [t_initial, t_final]
+flow_map = u0 -&gt; flow(interp_rhs, u0, times;
+    p=VI, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]</code></pre></div><p>Next we set up the domain. We want to use zero Dirichlet boundary conditions here.</p><pre><code class="language-">LL = [-4.0, -34.0]
+UR = [6.0, -28.0]
+ctx, _  = regularTriangularGrid((150, 90), LL, UR)
+bdata = getHomDBCS(ctx, &quot;all&quot;);</code></pre><p>For the TO method, we seek generalized eigenpairs involving the bilinear form</p><div>\[a_h(u,v) = \frac{1}{2} \left(a_0(u,v) + a_1(I_h u, I_h v) \right).\]</div><p>Here, <span>$a_0$</span> is the weak form of the Laplacian on the initial domain, and <span>$a_1$</span> is the weak form of the Laplacian on the final domain. The operator <span>$I_h$</span> is an interpolation operator onto the space of test functions on the final domain.</p><p>For the adaptive TO method, we use pointwise nodal interpolation (i.e. collocation) and the mesh on the final domain is obtained by doing a Delaunay triangulation on the images of the nodal points of the initial domain. This results in the representation matrix of <span>$I_h$</span> being the identity, so in matrix form we get:</p><div>\[S = 0.5(S_0 + S_1)\]</div><p>where <span>$S_0$</span> is the stiffness matrix for the triangulation at initial time, and <span>$S_1$</span> is the stiffness matrix for the triangulation at final time.</p><pre><code class="language-">M = assembleMassMatrix(ctx, bdata=bdata)
+S0 = assembleStiffnessMatrix(ctx)
+S1 = adaptiveTOCollocationStiffnessMatrix(ctx, flow_map)</code></pre><p>Averaging matrices and applying boundary conditions yields</p><pre><code class="language-">S = applyBCS(ctx, 0.5(S0 + S1), bdata);</code></pre><p>We can now solve the eigenproblem.</p><pre><code class="language-">using Arpack
+
+λ, v = eigs(S, M, which=:SM, nev=6);</code></pre><p>We upsample the eigenfunctions and then cluster.</p><div><pre><code class="language-julia">using Clustering
+
+ctx2, _ = regularTriangularGrid((200, 120), LL, UR)
+v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
+
+function iterated_kmeans(numiterations, args...)
+    best = kmeans(args...)
+    for i in 1:(numiterations - 1)
+        cur = kmeans(args...)
+        if cur.totalcost &lt; best.totalcost
+            best = cur
+        end
+    end
+    return best
+end
+
+n_partition = 4
+res = iterated_kmeans(20, permutedims(v_upsampled[:,1:(n_partition-1)]), n_partition)
+u = kmeansresult2LCS(res)
+u_combined = sum([u[:,i] * i for i in 1:n_partition])
+plot_u(ctx2, u_combined, 200, 200;
+    color=:viridis, colorbar=:none, title=&quot;$n_partition-partition of Ocean Flow&quot;)</code></pre></div><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../bickley/"><span class="direction">Previous</span><span class="title">Bickley jet</span></a><a class="next" href="../../basics/"><span class="direction">Next</span><span class="title">Basics</span></a></footer></article></body></html>
