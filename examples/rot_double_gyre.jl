@@ -1,7 +1,7 @@
 # # Rotating Double Gyre
 #
-#md # The (computable) notebook for this example is
-#md # [rot_double_gyre.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/rot_double_gyre.ipynb).
+#md # The (computable) notebook for this example can be found
+#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/rot_double_gyre.ipynb).
 #md #
 # ## Description
 #

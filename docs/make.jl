@@ -8,19 +8,19 @@ ENV["GKSwstype"] = "100"
 # generate the example notebooks for the documentation
 OUTPUT = joinpath(@__DIR__, "src/generated")
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT; documenter=false)
 Literate.notebook(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT; documenter=false)
 Literate.notebook(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT; documenter=false)
 Literate.notebook(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT)
+Literate.markdown(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT; documenter=false)
 Literate.notebook(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT; execute=false)
 Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT)
 
@@ -59,11 +59,5 @@ makedocs(
     )
 
 deploydocs(
-    repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
-    branch = "gh-pages",
-    devbranch = "master",
-    devurl ="dev",
-    target = "build",
-    deps = nothing,
-    make = nothing,
+    repo = "github.com/CoherentStructures/CoherentStructures.jl.git"
 )

@@ -1,7 +1,7 @@
 # # The standard map
 #
-#md # The (computable) notebook corresponding to this example is
-#md # [standard_map.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/standard_map.ipynb).
+#md # The (computable) notebook for this example can be found
+#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/standard_map.ipynb).
 #md #
 # The standard map
 # ```math
