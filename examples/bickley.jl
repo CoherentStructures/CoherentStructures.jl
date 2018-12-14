@@ -1,5 +1,8 @@
 # # Bickley Jet
 #
+#md # The (computable) notebook corresponding to this example is
+#md # [bickley.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/bickley.ipynb).
+#md #
 # The Bickley jet flow is a kinematic idealized model of a meandering zonal jet
 # flanked above and below by counterrotating vortices. It was introduced by
 # [Rypina et al.](https://dx.doi.org/10.1175/JAS4036.1); cf. also [del‐Castillo‐Negrete and Morrison](https://doi.org/10.1063/1.858639).

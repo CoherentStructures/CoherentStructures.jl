@@ -1,143 +1,112 @@
-using CoherentStructures
-using Arpack,StaticArrays,Tensors,Statistics,BenchmarkTools
+# # Rotating Double Gyre
+#
+#md # The (computable) notebook for this example is
+#md # [rot_double_gyre.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/rot_double_gyre.ipynb).
+#md #
+# ## Description
+#
+# The rotating double gyre model was introduced by
+# [Mosovsky & Meiss](https://dx.doi.org/10.1137/100794110). It can be derived from
+# the stream function
+#
+# ```math
+# \psi(x,y,t)=(1−s(t))\psi_P +s(t)\psi_F \\ \psi_P (x, y) = \sin(2\pi x) \sin(\pi y) \\ \psi_F (x, y) = \sin(\pi x) \sin(2\pi y)
+# ```
+#
+# where ``s`` is (usually taken to be) a cubic interpolating function satisfying
+# ``s(0) = 0`` and ``s(1) = 1``. It therefore interpolates two double-gyre-type
+# velocity fields, from horizontally to vertically arranged counter-rotating gyres.
+# The corresponding velocity field is provided by the package and callable as
+# `rot_double_gyre`.
+#
+# ![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
+#
+# ## FEM-Based Methods
+#
+# The following code demonstrates how to use these methods.
+
+using CoherentStructures, Arpack
+LL = [0.0, 0.0]; UR = [1.0, 1.0];
+ctx, _ = regularTriangularGrid((50, 50), LL, UR)
+
+A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
+K = assembleStiffnessMatrix(ctx, A)
+M = assembleMassMatrix(ctx)
+λ, v = eigs(-K, M, which=:SM);
+
+# This velocity field is given by the `rot_double_gyre` function. The third
+# argument to `mean_diff_tensor` is a vector of time instances at which we evaluate
+# (and subsequently average) the pullback diffusion tensors. The fourth parameter
+# is the step size δ used for the finite-difference scheme, `tolerance` is passed
+# to the ODE solver from [DifferentialEquations.jl](http://juliadiffeq.org/). In
+# the above, `A(x)` approximates the mean diffusion tensor given by
+#
+# ```math
+# A(x) = \sum_{t \in \mathcal T}(D\Phi^t(x))^{-1} (D\Phi^t x)^{-T}
+# ```
+#
+# The eigenfunctions saved in `v` approximate those of $\Delta^{dyn}$
+
+import Plots
+res = [plot_u(ctx, v[:,i], 100, 100, colorbar=:none, clim=(-3,3)) for i in 1:6];
+Plots.plot(res..., margin=-10Plots.px)
+
+# Looking at the spectrum, there appears a gap after the third eigenvalue.
+
+Plots.scatter(1:6, real.(λ))
+
+# We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package
+# to compute coherent structures from the first two nontrivial eigenfunctions:
+
+using Clustering
+
+ctx2, _ = regularTriangularGrid((200, 200))
+v_upsampled = sample_to(v, ctx, ctx2)
+
+numclusters=2
+res = kmeans(permutedims(v_upsampled[:,2:numclusters+1]), numclusters + 1)
+u = kmeansresult2LCS(res)
+Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in [1,2,3]]...)
+
+# ## Geodesic vortices
+
+# Here, we demonstrate how to calculate black-hole vortices, see
+# [Geodesic elliptic material vortices](@ref) for references and details.
+
+using Distributed
+import AxisArrays
+const AA = AxisArrays
+nprocs() == 1 && addprocs()
+
+@everywhere begin
+    using CoherentStructures, OrdinaryDiffEq, StaticArrays
+    const q = 51
+    const tspan = range(0., stop=1., length=q)
+    ny = 101
+    nx = 101
+    xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
+    xspan = range(xmin, stop=xmax, length=nx)
+    yspan = range(ymin, stop=ymax, length=ny)
+    P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+    const δ = 1.e-6
+    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
+            tolerance=1e-6, solver=Tsit5())
+end
+
+C̅ = pmap(mCG_tensor, P; batch_size=ny)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
+vortices, singularities = ellipticLCS(C̅, p; outermost=true)
+
+# The results are then visualized as follows.
+
 using Plots
-
-
-ctx = regularTriangularGrid((25,25),quadrature_order=5)
-f = x -> sin(x[1]*x[2])
-u = nodal_interpolation(ctx,f)
-using Tensors
-evaluate_function_from_dofvals(ctx,[u u u],Vec{2}((0.0,0.0)))
-plot_u(ctx,u,100,100)
-
-
-
-
-function derivativediff(x,y)
- #first =  mean_diff_tensor(rot_double_gyre,[x,y],[0.0,1.0], 1.e-8,tolerance= 1.e-5)
- first =  linearized_flow(rot_double_gyre,[x,y],[0.0,1.0], 1.e-8,tolerance= 1.e-5)[end]
- second = CoherentStructures.linearized_flow_vari(rot_double_gyreEqVari,SVector{2,Float64}(x,y),[0.0,1.0],tolerance=1e-5)[end]
- #return log10(norm(first - second))
- #return log10(norm(first[1,:]*1e-8))
- return log10(norm(first-second)/norm(second))
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
+fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
+            aspect_ratio=1, color=:viridis, leg=true,
+            title="DBS field and transport barriers")
+scatter!(get_coords(singularities), color=:red)
+for vortex in vortices
+    plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
+    scatter!(vortex.core, color=:yellow)
 end
-
-derivativediff(0.5,0.5)
-xs = range(0,stop=1,length=200)
-using Plots
-Plots.heatmap(xs,xs,derivativediff,clim=(-4,0))
-
-begin
-    #cgfun = x-> mean_diff_tensor(rot_double_gyre,x,[0.0,1.0], 1.e-8,tolerance= 1.e-5)
-    #cgfun = x -> mean(dott.(inv.(CoherentStructures.linearized_flow_vari(rot_double_gyreEqVari,SVector{2,Float64}(x),[0.0,1.0],tolerance=1e-5))))
-    cgfun = x-> mean_diff_tensor(rot_double_gyreEqVari,x,[0.0,1.0], 0.0,tolerance= 1.e-5)
-
-    @time K = assembleStiffnessMatrix(ctx,cgfun)
-    @time M = assembleMassMatrix(ctx,lumped=false)
-    @time λ, v = eigs(-1*K,M,which=:SM,nev=6)
-end
-
-cgfun(x0)
-
-using BenchmarkTools
-@btime assembleStiffnessMatrix($ctx,$cgfun)
-
-@btime $cgfun($x0)
-
-@btime mean_diff_tensor($rot_double_gyre,$x0,[0.0,1.0], 1.e-8,tolerance= 1.e-5)
-
-@btime linearized_flow($rot_double_gyre,$x0,[0.0,1.0], 1.e-8,tolerance= 1.e-10)
-
-using Plots
-plot_u(ctx,v[:,6]/maximum(abs.(v[:,3])),200,200,color=:rainbow,clim=(-1,1))
-
-
-function g(x,y)
-    return log(norm(cgfun(@SArray [x,y])))
-end
-
-Plots.heatmap(range(0,stop=1,length=200),range(0,stop=1,length=200),g)
-
-g(0.5,0.1)
-
-
-using Plots
-
-
-
-@time assembleMassMatrix(ctx)
-
-Profile.print()
-using ProfileView
-ProfileView.view()
-
-plot_u(ctx,v[:,2])
-
-function checkerboard(x)
-    return ((-1)^(floor((x[1]*10)%10)))*((-1)^(floor((x[2]*10)%10)))
-end
-using Plots
-
-ctx2 = regularTriangularGrid((200,200))
-u2 = nodal_interpolation(ctx2,checkerboard)
-plot_u(ctx2,u2,500,500)
-inverse_flow_map_t = (t,u0) -> flow(rot_double_gyre,u0,[t,0.0])[end]
-inverse_flow_map_t(0.5,[0.5,0.5])
-u(t) = u2
-res = CoherentStructures.eulerian_video(ctx2,u,inverse_flow_map_t,
-    0.0,1.0, 500,500,50, [0.0,0.0],[1.0,1.0],colorbar=false,title="Rotating Double Gyre")
-#Plots.mp4(res ,"/tmp/res.mp4")
-animate(res)
-
-
-#With non-adaptive TO-method:
-ctx = regularTriangularGrid((100,100))
-inverse_flow = u0 -> flow(rot_double_gyre,u0,[1.0,0.0],tolerance=1e-5)[end]
-xs = range(0,stop=1,length=100)
-@time [inverse_flow([x,y]) for x in xs, y in xs]
-@time nonAdaptiveTO(ctx,inverse_flow)
-
-begin
-    @time S = assembleStiffnessMatrix(ctx)
-    @time M = assembleMassMatrix(ctx)
-    inverse_flow = u0 -> flow(rot_double_gyre,u0,[1.0,0.0],tolerance=1e-5)[end]
-    @time ALPHA = nonAdaptiveTO(ctx,inverse_flow)
-    R = -1*(S + ALPHA'*S*ALPHA)
-    R = 0.5(R + R')
-    @time λ, v = eigs(R,M,which=:SM)
-end
-
-plot_u(ctx,v[:,6])
-#With adaptive TO method
-ctx = regularTriangularGrid((100,100))
-begin
-    @time S = assembleStiffnessMatrix(ctx)
-    @time M = assembleMassMatrix(ctx)
-    forwards_flow = u0->flow(rot_double_gyre, u0,[0.0,1.0],tolerance=1e-5)[end]
-    @time S2= adaptiveTO(ctx,forwards_flow)
-    @time λ, v = eigs(-1*(S + S2),M,which=:SM)
-end
-plot_u(ctx,v[:,6])
-#With L2-Galerkin calculation of ALPHA
-ctx = regularP2TriangularGrid((20,20),quadrature_order=4)
-using LinearMaps
-begin
-    @time S = assembleStiffnessMatrix(ctx)
-    @time M = assembleMassMatrix(ctx,lumped=false)
-
-    invFlowMap = u0->flow(rot_double_gyre,u0,[1.0,0.0],tolerance=1.e-4)[end]
-    flowMap = u0->flow(rot_double_gyre,u0,[0.0,1.0],tolerance=1.e-8)[end]
-    @time preALPHAS= CoherentStructures.L2GalerkinTOFromInverse(ctx,invFlowMap)
-    #@time preALPHAS= CoherentStructures.L2GalerkinTO(ctx,flowMap)
-    function mulby(x)
-        return -0.5(preALPHAS'*(M'\(S*(M\(preALPHAS*x)))) + S*x)
-    end
-    L = LinearMap(mulby,size(S)[1],issymmetric=true)
-    @time λ, v = eigs(L,M,which=:SR,nev=6,maxiter=100000000)
-end
-index= 1
-title = "\\\lambda = $(λ[index])"
-plot_u(ctx,real.(v[:,index]),200,200,color=:rainbow,title=title)
-
-using LinearMaps
-inv(LinearMap(M)
+Plots.plot(fig)
