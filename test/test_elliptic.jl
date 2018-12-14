@@ -77,7 +77,7 @@ end
     vortices, singularities = ellipticLCS(T, p; outermost=true, verbose=false)
     @test length(vortices) == 2
     @test singularities isa Vector{Singularity{Float64}}
-    @test length(singularities) == 9
+    @test length(singularities) > 5
     vortices, _ = ellipticLCS(T, p; outermost=false, verbose=false)
-    @test length(vortices) > 30
+    @test length(vortices) > 20
 end
