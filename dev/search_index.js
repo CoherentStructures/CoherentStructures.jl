@@ -133,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geostrophic ocean flow",
     "title": "Geostrophic Ocean Flow",
     "category": "section",
-    "text": "The (computable) notebook for this example can be found here.For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature."
+    "text": "The (computable) notebook for this example can be found here.For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature.Below is a video showing advection of the initial 90-day DBS field for 90 days.<video controls=\"\" height=\"100%\" width=\"100%\">\n <source src=\"https://raw.githubusercontent.com/natschil/misc/master/videos/ocean_flow.mp4\" type=\"video/mp4\" />\nYour browser does not support the video tag.\n</video>"
 },
 
 {
