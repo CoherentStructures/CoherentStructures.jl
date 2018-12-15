@@ -8,6 +8,15 @@
 # and distributed by AVISO. The particular space-time window has been used several
 # times in the literature.
 
+# Below is a video showing advection of the initial 90-day DBS field for 90 days.
+
+# ```@raw html
+# <video controls="" height="100%" width="100%">
+#  <source src="https://raw.githubusercontent.com/natschil/misc/master/videos/ocean_flow.mp4" type="video/mp4" />
+# Your browser does not support the video tag.
+# </video>
+# ```
+
 # ## Geodesic vortices
 
 # Here, we demonstrate how to detect material barriers to diffusive transport.
