@@ -74,12 +74,12 @@ Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i
 # [Geodesic elliptic material vortices](@ref) for references and details.
 
 using Distributed
-import AxisArrays
-const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere begin
     using CoherentStructures, OrdinaryDiffEq, StaticArrays
+    import AxisArrays
+    const AA = AxisArrays
     const q = 51
     const tspan = range(0., stop=1., length=q)
     ny = 101
@@ -94,7 +94,7 @@ nprocs() == 1 && addprocs()
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 
 # The results are then visualized as follows.

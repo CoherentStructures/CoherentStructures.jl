@@ -48,27 +48,42 @@ In summary, the implementation consists of the following steps:
 
 ## Function documentation
 
+### The meta-functions `ellipticLCS`
+
 The fully automated high-level function is:
 ```@docs
 ellipticLCS
 ```
-One of its arguments is a list of parameters used in the LCS detection. This
+One of their arguments is a list of parameters used in the LCS detection. This
 list is combined in a data type called `LCSParameters`. The output of
 `ellipticLCS` is a list of `EllipticBarrier`'s and a list of `Singularity`'s.
 There is an option to retrieve all closed barriers (`outermost=false`), in
 contrast to extracting only the outermost vortex boundaries (`outermost=true`).
+
+The function [`ellipticLCS`](@ref) consists of two steps: first, the index
+theory-based determination of where to search for closed orbits,, cf.
+[Index theory-based location of Poincaré sections](@ref); second, the
+closed orbit computation, cf. [](@ref).
+
+### Specific types
+
+These are the specifically introduced types for elliptic LCS detection.
 ```@docs
 Singularity
 LCSParameters
 EllipticBarrier
 ```
-The function [`ellipticLCS`](@ref) consists of two steps. First, the index
-theory-based determination of where to search for closed orbits. This is performed
-by [`discrete_singularity_detection`](@ref).
+
+### Index theory-based location of Poincaré sections
+
+This is performed by [`discrete_singularity_detection`](@ref) for line fields
+(such as eigenvector fields of symmetric positive-definit tensor fields) and by
+[`critical_point_detection`](@ref) for classic vector fields.
 ```@docs
-discrete_singularity_detection
+singularity_detection
+critical_point_detection
 ```
-In turn, this function takes three steps.
+This function takes three steps.
 ```@docs
 compute_singularities
 combine_singularities

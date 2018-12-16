@@ -76,15 +76,13 @@ function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
 function tensor_invariants(T::AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
-    E = eigen.(T)
-    evals = eigvals.(E)
-    λ₁ = AxisArray([ev[1] for ev in evals], T.axes)
-    λ₂ = AxisArray([ev[2] for ev in evals], T.axes)
-    evecs = eigvecs.(E)
-    ξ₁ = AxisArray([SVector{2}(ev[:,1]) for ev in evecs], T.axes)
-    ξ₂ = AxisArray([SVector{2}(ev[:,2]) for ev in evecs], T.axes)
-    traceT = AxisArray(tr.(T), T.axes)
-    detT = AxisArray(det.(T), T.axes)
+    E = map(t -> eigen(t), T)
+    λ₁ = map(e -> eigvals(e)[1], E)
+    λ₂ = map(e -> eigvals(e)[2], E)
+    ξ₁ = map(e -> convert(SVector{2}, eigvecs(e)[:,1]), E)
+    ξ₂ = map(e -> convert(SVector{2}, eigvecs(e)[:,2]), E)
+    tT = map(t -> tr(t), T)
+    dT = map(t -> det(t), T)
     return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
 end
 

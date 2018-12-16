@@ -12,11 +12,13 @@ export
 	EllipticBarrier,
 	LCSParameters,
 	compute_singularities,
-	discrete_singularity_detection,
+	singularity_detection,
+	critical_point_detection,
 	combine_singularities,
 	compute_returning_orbit,
 	compute_closed_orbits,
 	ellipticLCS,
+	constrainedLCS,
 
 	#diffusion_operators.jl
 	KNN,

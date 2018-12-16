@@ -50,6 +50,7 @@ Container for parameters used in elliptic LCS computations.
 ## Fields
 * `indexradius::Float64=0.1`: radius for singularity type detection
 * `boxradius::Float64=0.5`: "radius" of localization square for closed orbit detection
+* `combine_pairs=true`: whether isolated singularity pairs should be merged
 * `n_seeds::Int64=40`: number of seed points on the Poincaré section
 * `pmin::Float64=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax::Float64=1.3`: upper bound on the parameter in the ``\\eta``-field
@@ -58,6 +59,7 @@ Container for parameters used in elliptic LCS computations.
 struct LCSParameters
     indexradius::Float64
     boxradius::Float64
+    combine_pairs::Bool
     n_seeds::Int64
     pmin::Float64
     pmax::Float64
@@ -66,12 +68,13 @@ end
 function LCSParameters(;
             indexradius::Float64=0.1,
             boxradius::Float64=0.5,
+            combine_pairs::Bool=true,
             n_seeds::Int64=60,
             pmin::Float64=0.7,
             pmax::Float64=1.5,
             rdist::Float64=1e-4)
 
-    LCSParameters(indexradius, boxradius, n_seeds, pmin, pmax, rdist)
+    LCSParameters(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
@@ -85,13 +88,14 @@ struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
     η::AxisArray{Tv,2}
 end
 
+##################### singularity/critical point detection #####################
 """
     compute_singularities(α, modulus) -> Vector{Singularity}
 
 Computes critical points/singularities of vector and line fields, respectively.
 `α` is a scalar field (array) which is assumed to contain some consistent angle
 representation of the vector/line field. Choose `modulus=2π` for vector
-fields, and as `modulus=π` for line fields.
+fields, and `modulus=π` for line fields.
 """
 function compute_singularities(α::AxisArray{<:Real,2}, modulus)
     xspan, yspan = α.axes
@@ -184,6 +188,7 @@ as one, while adding their indices.
 """
 function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
     N = length(singularities)
+    N == 1 && return singularities
     sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
     sing_seen = falses(N)
 
@@ -225,26 +230,23 @@ function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
 end
 
 """
-    discrete_singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}
+    critical_point_detection(vs, combine_distance, γ; combine_pairs=true)
 
-Calculates line-field singularities of the first eigenvector of `T` by taking
-a discrete differential-geometric approach. Singularities are calculated on each
-cell. Singularities with distance less or equal to `combine_distance` are
-combined by averaging the coordinates and adding the respective indices. If
-`combine_isolated_wedges` is `true, pairs of indices that are mutually the
-closest singularities are included in the final list.
-
-Returns a vector of [`Singularity`](@ref)s. Indices are multiplied by 2 to get
-integer values.
+Computes critical points of a vector/line field `vs`, given as an `AxisArray`.
+Critical points with distance less or equal to `combine_distance` are
+combined by averaging the coordinates and adding the respective indices. The parameter
+`γ` should be chosen `π` for line fields and `2π` for vector fields; cf.
+[`compute_singularities`](@ref). If `combine_pairs is `true, pairs of singularities
+that are mutually the closest ones are included in the final list.
 """
-function discrete_singularity_detection(T::AxisArray{S,2},
-                                        combine_distance::Float64;
-                                        combine_isolated_wedges=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
-    ξ = [eigvecs(t)[:,1] for t in T]
-    α = AxisArray([atan(v[2], v[1]) for v in ξ], T.axes)
-    singularities = compute_singularities(α, π)
+function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
+                                    combine_distance::Real,
+                                    γ::Real;
+                                    combine_pairs=true)
+    α = map(v -> atan(v[2], v[1]), vs)
+    singularities = compute_singularities(α, γ)
     new_singularities = combine_singularities(singularities, combine_distance)
-    if combine_isolated_wedges
+    if combine_pairs
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
         return combine_isolated_pairs(new_singularities)
@@ -253,6 +255,27 @@ function discrete_singularity_detection(T::AxisArray{S,2},
     end
 end
 
+"""
+    singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}
+
+Calculates line-field singularities of the first eigenvector of `T` by taking
+a discrete differential-geometric approach. Singularities are calculated on each
+cell. Singularities with distance less or equal to `combine_distance` are
+combined by averaging the coordinates and adding the respective indices. If
+`combine_pairs` is `true, pairs of singularities that are mutually the
+closest ones are included in the final list.
+
+Returns a vector of [`Singularity`](@ref)s. Returned indices correspond to doubled
+indices to get integer values.
+"""
+function singularity_detection(T::AxisArray{S,2},
+                                combine_distance::Float64;
+                                combine_pairs=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
+    ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
+    critical_point_detection(ξ, combine_distance, π; combine_pairs=combine_pairs)
+end
+
+######################## closed orbit computations #############################
 """
     compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)
 Computes returning orbits under the velocity field `vf`, originating from `seed`.
@@ -320,44 +343,31 @@ function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}
 end
 
 """
-    compute_closed_orbits(pSection, T[, xspan, yspan]; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
+    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
 
-Compute the outermost closed orbit for a given Poincaré section `pSection`,
-tensor field `T`, where the total computational domain is spanned by `xspan`
-and `yspan`. Keyword arguments `pmin` and `pmax` correspond to the range of
-shift parameters in which closed orbits are sought; `rev` determines whether
-closed orbits are sought from the outside inwards (`true`) or from the inside
-outwards (`false`). `rdist` sets the required return distance for an orbit to be
-considered as closed.
+Compute the outermost closed orbit for a given Poincaré section `ps`, a vector field
+constructor `ηfield`, and an LCScache `cache. Keyword arguments `pmin` and `pmax`
+correspond to the range of shift parameters in which closed orbits are sought;
+`rev` determines whether closed orbits are sought from the outside inwards (`true`)
+or from the inside outwards (`false`). `rdist` sets the required return distance for
+an orbit to be considered as closed.
 """
-function compute_closed_orbits(pSection, T, xspan, yspan; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
-    compute_closed_orbits(pSection, AxisArray(T, xspan, yspan);
-                                    rev=rev, pmin=pmin, pmax=pmax, rdist=rdist)
-end
 function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
-                                T::AxisArray{SymmetricTensor{2,2,S2,3},2};
+                                ηfield,
+                                cache;
                                 rev::Bool=true,
                                 pmin::Real=0.7,
                                 pmax::Real=1.5,
                                 rdist::Real=1e-4
-                                ) where {S1 <: Real, S2 <: Real}
-    # for computational tractability, pre-orient the eigenvector fields
-    # restrict search to star-shaped coherent vortices
-    # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
-    cache = orient(T, ps[1])
-    l1itp = ITP.LinearInterpolation(cache.λ₁)
-    l2itp = ITP.LinearInterpolation(cache.λ₂)
-
-
-    # define local helper functions for the η⁺/η⁻ closed orbit detection
-    @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-        @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
-        @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
-        @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
-        itp = ITP.LinearInterpolation(c.η)
-        return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
+                                ) where {S1 <: Real}
+    if cache isa LCScache
+        l1itp = ITP.LinearInterpolation(cache.λ₁)
+        l2itp = ITP.LinearInterpolation(cache.λ₂)
+    else
+        nitp = ITP.LinearInterpolation(map(v -> norm(v)^2, cache))
     end
-    prd(λ::Float64, σ::Bool, seed::SVector{2,S1}, cache::LCScache) =
+    # define local helper functions for the η⁺/η⁻ closed orbit detection
+    prd(λ::Float64, σ::Bool, seed::SVector{2,S1}, cache) =
             Poincaré_return_distance(ηfield(λ, σ, cache), seed)
 
     # VERSION 2: 3D-interpolant
@@ -377,8 +387,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     # prd(λ::Float64, seed::SVector{2,S}) = Poincaré_return_distance(ηfield(λ), seed)
     # END OF VERSION 2
 
-    # go along the Poincaré section and solve for λ
-    # first, define a nonlinear root finding problem
+    # go along the Poincaré section and solve for λ⁰ such that orbits close up
     vortices = EllipticBarrier[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
@@ -396,9 +405,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         if !iszero(λ⁰)
             orbit = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
             closed = norm(orbit[1] - orbit[end]) <= rdist
-            uniform = all([l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) for qs in orbit])
-            # @show (closed, uniform)
-            # @show length(orbit)
+            predicate = qs -> cache isa LCScache ?
+                l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
+                nitp(qs[1], qs[2]) >= λ⁰^2
+            uniform = all(predicate, orbit)
             if (closed && uniform)
                 push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
                 rev && break
@@ -409,71 +419,142 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
 end
 
 """
-    ellipticLCS(T, xspan, yspan, p; outermost=true)
+    ellipticLCS(T::AbstractArray, xspan, yspan, p; kwargs...)
+    ellipticLCS(T::AxisArray, p; kwargs...)
 
 Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
 field given by shifted versions of `T` on the 2D computational grid spanned
 by `xspan` and `yspan`. `p` is a [`LCSParameters`](@ref)-type container of
-computational parameters.
+computational parameters. Returns a list of `EllipticBarrier`-type objects.
 
-Returns a list of `EllipticBarrier`-type objects: if the optional keyword
-argument `outermost` is true, then only the outermost barriers, i.e., the vortex
-boundaries, otherwise all detected transport barrieres are returned.
+The keyword arguments and their default values are:
+*   `outermost=true`: only the outermost barriers, i.e., the vortex
+    boundaries are returned, otherwise all detected transport barrieres;
+*   `verbose=true`: show intermediate computational information
 """
 function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractRange{S},
                         yspan::AbstractRange{S},
                         p::LCSParameters=LCSParameters();
-                        outermost::Bool=true) where S <: Real
-    F = AxisArray(T, Axis{:x}(xspan), Axis{:y}(yspan))
-    return ellipticLCS(F, p, outermost=outermost)
+                        kwargs...) where S <: Real
+    ellipticLCS(AxisArray(T, xspan, yspan), p; kwargs...)
 end
-"""
-    function ellipticLCS(T, p; outermost=true)
-
-Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
-field given by (pointwise) shifted versions of the symmetric tensor field
-`T`. `p` is a [`LCSParameters`](@ref)-type container of computational parameters.
-
-Returns a list of `EllipticBarrier`-type objects: if the optional keyword
-argument `outermost` is true, then only the outermost barriers, i.e., the vortex
-boundaries, otherwise all detected transport barrieres are returned.
-"""
 function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true) where S <: Real
-
-    xspan, yspan = T.axes
+    # detect centers of elliptic (in the index sense) regions
+    xspan = T.axes[1]
     xmax = xspan[end]
-    singularities = discrete_singularity_detection(T, p.indexradius;
-                                            combine_isolated_wedges=true)
-    @info "Found $(length(singularities)) singularities..."
-
+    singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs)
+    verbose && @info "Found $(length(singularities)) singularities..."
     vortexcenters = singularities[get_indices(singularities) .== 2]
-    @info "Defined $(length(vortexcenters)) Poincaré sections..."
+    verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
+    # loop over potential vortex centers, return detected closed orbits
     vortexlists = pmap(vortexcenters) do vc
+        # set up Poincaré section
         vx = vc.coords[1]
         vy = vc.coords[2]
-        v1 = range(vx, stop=vx + p.boxradius, length=p.n_seeds)
-        ps = SVector{2}.(v1[1:findlast(x -> x <= xmax, v1)], vy)
+        vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+        vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+        ps = SVector{2}.(vs, vy)
+
+        # localize tensor field
         T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+
+        # for computational tractability, pre-orient the eigenvector fields
+        # restrict search to star-shaped coherent vortices
+        # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
+        cache = orient(T_local, vc.coords)
+
+        # vector field constructor function
+        @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
+            @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
+            @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
+            @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+            itp = ITP.LinearInterpolation(c.η)
+            return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
+        end
+
+        # closed orbits extraction
         if verbose
-            result, t, _ = @timed compute_closed_orbits(ps, T_local;
+            result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
             @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
                 "yielded $(length(result)) transport barrier" *
                 (length(result) > 1 ? "s." : ".")
             return result
         else
-            return compute_closed_orbits(ps, T_local;
-                rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+            return compute_closed_orbits(ps, ηfield, cache;
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
         end
     end
 
-    # closed orbits extraction
     vortexlist = vcat(vortexlists...)
-    @info "Found $(length(vortexlist)) elliptic barriers in total."
+    verbose && @info "Found $(length(vortexlist)) elliptic barriers in total."
     return vortexlist, singularities
+end
+
+function constrainedLCS(q::AbstractMatrix{SVector{2,<:Real}},
+                        xspan::AbstractRange{<:Real},
+                        yspan::AbstractRange{<:Real},
+                        p::LCSParameters=LCSParameters();
+                        kwargs...)
+    constrainedLCS(AxisArray(q, xspan, yspan), p; kwargs...)
+end
+function constrainedLCS(q::AxisArray{SVector{2,S},2},
+                        p::LCSParameters=LCSParameters();
+                        outermost::Bool=true,
+                        verbose::Bool=true) where S <: Real
+    # detect centers of elliptic (in the index sense) regions
+    xspan = q.axes[1]
+    xmax = xspan[end]
+    critpts = critical_point_detection(q, p.indexradius, 2π; combine_pairs=p.combine_pairs)
+    verbose && @info "Found $(length(critpts)) critical points..."
+    vortexcenters = critpts[get_indices(critpts) .== 1]
+    verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
+
+    # loop over potential vortex centers, return detected closed orbits
+    vortexlists = pmap(vortexcenters) do vc
+        # set up Poincaré section
+        vx = vc.coords[1]
+        vy = vc.coords[2]
+        vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+        vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+        ps = SVector{2}.(vs, vy)
+
+        # localize tensor field
+        q_local = q[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+
+        # vector field constructor function
+        Ω = SMatrix{2,2}(0., -1., 1., 0.)
+        cache = deepcopy(q_local)
+        normsqq = map(v -> norm(v)^2, q_local)
+        nitp = ITP.LinearInterpolation(normsqq)
+        invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
+        @inline function ηfield(λ, s, cache)
+            cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
+                            ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
+            itp = ITP.LinearInterpolation(cache)
+            return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
+        end
+
+        # closed orbits extraction
+        if verbose
+            result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+            @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
+                "yielded $(length(result)) transport barrier" *
+                (length(result) > 1 ? "s." : ".")
+            return result
+        else
+            return compute_closed_orbits(ps, ηfield, cache;
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+        end
+    end
+
+    vortexlist = vcat(vortexlists...)
+    verbose && @info "Found $(length(vortexlist)) elliptic barriers in total."
+    return vortexlist, critpts
 end

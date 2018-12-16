@@ -43,13 +43,13 @@ end
 # see [Geodesic elliptic material vortices](@ref) for references and details.
 
 using Distributed
-import AxisArrays
-const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere begin
     using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays
-    const q = 81
+    import AxisArrays
+    const AA = AxisArrays
+    q = 81
     const tspan = range(0., stop=3456000., length=q)
     ny = 61
     nx = (22ny) ÷ 6

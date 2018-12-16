@@ -1,39 +1,35 @@
-using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures
+using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, Interpolations
 import AxisArrays
 const AA = AxisArrays
 const CS = CoherentStructures
 
-@testset "compute singularities" begin
-    x = range(-1, stop=1, length=50)
-    y = range(-1, stop=1, length=60)
-    # v(x,y) = (x,y)
-    v = AA.AxisArray(vcat.(x, y'), x, y)
-    α = map(v -> atan(v[2], v[1]), v)
-    S = @inferred compute_singularities(α, 2π)
-    @test length(S) == 1
-    @test iszero(S[1].coords)
-    @test S[1].index == 1
-    # v(x,y) = (-x,-y)
-    v = AA.AxisArray(vcat.(-x, -y'), x, y)
-    α = map(v -> atan(v[2], v[1]), v)
-    S = @inferred compute_singularities(α, 2π)
-    @test length(S) == 1
-    @test iszero(S[1].coords)
-    @test S[1].index == 1
-    # v(x,y) = (-y,x)
-    v = AA.AxisArray(vcat.(-y', x), x, y)
-    α = map(v -> atan(v[2], v[1]), v)
-    S = @inferred compute_singularities(α, 2π)
-    @test length(S) == 1
-    @test iszero(S[1].coords)
-    @test S[1].index == 1
-    # v(x,y) = (x,-y)
-    v = AA.AxisArray(vcat.(x, -y'), x, y)
-    α = map(v -> atan(v[2], v[1]), v)
-    S = @inferred compute_singularities(α, 2π)
-    @test length(S) == 1
-    @test iszero(S[1].coords)
-    @test S[1].index == -1
+@testset "compute critical points" begin
+    for x in (range(-1, stop=1, length=50), range(-1, stop=1, length=50)),
+        y in (range(-1, stop=1, length=50), range(-1, stop=1, length=50))
+        for v in (AA.AxisArray(SVector{2}.(x, y'), x, y),
+                AA.AxisArray(SVector{2}.(-x, -y'), x, y),
+                AA.AxisArray(SVector{2}.(-y', x), x, y))
+            α = map(v -> atan(v[2], v[1]), v)
+            S = @inferred compute_singularities(α, 2π)
+            @test length(S) == 1
+            @test iszero(S[1].coords)
+            @test S[1].index == 1
+            S = @inferred critical_point_detection(v, 0.1, 2π; combine_pairs=false)
+            @test length(S) == 1
+            @test iszero(S[1].coords)
+            @test S[1].index == 1
+        end
+        v = AA.AxisArray(SVector{2}.(x, -y'), x, y)
+        α = map(v -> atan(v[2], v[1]), v)
+        S = @inferred compute_singularities(α, 2π)
+        @test length(S) == 1
+        @test iszero(S[1].coords)
+        @test S[1].index == -1
+        S = critical_point_detection(v, 0.1, 2π; combine_pairs=false)
+        @test length(S) == 1
+        @test iszero(S[1].coords)
+        @test S[1].index == -1
+    end
 end
 
 q = 3
@@ -72,12 +68,39 @@ end
 @testset "ellipticLCS" begin
     q = @inferred LCSParameters()
     @test q isa LCSParameters
-    p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
+    p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
     @test p isa LCSParameters
+    cache = @inferred CS.orient(T, SVector{2}(0.25, 0.5))
+    @test cache isa CS.LCScache
     vortices, singularities = ellipticLCS(T, p; outermost=true, verbose=false)
     @test length(vortices) == 2
     @test singularities isa Vector{Singularity{Float64}}
     @test length(singularities) > 5
     vortices, _ = ellipticLCS(T, p; outermost=false, verbose=false)
     @test length(vortices) > 20
+end
+
+@testset "constrainedLCS" begin
+    Ω = SMatrix{2,2}(0, -1, 1, 0)
+    Z = zeros(SVector{2})
+    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false)
+        xspan = range(-1, stop=1, length=nx)
+        yspan = range(-1, stop=1, length=ny)
+        P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+        q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
+        p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 1.0, combine, 60, 0.5, 1.5, 1e-4)
+
+        vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false)
+        @test length(vortices) == 1
+        @test singularities isa Vector{Singularity{Float64}}
+        @test vortices[1].core ≈ Z atol=max(step(xspan), step(yspan))
+        @test length(singularities) == 1
+        @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
+
+        vortices, singularities = constrainedLCS(q, p; outermost=false, verbose=false)
+        @test length(vortices) > 1
+        @test singularities isa Vector{Singularity{Float64}}
+        @test length(singularities) == 1
+        @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
+    end
 end
