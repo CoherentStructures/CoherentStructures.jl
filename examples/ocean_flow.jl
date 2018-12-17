@@ -29,7 +29,7 @@ nprocs() == 1 && addprocs()
 # Next, we load and interpolate the velocity data sets.
 
 using JLD2
-JLD2.@load("Ocean_geostrophic_velocity.jld2")
+JLD2.@load(OCEAN_FLOW_FILE)
 const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Since we want to use parallel computing, we set up the integration LCSParameters
@@ -86,7 +86,7 @@ import JLD2, OrdinaryDiffEq, Plots
 #Import and interpolate ocean dataset
 #The @load macro initializes Lon,Lat,Time,UT,VT
 
-JLD2.@load("Ocean_geostrophic_velocity.jld2")
+JLD2.@load(OCEAN_FLOW_FILE)
 
 VI = interpolateVF(Lon, Lat, Time, UT, VT)
 

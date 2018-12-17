@@ -49,6 +49,9 @@ function mypreprocess(content,whatkind)
     end
     if whatkind == :julia_run
         content = replace(content,"addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
+        content = replace(content, "OCEAN_FLOW_FILE" => "\"examples/Ocean_geostrophic_velocity.jld2\"")
+    else
+        content = replace(content, "OCEAN_FLOW_FILE" => "\"Ocean_geostrophic_velocity.jld2\"")
     end
     return content
 end
@@ -83,11 +86,7 @@ Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), "/tmp/";
     preprocess=preprocess_script2
     )
 
-#cd() necessary because velocity data is in examples/
-cd("../examples")
-run(`julia --project=../docs/ /tmp/ocean_flow.jl`)
-cd("../docs")
-
+run(`julia --project=docs/ /tmp/ocean_flow.jl`)
 
 Literate.markdown(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
     documenter=false,preprocess=preprocess_markdown)
