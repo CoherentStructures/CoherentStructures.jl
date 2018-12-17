@@ -5,7 +5,7 @@ using Dates
 ENV["GKSwstype"] = "100"
 using Plots # to not capture precompilation output
 
-f !isdir("/tmp/natschil_misc")
+if !isdir("/tmp/natschil_misc")
     run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
     run(`chmod 0600 /tmp/mykey`)
     run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
