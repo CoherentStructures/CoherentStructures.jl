@@ -43,8 +43,8 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
     t_final = t_initial + 90
     const tspan = range(t_initial, stop=t_final, length=q)
     nx = 300
-    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
     xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
+    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
     P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
