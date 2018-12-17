@@ -6,7 +6,7 @@ ENV["GKSwstype"] = "100"
 using Plots # to not capture precompilation output
 
 if !isdir("/tmp/natschil_misc")
-    run(`echo \$DEPLOY_KEY_2 \| base64 --decode > /tmp/mykey`)
+    run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
     run(`chmod 0600 /tmp/mykey`)
     run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
 end
@@ -110,7 +110,7 @@ Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
 Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), "/tmp/";
     preprocess=preprocess_script2
     )
-
+1
 run(`julia /tmp/standard_map.jl`)
 
 
@@ -153,7 +153,7 @@ run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
 curdate = Dates.now()
 run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
 
-run(`echo \$DEPLOY_KEY_2 \| base64 --decode > /tmp/mykey`)
+run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
 run(`chmod 0600 /tmp/mykey`)
 run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
 
