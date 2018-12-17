@@ -33,7 +33,8 @@ end
 
 using Plots
 gr(aspect_ratio=1, legend=:none)
-scatter([x[1] for x in X], [x[2] for x in X], markersize=1)
+fig = scatter([x[1] for x in X], [x[2] for x in X], markersize=1)
+DISPLAY_PLOT(fig,standard_map_orbits)
 
 # Approximating the Dynamic Laplacian by FEM methods is straightforward:
 
@@ -59,4 +60,5 @@ using Printf
 title = [ @sprintf("\\lambda = %.3f",λ[i]) for i = 1:4 ]
 p = [ plot_u(ctx, v[:,i], bdata=bd, title=title[i],
              clim=(-0.25,0.25), cb=false) for i in 1:4 ]
-plot(p...)
+fig = plot(p...)
+DISPLAY_PLOT(fig,standard_map_result)

@@ -1,28 +1,119 @@
 using Documenter
 using Literate
 using CoherentStructures
+using Dates
+ENV["GKSwstype"] = "100"
 using Plots # to not capture precompilation output
 
-ENV["GKSwstype"] = "100"
+if !isdir("/tmp/natschil_misc")
+    run(`echo \$DEPLOY_KEY_2 \| base64 --decode > /tmp/mykey`)
+    run(`chmod 0600 /tmp/mykey`)
+    run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
+end
+
+
 
 # generate the example notebooks for the documentation
 OUTPUT = joinpath(@__DIR__, "src/generated")
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT; documenter=false)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT; execute=false)
-Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT)
+function mypreprocess(content,whatkind)
+    global cont = content
+    while true
+        current_location = findfirst("DISPLAY_PLOT",content)
+        if current_location == nothing
+            break
+        end
+        @assert content[current_location[end] + 1] == '('
+        closing_bracket = findfirst(")",content[current_location[end]:end])
+        @assert closing_bracket != nothing
+        closing_bracket  = closing_bracket .+ (current_location[end]-1)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT; documenter=false)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT; execute=false)
-Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT)
+        args = content[(current_location[end]+2): (closing_bracket[1]-1)]
+        @assert findfirst(",",args) != nothing
+        figname = args[1:(findfirst(",",args)[1]-1)]
+        filename = args[(findfirst(",",args)[1]+1):end]
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT; documenter=false)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT; execute=false)
-Literate.script(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT)
+        @assert length(filename) > 1
+        @assert length(figname) > 1
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT; documenter=false)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT; execute=false)
-Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT)
+        if whatkind == :markdown
+            linkloc="https://raw.githubusercontent.com/natschil/misc/master/autogen/" * filename *".png"
+            inner_text = "# ![]($linkloc)"
+        elseif whatkind == :notebook || whatkind == :julia_norun
+            inner_text = "Plots.plot($figname)"
+        elseif whatkind == :julia_run
+            inner_text = "Plots.png($figname,\"/tmp/natschil_misc/autogen/$filename.png\")"
+        end
+
+        content = content[1:(current_location[1]-1)] * inner_text * content[(closing_bracket[1]+1):end]
+    end
+    return content
+end
+
+preprocess_markdown = x->mypreprocess(x,:markdown)
+preprocess_notebook = x->mypreprocess(x,:notebook)
+preprocess_script = x->mypreprocess(x,:julia_norun)
+preprocess_script2 = x->mypreprocess(x,:julia_run)
+
+Literate.markdown(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT;
+    documenter=false,preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT;
+    execute=false,preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT;
+    preprocess=preprocess_script
+    )
+Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), "/tmp/";
+    preprocess=preprocess_script2
+    )
+
+run(`julia /tmp/bickley.jl`)
+
+
+Literate.markdown(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
+    documenter=false,preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
+    execute=false,preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
+    preprocess=preprocess_script
+    )
+Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), "/tmp/";
+    preprocess=preprocess_script2
+    )
+
+#cd() necessary because velocity data is in examples/
+cd("../examples")
+run(`julia /tmp/ocean_flow.jl`)
+cd("../docs")
+
+
+Literate.markdown(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
+    documenter=false,preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
+    execute=false,preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
+    preprocess=preprocess_script
+    )
+Literate.script(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), "/tmp/";
+    preprocess=preprocess_script2
+    )
+
+run(`julia /tmp/rot_double_gyre.jl`)
+
+
+Literate.markdown(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
+    documenter=false,preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
+    execute=false,preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
+    preprocess=preprocess_script
+    )
+Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), "/tmp/";
+    preprocess=preprocess_script2
+    )
+
+run(`julia /tmp/standard_map.jl`)
+
+
 
 # replace links (if any)
 # travis_tag = get(ENV, "TRAVIS_TAG", "")
@@ -57,6 +148,14 @@ makedocs(
             ]
     ]
     )
+
+run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
+curdate = Dates.now()
+run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
+
+run(`echo \$DEPLOY_KEY_2 \| base64 --decode > /tmp/mykey`)
+run(`chmod 0600 /tmp/mykey`)
+run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
 
 deploydocs(
     repo = "github.com/CoherentStructures/CoherentStructures.jl.git"

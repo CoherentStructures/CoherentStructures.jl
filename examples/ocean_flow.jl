@@ -71,7 +71,8 @@ for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
     scatter!(vortex.core, color=:yellow)
 end
-Plots.plot(fig)
+
+DISPLAY_PLOT(fig,ocean_flow_geodesic_vortices)
 
 # ## FEM-based methods
 
@@ -84,7 +85,9 @@ import JLD2, OrdinaryDiffEq, Plots
 
 #Import and interpolate ocean dataset
 #The @load macro initializes Lon,Lat,Time,UT,VT
-JLD2.@load("../../examples/Ocean_geostrophic_velocity.jld2")
+
+JLD2.@load("Ocean_geostrophic_velocity.jld2")
+
 VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 #Define a flow function from it
@@ -158,5 +161,8 @@ n_partition = 4
 res = iterated_kmeans(20, permutedims(v_upsampled[:,1:(n_partition-1)]), n_partition)
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i] * i for i in 1:n_partition])
-plot_u(ctx2, u_combined, 200, 200;
+fig = plot_u(ctx2, u_combined, 200, 200;
     color=:viridis, colorbar=:none, title="$n_partition-partition of Ocean Flow")
+
+
+DISPLAY_PLOT(fig,ocean_flow_fem)
