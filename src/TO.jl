@@ -102,55 +102,95 @@ function nonAdaptiveTOCollocation(
 end
 
 """
-    adaptiveTOCollocationStiffnessMatrix(ctx,flow_map; [quadrature_order, on_torus, LL,UR, bdata, volume_preserving=true] )
+    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus, LL,UR, bdata, volume_preserving=true,flow_map_mode=0] )
 
-Calculate the matrix-representation of the bilinear form ``a(u,v) = a_1(I_hTu,I_hTv)`` where
+Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)`` where
 ``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay triangulation on images of grid points from ctx
-and ``T`` is the Transfer-operator for `flow_map` and ``a_1`` is the weak form of the Laplacian on the codomain.
+and ``T_n`` is the Transfer-operator for ``x \\mapsto flow_maps(x,times)[n]`` and ``a_1`` is the weak form of the Laplacian on the codomain. Moreover,
+``N`` in the equation above is equal to `length(times)` and ``t_n`` ranges over the elements of `times`.
+
+If `times==nothing`, take ``N=1`` above and use the map ``x \\mapsto flow_maps(x)` instead of the version with `t_n`.
 
 If `on_torus` is true, the Delaunay Triangulation is done on the torus. Here we require `bdata` for boundary information
 on the original domain as well as `LL` and `UR` as lower-left and upper-right corners of the image.
 
 If `volume_preserving == false`, add a volume_correction term to ``a_1`` (See paper by Froyland & Junge).
+
+If `flow_map_mode==0`, apply flow map to nodal basis function coordinates. Else apply it to index number.
 """
 function adaptiveTOCollocationStiffnessMatrix(
         ctx::gridContext{2},
-        flow_map::Function;
+        flow_maps::Function,
+        times=nothing
+        ;
         quadrature_order=default_quadrature_order,
         on_torus::Bool=false,
         LL_future::AbstractVector{Float64}=ctx.spatialBounds[1],
         UR_future::AbstractVector{Float64}=ctx.spatialBounds[2],
         bdata::boundaryData=boundaryData(),
-        volume_preserving=true
+        volume_preserving=true,
+        flow_map_mode=0
         )
     if !on_torus  && length(bdata.periodic_dofs_from) != 0
         @warn "This function probably doesn't work for this case"
     end
-    #Push forward the points, perform the triangulation
-    new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx,flow_map;
-                            on_torus=on_torus,LL_future=LL_future,UR_future=UR_future,bdata=bdata
-                            )
 
 
-    translation_table = bcdof_to_node(new_ctx,new_bdata)
-    #Assemble stiffness matrix
-    if !volume_preserving
-        #This is allowed because new_ctx is a (possibly periodic) delaunay grid,
-        #with the node ordering of the first n nodes being the bcdof ordering of
-        #the old grid
-        new_density_nodevals = new_density_bcdofvals
-        while length(new_density_nodevals) != new_ctx.n
-            push!(new_density_nodevals,0.0)
-        end
-
-        new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
-                   for q in new_ctx.quadrature_points ]
+    if times==nothing
+        N = 1
+    else
+        N = length(times)
     end
-    I, J, V = findnz(assembleStiffnessMatrix(new_ctx,bdata=new_bdata))
-    I .= translation_table[I]
-    J .= translation_table[J]
-    n = ctx.n - length(bdata.periodic_dofs_from)
-    return sparse(I,J,V,n,n)
+    flow_map_images = zeros(Vec{2},(N,ctx.n))
+    if times == nothing
+        for i in 1:ctx.n
+            if flow_map_mode == 0
+                flow_map_images[1,i] = Vec{2}(flow_maps(ctx.grid.nodes[i].x))
+            else
+                flow_map_images[1,i] = Vec{2}(flow_maps(i))
+            end
+        end
+    else
+        for i in 1:ctx.n
+            if flow_map_mode == 0
+                flow_map_images[:,i] = Vec{2}.(flow_maps(ctx.grid.nodes[i].x,times))
+            else
+                flow_map_images[:,i] = Vec{2}.(flow_maps(i,times))
+            end
+        end
+    end
+
+    #Push forward the points, perform the triangulation
+    As = SparseMatrixCSC{Float64,Int64}[]
+    for n in 1:N
+        flow_map_t = j -> flow_map_images[n,j]
+        new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx,flow_map_t;
+                                on_torus=on_torus,LL_future=LL_future,UR_future=UR_future,bdata=bdata,
+                                flow_map_mode=1
+                                )
+
+
+        translation_table = bcdof_to_node(new_ctx,new_bdata)
+        #Assemble stiffness matrix
+        if !volume_preserving
+            #This is allowed because new_ctx is a (possibly periodic) delaunay grid,
+            #with the node ordering of the first n nodes being the bcdof ordering of
+            #the old grid
+            new_density_nodevals = new_density_bcdofvals
+            while length(new_density_nodevals) != new_ctx.n
+                push!(new_density_nodevals,0.0)
+            end
+
+            new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
+                       for q in new_ctx.quadrature_points ]
+        end
+        I, J, V = findnz(assembleStiffnessMatrix(new_ctx,bdata=new_bdata))
+        I .= translation_table[I]
+        J .= translation_table[J]
+        n = ctx.n - length(bdata.periodic_dofs_from)
+        push!(As,sparse(I,J,V,n,n))
+    end
+    return mean(As)
 end
 
 
@@ -194,15 +234,18 @@ end
 
 
 """
-    adaptiveTOFutureGrid(ctx, flow_map;[on_torus=false,bdata=nothing,LL,UR,quadrature_order])
+    adaptiveTOFutureGrid(ctx, flow_map;[on_torus=false,bdata=nothing,LL,UR,quadrature_order,flow_map_mode=0])
 
 Takes the (non-periodic) grid points from `ctx` (in bcdof order), applies `flow_map` to them,
 and (periodic) delaunay triangulates them and returns a P1-Delaunay `gridContext,bdata, volchange` tuple for that,
 where `volchange` is a vector of relative volumes of the nodal basis functions.
+If `flow_map_mode==0` (default), apply `flow_map` to node coordinates. If `flow_map_mode==1`,
+apply `flow_map` to node index
 """
 function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
         on_torus=false,bdata=boundaryData(),LL_future=ctx.spatialBounds[1], UR_future=ctx.spatialBounds[2],
-        quadrature_order=default_quadrature_order
+        quadrature_order=default_quadrature_order,
+        flow_map_mode=0
         ) where dim
 
     if isEmptyBC(bdata) && on_torus==true
@@ -211,10 +254,17 @@ function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
 
     #Push forward "original" nodes
 
-    new_nodes_in_bcdof_order = [
-        Vec{2}(flow_map(ctx.grid.nodes[j].x))
-        for j in bcdof_to_node(ctx,bdata)
-            ]
+    if flow_map_mode == 0
+        new_nodes_in_bcdof_order = [
+            Vec{2}(flow_map(ctx.grid.nodes[j].x))
+            for j in bcdof_to_node(ctx,bdata)
+                ]
+    else
+        new_nodes_in_bcdof_order = [
+            Vec{2}(flow_map(j))
+            for j in bcdof_to_node(ctx,bdata)
+                ]
+    end
     new_ctx, new_bdata = irregularDelaunayGrid(
                             new_nodes_in_bcdof_order;
                             on_torus=on_torus,LL=LL_future,UR=UR_future,
