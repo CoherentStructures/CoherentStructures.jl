@@ -50,9 +50,9 @@ T = @inferred map(mCG_tensor, P)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
     @inferred CoherentStructures.combine_isolated_pairs(new_singularities)
     r₁ , r₂ = 2rand(2)
-    @test sum(get_indices(combine_singularities(singularities, r₁))) ==
-        sum(get_indices(combine_singularities(singularities, r₂))) ==
-        sum(get_indices(combine_singularities(singularities, 2)))
+    @test sum(getindices(combine_singularities(singularities, r₁))) ==
+        sum(getindices(combine_singularities(singularities, r₂))) ==
+        sum(getindices(combine_singularities(singularities, 2)))
 end
 
 @testset "closed orbit detection" begin

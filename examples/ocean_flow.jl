@@ -26,16 +26,16 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 # Since we want to use parallel computing, we set up the integration LCSParameters
 # on all workers, i.e., `@everywhere`.
 
-@everywhere begin
+begin
     import AxisArrays
     const AA = AxisArrays
     q = 91
     t_initial = minimum(Time)
     t_final = t_initial + 90
     const tspan = range(t_initial, stop=t_final, length=q)
+    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
     nx = 300
     ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
-    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
     xspan = range(xmin, stop=xmax, length=nx)
     yspan = range(ymin, stop=ymax, length=ny)
     P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
@@ -57,7 +57,7 @@ using Plots
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
-scatter!(get_coords(singularities), color=:red)
+scatter!(getcoords(singularities), color=:red)
 for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
     scatter!(vortex.core, color=:yellow)

@@ -71,9 +71,9 @@ function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
     λ₂ = eigvals(E)[2]
     ξ₁ = SVector{2}(eigvecs(E)[:,1])
     ξ₂ = SVector{2}(eigvecs(E)[:,2])
-    traceT = tr(T)
-    detT = det(T)
-    return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+    tT = tr(T)
+    dT = det(T)
+    return λ₁, λ₂, ξ₁, ξ₂, tT, dT
 end
 function tensor_invariants(T::AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
     E = map(t -> eigen(t), T)
@@ -83,7 +83,7 @@ function tensor_invariants(T::AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
     ξ₂ = map(e -> convert(SVector{2}, eigvecs(e)[:,2]), E)
     tT = map(t -> tr(t), T)
     dT = map(t -> det(t), T)
-    return λ₁, λ₂, ξ₁, ξ₂, traceT, detT
+    return λ₁, λ₂, ξ₁, ξ₂, tT, dT
 end
 
 # Interpolation of AxisArrays

@@ -75,7 +75,7 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
                     aspect_ratio=1, color=:viridis, leg=true,
                     xlims=(0, 6.371π), ylims=(-3, 3),
                     title="DBS field and transport barriers")
-scatter!(get_coords(singularities), color=:red)
+scatter!(getcoords(singularities), color=:red)
 for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
     scatter!(vortex.core, color=:yellow)

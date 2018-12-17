@@ -104,7 +104,7 @@ using Plots
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers")
-scatter!(get_coords(singularities), color=:red)
+scatter!(getcoords(singularities), color=:red)
 for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
     scatter!(vortex.core, color=:yellow)

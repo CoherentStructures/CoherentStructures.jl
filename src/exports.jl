@@ -7,8 +7,8 @@ export
 
 	#ellipticLCS.jl
 	Singularity,
-	get_coords,
-	get_indices,
+	getcoords,
+	getindices,
 	EllipticBarrier,
 	LCSParameters,
 	compute_singularities,

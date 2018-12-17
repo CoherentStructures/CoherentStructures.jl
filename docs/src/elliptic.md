@@ -7,9 +7,8 @@ The following functions implement an LCS methodology developed in the following 
    * [Haller & Beron-Vera, 2012](https://dx.doi.org/10.1016/j.physd.2012.06.012)
    * [Haller & Beron-Vera, 2013](https://dx.doi.org/10.1017/jfm.2013.391)
    * [Karrasch, Huhn, and Haller, 2015](https://dx.doi.org/10.1098/rspa.2014.0639)
-The present code is structurally inspired--albeit partially significantly
-improved--by Alireza Hadjighasem's [MATLAB implementation](https://github.com/Hadjighasem/Elliptic_LCS_2D),
-which was written in the context of the [SIAM Review paper](https://doi.org/10.1137/140983665).
+The present code was originally inspired by Alireza Hadjighasem's [MATLAB implementation](https://github.com/Hadjighasem/Elliptic_LCS_2D),
+which was written in the context of the [SIAM Review paper](https://doi.org/10.1137/140983665), but has been significantly modified and improved throughout.
 Depending on the indefinite metric tensor field used, the functions below yield
 the following types of coherent structures:
    * black-hole/Lagrangian coherent vortices ([Haller & Beron-Vera, 2012](https://doi.org/10.1017/jfm.2013.391))
@@ -48,33 +47,38 @@ In summary, the implementation consists of the following steps:
 
 ## Function documentation
 
-### The meta-functions `ellipticLCS`
+### The meta-functions `ellipticLCS` and `constrainedLCS`
 
-The fully automated high-level function is:
+The fully automated high-level functions are:
 ```@docs
 ellipticLCS
+constrainedLCS
 ```
 One of their arguments is a list of parameters used in the LCS detection. This
-list is combined in a data type called `LCSParameters`. The output of
-`ellipticLCS` is a list of `EllipticBarrier`'s and a list of `Singularity`'s.
+list is combined in a data type called `LCSParameters`. The output is a list of `EllipticBarrier`s and a list of `Singularity`s.
 There is an option to retrieve all closed barriers (`outermost=false`), in
-contrast to extracting only the outermost vortex boundaries (`outermost=true`).
+contrast to extracting only the outermost vortex boundaries (`outermost=true`), which is more efficient.
 
-The function [`ellipticLCS`](@ref) consists of two steps: first, the index
+The meta-functions consist of two steps: first, the index
 theory-based determination of where to search for closed orbits,, cf.
-[Index theory-based location of Poincaré sections](@ref); second, the
-closed orbit computation, cf. [](@ref).
+[Index theory-based placement of Poincaré sections](@ref); second, the
+closed orbit computation, cf. [Closed orbit detection](@ref).
 
 ### Specific types
 
-These are the specifically introduced types for elliptic LCS detection.
+These are the specifically introduced types for elliptic LCS computations.
 ```@docs
-Singularity
 LCSParameters
 EllipticBarrier
 ```
+Another one is `Singularity`, which comes along with some convenience functions.
+```@docs
+Singularity
+getcoords
+getindices
+```
 
-### Index theory-based location of Poincaré sections
+### Index theory-based placement of Poincaré sections
 
 This is performed by [`discrete_singularity_detection`](@ref) for line fields
 (such as eigenvector fields of symmetric positive-definit tensor fields) and by
@@ -92,6 +96,9 @@ combine_isolated_pairs
 From all virtual/merged singularities those with a suitable index are selected.
 Around each elliptic singularity the tensor field is localized and passed on for
 closed orbit detection.
+
+### Closed orbit detection
+
 ```@docs
 compute_returning_orbit
 compute_closed_orbits

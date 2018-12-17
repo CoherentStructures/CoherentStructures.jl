@@ -12,10 +12,10 @@ struct Singularity{T <: Real}
     index::Int64
 end
 
-function get_coords(singularities::Vector{Singularity{T}}) where T
+function getcoords(singularities::Vector{Singularity{T}}) where T
     return [s.coords for s in singularities]
 end
-function get_indices(singularities::Vector{Singularity{T}}) where T
+function getindices(singularities::Vector{Singularity{T}}) where T
     return [s.index for s in singularities]
 end
 
@@ -136,7 +136,7 @@ function combine_singularities(singularities::Vector{Singularity{T}}, combine_di
 
     N = length(singularities)
 
-    sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
+    sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
     #Which singularities we've already dealt with
     sing_seen = falses(N)
 
@@ -189,7 +189,7 @@ as one, while adding their indices.
 function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
     N = length(singularities)
     N == 1 && return singularities
-    sing_tree = NN.KDTree(get_coords(singularities), Dists.Euclidean())
+    sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
     sing_seen = falses(N)
 
     new_singularities = Singularity{T}[] # sing_out
@@ -448,7 +448,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     xmax = xspan[end]
     singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs)
     verbose && @info "Found $(length(singularities)) singularities..."
-    vortexcenters = singularities[get_indices(singularities) .== 2]
+    vortexcenters = singularities[getindices(singularities) .== 2]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     # loop over potential vortex centers, return detected closed orbits
@@ -512,7 +512,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     xmax = xspan[end]
     critpts = critical_point_detection(q, p.indexradius, 2π; combine_pairs=p.combine_pairs)
     verbose && @info "Found $(length(critpts)) critical points..."
-    vortexcenters = critpts[get_indices(critpts) .== 1]
+    vortexcenters = critpts[getindices(critpts) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     # loop over potential vortex centers, return detected closed orbits
