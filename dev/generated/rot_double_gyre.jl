@@ -9,9 +9,13 @@ M = assembleMassMatrix(ctx)
 
 import Plots
 res = [plot_u(ctx, v[:,i], 100, 100, colorbar=:none, clim=(-3,3)) for i in 1:6];
-Plots.plot(res..., margin=-10Plots.px)
+fig = Plots.plot(res..., margin=-10Plots.px)
 
-Plots.scatter(1:6, real.(λ))
+Plots.plot(fig)
+
+spectrum_fig = Plots.scatter(1:6, real.(λ))
+
+Plots.plot(spectrum_fig)
 
 using Clustering
 
@@ -21,7 +25,9 @@ v_upsampled = sample_to(v, ctx, ctx2)
 numclusters=2
 res = kmeans(permutedims(v_upsampled[:,2:numclusters+1]), numclusters + 1)
 u = kmeansresult2LCS(res)
-Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in [1,2,3]]...)
+res = Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in [1,2,3]]...)
+
+Plots.plot(res)
 
 using Distributed
 nprocs() == 1 && addprocs()
@@ -57,6 +63,7 @@ for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
     scatter!(vortex.core, color=:yellow)
 end
+
 Plots.plot(fig)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

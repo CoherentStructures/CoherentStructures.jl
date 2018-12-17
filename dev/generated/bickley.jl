@@ -40,7 +40,7 @@ nprocs() == 1 && addprocs()
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0,true, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p)
 
 import Plots
@@ -49,11 +49,12 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
                     aspect_ratio=1, color=:viridis, leg=true,
                     xlims=(0, 6.371π), ylims=(-3, 3),
                     title="DBS field and transport barriers")
-scatter!(getcoords(singularities), color=:red)
+Plots.scatter!(fig,getcoords(singularities), color=:red)
 for vortex in vortices
-    plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
-    scatter!(vortex.core, color=:yellow)
+    Plots.plot!(fig,vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
+    Plots.scatter!(fig,vortex.core, color=:yellow)
 end
+
 Plots.plot(fig)
 
 LL = [0.0, -3.0]; UR = [6.371π, 3.0]
@@ -91,8 +92,10 @@ n_partition = 8
 res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]), n_partition)
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i]*i for i in 1:n_partition])
-plot_u(ctx2, u_combined, 400, 400;
+fig = plot_u(ctx2, u_combined, 400, 400;
     color=:rainbow, colorbar=:none, title="$n_partition-partition of Bickley jet")
+
+Plots.plot(fig)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
