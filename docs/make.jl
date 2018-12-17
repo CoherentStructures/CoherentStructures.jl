@@ -47,6 +47,9 @@ function mypreprocess(content,whatkind)
 
         content = content[1:(current_location[1]-1)] * inner_text * content[(closing_bracket[1]+1):end]
     end
+    if whatkind == :julia_run
+        content = replace(content,"addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
+    end
     return content
 end
 
