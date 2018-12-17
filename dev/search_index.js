@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Rotating double gyre",
     "title": "Geodesic vortices",
     "category": "section",
-    "text": "Here, we demonstrate how to calculate black-hole vortices, see Geodesic elliptic material vortices for references and details.using Distributed\nimport AxisArrays\nconst AA = AxisArrays\nnprocs() == 1 && addprocs()\n\n@everywhere begin\n    using CoherentStructures, OrdinaryDiffEq, StaticArrays\n    const q = 51\n    const tspan = range(0., stop=1., length=q)\n    ny = 101\n    nx = 101\n    xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0\n    xspan = range(xmin, stop=xmax, length=nx)\n    yspan = range(ymin, stop=ymax, length=ny)\n    P = AA.AxisArray(SVector{2}.(xspan, yspan\'), xspan, yspan)\n    const δ = 1.e-6\n    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;\n            tolerance=1e-6, solver=Tsit5())\nend\n\nC̅ = pmap(mCG_tensor, P; batch_size=ny)\np = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)\nvortices, singularities = ellipticLCS(C̅, p; outermost=true)The results are then visualized as follows.using Plots\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nfig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));\n            aspect_ratio=1, color=:viridis, leg=true,\n            title=\"DBS field and transport barriers\")\nscatter!(get_coords(singularities), color=:red)\nfor vortex in vortices\n    plot!(vortex.curve, color=:yellow, w=3, label=\"T = $(round(vortex.p, digits=2))\")\n    scatter!(vortex.core, color=:yellow)\nend\nPlots.plot(fig)This page was generated using Literate.jl."
+    "text": "Here, we demonstrate how to calculate black-hole vortices, see Geodesic elliptic material vortices for references and details.using Distributed\nnprocs() == 1 && addprocs()\n\n@everywhere begin\n    using CoherentStructures, OrdinaryDiffEq, StaticArrays\n    import AxisArrays\n    const AA = AxisArrays\n    const q = 51\n    const tspan = range(0., stop=1., length=q)\n    ny = 101\n    nx = 101\n    xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0\n    xspan = range(xmin, stop=xmax, length=nx)\n    yspan = range(ymin, stop=ymax, length=ny)\n    P = AA.AxisArray(SVector{2}.(xspan, yspan\'), xspan, yspan)\n    const δ = 1.e-6\n    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;\n            tolerance=1e-6, solver=Tsit5())\nend\n\nC̅ = pmap(mCG_tensor, P; batch_size=ny)\np = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)\nvortices, singularities = ellipticLCS(C̅, p; outermost=true)The results are then visualized as follows.using Plots\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nfig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));\n            aspect_ratio=1, color=:viridis, leg=true,\n            title=\"DBS field and transport barriers\")\nscatter!(getcoords(singularities), color=:red)\nfor vortex in vortices\n    plot!(vortex.curve, color=:yellow, w=3, label=\"T = $(round(vortex.p, digits=2))\")\n    scatter!(vortex.core, color=:yellow)\nend\nPlots.plot(fig)This page was generated using Literate.jl."
 },
 
 {
@@ -109,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Bickley jet",
     "title": "Geodesic vortices",
     "category": "section",
-    "text": "Here we briefly demonstrate how to find material barriers to diffusive transport; see Geodesic elliptic material vortices for references and details.using Distributed\nimport AxisArrays\nconst AA = AxisArrays\nnprocs() == 1 && addprocs()\n\n@everywhere begin\n    using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays\n    const q = 81\n    const tspan = range(0., stop=3456000., length=q)\n    ny = 61\n    nx = (22ny) ÷ 6\n    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0\n    xspan = range(xmin, stop=xmax, length=nx)\n    yspan = range(ymin, stop=ymax, length=ny)\n    P = AA.AxisArray(SVector{2}.(xspan, yspan\'), xspan, yspan)\n    const δ = 1.e-6\n    const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])\n    mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;\n              D=DiffTensor, tolerance=1e-6, solver=Tsit5())\nend\n\nC̅ = pmap(mCG_tensor, P; batch_size=ny)\np = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.7, 1.5, 1e-4)\nvortices, singularities = ellipticLCS(C̅, p)The result is visualized as follows:import Plots\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nfig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));\n                    aspect_ratio=1, color=:viridis, leg=true,\n                    xlims=(0, 6.371π), ylims=(-3, 3),\n                    title=\"DBS field and transport barriers\")\nscatter!(get_coords(singularities), color=:red)\nfor vortex in vortices\n    plot!(vortex.curve, color=:yellow, w=3, label=\"T = $(round(vortex.p, digits=2))\")\n    scatter!(vortex.core, color=:yellow)\nend\nPlots.plot(fig)"
+    "text": "Here we briefly demonstrate how to find material barriers to diffusive transport; see Geodesic elliptic material vortices for references and details.using Distributed\nnprocs() == 1 && addprocs()\n\n@everywhere begin\n    using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays\n    import AxisArrays\n    const AA = AxisArrays\n    q = 81\n    const tspan = range(0., stop=3456000., length=q)\n    ny = 61\n    nx = (22ny) ÷ 6\n    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0\n    xspan = range(xmin, stop=xmax, length=nx)\n    yspan = range(ymin, stop=ymax, length=ny)\n    P = AA.AxisArray(SVector{2}.(xspan, yspan\'), xspan, yspan)\n    const δ = 1.e-6\n    const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])\n    mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;\n              D=DiffTensor, tolerance=1e-6, solver=Tsit5())\nend\n\nC̅ = pmap(mCG_tensor, P; batch_size=ny)\np = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, 60, 0.7, 1.5, 1e-4)\nvortices, singularities = ellipticLCS(C̅, p)The result is visualized as follows:import Plots\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nfig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));\n                    aspect_ratio=1, color=:viridis, leg=true,\n                    xlims=(0, 6.371π), ylims=(-3, 3),\n                    title=\"DBS field and transport barriers\")\nscatter!(getcoords(singularities), color=:red)\nfor vortex in vortices\n    plot!(vortex.curve, color=:yellow, w=3, label=\"T = $(round(vortex.p, digits=2))\")\n    scatter!(vortex.core, color=:yellow)\nend\nPlots.plot(fig)"
 },
 
 {
@@ -141,7 +141,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geostrophic ocean flow",
     "title": "Geodesic vortices",
     "category": "section",
-    "text": "Here, we demonstrate how to detect material barriers to diffusive transport.using Distributed\nimport AxisArrays\nconst AA = AxisArrays\nnprocs() == 1 && addprocs()\n\n@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArraysNext, we load and interpolate the velocity data sets.using JLD2\nJLD2.@load(\"Ocean_geostrophic_velocity.jld2\")\nconst VI = interpolateVF(Lon, Lat, Time, UT, VT)Since we want to use parallel computing, we set up the integration LCSParameters on all workers, i.e., @everywhere.@everywhere begin\n    q = 91\n    t_initial = minimum(Time)\n    t_final = t_initial + 90\n    const tspan = range(t_initial, stop=t_final, length=q)\n    nx = 300\n    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0\n    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)\n    xspan = range(xmin, stop=xmax, length=nx)\n    yspan = range(ymin, stop=ymax, length=ny)\n    P = AA.AxisArray(SVector{2}.(xspan, yspan\'), xspan, yspan)\n    const δ = 1.e-5\n    mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;\n        p=VI, tolerance=1e-6, solver=Tsit5())\nendNow, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.C̅ = pmap(mCG_tensor, P; batch_size=ny)\np = LCSParameters(5*max(step(xspan), step(yspan)), 2.5, 60, 0.5, 2.0, 1e-4)\nvortices, singularities = ellipticLCS(C̅, p)Finally, the result is visualized as follows.using Plots\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nfig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));\n            aspect_ratio=1, color=:viridis, leg=true,\n            title=\"DBS field and transport barriers\")\nscatter!(get_coords(singularities), color=:red)\nfor vortex in vortices\n    plot!(vortex.curve, color=:yellow, w=3, label=\"T = $(round(vortex.p, digits=2))\")\n    scatter!(vortex.core, color=:yellow)\nend\nPlots.plot(fig)"
+    "text": "Here, we demonstrate how to detect material barriers to diffusive transport.using Distributed\nnprocs() == 1 && addprocs()\n\n@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArraysNext, we load and interpolate the velocity data sets.using JLD2\nJLD2.@load(\"Ocean_geostrophic_velocity.jld2\")\nconst VI = interpolateVF(Lon, Lat, Time, UT, VT)Since we want to use parallel computing, we set up the integration LCSParameters on all workers, i.e., @everywhere.begin\n    import AxisArrays\n    const AA = AxisArrays\n    q = 91\n    t_initial = minimum(Time)\n    t_final = t_initial + 90\n    const tspan = range(t_initial, stop=t_final, length=q)\n    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0\n    nx = 300\n    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)\n    xspan = range(xmin, stop=xmax, length=nx)\n    yspan = range(ymin, stop=ymax, length=ny)\n    P = AA.AxisArray(SVector{2}.(xspan, yspan\'), xspan, yspan)\n    const δ = 1.e-5\n    mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;\n        p=VI, tolerance=1e-6, solver=Tsit5())\nendNow, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.C̅ = pmap(mCG_tensor, P; batch_size=ny)\np = LCSParameters(5*max(step(xspan), step(yspan)), 2.5, true, 60, 0.5, 2.0, 1e-4)\nvortices, singularities = ellipticLCS(C̅, p)Finally, the result is visualized as follows.using Plots\nλ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)\nfig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));\n            aspect_ratio=1, color=:viridis, leg=true,\n            title=\"DBS field and transport barriers\")\nscatter!(getcoords(singularities), color=:red)\nfor vortex in vortices\n    plot!(vortex.curve, color=:yellow, w=3, label=\"T = $(round(vortex.p, digits=2))\")\n    scatter!(vortex.core, color=:yellow)\nend\nPlots.plot(fig)"
 },
 
 {
@@ -845,23 +845,23 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "Geodesic elliptic material vortices",
     "category": "section",
-    "text": "CurrentModule = CoherentStructuresThe following functions implement an LCS methodology developed in the following papers:Haller & Beron-Vera, 2012\nHaller & Beron-Vera, 2013\nKarrasch, Huhn, and Haller, 2015The present code is structurally inspired–albeit partially significantly improved–by Alireza Hadjighasem\'s MATLAB implementation, which was written in the context of the SIAM Review paper. Depending on the indefinite metric tensor field used, the functions below yield the following types of coherent structures:black-hole/Lagrangian coherent vortices (Haller & Beron-Vera, 2012)\nelliptic objective Eulerian coherent structures (OECSs) (Serra & Haller, 2016)\nmaterial diffusive transport barriers (Haller, Karrasch, and Kogelbauer, 2018)The general procedure is the following. Assume T is the symmetric tensor field of interest, say, (i) the Cauchy-Green strain tensor field C, (ii) the rate-of-strain tensor field S, or (iii) the averaged diffusion-weighted Cauchy-Green tensor field barC_D; cf. the references above. Denote by 0lambda_1leqlambda_2 the eigenvalue and by xi_1 and xi_2 the corresponding eigenvector fields of T. Then the direction fields of interest are given byeta_lambda^pm = sqrtfraclambda_2 - lambdalambda_2-lambda_1xi_1 pm sqrtfraclambda - lambda_1lambda_2-lambda_1xi_2Tensor singularities are defined as points at which lambda_2=lambda_1, i.e., at which the two characteristic directions xi_1 and xi_2 are not well-defined. As described and exploited in Karrasch et al., 2015, non-negligible tensor singularities express themselves by an angle gap when tracking (the angle of) tensor eigenvector fields along closed paths surrounding the singularity. Our approach here avoids computing singularities directly, but rather computes the index for each grid cell and then combines nearby singularities, i.e., adds non-vanishing indices of nearby grid cells.In summary, the implementation consists of the following steps:compute the index for each grid cell and combine nearby singular grid cells to \"singularity candidates\";\nlook for elliptic singularity candidates (and potentially isolated wedge pairs);\nplace an eastwards oriented Poincaré section at the pair center;\nfor each point on the discretized Poincaré section, scan through the given parameter interval such that the corresponding η-orbit closes at that point;\nif desired: for each Poincaré section, take the outermost closed orbit as the coherent vortex barrier (if there exist any)."
+    "text": "CurrentModule = CoherentStructuresThe following functions implement an LCS methodology developed in the following papers:Haller & Beron-Vera, 2012\nHaller & Beron-Vera, 2013\nKarrasch, Huhn, and Haller, 2015The present code was originally inspired by Alireza Hadjighasem\'s MATLAB implementation, which was written in the context of the SIAM Review paper, but has been significantly modified and improved throughout. Depending on the indefinite metric tensor field used, the functions below yield the following types of coherent structures:black-hole/Lagrangian coherent vortices (Haller & Beron-Vera, 2012)\nelliptic objective Eulerian coherent structures (OECSs) (Serra & Haller, 2016)\nmaterial diffusive transport barriers (Haller, Karrasch, and Kogelbauer, 2018)The general procedure is the following. Assume T is the symmetric tensor field of interest, say, (i) the Cauchy-Green strain tensor field C, (ii) the rate-of-strain tensor field S, or (iii) the averaged diffusion-weighted Cauchy-Green tensor field barC_D; cf. the references above. Denote by 0lambda_1leqlambda_2 the eigenvalue and by xi_1 and xi_2 the corresponding eigenvector fields of T. Then the direction fields of interest are given byeta_lambda^pm = sqrtfraclambda_2 - lambdalambda_2-lambda_1xi_1 pm sqrtfraclambda - lambda_1lambda_2-lambda_1xi_2Tensor singularities are defined as points at which lambda_2=lambda_1, i.e., at which the two characteristic directions xi_1 and xi_2 are not well-defined. As described and exploited in Karrasch et al., 2015, non-negligible tensor singularities express themselves by an angle gap when tracking (the angle of) tensor eigenvector fields along closed paths surrounding the singularity. Our approach here avoids computing singularities directly, but rather computes the index for each grid cell and then combines nearby singularities, i.e., adds non-vanishing indices of nearby grid cells.In summary, the implementation consists of the following steps:compute the index for each grid cell and combine nearby singular grid cells to \"singularity candidates\";\nlook for elliptic singularity candidates (and potentially isolated wedge pairs);\nplace an eastwards oriented Poincaré section at the pair center;\nfor each point on the discretized Poincaré section, scan through the given parameter interval such that the corresponding η-orbit closes at that point;\nif desired: for each Poincaré section, take the outermost closed orbit as the coherent vortex barrier (if there exist any)."
 },
 
 {
-    "location": "elliptic/#CoherentStructures.ellipticLCS",
+    "location": "elliptic/#Function-documentation-1",
     "page": "Geodesic vortices",
-    "title": "CoherentStructures.ellipticLCS",
-    "category": "function",
-    "text": "ellipticLCS(T, xspan, yspan, p; outermost=true)\n\nComputes elliptic LCSs as null-geodesics of the Lorentzian metric tensor field given by shifted versions of T on the 2D computational grid spanned by xspan and yspan. p is a LCSParameters-type container of computational parameters.\n\nReturns a list of EllipticBarrier-type objects: if the optional keyword argument outermost is true, then only the outermost barriers, i.e., the vortex boundaries, otherwise all detected transport barrieres are returned.\n\n\n\n\n\nfunction ellipticLCS(T, p; outermost=true)\n\nComputes elliptic LCSs as null-geodesics of the Lorentzian metric tensor field given by (pointwise) shifted versions of the symmetric tensor field T. p is a LCSParameters-type container of computational parameters.\n\nReturns a list of EllipticBarrier-type objects: if the optional keyword argument outermost is true, then only the outermost barriers, i.e., the vortex boundaries, otherwise all detected transport barrieres are returned.\n\n\n\n\n\n"
+    "title": "Function documentation",
+    "category": "section",
+    "text": ""
 },
 
 {
-    "location": "elliptic/#CoherentStructures.Singularity",
+    "location": "elliptic/#The-meta-functions-ellipticLCS-and-constrainedLCS-1",
     "page": "Geodesic vortices",
-    "title": "CoherentStructures.Singularity",
-    "category": "type",
-    "text": "struct Singularity\n\nFields\n\ncoords::SVector{2,Float64}: coordinates of the singularity\nindex::Int: index of the singularity\n\n\n\n\n\n"
+    "title": "The meta-functions ellipticLCS and constrainedLCS",
+    "category": "section",
+    "text": "The fully automated high-level functions are:ellipticLCS\nconstrainedLCSOne of their arguments is a list of parameters used in the LCS detection. This list is combined in a data type called LCSParameters. The output is a list of EllipticBarriers and a list of Singularitys. There is an option to retrieve all closed barriers (outermost=false), in contrast to extracting only the outermost vortex boundaries (outermost=true), which is more efficient.The meta-functions consist of two steps: first, the index theory-based determination of where to search for closed orbits,, cf. Index theory-based placement of Poincaré sections; second, the closed orbit computation, cf. Closed orbit detection."
 },
 
 {
@@ -869,7 +869,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.LCSParameters",
     "category": "type",
-    "text": "struct LCSParameters\n\nContainer for parameters used in elliptic LCS computations.\n\nFields\n\nindexradius::Float64=0.1: radius for singularity type detection\nboxradius::Float64=0.5: \"radius\" of localization square for closed orbit detection\nn_seeds::Int64=40: number of seed points on the Poincaré section\npmin::Float64=0.7: lower bound on the parameter in the eta-field\npmax::Float64=1.3: upper bound on the parameter in the eta-field\nrdist::Float64=1e-4: required return distances for closed orbits\n\n\n\n\n\n"
+    "text": "struct LCSParameters\n\nContainer for parameters used in elliptic LCS computations.\n\nFields\n\nindexradius::Float64=0.1: radius for singularity type detection\nboxradius::Float64=0.5: \"radius\" of localization square for closed orbit detection\ncombine_pairs=true: whether isolated singularity pairs should be merged\nn_seeds::Int64=40: number of seed points on the Poincaré section\npmin::Float64=0.7: lower bound on the parameter in the eta-field\npmax::Float64=1.3: upper bound on the parameter in the eta-field\nrdist::Float64=1e-4: required return distances for closed orbits\n\n\n\n\n\n"
 },
 
 {
@@ -881,11 +881,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "elliptic/#CoherentStructures.discrete_singularity_detection",
+    "location": "elliptic/#Specific-types-1",
     "page": "Geodesic vortices",
-    "title": "CoherentStructures.discrete_singularity_detection",
+    "title": "Specific types",
+    "category": "section",
+    "text": "These are the specifically introduced types for elliptic LCS computations.LCSParameters\nEllipticBarrierAnother one is Singularity, which comes along with some convenience functions.Singularity\ngetcoords\ngetindices"
+},
+
+{
+    "location": "elliptic/#CoherentStructures.singularity_detection",
+    "page": "Geodesic vortices",
+    "title": "CoherentStructures.singularity_detection",
     "category": "function",
-    "text": "discrete_singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}\n\nCalculates line-field singularities of the first eigenvector of T by taking a discrete differential-geometric approach. Singularities are calculated on each cell. Singularities with distance less or equal to combine_distance are combined by averaging the coordinates and adding the respective indices. If combine_isolated_wedges is `true, pairs of indices that are mutually the closest singularities are included in the final list.\n\nReturns a vector of Singularitys. Indices are multiplied by 2 to get integer values.\n\n\n\n\n\n"
+    "text": "singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}\n\nCalculates line-field singularities of the first eigenvector of T by taking a discrete differential-geometric approach. Singularities are calculated on each cell. Singularities with distance less or equal to combine_distance are combined by averaging the coordinates and adding the respective indices. If combine_pairs is `true, pairs of singularities that are mutually the closest ones are included in the final list.\n\nReturns a vector of Singularitys. Returned indices correspond to doubled indices to get integer values.\n\n\n\n\n\n"
+},
+
+{
+    "location": "elliptic/#CoherentStructures.critical_point_detection",
+    "page": "Geodesic vortices",
+    "title": "CoherentStructures.critical_point_detection",
+    "category": "function",
+    "text": "critical_point_detection(vs, combine_distance, γ; combine_pairs=true)\n\nComputes critical points of a vector/line field vs, given as an AxisArray. Critical points with distance less or equal to combine_distance are combined by averaging the coordinates and adding the respective indices. The parameter γ should be chosen π for line fields and 2π for vector fields; cf. compute_singularities. If combine_pairs istrue, pairs of singularities that are mutually the closest ones are included in the final list.\n\n\n\n\n\n"
 },
 
 {
@@ -893,7 +909,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_singularities",
     "category": "function",
-    "text": "compute_singularities(α, modulus) -> Vector{Singularity}\n\nComputes critical points/singularities of vector and line fields, respectively. α is a scalar field (array) which is assumed to contain some consistent angle representation of the vector/line field. Choose modulus=2π for vector fields, and as modulus=π for line fields.\n\n\n\n\n\n"
+    "text": "compute_singularities(α, modulus) -> Vector{Singularity}\n\nComputes critical points/singularities of vector and line fields, respectively. α is a scalar field (array) which is assumed to contain some consistent angle representation of the vector/line field. Choose modulus=2π for vector fields, and modulus=π for line fields.\n\n\n\n\n\n"
 },
 
 {
@@ -913,6 +929,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "elliptic/#Index-theory-based-placement-of-Poincaré-sections-1",
+    "page": "Geodesic vortices",
+    "title": "Index theory-based placement of Poincaré sections",
+    "category": "section",
+    "text": "This is performed by discrete_singularity_detection for line fields (such as eigenvector fields of symmetric positive-definit tensor fields) and by critical_point_detection for classic vector fields.singularity_detection\ncritical_point_detectionThis function takes three steps.compute_singularities\ncombine_singularities\ncombine_isolated_pairsFrom all virtual/merged singularities those with a suitable index are selected. Around each elliptic singularity the tensor field is localized and passed on for closed orbit detection."
+},
+
+{
     "location": "elliptic/#CoherentStructures.compute_returning_orbit",
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_returning_orbit",
@@ -925,15 +949,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_closed_orbits",
     "category": "function",
-    "text": "compute_closed_orbits(pSection, T[, xspan, yspan]; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)\n\nCompute the outermost closed orbit for a given Poincaré section pSection, tensor field T, where the total computational domain is spanned by xspan and yspan. Keyword arguments pmin and pmax correspond to the range of shift parameters in which closed orbits are sought; rev determines whether closed orbits are sought from the outside inwards (true) or from the inside outwards (false). rdist sets the required return distance for an orbit to be considered as closed.\n\n\n\n\n\n"
+    "text": "compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)\n\nCompute the outermost closed orbit for a given Poincaré section ps, a vector field constructor ηfield, and an LCScache cache. Keyword argumentspminandpmaxcorrespond to the range of shift parameters in which closed orbits are sought;revdetermines whether closed orbits are sought from the outside inwards (true) or from the inside outwards (false).rdist` sets the required return distance for an orbit to be considered as closed.\n\n\n\n\n\n"
 },
 
 {
-    "location": "elliptic/#Function-documentation-1",
+    "location": "elliptic/#Closed-orbit-detection-1",
     "page": "Geodesic vortices",
-    "title": "Function documentation",
+    "title": "Closed orbit detection",
     "category": "section",
-    "text": "The fully automated high-level function is:ellipticLCSOne of its arguments is a list of parameters used in the LCS detection. This list is combined in a data type called LCSParameters. The output of ellipticLCS is a list of EllipticBarrier\'s and a list of Singularity\'s. There is an option to retrieve all closed barriers (outermost=false), in contrast to extracting only the outermost vortex boundaries (outermost=true).Singularity\nLCSParameters\nEllipticBarrierThe function ellipticLCS consists of two steps. First, the index theory-based determination of where to search for closed orbits. This is performed by discrete_singularity_detection.discrete_singularity_detectionIn turn, this function takes three steps.compute_singularities\ncombine_singularities\ncombine_isolated_pairsFrom all virtual/merged singularities those with a suitable index are selected. Around each elliptic singularity the tensor field is localized and passed on for closed orbit detection.compute_returning_orbit\ncompute_closed_orbits"
+    "text": "compute_returning_orbit\ncompute_closed_orbits"
 },
 
 {

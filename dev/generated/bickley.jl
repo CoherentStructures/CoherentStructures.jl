@@ -19,13 +19,13 @@ bickley = @velo_from_stream stream begin
 end
 
 using Distributed
-import AxisArrays
-const AA = AxisArrays
 nprocs() == 1 && addprocs()
 
 @everywhere begin
     using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays
-    const q = 81
+    import AxisArrays
+    const AA = AxisArrays
+    q = 81
     const tspan = range(0., stop=3456000., length=q)
     ny = 61
     nx = (22ny) ÷ 6
@@ -49,7 +49,7 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
                     aspect_ratio=1, color=:viridis, leg=true,
                     xlims=(0, 6.371π), ylims=(-3, 3),
                     title="DBS field and transport barriers")
-scatter!(get_coords(singularities), color=:red)
+scatter!(getcoords(singularities), color=:red)
 for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
     scatter!(vortex.core, color=:yellow)

@@ -17,12 +17,12 @@ numclusters=2
 res = kmeans(permutedims(v_upsampled[:,2:numclusters+1]), numclusters + 1)
 u = kmeansresult2LCS(res)
 Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in [1,2,3]]...)</code></pre><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here, we demonstrate how to calculate black-hole vortices, see <a href="../../elliptic/#Geodesic-elliptic-material-vortices-1">Geodesic elliptic material vortices</a> for references and details.</p><pre><code class="language-julia">using Distributed
-import AxisArrays
-const AA = AxisArrays
 nprocs() == 1 &amp;&amp; addprocs()
 
 @everywhere begin
     using CoherentStructures, OrdinaryDiffEq, StaticArrays
+    import AxisArrays
+    const AA = AxisArrays
     const q = 51
     const tspan = range(0., stop=1., length=q)
     ny = 101
@@ -37,13 +37,13 @@ nprocs() == 1 &amp;&amp; addprocs()
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)</code></pre><p>The results are then visualized as follows.</p><pre><code class="language-julia">using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title=&quot;DBS field and transport barriers&quot;)
-scatter!(get_coords(singularities), color=:red)
+scatter!(getcoords(singularities), color=:red)
 for vortex in vortices
     plot!(vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
     scatter!(vortex.core, color=:yellow)
