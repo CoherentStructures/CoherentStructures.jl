@@ -1,7 +1,11 @@
+#md # ```@meta
+#md #   EditURL = "../../../examples/ocean_flow.jl"
+#md # ```
 # # Geostrophic Ocean Flow
 #
 #md # The (computable) notebook for this example can be found
-#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/ocean_flow.ipynb).
+#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/ocean_flow.ipynb),
+#md # an executable julia file [here](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/ocean_flow.jl).
 #md #
 # For a more realistic application, we consider an unsteady ocean surface velocity
 # data set obtained from satellite altimetry measurements produced by SSALTO/DUACS
@@ -10,12 +14,12 @@
 
 # Below is a video showing advection of the initial 90-day DBS field for 90 days.
 
-# ```@raw html
+#md # ```@raw html
 # <video controls="" height="100%" width="100%">
 #  <source src="https://raw.githubusercontent.com/natschil/misc/master/videos/ocean_flow.mp4" type="video/mp4" />
 # Your browser does not support the video tag.
 # </video>
-# ```
+#md # ```
 
 # ## Geodesic vortices
 

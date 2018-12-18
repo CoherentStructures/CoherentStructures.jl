@@ -1,7 +1,11 @@
+#md # ```@meta
+#md #   EditURL = "../../../examples/rot_double_gyre.jl"
+#md # ```
 # # Rotating Double Gyre
 #
 #md # The (computable) notebook for this example can be found
-#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/rot_double_gyre.ipynb).
+#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/rot_double_gyre.ipynb),
+#md # an executable julia file [here](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/rot_double_gyre.jl).
 #md #
 # ## Description
 #

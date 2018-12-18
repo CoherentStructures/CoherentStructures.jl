@@ -1,7 +1,11 @@
+#md # ```@meta
+#md #   EditURL = "../../../examples/bickley.jl"
+#md # ```
 # # Bickley Jet
 #
 #md # The (computable) notebook for this example can be found
-#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/bickley.ipynb).
+#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/bickley.ipynb),
+#md # an executable julia file [here](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/bickley.jl).
 #md #
 # The Bickley jet flow is a kinematic idealized model of a meandering zonal jet
 # flanked above and below by counterrotating vortices. It was introduced by
