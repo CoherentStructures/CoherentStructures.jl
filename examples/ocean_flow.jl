@@ -1,7 +1,7 @@
 # # Geostrophic Ocean Flow
 #
 #md # The (computable) notebook for this example can be found
-#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/generated/ocean_flow.ipynb).
+#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/ocean_flow.ipynb).
 #md #
 # For a more realistic application, we consider an unsteady ocean surface velocity
 # data set obtained from satellite altimetry measurements produced by SSALTO/DUACS
