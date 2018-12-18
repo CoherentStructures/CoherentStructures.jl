@@ -20,37 +20,36 @@ bickley = @velo_from_stream stream begin
 end</code></pre><p>Now, <code>bickley</code> is a callable function with the standard <code>OrdinaryDiffEq</code> signature <code>(u, p, t)</code> with state <code>u</code>, (unused) parameter <code>p</code> and time <code>t</code>.</p><h2><a class="nav-anchor" id="Geodesic-vortices-1" href="#Geodesic-vortices-1">Geodesic vortices</a></h2><p>Here we briefly demonstrate how to find material barriers to diffusive transport; see <a href="../../elliptic/#Geodesic-elliptic-material-vortices-1">Geodesic elliptic material vortices</a> for references and details.</p><pre><code class="language-julia">using Distributed
 nprocs() == 1 &amp;&amp; addprocs()
 
-@everywhere begin
-    using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays
-    import AxisArrays
-    const AA = AxisArrays
-    q = 81
-    const tspan = range(0., stop=3456000., length=q)
-    ny = 61
-    nx = (22ny) ÷ 6
-    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-    xspan = range(xmin, stop=xmax, length=nx)
-    yspan = range(ymin, stop=ymax, length=ny)
-    P = AA.AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
-    const δ = 1.e-6
-    const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
-    mCG_tensor = u -&gt; av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
-              D=DiffTensor, tolerance=1e-6, solver=Tsit5())
-end
+@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
+using StaticArrays
+import AxisArrays
+const AA = AxisArrays
+q = 81
+const tspan = range(0., stop=3456000., length=q)
+ny = 61
+nx = (22ny) ÷ 6
+xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = AA.AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
+const δ = 1.e-6
+const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
+mCG_tensor = u -&gt; av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
+          D=DiffTensor, tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0,true, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, true, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>The result is visualized as follows:</p><pre><code class="language-julia">import Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
                     aspect_ratio=1, color=:viridis, leg=true,
                     xlims=(0, 6.371π), ylims=(-3, 3),
                     title=&quot;DBS field and transport barriers&quot;)
-Plots.scatter!(fig,getcoords(singularities), color=:red)
+Plots.scatter!(fig, getcoords(singularities), color=:red)
 for vortex in vortices
-    Plots.plot!(fig,vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
-    Plots.scatter!(fig,vortex.core, color=:yellow)
-end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_geodesic_vortices.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">LL = [0.0, -3.0]; UR = [6.371π, 3.0]
+    Plots.plot!(fig, vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
+    Plots.scatter!(fig, vortex.core, color=:yellow)
+end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ bickley_geodesic_vortices.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">LL = [0.0, -3.0]; UR = [6.371π, 3.0]
 ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
 predicate = (p1,p2) -&gt; abs(p1[2] - p2[2]) &lt; 1e-10 &amp;&amp; peuclidean(p1[1], p2[1], 6.371π) &lt; 1e-10
 bdata = CoherentStructures.boundaryData(ctx, predicate, []);</code></pre><p>Using a FEM-based method to compute coherent structures:</p><pre><code class="language-julia">using Arpack
@@ -80,6 +79,6 @@ end
 n_partition = 8
 res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]), n_partition)
 u = kmeansresult2LCS(res)
-u_combined = sum([u[:,i]*i for i in 1:n_partition])
+u_combined = sum([u[:,i] * i for i in 1:n_partition])
 fig = plot_u(ctx2, u_combined, 400, 400;
-    color=:rainbow, colorbar=:none, title=&quot;$n_partition-partition of Bickley jet&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_fem.png" alt/></p><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../standard_map/"><span class="direction">Previous</span><span class="title">Standard map</span></a><a class="next" href="../ocean_flow/"><span class="direction">Next</span><span class="title">Geostrophic ocean flow</span></a></footer></article></body></html>
+    color=:rainbow, colorbar=:none, title=&quot;$n_partition-partition of Bickley jet&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ bickley_fem.png" alt/></p><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../standard_map/"><span class="direction">Previous</span><span class="title">Standard map</span></a><a class="next" href="../ocean_flow/"><span class="direction">Next</span><span class="title">Geostrophic ocean flow</span></a></footer></article></body></html>

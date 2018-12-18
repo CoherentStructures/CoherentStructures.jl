@@ -21,26 +21,25 @@ end
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere begin
-    using CoherentStructures, OrdinaryDiffEq, Tensors, StaticArrays
-    import AxisArrays
-    const AA = AxisArrays
-    q = 81
-    const tspan = range(0., stop=3456000., length=q)
-    ny = 61
-    nx = (22ny) ÷ 6
-    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-    xspan = range(xmin, stop=xmax, length=nx)
-    yspan = range(ymin, stop=ymax, length=ny)
-    P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-    const δ = 1.e-6
-    const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
-    mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
-              D=DiffTensor, tolerance=1e-6, solver=Tsit5())
-end
+@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
+using StaticArrays
+import AxisArrays
+const AA = AxisArrays
+q = 81
+const tspan = range(0., stop=3456000., length=q)
+ny = 61
+nx = (22ny) ÷ 6
+xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+const δ = 1.e-6
+const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
+mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
+          D=DiffTensor, tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0,true, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, true, 60, 0.7, 1.5, 1e-4)
 vortices, singularities = ellipticLCS(C̅, p)
 
 import Plots
@@ -49,10 +48,10 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
                     aspect_ratio=1, color=:viridis, leg=true,
                     xlims=(0, 6.371π), ylims=(-3, 3),
                     title="DBS field and transport barriers")
-Plots.scatter!(fig,getcoords(singularities), color=:red)
+Plots.scatter!(fig, getcoords(singularities), color=:red)
 for vortex in vortices
-    Plots.plot!(fig,vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
-    Plots.scatter!(fig,vortex.core, color=:yellow)
+    Plots.plot!(fig, vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
+    Plots.scatter!(fig, vortex.core, color=:yellow)
 end
 
 Plots.plot(fig)
@@ -91,7 +90,7 @@ end
 n_partition = 8
 res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]), n_partition)
 u = kmeansresult2LCS(res)
-u_combined = sum([u[:,i]*i for i in 1:n_partition])
+u_combined = sum([u[:,i] * i for i in 1:n_partition])
 fig = plot_u(ctx2, u_combined, 400, 400;
     color=:rainbow, colorbar=:none, title="$n_partition-partition of Bickley jet")
 
