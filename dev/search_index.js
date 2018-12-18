@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "First, install the JuAFEM.jl package via]add https://github.com/KristofferC/JuAFEM.jl.gitThen, run the following in the Julia REPL:]add https://github.com/CoherentStructures/CoherentStructures.jl.git"
+    "text": "First, install the JuAFEM.jl package via] add https://github.com/KristofferC/JuAFEM.jl.gitThen, run the following in the Julia REPL:] add https://github.com/CoherentStructures/CoherentStructures.jl.git"
 },
 
 {
@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Rotating double gyre",
     "title": "Rotating double gyre",
     "category": "page",
-    "text": ""
+    "text": "  EditURL = \"../../../examples/rot_double_gyre.jl\""
 },
 
 {
@@ -45,7 +45,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Rotating double gyre",
     "title": "Rotating Double Gyre",
     "category": "section",
-    "text": "The (computable) notebook for this example can be found here."
+    "text": "The (computable) notebook for this example can be found here, an executable julia file here."
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Standard map",
     "title": "Standard map",
     "category": "page",
-    "text": ""
+    "text": "  EditURL = \"../../../examples/standard_map.jl\""
 },
 
 {
@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Standard map",
     "title": "The standard map",
     "category": "section",
-    "text": "The (computable) notebook for this example can be found here.The standard mapf(xy) = (x+y+asin(x)y+asin(x))is an area-preserving map on the 2-torus 02pi^2 resulting from a symplectic time-discretization of the planar pendulum.  For a = 0971635, its phase space shows the characteristic mixture of regular (periodic or quasi-periodic) and chaotic motion.  Here, we repeat the experiment in Froyland & Junge (2015) and compute coherent structures.We first visualize the phase space by plotting 500 iterates of 50 random seed points.using Random\n\na = 0.971635\nf(a,x) = (mod(x[1] + x[2] + a*sin(x[1]), 2π),\n          mod(x[2] + a*sin(x[1]), 2π))\n\nX = []\nfor i in 1:50\n    Random.seed!(i)\n    x = 2π*rand(2)\n    for i in 1:500\n        x = f(a,x)\n        push!(X,x)\n    end\nend\n\nusing Plots\ngr(aspect_ratio=1, legend=:none)\nfig = scatter([x[1] for x in X], [x[2] for x in X], markersize=1)(Image: )Approximating the Dynamic Laplacian by FEM methods is straightforward:using Arpack, CoherentStructures, Tensors\n\nDf(a,x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))\n\nn, ll, ur = 100, [0.0,0.0], [2π,2π]               # grid size, domain corners\nctx, _ = regularTriangularGrid((n,n), ll, ur)\npred(x,y) = peuclidean(x[1], y[1], 2π) < 1e-9 &&\n            peuclidean(x[2], y[2], 2π) < 1e-9\nbd = boundaryData(ctx, pred)                      # periodic boundary\n\nI = one(Tensor{2,2})                              # identity matrix\nDf2(x) = Df(a,f(a,x))⋅Df(a,x)                     # consider 2. iterate\ncg(x) = 0.5*(I + dott(inv(Df2(x))))               # avg. inv. Cauchy-Green tensor\n\nK = assembleStiffnessMatrix(ctx, cg, bdata=bd)\nM = assembleMassMatrix(ctx, bdata=bd)\nλ, v = eigs(K, M, which=:SM)\n\nusing Printf\ntitle = [ @sprintf(\"\\\\lambda = %.3f\",λ[i]) for i = 1:4 ]\np = [ plot_u(ctx, v[:,i], bdata=bd, title=title[i],\n             clim=(-0.25,0.25), cb=false) for i in 1:4 ]\nfig = plot(p...)(Image: )This page was generated using Literate.jl."
+    "text": "The (computable) notebook for this example can be found here, an executable julia file here.The standard mapf(xy) = (x+y+asin(x)y+asin(x))is an area-preserving map on the 2-torus 02pi^2 resulting from a symplectic time-discretization of the planar pendulum.  For a = 0971635, its phase space shows the characteristic mixture of regular (periodic or quasi-periodic) and chaotic motion.  Here, we repeat the experiment in Froyland & Junge (2015) and compute coherent structures.We first visualize the phase space by plotting 500 iterates of 50 random seed points.using Random\n\na = 0.971635\nf(a,x) = (mod(x[1] + x[2] + a*sin(x[1]), 2π),\n          mod(x[2] + a*sin(x[1]), 2π))\n\nX = []\nfor i in 1:50\n    Random.seed!(i)\n    x = 2π*rand(2)\n    for i in 1:500\n        x = f(a,x)\n        push!(X,x)\n    end\nend\n\nusing Plots\ngr(aspect_ratio=1, legend=:none)\nfig = scatter([x[1] for x in X], [x[2] for x in X], markersize=1)(Image: )Approximating the Dynamic Laplacian by FEM methods is straightforward:using Arpack, CoherentStructures, Tensors\n\nDf(a,x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))\n\nn, ll, ur = 100, [0.0,0.0], [2π,2π]               # grid size, domain corners\nctx, _ = regularTriangularGrid((n,n), ll, ur)\npred(x,y) = peuclidean(x[1], y[1], 2π) < 1e-9 &&\n            peuclidean(x[2], y[2], 2π) < 1e-9\nbd = boundaryData(ctx, pred)                      # periodic boundary\n\nI = one(Tensor{2,2})                              # identity matrix\nDf2(x) = Df(a,f(a,x))⋅Df(a,x)                     # consider 2. iterate\ncg(x) = 0.5*(I + dott(inv(Df2(x))))               # avg. inv. Cauchy-Green tensor\n\nK = assembleStiffnessMatrix(ctx, cg, bdata=bd)\nM = assembleMassMatrix(ctx, bdata=bd)\nλ, v = eigs(K, M, which=:SM)\n\nusing Printf\ntitle = [ @sprintf(\"\\\\lambda = %.3f\",λ[i]) for i = 1:4 ]\np = [ plot_u(ctx, v[:,i], bdata=bd, title=title[i],\n             clim=(-0.25,0.25), cb=false) for i in 1:4 ]\nfig = plot(p...)(Image: )This page was generated using Literate.jl."
 },
 
 {
@@ -93,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Bickley jet",
     "title": "Bickley jet",
     "category": "page",
-    "text": ""
+    "text": "  EditURL = \"../../../examples/bickley.jl\""
 },
 
 {
@@ -101,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Bickley jet",
     "title": "Bickley Jet",
     "category": "section",
-    "text": "The (computable) notebook for this example can be found here.The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by Rypina et al.; cf. also del‐Castillo‐Negrete and Morrison.The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field is provided by the package and callable as bickleyJet.Instead of using the bickleyJet function to get this velocity field, we could also use the @velo_from_stream macro:using CoherentStructures\nbickley = @velo_from_stream stream begin\n    stream = psi₀ + psi₁\n    psi₀   = - U₀ * L₀ * tanh(y / L₀)\n    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term\n\n    re_sum_term =  Σ₁ + Σ₂ + Σ₃\n\n    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))\n    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))\n    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))\n\n    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀\n\n    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3\n    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)\n\n    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3\nendNow, bickley is a callable function with the standard OrdinaryDiffEq signature (u, p, t) with state u, (unused) parameter p and time t."
+    "text": "The (computable) notebook for this example can be found here, an executable julia file here.The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by Rypina et al.; cf. also del‐Castillo‐Negrete and Morrison.The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field is provided by the package and callable as bickleyJet.Instead of using the bickleyJet function to get this velocity field, we could also use the @velo_from_stream macro:using CoherentStructures\nbickley = @velo_from_stream stream begin\n    stream = psi₀ + psi₁\n    psi₀   = - U₀ * L₀ * tanh(y / L₀)\n    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term\n\n    re_sum_term =  Σ₁ + Σ₂ + Σ₃\n\n    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))\n    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))\n    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))\n\n    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀\n\n    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3\n    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)\n\n    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3\nendNow, bickley is a callable function with the standard OrdinaryDiffEq signature (u, p, t) with state u, (unused) parameter p and time t."
 },
 
 {
@@ -125,7 +125,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geostrophic ocean flow",
     "title": "Geostrophic ocean flow",
     "category": "page",
-    "text": ""
+    "text": "  EditURL = \"../../../examples/ocean_flow.jl\""
 },
 
 {
@@ -133,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geostrophic ocean flow",
     "title": "Geostrophic Ocean Flow",
     "category": "section",
-    "text": "The (computable) notebook for this example can be found here.For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature.Below is a video showing advection of the initial 90-day DBS field for 90 days.<video controls=\"\" height=\"100%\" width=\"100%\">\n <source src=\"https://raw.githubusercontent.com/natschil/misc/master/videos/ocean_flow.mp4\" type=\"video/mp4\" />\nYour browser does not support the video tag.\n</video>"
+    "text": "The (computable) notebook for this example can be found here, an executable julia file here.For a more realistic application, we consider an unsteady ocean surface velocity data set obtained from satellite altimetry measurements produced by SSALTO/DUACS and distributed by AVISO. The particular space-time window has been used several times in the literature.Below is a video showing advection of the initial 90-day DBS field for 90 days.<video controls=\"\" height=\"100%\" width=\"100%\">\n <source src=\"https://raw.githubusercontent.com/natschil/misc/master/videos/ocean_flow.mp4\" type=\"video/mp4\" />\nYour browser does not support the video tag.\n</video>"
 },
 
 {
