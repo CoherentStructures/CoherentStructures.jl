@@ -51,13 +51,13 @@ import Plots
 res = [plot_u(ctx, v[:,i], 100, 100, colorbar=:none, clim=(-3,3)) for i in 1:6];
 fig = Plots.plot(res..., margin=-10Plots.px)
 
-DISPLAY_PLOT(fig,rot_double_gyre_fem_eigfuncs)
+DISPLAY_PLOT(fig, rot_double_gyre_fem_eigfuncs)
 
 # Looking at the spectrum, there appears a gap after the third eigenvalue.
 
 spectrum_fig = Plots.scatter(1:6, real.(λ))
 
-DISPLAY_PLOT(spectrum_fig,rot_double_gyre_fem_spectrum)
+DISPLAY_PLOT(spectrum_fig, rot_double_gyre_fem_spectrum)
 
 # We can use the [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) package
 # to compute coherent structures from the first two nontrivial eigenfunctions:
@@ -72,7 +72,7 @@ res = kmeans(permutedims(v_upsampled[:,2:numclusters+1]), numclusters + 1)
 u = kmeansresult2LCS(res)
 res = Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in [1,2,3]]...)
 
-DISPLAY_PLOT(res,rot_double_gyre_fem)
+DISPLAY_PLOT(res, rot_double_gyre_fem)
 
 # ## Geodesic vortices
 
@@ -82,22 +82,20 @@ DISPLAY_PLOT(res,rot_double_gyre_fem)
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere begin
-    using CoherentStructures, OrdinaryDiffEq, StaticArrays
-    import AxisArrays
-    const AA = AxisArrays
-    const q = 51
-    const tspan = range(0., stop=1., length=q)
-    ny = 101
-    nx = 101
-    xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
-    xspan = range(xmin, stop=xmax, length=nx)
-    yspan = range(ymin, stop=ymax, length=ny)
-    P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-    const δ = 1.e-6
-    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
-            tolerance=1e-6, solver=Tsit5())
-end
+@everywhere using CoherentStructures, OrdinaryDiffEq
+using StaticArrays
+import AxisArrays
+const AA = AxisArrays
+const q = 51
+const tspan = range(0., stop=1., length=q)
+nx = ny = 51
+xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+const δ = 1.e-6
+mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
+        tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
 p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
@@ -116,4 +114,4 @@ for vortex in vortices
     scatter!(vortex.core, color=:yellow)
 end
 
-DISPLAY_PLOT(fig,rot_double_gyre_geodesic_vortices)
+DISPLAY_PLOT(fig, rot_double_gyre_geodesic_vortices)

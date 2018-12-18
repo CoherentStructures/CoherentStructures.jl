@@ -35,23 +35,21 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 # Since we want to use parallel computing, we set up the integration LCSParameters
 # on all workers, i.e., `@everywhere`.
 
-begin
-    import AxisArrays
-    const AA = AxisArrays
-    q = 91
-    t_initial = minimum(Time)
-    t_final = t_initial + 90
-    const tspan = range(t_initial, stop=t_final, length=q)
-    xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
-    nx = 300
-    ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
-    xspan = range(xmin, stop=xmax, length=nx)
-    yspan = range(ymin, stop=ymax, length=ny)
-    P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-    const δ = 1.e-5
-    mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-        p=VI, tolerance=1e-6, solver=Tsit5())
-end
+import AxisArrays
+const AA = AxisArrays
+q = 91
+t_initial = minimum(Time)
+t_final = t_initial + 90
+const tspan = range(t_initial, stop=t_final, length=q)
+xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
+nx = 300
+ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+const δ = 1.e-5
+mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+    p=VI, tolerance=1e-6, solver=Tsit5())
 
 # Now, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.
 
@@ -72,7 +70,7 @@ for vortex in vortices
     scatter!(vortex.core, color=:yellow)
 end
 
-DISPLAY_PLOT(fig,ocean_flow_geodesic_vortices)
+DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 # ## FEM-based methods
 
@@ -165,4 +163,4 @@ fig = plot_u(ctx2, u_combined, 200, 200;
     color=:viridis, colorbar=:none, title="$n_partition-partition of Ocean Flow")
 
 
-DISPLAY_PLOT(fig,ocean_flow_fem)
+DISPLAY_PLOT(fig, ocean_flow_fem)
