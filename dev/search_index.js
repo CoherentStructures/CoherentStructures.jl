@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Introduction",
     "category": "section",
-    "text": "CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures in aperiodic flows in Julia. It has been developed in Oliver Junge\'s research group at TUM, Germany, by (in alphabetical order)Alvaro de Diego (@adediego)\nDaniel Karrasch (@dkarrasch)\nNathanael Schilling (@natschil)Contributions from colleagues in the field are most welcome via raising issues or, even better, via pull requests."
+    "text": "CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures (LCSs) by objective, i.e., observer-independent, methods in aperiodic flows in Julia. It has been developed in Oliver Junge\'s research group at TUM, Germany, by (in alphabetical order)Alvaro de Diego (@adediego)\nOliver Junge (@gaioguy)\nDaniel Karrasch (@dkarrasch)\nNathanael Schilling (@natschil)Contributions from colleagues in the field are most welcome via raising issues or, even better, via pull requests."
 },
 
 {
@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "First install the JuAFEM.jl package.Then, run the following in the Julia REPL:]add https://github.com/CoherentStructures/CoherentStructures.jl.git"
+    "text": "First, install the JuAFEM.jl package via]add https://github.com/KristofferC/JuAFEM.jl.gitThen, run the following in the Julia REPL:]add https://github.com/CoherentStructures/CoherentStructures.jl.git"
 },
 
 {
