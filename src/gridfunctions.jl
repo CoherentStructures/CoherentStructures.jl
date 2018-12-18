@@ -866,13 +866,13 @@ assumed to be in node order. This is more efficient than
 """
 function evaluate_function_from_node_or_cellvals(
     ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
-    outside_value=0.0, project_in=false,throw_errors=true)::W where {dim,S,W}
+    outside_value=0.0, project_in=false,throw_errors=true)::S where {dim,S,W}
 
     x::Vec{dim,W} = project_in_xin(ctx,x_in,project_in)
 
     @assert length(vals) == ctx.n
 
-    local_coordinates::Vec{dim,Float64}, nodes::Vector{Int}, cellid::Int = try
+    local_coordinates::Vec{dim,W}, nodes::Vector{Int}, cellid::Int = try
          locatePoint(ctx, x)
     catch y
         if isa(y,DomainError)
@@ -890,7 +890,7 @@ function evaluate_function_from_node_or_cellvals(
 
     if isa(ctx.ip, JFM.Lagrange)
         for (j, nodeid) in enumerate(nodes)
-            val::Float64 = JFM.value(ctx.ip, j, local_coordinates)
+            val::W = JFM.value(ctx.ip, j, local_coordinates)
             result += vals[nodeid]*val
         end
     elseif isa(ctx.ip,JFM.PiecewiseConstant)
@@ -913,7 +913,7 @@ is more efficient.
 """
 function evaluate_function_from_dofvals(
     ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
-    outside_value=0.0, project_in=false)::W where {dim,S,W}
+    outside_value=0.0, project_in=false)::S where {dim,S,W}
 
     if isa(ctx.ip, JFM.Lagrange)
         vals_reorder = vals[ctx.node_to_dof]
@@ -956,14 +956,14 @@ function evaluate_function_from_node_or_cellvals_multiple(
         rows_tmp = Int[]
         vals_tmp = S[]
         try
-            local_coordinates::Vec{dim,Float64}, nodes::Vector{Int},cellid::Int = locatePoint(ctx,x[current_point])
+            local_coordinates::Vec{dim,W}, nodes::Vector{Int},cellid::Int = locatePoint(ctx,x[current_point])
 
             if isa(ctx.ip, JFM.Lagrange)
                 if !is_diag
                     for i in 1:(size(vals)[2])
                         summed_value = 0.0
                         for (j, nodeid) in enumerate(nodes)
-                            val::Float64 = JFM.value(ctx.ip, j, local_coordinates)
+                            val::W = JFM.value(ctx.ip, j, local_coordinates)
                             summed_value += vals[nodeid,i]*val
                         end
                         push!(rows_tmp,i)
@@ -1033,7 +1033,7 @@ function evaluate_function_from_dofvals_multiple(
     ctx::gridContext{dim}, dofvals::AbstractMatrix{S},
     x_in::AbstractVector{Vec{dim,W}};
     outside_value=0.0, project_in=false,throw_errors=false
-    ) where { dim,S,W, }
+    )::SparseMatrixCSC{S,Int64} where { dim,S,W, }
     u_vals = zeros(S,size(dofvals))
     if isa(ctx.ip, JFM.Lagrange)
         for i in 1:ctx.n

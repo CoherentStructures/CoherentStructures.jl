@@ -285,7 +285,8 @@ function eulerian_videos(ctx,
             	    current_u = current_us[:,i]
                     zs_all[yindex,xindex, i]= evaluate_function_from_node_or_cellvals(
                         ctx, current_u,
-                        euler_to_lagrange_points[yindex,xindex]
+                        euler_to_lagrange_points[yindex,xindex];
+                        outside_value=NaN
                         )
                 end
             end
