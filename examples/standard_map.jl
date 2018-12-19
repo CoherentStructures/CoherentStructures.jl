@@ -3,9 +3,11 @@
 #md # ```
 # # The standard map
 #
-#md # The (computable) notebook for this example can be found
-#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/dev/standard_map.ipynb),
-#md # an executable julia file [here](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/standard_map.jl).
+#md # !!! tip
+#md # This example is also available as a Jupyter notebook:
+#md # [standard_map.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/dev/standard_map.ipynb),
+#md # and as an executable julia file
+#md # [standard_map.jl](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/standard_map.jl).
 #md #
 # The standard map
 # ```math

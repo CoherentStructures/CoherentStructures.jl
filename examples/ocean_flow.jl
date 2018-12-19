@@ -3,9 +3,11 @@
 #md # ```
 # # Geostrophic Ocean Flow
 #
-#md # The (computable) notebook for this example can be found
-#md # [here](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/ocean_flow.ipynb),
-#md # an executable julia file [here](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/ocean_flow.jl).
+#md # !!! tip
+#md # This example is also available as a Jupyter notebook:
+#md # [ocean_flow.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/ocean_flow.ipynb),
+#md # and as an executable julia file
+#md # [ocean_flow.jl](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/ocean_flow.jl).
 #md #
 # For a more realistic application, we consider an unsteady ocean surface velocity
 # data set obtained from satellite altimetry measurements produced by SSALTO/DUACS
