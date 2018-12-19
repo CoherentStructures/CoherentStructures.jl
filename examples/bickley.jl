@@ -4,10 +4,10 @@
 # # Bickley Jet
 #
 #md # !!! tip
-#md # This example is also available as a Jupyter notebook:
-#md # [bickley.ipynb](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/bickley.ipynb),
-#md # and as an executable julia file
-#md # [bickley.jl](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/bickley.jl).
+#md #     This example is also available as a Jupyter notebook:
+#md #     [`bickley.ipynb`](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/bickley.ipynb),
+#md #     and as an executable julia file
+#md #     [`bickley.jl`](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/bickley.jl).
 #md #
 # The Bickley jet flow is a kinematic idealized model of a meandering zonal jet
 # flanked above and below by counterrotating vortices. It was introduced by
