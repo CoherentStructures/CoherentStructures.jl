@@ -45,7 +45,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Rotating double gyre",
     "title": "Rotating Double Gyre",
     "category": "section",
-    "text": "tip: Tip\nThis example is also available as a Jupyter notebook: rotdoublegyre.ipynb, and as an executable julia file rotdoublegyre.jl."
+    "text": "tip: Tip\nThis example is also available as a Jupyter notebook: rot_double_gyre.ipynb, and as an executable julia file rot_double_gyre.jl."
 },
 
 {
