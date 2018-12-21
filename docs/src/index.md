@@ -13,10 +13,10 @@ Contributions from colleagues in the field are most welcome via raising issues o
 
 ## Installation
 
-First, install the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package via
+First, install the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package by typing in the Julia REPL (console):
 
-   ] add https://github.com/KristofferC/JuAFEM.jl.git
+    ]add https://github.com/KristofferC/JuAFEM.jl.git
 
 Then, run the following in the Julia REPL:
 
-    ] add https://github.com/CoherentStructures/CoherentStructures.jl.git
+    ]add https://github.com/CoherentStructures/CoherentStructures.jl.git
