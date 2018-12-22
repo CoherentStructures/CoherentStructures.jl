@@ -12,9 +12,19 @@ struct Singularity{T <: Real}
     index::Int64
 end
 
+"""
+    getcoords(singularities)
+Extracts the coordinates of `singularities`, a vector of `Singularity`s. Returns
+a vector of `SVector`s.
+"""
 function getcoords(singularities::Vector{Singularity{T}}) where T
     return [s.coords for s in singularities]
 end
+
+"""
+    getindices(singularities)
+Extracts the indices of `singularities`, a vector of `Singularity`s.
+"""
 function getindices(singularities::Vector{Singularity{T}}) where T
     return [s.index for s in singularities]
 end
@@ -51,9 +61,9 @@ Container for parameters used in elliptic LCS computations.
 * `indexradius::Float64=0.1`: radius for singularity type detection
 * `boxradius::Float64=0.5`: "radius" of localization square for closed orbit detection
 * `combine_pairs=true`: whether isolated singularity pairs should be merged
-* `n_seeds::Int64=40`: number of seed points on the Poincaré section
+* `n_seeds::Int64=60`: number of seed points on the Poincaré section
 * `pmin::Float64=0.7`: lower bound on the parameter in the ``\\eta``-field
-* `pmax::Float64=1.3`: upper bound on the parameter in the ``\\eta``-field
+* `pmax::Float64=1.5`: upper bound on the parameter in the ``\\eta``-field
 * `rdist::Float64=1e-4`: required return distances for closed orbits
 """
 struct LCSParameters
@@ -346,7 +356,7 @@ end
     compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
 
 Compute the outermost closed orbit for a given Poincaré section `ps`, a vector field
-constructor `ηfield`, and an LCScache `cache. Keyword arguments `pmin` and `pmax`
+constructor `ηfield`, and an LCScache `cache`. Keyword arguments `pmin` and `pmax`
 correspond to the range of shift parameters in which closed orbits are sought;
 `rev` determines whether closed orbits are sought from the outside inwards (`true`)
 or from the inside outwards (`false`). `rdist` sets the required return distance for

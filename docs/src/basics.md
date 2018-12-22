@@ -1,11 +1,9 @@
 # Basics
 
-## Dynamical Systems Utilities
-
 ```@meta
 CurrentModule = CoherentStructures
 ```
-### Definition of vector fields
+## Definition of vector fields
 
 `CoherentStructures.jl` is set up for handling two- and three-dimensional dynamical
 systems only. For such low-dimensional flows it is advantageous (for top
@@ -50,7 +48,7 @@ interp_rhs
 interp_rhs!
 ```
 
-### Flow maps
+## Flow maps
 
 ```@docs
 flow
@@ -60,13 +58,13 @@ flow
 parallel_flow
 ```
 
-### Linearized flow map
+## Linearized flow map
 
 ```@docs
 linearized_flow
 ```
 
-### Cauchy-Green and other pullback tensors
+## Cauchy-Green and other pullback tensors
 
 ```@docs
 CG_tensor

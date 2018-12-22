@@ -3,6 +3,9 @@
 ```@meta
 CurrentModule = CoherentStructures
 ```
+
+## Background
+
 The following functions implement an LCS methodology developed in the following papers:
    * [Haller & Beron-Vera, 2012](https://dx.doi.org/10.1016/j.physd.2012.06.012)
    * [Haller & Beron-Vera, 2013](https://dx.doi.org/10.1017/jfm.2013.391)
