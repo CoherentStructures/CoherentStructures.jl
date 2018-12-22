@@ -165,14 +165,6 @@ var documenterSearchIndex = {"docs": [
     "page": "Basics",
     "title": "Basics",
     "category": "section",
-    "text": ""
-},
-
-{
-    "location": "basics/#Dynamical-Systems-Utilities-1",
-    "page": "Basics",
-    "title": "Dynamical Systems Utilities",
-    "category": "section",
     "text": "CurrentModule = CoherentStructures"
 },
 
@@ -845,7 +837,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "Geodesic elliptic material vortices",
     "category": "section",
-    "text": "CurrentModule = CoherentStructuresThe following functions implement an LCS methodology developed in the following papers:Haller & Beron-Vera, 2012\nHaller & Beron-Vera, 2013\nKarrasch, Huhn, and Haller, 2015The present code was originally inspired by Alireza Hadjighasem\'s MATLAB implementation, which was written in the context of the SIAM Review paper, but has been significantly modified and improved throughout. Depending on the indefinite metric tensor field used, the functions below yield the following types of coherent structures:black-hole/Lagrangian coherent vortices (Haller & Beron-Vera, 2012)\nelliptic objective Eulerian coherent structures (OECSs) (Serra & Haller, 2016)\nmaterial diffusive transport barriers (Haller, Karrasch, and Kogelbauer, 2018)The general procedure is the following. Assume T is the symmetric tensor field of interest, say, (i) the Cauchy-Green strain tensor field C, (ii) the rate-of-strain tensor field S, or (iii) the averaged diffusion-weighted Cauchy-Green tensor field barC_D; cf. the references above. Denote by 0lambda_1leqlambda_2 the eigenvalue and by xi_1 and xi_2 the corresponding eigenvector fields of T. Then the direction fields of interest are given byeta_lambda^pm = sqrtfraclambda_2 - lambdalambda_2-lambda_1xi_1 pm sqrtfraclambda - lambda_1lambda_2-lambda_1xi_2Tensor singularities are defined as points at which lambda_2=lambda_1, i.e., at which the two characteristic directions xi_1 and xi_2 are not well-defined. As described and exploited in Karrasch et al., 2015, non-negligible tensor singularities express themselves by an angle gap when tracking (the angle of) tensor eigenvector fields along closed paths surrounding the singularity. Our approach here avoids computing singularities directly, but rather computes the index for each grid cell and then combines nearby singularities, i.e., adds non-vanishing indices of nearby grid cells.In summary, the implementation consists of the following steps:compute the index for each grid cell and combine nearby singular grid cells to \"singularity candidates\";\nlook for elliptic singularity candidates (and potentially isolated wedge pairs);\nplace an eastwards oriented Poincaré section at the pair center;\nfor each point on the discretized Poincaré section, scan through the given parameter interval such that the corresponding η-orbit closes at that point;\nif desired: for each Poincaré section, take the outermost closed orbit as the coherent vortex barrier (if there exist any)."
+    "text": "CurrentModule = CoherentStructures"
+},
+
+{
+    "location": "elliptic/#Background-1",
+    "page": "Geodesic vortices",
+    "title": "Background",
+    "category": "section",
+    "text": "The following functions implement an LCS methodology developed in the following papers:Haller & Beron-Vera, 2012\nHaller & Beron-Vera, 2013\nKarrasch, Huhn, and Haller, 2015The present code was originally inspired by Alireza Hadjighasem\'s MATLAB implementation, which was written in the context of the SIAM Review paper, but has been significantly modified and improved throughout. Depending on the indefinite metric tensor field used, the functions below yield the following types of coherent structures:black-hole/Lagrangian coherent vortices (Haller & Beron-Vera, 2012)\nelliptic objective Eulerian coherent structures (OECSs) (Serra & Haller, 2016)\nmaterial diffusive transport barriers (Haller, Karrasch, and Kogelbauer, 2018)The general procedure is the following. Assume T is the symmetric tensor field of interest, say, (i) the Cauchy-Green strain tensor field C, (ii) the rate-of-strain tensor field S, or (iii) the averaged diffusion-weighted Cauchy-Green tensor field barC_D; cf. the references above. Denote by 0lambda_1leqlambda_2 the eigenvalue and by xi_1 and xi_2 the corresponding eigenvector fields of T. Then the direction fields of interest are given byeta_lambda^pm = sqrtfraclambda_2 - lambdalambda_2-lambda_1xi_1 pm sqrtfraclambda - lambda_1lambda_2-lambda_1xi_2Tensor singularities are defined as points at which lambda_2=lambda_1, i.e., at which the two characteristic directions xi_1 and xi_2 are not well-defined. As described and exploited in Karrasch et al., 2015, non-negligible tensor singularities express themselves by an angle gap when tracking (the angle of) tensor eigenvector fields along closed paths surrounding the singularity. Our approach here avoids computing singularities directly, but rather computes the index for each grid cell and then combines nearby singularities, i.e., adds non-vanishing indices of nearby grid cells.In summary, the implementation consists of the following steps:compute the index for each grid cell and combine nearby singular grid cells to \"singularity candidates\";\nlook for elliptic singularity candidates (and potentially isolated wedge pairs);\nplace an eastwards oriented Poincaré section at the pair center;\nfor each point on the discretized Poincaré section, scan through the given parameter interval such that the corresponding η-orbit closes at that point;\nif desired: for each Poincaré section, take the outermost closed orbit as the coherent vortex barrier (if there exist any)."
 },
 
 {
@@ -869,7 +869,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.LCSParameters",
     "category": "type",
-    "text": "struct LCSParameters\n\nContainer for parameters used in elliptic LCS computations.\n\nFields\n\nindexradius::Float64=0.1: radius for singularity type detection\nboxradius::Float64=0.5: \"radius\" of localization square for closed orbit detection\ncombine_pairs=true: whether isolated singularity pairs should be merged\nn_seeds::Int64=40: number of seed points on the Poincaré section\npmin::Float64=0.7: lower bound on the parameter in the eta-field\npmax::Float64=1.3: upper bound on the parameter in the eta-field\nrdist::Float64=1e-4: required return distances for closed orbits\n\n\n\n\n\n"
+    "text": "struct LCSParameters\n\nContainer for parameters used in elliptic LCS computations.\n\nFields\n\nindexradius::Float64=0.1: radius for singularity type detection\nboxradius::Float64=0.5: \"radius\" of localization square for closed orbit detection\ncombine_pairs=true: whether isolated singularity pairs should be merged\nn_seeds::Int64=60: number of seed points on the Poincaré section\npmin::Float64=0.7: lower bound on the parameter in the eta-field\npmax::Float64=1.5: upper bound on the parameter in the eta-field\nrdist::Float64=1e-4: required return distances for closed orbits\n\n\n\n\n\n"
 },
 
 {
@@ -878,6 +878,30 @@ var documenterSearchIndex = {"docs": [
     "title": "CoherentStructures.EllipticBarrier",
     "category": "type",
     "text": "struct EllipticBarrier\n\nThis is a container for coherent vortex boundaries. An object vortex of type EllipticBarrier can be easily plotted by plot(vortex.curve), or plot!([figure, ]vortex.curve) if it is to be overlaid over an existing plot.\n\nFields\n\ncurve: a list of tuples, contains the coordinates of coherent vortex boundary points;\ncore: location of the vortex core;\np: contains the parameter value of the direction field eta_lambda^pm, for the curve is a closed orbit;\ns: a Bool value, which encodes the sign in the formula of the direction field eta_lambda^pm via the formula (-1)^s.\n\n\n\n\n\n"
+},
+
+{
+    "location": "elliptic/#CoherentStructures.Singularity",
+    "page": "Geodesic vortices",
+    "title": "CoherentStructures.Singularity",
+    "category": "type",
+    "text": "struct Singularity\n\nFields\n\ncoords::SVector{2,Float64}: coordinates of the singularity\nindex::Int: index of the singularity\n\n\n\n\n\n"
+},
+
+{
+    "location": "elliptic/#CoherentStructures.getcoords",
+    "page": "Geodesic vortices",
+    "title": "CoherentStructures.getcoords",
+    "category": "function",
+    "text": "getcoords(singularities)\n\nExtracts the coordinates of singularities, a vector of Singularitys. Returns a vector of SVectors.\n\n\n\n\n\n"
+},
+
+{
+    "location": "elliptic/#CoherentStructures.getindices",
+    "page": "Geodesic vortices",
+    "title": "CoherentStructures.getindices",
+    "category": "function",
+    "text": "getindices(singularities)\n\nExtracts the indices of singularities, a vector of Singularitys.\n\n\n\n\n\n"
 },
 
 {
@@ -949,7 +973,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_closed_orbits",
     "category": "function",
-    "text": "compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)\n\nCompute the outermost closed orbit for a given Poincaré section ps, a vector field constructor ηfield, and an LCScache cache. Keyword argumentspminandpmaxcorrespond to the range of shift parameters in which closed orbits are sought;revdetermines whether closed orbits are sought from the outside inwards (true) or from the inside outwards (false).rdist` sets the required return distance for an orbit to be considered as closed.\n\n\n\n\n\n"
+    "text": "compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)\n\nCompute the outermost closed orbit for a given Poincaré section ps, a vector field constructor ηfield, and an LCScache cache. Keyword arguments pmin and pmax correspond to the range of shift parameters in which closed orbits are sought; rev determines whether closed orbits are sought from the outside inwards (true) or from the inside outwards (false). rdist sets the required return distance for an orbit to be considered as closed.\n\n\n\n\n\n"
 },
 
 {
