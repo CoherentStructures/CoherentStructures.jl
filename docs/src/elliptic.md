@@ -55,6 +55,8 @@ In summary, the implementation consists of the following steps:
 The fully automated high-level functions are:
 ```@docs
 ellipticLCS
+```
+```@docs
 constrainedLCS
 ```
 One of their arguments is a list of parameters used in the LCS detection. This
@@ -83,8 +85,8 @@ getindices
 
 ### Index theory-based placement of Poincaré sections
 
-This is performed by [`discrete_singularity_detection`](@ref) for line fields
-(such as eigenvector fields of symmetric positive-definit tensor fields) and by
+This is performed by [`singularity_detection`](@ref) for line fields
+(such as eigenvector fields of symmetric positive-definite tensor fields) and by
 [`critical_point_detection`](@ref) for classic vector fields.
 ```@docs
 singularity_detection
@@ -94,7 +96,7 @@ This function takes three steps.
 ```@docs
 compute_singularities
 combine_singularities
-combine_isolated_pairs
+combine_isolated_wedges
 ```
 From all virtual/merged singularities those with a suitable index are selected.
 Around each elliptic singularity the tensor field is localized and passed on for

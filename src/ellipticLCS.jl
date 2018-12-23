@@ -1,15 +1,22 @@
 # (c) 2018 Daniel Karrasch & Nathanael Schilling
 
 """
-    struct Singularity
+Container type for critical points of vector fields or singularities of line fields.
 
 ## Fields
-* `coords::SVector{2,Float64}`: coordinates of the singularity
-* `index::Int`: index of the singularity
+* `coords::SVector{2}`: coordinates of the singularity
+* `index::Rational`: index of the singularity
 """
 struct Singularity{T <: Real}
     coords::SVector{2,T}
-    index::Int64
+    index::Rational{Int64}
+
+    function Singularity{T}(coords::SVector{2,T}, index::Real) where {T <: Real}
+        new{T}(coords, convert(Rational{Int64}, index))
+    end
+end
+function Singularity(coords::SVector{2,T}, index) where {T}
+    Singularity{T}(coords, index)
 end
 
 """
@@ -30,18 +37,16 @@ function getindices(singularities::Vector{Singularity{T}}) where T
 end
 
 """
-    struct EllipticBarrier
-
 This is a container for coherent vortex boundaries. An object `vortex` of type
 `EllipticBarrier` can be easily plotted by `plot(vortex.curve)`, or
 `plot!([figure, ]vortex.curve)` if it is to be overlaid over an existing plot.
 
 ## Fields
-* `curve`: a list of tuples, contains the coordinates of coherent vortex boundary
+* `curve`: a vector of tuples, contains the coordinates of coherent vortex boundary
   points;
 * `core`: location of the vortex core;
 * `p`: contains the parameter value of the direction field ``\\eta_{\\lambda}^{\\pm}``,
-  for the `curve` is a closed orbit;
+  for which the `curve` is a closed orbit;
 * `s`: a `Bool` value, which encodes the sign in the formula of the direction
   field ``\\eta_{\\lambda}^{\\pm}`` via the formula ``(-1)^s``.
 """
@@ -53,8 +58,6 @@ struct EllipticBarrier{T <: Real}
 end
 
 """
-    struct LCSParameters
-
 Container for parameters used in elliptic LCS computations.
 
 ## Fields
@@ -119,7 +122,7 @@ function compute_singularities(α::AxisArray{<:Real,2}, modulus)
         temp += periodic_diff(α[i+1,j+1], α[i+1,j], modulus) # to the top
         temp += periodic_diff(α[i,j+1], α[i+1,j+1], modulus) # to the left
         temp += periodic_diff(α[i,j], α[i,j+1], modulus) # to the bottom
-        index = round(Int, temp/modulus)
+        index = round(Int, temp/π) // 2
         if index != 0
             push!(singularities, Singularity(SVector{2}(x + xstephalf, y + ystephalf), index))
         end
@@ -136,7 +139,7 @@ an edge iff the coordinates of the corresponding vertices (given by `sing_coordi
 have a distance leq `combine_distance`. Find all connected components of this graph,
 and return a list of their mean coordinate and sum of `sing_indices`
 """
-function combine_singularities(singularities::Vector{Singularity{T}}, combine_distance::Real) where {T}
+function combine_singularities(singularities::Vector{Singularity{T}}, combine_distance::Real) where {T<:Real}
 
     #Do a breath-first search of all singularities
     #that are "connected" in the sense of
@@ -192,11 +195,11 @@ function combine_singularities(singularities::Vector{Singularity{T}}, combine_di
 end
 
 """
-    combine_isolated_pairs(singularities)
+    combine_isolated_wedges(singularities)
 Determines singularities which are mutually closest neighbors and combines them
 as one, while adding their indices.
 """
-function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
+function combine_isolated_wedges(singularities::Vector{Singularity{T}}) where {T}
     N = length(singularities)
     N == 1 && return singularities
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
@@ -211,7 +214,7 @@ function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
         end
         sing_seen[i] = true
 
-        if singularities[i].index != 1
+        if singularities[i].index != 1 // 2
             push!(new_singularities, singularities[i])
             continue
         end
@@ -221,7 +224,7 @@ function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
 
         #We've already dealt with the nearest neighbor (but didn't find
         #this one as nearest neighbor), or it isn't a wedge
-        if sing_seen[nn_idx] || singularities[nn_idx].index != 1
+        if sing_seen[nn_idx] || singularities[nn_idx].index != 1 // 2
             push!(new_singularities, singularities[i])
             continue
         end
@@ -234,7 +237,7 @@ function combine_isolated_pairs(singularities::Vector{Singularity{T}}) where T
         end
 
         sing_seen[nn_idx] = true
-        push!(new_singularities, Singularity(0.5 * (singularities[i].coords + singularities[nn_idx].coords), 2))
+        push!(new_singularities, Singularity(0.5 * (singularities[i].coords + singularities[nn_idx].coords), 2 // 2))
     end
     return new_singularities
 end
@@ -259,7 +262,7 @@ function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
     if combine_pairs
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
-        return combine_isolated_pairs(new_singularities)
+        return combine_isolated_wedges(new_singularities)
     else
         return new_singularities
     end
@@ -275,8 +278,8 @@ combined by averaging the coordinates and adding the respective indices. If
 `combine_pairs` is `true, pairs of singularities that are mutually the
 closest ones are included in the final list.
 
-Returns a vector of [`Singularity`](@ref)s. Returned indices correspond to doubled
-indices to get integer values.
+Returns a vector of [`Singularity`](@ref)s. Returned indices correspond to twice
+the mathematically defined indices of line fields to get integer values.
 """
 function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
@@ -370,10 +373,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 pmax::Real=1.5,
                                 rdist::Real=1e-4
                                 ) where {S1 <: Real}
-    if cache isa LCScache
+    if cache isa LCScache # tensor-based LCS computation
         l1itp = ITP.LinearInterpolation(cache.λ₁)
         l2itp = ITP.LinearInterpolation(cache.λ₂)
-    else
+    else # vector-field-based LCS computation
         nitp = ITP.LinearInterpolation(map(v -> norm(v)^2, cache))
     end
     # define local helper functions for the η⁺/η⁻ closed orbit detection
@@ -458,7 +461,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     xmax = xspan[end]
     singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs)
     verbose && @info "Found $(length(singularities)) singularities..."
-    vortexcenters = singularities[getindices(singularities) .== 2]
+    vortexcenters = singularities[getindices(singularities) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     # loop over potential vortex centers, return detected closed orbits
