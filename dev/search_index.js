@@ -857,11 +857,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "elliptic/#CoherentStructures.ellipticLCS",
+    "page": "Geodesic vortices",
+    "title": "CoherentStructures.ellipticLCS",
+    "category": "function",
+    "text": "ellipticLCS(T::AbstractArray, xspan, yspan, p; kwargs...)\nellipticLCS(T::AxisArray, p; kwargs...)\n\nComputes elliptic LCSs as null-geodesics of the Lorentzian metric tensor field given by shifted versions of T on the 2D computational grid spanned by xspan and yspan. p is a LCSParameters-type container of computational parameters. Returns a list of EllipticBarrier-type objects.\n\nThe keyword arguments and their default values are:\n\noutermost=true: only the outermost barriers, i.e., the vortex   boundaries are returned, otherwise all detected transport barrieres;\nverbose=true: show intermediate computational information\n\n\n\n\n\n"
+},
+
+{
     "location": "elliptic/#The-meta-functions-ellipticLCS-and-constrainedLCS-1",
     "page": "Geodesic vortices",
     "title": "The meta-functions ellipticLCS and constrainedLCS",
     "category": "section",
-    "text": "The fully automated high-level functions are:ellipticLCS\nconstrainedLCSOne of their arguments is a list of parameters used in the LCS detection. This list is combined in a data type called LCSParameters. The output is a list of EllipticBarriers and a list of Singularitys. There is an option to retrieve all closed barriers (outermost=false), in contrast to extracting only the outermost vortex boundaries (outermost=true), which is more efficient.The meta-functions consist of two steps: first, the index theory-based determination of where to search for closed orbits,, cf. Index theory-based placement of Poincaré sections; second, the closed orbit computation, cf. Closed orbit detection."
+    "text": "The fully automated high-level functions are:ellipticLCSconstrainedLCSOne of their arguments is a list of parameters used in the LCS detection. This list is combined in a data type called LCSParameters. The output is a list of EllipticBarriers and a list of Singularitys. There is an option to retrieve all closed barriers (outermost=false), in contrast to extracting only the outermost vortex boundaries (outermost=true), which is more efficient.The meta-functions consist of two steps: first, the index theory-based determination of where to search for closed orbits,, cf. Index theory-based placement of Poincaré sections; second, the closed orbit computation, cf. Closed orbit detection."
 },
 
 {
@@ -869,7 +877,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.LCSParameters",
     "category": "type",
-    "text": "struct LCSParameters\n\nContainer for parameters used in elliptic LCS computations.\n\nFields\n\nindexradius::Float64=0.1: radius for singularity type detection\nboxradius::Float64=0.5: \"radius\" of localization square for closed orbit detection\ncombine_pairs=true: whether isolated singularity pairs should be merged\nn_seeds::Int64=60: number of seed points on the Poincaré section\npmin::Float64=0.7: lower bound on the parameter in the eta-field\npmax::Float64=1.5: upper bound on the parameter in the eta-field\nrdist::Float64=1e-4: required return distances for closed orbits\n\n\n\n\n\n"
+    "text": "Container for parameters used in elliptic LCS computations.\n\nFields\n\nindexradius::Float64=0.1: radius for singularity type detection\nboxradius::Float64=0.5: \"radius\" of localization square for closed orbit detection\ncombine_pairs=true: whether isolated singularity pairs should be merged\nn_seeds::Int64=60: number of seed points on the Poincaré section\npmin::Float64=0.7: lower bound on the parameter in the eta-field\npmax::Float64=1.5: upper bound on the parameter in the eta-field\nrdist::Float64=1e-4: required return distances for closed orbits\n\n\n\n\n\n"
 },
 
 {
@@ -877,7 +885,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.EllipticBarrier",
     "category": "type",
-    "text": "struct EllipticBarrier\n\nThis is a container for coherent vortex boundaries. An object vortex of type EllipticBarrier can be easily plotted by plot(vortex.curve), or plot!([figure, ]vortex.curve) if it is to be overlaid over an existing plot.\n\nFields\n\ncurve: a list of tuples, contains the coordinates of coherent vortex boundary points;\ncore: location of the vortex core;\np: contains the parameter value of the direction field eta_lambda^pm, for the curve is a closed orbit;\ns: a Bool value, which encodes the sign in the formula of the direction field eta_lambda^pm via the formula (-1)^s.\n\n\n\n\n\n"
+    "text": "This is a container for coherent vortex boundaries. An object vortex of type EllipticBarrier can be easily plotted by plot(vortex.curve), or plot!([figure, ]vortex.curve) if it is to be overlaid over an existing plot.\n\nFields\n\ncurve: a vector of tuples, contains the coordinates of coherent vortex boundary points;\ncore: location of the vortex core;\np: contains the parameter value of the direction field eta_lambda^pm, for which the curve is a closed orbit;\ns: a Bool value, which encodes the sign in the formula of the direction field eta_lambda^pm via the formula (-1)^s.\n\n\n\n\n\n"
 },
 
 {
@@ -885,7 +893,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.Singularity",
     "category": "type",
-    "text": "struct Singularity\n\nFields\n\ncoords::SVector{2,Float64}: coordinates of the singularity\nindex::Int: index of the singularity\n\n\n\n\n\n"
+    "text": "Container type for critical points of vector fields or singularities of line fields.\n\nFields\n\ncoords::SVector{2}: coordinates of the singularity\nindex::Rational: index of the singularity\n\n\n\n\n\n"
 },
 
 {
@@ -917,7 +925,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.singularity_detection",
     "category": "function",
-    "text": "singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}\n\nCalculates line-field singularities of the first eigenvector of T by taking a discrete differential-geometric approach. Singularities are calculated on each cell. Singularities with distance less or equal to combine_distance are combined by averaging the coordinates and adding the respective indices. If combine_pairs is `true, pairs of singularities that are mutually the closest ones are included in the final list.\n\nReturns a vector of Singularitys. Returned indices correspond to doubled indices to get integer values.\n\n\n\n\n\n"
+    "text": "singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}\n\nCalculates line-field singularities of the first eigenvector of T by taking a discrete differential-geometric approach. Singularities are calculated on each cell. Singularities with distance less or equal to combine_distance are combined by averaging the coordinates and adding the respective indices. If combine_pairs is `true, pairs of singularities that are mutually the closest ones are included in the final list.\n\nReturns a vector of Singularitys. Returned indices correspond to twice the mathematically defined indices of line fields to get integer values.\n\n\n\n\n\n"
 },
 
 {
@@ -945,11 +953,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "elliptic/#CoherentStructures.combine_isolated_pairs",
+    "location": "elliptic/#CoherentStructures.combine_isolated_wedges",
     "page": "Geodesic vortices",
-    "title": "CoherentStructures.combine_isolated_pairs",
+    "title": "CoherentStructures.combine_isolated_wedges",
     "category": "function",
-    "text": "combine_isolated_pairs(singularities)\n\nDetermines singularities which are mutually closest neighbors and combines them as one, while adding their indices.\n\n\n\n\n\n"
+    "text": "combine_isolated_wedges(singularities)\n\nDetermines singularities which are mutually closest neighbors and combines them as one, while adding their indices.\n\n\n\n\n\n"
 },
 
 {
@@ -957,7 +965,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "Index theory-based placement of Poincaré sections",
     "category": "section",
-    "text": "This is performed by discrete_singularity_detection for line fields (such as eigenvector fields of symmetric positive-definit tensor fields) and by critical_point_detection for classic vector fields.singularity_detection\ncritical_point_detectionThis function takes three steps.compute_singularities\ncombine_singularities\ncombine_isolated_pairsFrom all virtual/merged singularities those with a suitable index are selected. Around each elliptic singularity the tensor field is localized and passed on for closed orbit detection."
+    "text": "This is performed by singularity_detection for line fields (such as eigenvector fields of symmetric positive-definite tensor fields) and by critical_point_detection for classic vector fields.singularity_detection\ncritical_point_detectionThis function takes three steps.compute_singularities\ncombine_singularities\ncombine_isolated_wedgesFrom all virtual/merged singularities those with a suitable index are selected. Around each elliptic singularity the tensor field is localized and passed on for closed orbit detection."
 },
 
 {
