@@ -27,11 +27,14 @@ vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>Finally, the result
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
-            title=&quot;DBS field and transport barriers&quot;)
-scatter!(getcoords(singularities), color=:red)
+            title=&quot;DBS field and transport barriers&quot;,
+            xlims=(xmin, xmax), ylims=(ymin, ymax))
+scatter!(getcoords(singularities), color=:red, label=&quot;singularities&quot;)
+scatter!([vortex.center for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
 for vortex in vortices
-    plot!(vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
-    scatter!(vortex.core, color=:yellow)
+    for barrier in vortex.barriers
+        plot!(barrier.curve, w=2, label=&quot;T = $(round(barrier.p, digits=2))&quot;)
+    end
 end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ ocean_flow_geodesic_vortices.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-methods-1" href="#FEM-based-methods-1">FEM-based methods</a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><pre><code class="language-julia">using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 

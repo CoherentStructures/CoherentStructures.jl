@@ -40,9 +40,12 @@ vortices, singularities = ellipticLCS(C̅, p; outermost=true)</code></pre><p>The
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
-            title=&quot;DBS field and transport barriers&quot;)
-scatter!(getcoords(singularities), color=:red)
+            title=&quot;DBS field and transport barriers&quot;,
+            xlims=(xmin, xmax), ylims=(ymin, ymax))
+scatter!(getcoords(singularities), color=:red, label=&quot;singularities&quot;)
+scatter!([vortex.center for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
 for vortex in vortices
-    plot!(vortex.curve, color=:yellow, w=3, label=&quot;T = $(round(vortex.p, digits=2))&quot;)
-    scatter!(vortex.core, color=:yellow)
+    for barrier in vortex.barriers
+        plot!(barrier.curve, w=2, label=&quot;T = $(round(barrier.p, digits=2))&quot;)
+    end
 end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ rot_double_gyre_geodesic_vortices.png" alt/></p><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../../"><span class="direction">Previous</span><span class="title">Home</span></a><a class="next" href="../standard_map/"><span class="direction">Next</span><span class="title">Standard map</span></a></footer></article></body></html>
