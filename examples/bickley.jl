@@ -74,7 +74,7 @@ vortices, singularities = ellipticLCS(C̅, p)
 
 # The result is visualized as follows:
 
-import Plots
+using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,

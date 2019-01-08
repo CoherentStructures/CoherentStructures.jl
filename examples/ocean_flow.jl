@@ -69,12 +69,13 @@ using Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
-            title="DBS field and transport barriers")
-scatter!(getcoords(singularities), color=:red)
+            title="DBS field and transport barriers",
+            xlims=(xmin, xmax), ylims=(ymin, ymax))
+scatter!(getcoords(singularities), color=:red, label="singularities")
+scatter!([vortex.center for vortex in vortices], color=:yellow, label="vortex cores")
 for vortex in vortices
-    scatter!(vortex.center, color=:yellow)
     for barrier in vortex.barriers
-        plot!(barrier.curve, color=:red, w=2, label="T = $(round(barrier.p, digits=2))")
+        plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
     end
 end
 DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)

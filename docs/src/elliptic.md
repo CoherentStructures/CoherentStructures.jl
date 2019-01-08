@@ -75,6 +75,7 @@ These are the specifically introduced types for elliptic LCS computations.
 ```@docs
 LCSParameters
 EllipticBarrier
+EllipticVortex
 ```
 Another one is `Singularity`, which comes along with some convenience functions.
 ```@docs
