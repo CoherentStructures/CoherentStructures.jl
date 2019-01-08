@@ -58,6 +58,19 @@ struct EllipticBarrier{T <: Real}
 end
 
 """
+This is a container for an elliptic vortex, as represented by the vortex's `center`
+and a list `barriers` of all computed [`EllipticBarrier`](@ref)s.
+
+## Fields
+* `center`: location of the vortex center;
+* `barriers`: vector of `EllipticBarrier`s.
+"""
+struct EllipticVortex{T <: Real}
+    center::SVector{2,T}
+    barriers::Vector{EllipticBarrier{T}}
+end
+
+"""
 Container for parameters used in elliptic LCS computations.
 
 ## Fields
@@ -401,7 +414,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     # END OF VERSION 2
 
     # go along the Poincaré section and solve for λ⁰ such that orbits close up
-    vortices = EllipticBarrier[]
+    vortices = EllipticBarrier{S1}[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
         λ⁰ = 0.0
@@ -465,7 +478,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     # loop over potential vortex centers, return detected closed orbits
-    vortexlists = pmap(vortexcenters) do vc
+    vortices = pmap(vortexcenters) do vc
         # set up Poincaré section
         vx = vc.coords[1]
         vy = vc.coords[2]
@@ -497,15 +510,15 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
             @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
                 "yielded $(length(result)) transport barrier" *
                 (length(result) > 1 ? "s." : ".")
-            return result
         else
-            return compute_closed_orbits(ps, ηfield, cache;
+            result = compute_closed_orbits(ps, ηfield, cache;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
         end
+        return EllipticVortex(vc.coords, result)
     end
 
-    vortexlist = vcat(vortexlists...)
-    verbose && @info "Found $(length(vortexlist)) elliptic barriers in total."
+    vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
+    verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, singularities
 end
 
@@ -529,7 +542,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     # loop over potential vortex centers, return detected closed orbits
-    vortexlists = pmap(vortexcenters) do vc
+    vortices = pmap(vortexcenters) do vc
         # set up Poincaré section
         vx = vc.coords[1]
         vy = vc.coords[2]
@@ -560,14 +573,14 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
             @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
                 "yielded $(length(result)) transport barrier" *
                 (length(result) > 1 ? "s." : ".")
-            return result
         else
-            return compute_closed_orbits(ps, ηfield, cache;
+            result = compute_closed_orbits(ps, ηfield, cache;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
         end
+        return EllipticVortex(vc.coords, result)
     end
 
-    vortexlist = vcat(vortexlists...)
-    verbose && @info "Found $(length(vortexlist)) elliptic barriers in total."
+    vortexlist = vortices[map(r -> !isempty(r.barriers), vortices)]
+    verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, critpts
 end

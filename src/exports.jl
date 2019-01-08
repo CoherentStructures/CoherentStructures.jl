@@ -10,6 +10,7 @@ export
 	getcoords,
 	getindices,
 	EllipticBarrier,
+	EllipticVortex,
 	LCSParameters,
 	compute_singularities,
 	singularity_detection,

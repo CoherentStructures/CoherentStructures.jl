@@ -73,11 +73,11 @@ end
     cache = @inferred CS.orient(T, SVector{2}(0.25, 0.5))
     @test cache isa CS.LCScache
     vortices, singularities = ellipticLCS(T, p; outermost=true, verbose=false)
-    @test length(vortices) == 2
+    @test sum(map(v -> length(v.barriers), vortices)) == 2
     @test singularities isa Vector{Singularity{Float64}}
     @test length(singularities) > 5
     vortices, _ = ellipticLCS(T, p; outermost=false, verbose=false)
-    @test length(vortices) > 20
+    @test sum(map(v -> length(v.barriers), vortices)) > 20
 end
 
 @testset "constrainedLCS" begin
@@ -91,14 +91,14 @@ end
         p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 1.0, combine, 60, 0.5, 1.5, 1e-4)
 
         vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false)
-        @test length(vortices) == 1
+        @test sum(map(v -> length(v.barriers), vortices)) == 1
         @test singularities isa Vector{Singularity{Float64}}
-        @test vortices[1].core ≈ Z atol=max(step(xspan), step(yspan))
+        @test vortices[1].center ≈ Z atol=max(step(xspan), step(yspan))
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
 
         vortices, singularities = constrainedLCS(q, p; outermost=false, verbose=false)
-        @test length(vortices) > 1
+        @test sum(map(v -> length(v.barriers), vortices)) > 1
         @test singularities isa Vector{Singularity{Float64}}
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))

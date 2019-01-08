@@ -72,10 +72,11 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             title="DBS field and transport barriers")
 scatter!(getcoords(singularities), color=:red)
 for vortex in vortices
-    plot!(vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
-    scatter!(vortex.core, color=:yellow)
+    scatter!(vortex.center, color=:yellow)
+    for barrier in vortex.barriers
+        plot!(barrier.curve, color=:red, w=2, label="T = $(round(barrier.p, digits=2))")
+    end
 end
-
 DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 # ## FEM-based methods

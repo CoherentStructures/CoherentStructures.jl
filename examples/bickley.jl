@@ -77,15 +77,16 @@ vortices, singularities = ellipticLCS(C̅, p)
 import Plots
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
 fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
-                    aspect_ratio=1, color=:viridis, leg=true,
-                    xlims=(0, 6.371π), ylims=(-3, 3),
-                    title="DBS field and transport barriers")
-Plots.scatter!(fig, getcoords(singularities), color=:red)
+            aspect_ratio=1, color=:viridis, leg=true,
+            title="DBS field and transport barriers",
+            xlims=(0, 6.371π), ylims=(ymin, ymax))
+scatter!(getcoords(singularities), color=:red, label="singularities")
+scatter!([vortex.center for vortex in vortices], color=:yellow, label="vortex cores")
 for vortex in vortices
-    Plots.plot!(fig, vortex.curve, color=:yellow, w=3, label="T = $(round(vortex.p, digits=2))")
-    Plots.scatter!(fig, vortex.core, color=:yellow)
+    for barrier in vortex.barriers
+        plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
+    end
 end
-
 DISPLAY_PLOT(fig, bickley_geodesic_vortices)
 
 # ## FEM-based Methods
