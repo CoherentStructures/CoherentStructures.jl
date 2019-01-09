@@ -307,35 +307,89 @@ end
 Computes returning orbits under the velocity field `vf`, originating from `seed`.
 The optional argument `save` controls whether intermediate locations of the
 returning orbit should be saved.
+Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached, 2 for out of bounds error, 3 for other error)
 """
-function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
+function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
+        maxiters::Int64=2000,tolerance::Float64=1e-8
+        ) where T <: Real
 
     condition(u, t, integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     # return _flow(vf, seed, range(0., stop=20., length=200); tolerance=1e-8, callback=cb, verbose=false)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., 20.))
-    sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=2e3,
-            dense=false, save_everystep=save, reltol=1e-8, abstol=1e-8,
-            callback=cb, verbose=false).u
+    try
+        sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=maxiters,
+                dense=false, save_everystep=save, reltol=tolerance, abstol=tolerance,
+                callback=cb, verbose=false)
+        retcode = 0
+        if sol.retcode == :Terminated
+            retcode = 0
+        elseif sol.retcode == :MaxIters
+            retcode = 1
+        else
+            retcode = 3
+        end
+        return (sol.u,retcode)
+    catch e
+        if isa(e, BoundsError)
+            return (SArray{Tuple{2},T, 1,2}[],2)
+        end
+        rethrow(e)
+    end
 end
 
 function Poincaré_return_distance(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
 
-    sol = compute_returning_orbit(vf, seed, save)
+    sol,retcode = compute_returning_orbit(vf, seed, save)
     # check if result due to callback
-    if abs(sol[end][2] - seed[2]) <= 1e-1
+    if retcode == 0
         return sol[end][1] - seed[1]
     else
         return NaN
     end
 end
 
+#TODO: Modify this to stop earlier if we already have one sign
+function find_nonan_left_limit(f,a::T,b::T,fa::T,depth::Int=5) where T <: Real
+    if !isnan(fa)
+        return a
+    end
+    depth != 0 || error("Maximum depth in search reached")
+    c = (a+b)/2
+    fc = f(c)
+    try
+        a = find_nonan_left_limit(f,a,c,fa,depth-1)
+    catch e
+        a = find_nonan_left_limit(f,c,b,fc,depth-1)
+    end
+    return a
+end
+
+#TODO: Modify this to stop if we already have one sign
+function find_nonan_right_limit(f,a::T,b::T,fb::T,depth::Int=5) where T <: Real
+    if !isnan(fb)
+        return b
+    end
+    depth != 0 || error("Maximum depth in search reached")
+    c = (a+b)/2
+    fc = f(c)
+    try
+        b = find_nonan_right_limit(f,c,b,fb,depth-1)
+    catch e
+        b = find_nonan_right_limit(f,a,c,fc,depth-1)
+    end
+    return b
+end
+
 function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Real
-    fa, fb = f(a), f(b)
-    fa*fb <= 0 || error("No real root in [a,b]")
     i = 0
     local c
+    fa, fb = f(a), f(b)
+    a = findnonan_left_limit(f,a,b,fa,5)
+    b = findnonan_right_limit(f,a,b,fb,5)
+    fa*fb <= 0 || error("No real root in [a,b]")
+    i = 0
     while b-a > tol
         i += 1
         i != maxiter || error("Max iteration exceeded")
@@ -418,18 +472,19 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
         λ⁰ = 0.0
+        σ = false
         try
-            global σ = false
             λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
         catch
-            global σ = true
+            σ = true
             try
                 λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
             catch
             end
         end
         if !iszero(λ⁰)
-            orbit = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
+            orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
+            #TODO: deal with retcode here properly
             closed = norm(orbit[1] - orbit[end]) <= rdist
             predicate = qs -> cache isa LCScache ?
                 l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
