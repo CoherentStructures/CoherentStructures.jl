@@ -73,6 +73,9 @@ include("velocityfields.jl")
 #SEBA algorithm
 include("seba.jl")
 
+#Functions related to isoperimetry
+include("isoperimetry.jl")
+
 
 ##Extensions to JuAFEM dealing with non-curved grids
 ##Support for evaluating functions at grid points, delaunay Triangulations

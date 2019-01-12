@@ -1492,6 +1492,21 @@ function nodal_interpolation(ctx::gridContext, f::Function)
     return nodal_values
 end
 
+"""
+    getCellMidPoint(ctx,cellindex)
+
+Returns the midpoint of the cell `cellindex`
+"""
+
+function getCellMidpoint(ctx,cellindex)
+    cell = ctx.grid.cells[cellindex]
+    nnodes = length(cell.nodes)
+    result = Vec{2}((0.0,0.0))
+    for i in 1:length(cell.nodes)
+        result += ctx.grid.nodes[cell.nodes[i]].x
+    end
+    return result/nnodes
+end
 
 
 ###P2 Grids in 3D:
