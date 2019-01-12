@@ -383,16 +383,28 @@ function find_nonan_right_limit(f,a::T,b::T,fb::T,depth::Int=5) where T <: Real
 end
 
 function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Real
-    i = 0
-    local c
     fa, fb = f(a), f(b)
-    a = findnonan_left_limit(f,a,b,fa,5)
-    b = findnonan_right_limit(f,a,b,fb,5)
-    fa*fb <= 0 || error("No real root in [a,b]")
+    local c
     i = 0
+    firsttime=true
     while b-a > tol
+        #TODO: think of using a second parameter othern than maxiter to determine how much to shift by.
+        if isnan(fa)
+            firsttime || error("NaN values between non-NaN values")
+            i+=1
+            a += (b-a)/maxiter
+            fa = f(a)
+            continue
+        elseif isnan(fb)
+            firsttime || error("NaN values between non-NaN values")
+            i+=1
+            b -= (b-a)/maxiter
+            fb = f(b)
+            continue
+        end
+
         i += 1
-        i != maxiter || error("Max iteration exceeded")
+        i < maxiter || error("Max iteration exceeded")
         c = (a + b) / 2 # bisection
         # c = (a*fb-b*fa)/(fb-fa) # regula falsi
         fc = f(c)
