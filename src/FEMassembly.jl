@@ -162,7 +162,7 @@ function assembleMassMatrix(
     if !lumped
         return M
     else
-        Mlumped = speye(size(M)[1])
+        Mlumped = spdiagm(0 => ones(size(M)[1]))
         for j = 1:n
             Mlumped[j,j] = sum(M[:,j])
         end

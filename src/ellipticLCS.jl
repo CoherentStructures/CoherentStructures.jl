@@ -544,8 +544,17 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     vortexcenters = singularities[getindices(singularities) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
+    # vector field constructor function
+    @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
+        @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
+        @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
+        @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+        itp = ITP.LinearInterpolation(c.η)
+        return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
+    end
+
     # loop over potential vortex centers, return detected closed orbits
-    vortices = pmap(vortexcenters) do vc
+    joblist = map(vortexcenters) do vc
         # set up Poincaré section
         vx = vc.coords[1]
         vy = vc.coords[2]
@@ -554,36 +563,30 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
         ps = SVector{2}.(vs, vy)
 
         # localize tensor field
-        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        T_local = @views T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
 
         # for computational tractability, pre-orient the eigenvector fields
         # restrict search to star-shaped coherent vortices
         # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
         cache = orient(T_local, vc.coords)
 
-        # vector field constructor function
-        @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-            @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
-            @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
-            @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
-            itp = ITP.LinearInterpolation(c.η)
-            return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
-        end
-
         # closed orbits extraction
-        if verbose
-            result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-            @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
-                "yielded $(length(result)) transport barrier" *
-                (length(result) > 1 ? "s." : ".")
-        else
-            result = compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-        end
-        return EllipticVortex(vc.coords, result)
+        # if verbose
+        #     result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
+        #             rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+        #     @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
+        #         "yielded $(length(result)) transport barrier" *
+        #         (length(result) > 1 ? "s." : ".")
+        # else
+            # result = compute_closed_orbits(ps, ηfield, cache;
+            #         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+        # end
+        # return EllipticVortex(vc.coords, result)
+        return Distributed.@spawn compute_closed_orbits(ps, ηfield, cache;
+                rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
     end
 
+    vortices = [EllipticVortex(vortexcenters[i].coords, (fetch.(joblist))[i]) for i in 1:length(vortexcenters)]
     vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, singularities

@@ -78,6 +78,7 @@ export
 	boundaryData,
 	nBCDofs,
 	getDofCoordinates,
+	getCellMidpoint,
 
 	#numericalExperiments.jl
 	makeOceanFlowTestCase,
