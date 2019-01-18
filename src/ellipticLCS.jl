@@ -333,7 +333,7 @@ function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
         return (sol.u,retcode)
     catch e
         if isa(e, BoundsError)
-            return (SArray{Tuple{2},T, 1,2}[],2)
+	    return (SArray{Tuple{2},T, 1,2}[@SVector [NaN,NaN] ],2)
         end
         rethrow(e)
     end
@@ -384,27 +384,26 @@ end
 
 function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Real
     fa, fb = f(a), f(b)
-    local c
+    local c::T
     i = 0
     firsttime=true
     while b-a > tol
+        i < maxiter || error("Max iteration exceeded")
         #TODO: think of using a second parameter othern than maxiter to determine how much to shift by.
         if isnan(fa)
             firsttime || error("NaN values between non-NaN values")
             i+=1
-            a += (b-a)/maxiter
+	    a += (b-a)/(maxiter+1)
             fa = f(a)
             continue
         elseif isnan(fb)
             firsttime || error("NaN values between non-NaN values")
             i+=1
-            b -= (b-a)/maxiter
+	    b -= (b-a)/(maxiter+1)
             fb = f(b)
             continue
         end
-
         i += 1
-        i < maxiter || error("Max iteration exceeded")
         c = (a + b) / 2 # bisection
         # c = (a*fb-b*fa)/(fb-fa) # regula falsi
         fc = f(c)
@@ -496,16 +495,17 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         end
         if !iszero(λ⁰)
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
-            #TODO: deal with retcode here properly
-            closed = norm(orbit[1] - orbit[end]) <= rdist
-            predicate = qs -> cache isa LCScache ?
-                l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
-                nitp(qs[1], qs[2]) >= λ⁰^2
-            uniform = all(predicate, orbit)
-            if (closed && uniform)
-                push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
-                rev && break
-            end
+	    if retcode == 0 
+		closed = norm(orbit[1] - orbit[end]) <= rdist
+		predicate = qs -> cache isa LCScache ?
+		    l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
+		    nitp(qs[1], qs[2]) >= λ⁰^2
+		uniform = all(predicate, orbit)
+		if (closed && uniform)
+		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
+		    rev && break
+		end
+	    end
         end
     end
     return vortices
