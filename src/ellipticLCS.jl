@@ -496,7 +496,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
         ps = SVector{2}.(vs, vy)
 
         # localize tensor field
-        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        T_local = @views T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
 
         # for computational tractability, pre-orient the eigenvector fields
         # restrict search to star-shaped coherent vortices
