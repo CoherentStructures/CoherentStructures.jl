@@ -2,6 +2,7 @@ module CoherentStructures
 
 # use standard libraries
 using LinearAlgebra
+using ProgressMeter
 using SparseArrays
 using Distributed
 using SharedArrays: SharedArray

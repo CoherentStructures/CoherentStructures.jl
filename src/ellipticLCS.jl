@@ -563,7 +563,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
         ps = SVector{2}.(vs, vy)
 
         # localize tensor field
-        T_local = @views T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
 
         # for computational tractability, pre-orient the eigenvector fields
         # restrict search to star-shaped coherent vortices
@@ -585,8 +585,17 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
         return Distributed.@spawn compute_closed_orbits(ps, ηfield, cache;
                 rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
     end
+    num_jobs = length(joblist)
+    pm = Progress(num_jobs,desc="Calculating vortices")
+    num_vortices = 0
+    finished_jobs = progress_map(joblist, progress=pm) do curjob
+	result = fetch(curjob)
+	num_vortices += length(result)
+	ProgressMeter.next!(pm; showvalues=[(:num_vortices,num_vortices)])
+	result
+    end
 
-    vortices = [EllipticVortex(vortexcenters[i].coords, (fetch.(joblist))[i]) for i in 1:length(vortexcenters)]
+    vortices = [EllipticVortex(vortexcenters[i].coords, finished_jobs[i]) for i in 1:length(vortexcenters)]
     vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, singularities
