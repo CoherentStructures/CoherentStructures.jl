@@ -563,12 +563,11 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
         ps = SVector{2}.(vs, vy)
 
         # localize tensor field
-        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        T_local = @views T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
 
         # for computational tractability, pre-orient the eigenvector fields
         # restrict search to star-shaped coherent vortices
         # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
-        cache = orient(T_local, vc.coords)
 
         # closed orbits extraction
         # if verbose
@@ -582,8 +581,11 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
             #         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
         # end
         # return EllipticVortex(vc.coords, result)
-        return Distributed.@spawn compute_closed_orbits(ps, ηfield, cache;
-                rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+        return Distributed.@spawn begin
+            cache = orient(T_local[:,:], vc.coords)
+            compute_closed_orbits(ps, ηfield, cache;
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+            end
     end
     num_jobs = length(joblist)
     pm = Progress(num_jobs,desc="Calculating vortices")
