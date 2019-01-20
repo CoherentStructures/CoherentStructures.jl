@@ -498,7 +498,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
 	    if retcode == 0 
 		closed = norm(orbit[1] - orbit[end]) <= rdist
 		predicate = qs -> cache isa LCScache ?
-		    l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
+	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
 		    nitp(qs[1], qs[2]) >= λ⁰^2
 		uniform = all(predicate, orbit)
 		if (closed && uniform)
@@ -554,50 +554,68 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     end
 
     # loop over potential vortex centers, return detected closed orbits
-    joblist = map(vortexcenters) do vc
-        # set up Poincaré section
-        vx = vc.coords[1]
-        vy = vc.coords[2]
-        vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
-        vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
-        ps = SVector{2}.(vs, vy)
+    Ttype = AxisArrays.AxisArray{
+	 SymmetricTensor{2,2,S,3},2,
+	 Array{SymmetricTensor{2,2,S,3},2},
+	 Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
+        AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}}}
 
-        # localize tensor field
-        T_local = @views T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+    jobs_rc = RemoteChannel(()->Channel{Tuple{S,S,S,LCSParameters,Ttype}}(nprocs()))
+    results_rc = RemoteChannel(()->Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(5))
+    @async begin
+	map(vortexcenters) do vc
+	    # set up Poincaré section
+	    vx = vc.coords[1]
+	    vy = vc.coords[2]
+	    vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+	    # localize tensor field
+	    T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+	    put!(jobs_rc, (vx,vy,vr,p,T_local))
+	end
+	close(jobs_rc)
+    end
+    function individual_worker_job()
+	try
+	while true
+	    if !isopen(jobs_rc)
+		break
+	    end
+	    vx,vy,vr,p,T_local = try
+		take!(jobs_rc)
+	    catch e
+		continue #TODO: Should we break here instead?
+	    end
+	    vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
 
-        # for computational tractability, pre-orient the eigenvector fields
-        # restrict search to star-shaped coherent vortices
-        # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
+	    cache = orient(T_local[:,:], @SVector [vx,vy])
+	    ps = SVector{2}.(vs, vy)
 
-        # closed orbits extraction
-        # if verbose
-        #     result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
-        #             rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-        #     @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
-        #         "yielded $(length(result)) transport barrier" *
-        #         (length(result) > 1 ? "s." : ".")
-        # else
-            # result = compute_closed_orbits(ps, ηfield, cache;
-            #         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-        # end
-        # return EllipticVortex(vc.coords, result)
-        return Distributed.@spawn begin
-            cache = orient(T_local[:,:], vc.coords)
-            compute_closed_orbits(ps, ηfield, cache;
+            result = compute_closed_orbits(ps, ηfield, cache;
                     rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-            end
+	    put!(results_rc, (vx,vy,result))
+	end
+	catch e
+	    println(e)
+	end
     end
-    num_jobs = length(joblist)
+    @async for p in workers()
+	remotecall_fetch(individual_worker_job, p)
+    end
+    println("Done spawning processes")
+    num_jobs = length(vortexcenters)
+    println("Num jobs is $num_jobs")
     pm = Progress(num_jobs,desc="Calculating vortices")
-    num_vortices = 0
-    finished_jobs = progress_map(joblist, progress=pm) do curjob
-	result = fetch(curjob)
-	num_vortices += length(result)
-	ProgressMeter.next!(pm; showvalues=[(:num_vortices,num_vortices)])
-	result
-    end
+    numjobs_done = 0
+    vortices = EllipticVortex{S}[]
+    progress_map(1:num_jobs, progress=pm) do i
+	    print("Here!")
+	    vx,vy,barriers = take!(results_rc)
+	    push!(vortices, EllipticVortex{S}((@SVector [vx,vy]), barriers))
+	    ProgressMeter.next!(pm; showvalues=[(:num_vortices,i)])
+	    print("now")
+	    #num_vortices += length(result)
+	end
 
-    vortices = [EllipticVortex(vortexcenters[i].coords, finished_jobs[i]) for i in 1:length(vortexcenters)]
     vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, singularities
