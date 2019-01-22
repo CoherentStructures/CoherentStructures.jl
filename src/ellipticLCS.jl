@@ -598,23 +598,18 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 	    println(e)
 	end
     end
-    @async for p in workers()
-	remotecall_fetch(individual_worker_job, p)
+    for p in workers()
+	remotecall(individual_worker_job, p)
     end
-    println("Done spawning processes")
     num_jobs = length(vortexcenters)
-    println("Num jobs is $num_jobs")
     pm = Progress(num_jobs,desc="Calculating vortices")
-    numjobs_done = 0
+    num_barriers = 0
     vortices = EllipticVortex{S}[]
     progress_map(1:num_jobs, progress=pm) do i
-	    print("Here!")
 	    vx,vy,barriers = take!(results_rc)
-	    push!(vortices, EllipticVortex{S}((@SVector [vx,vy]), barriers))
-	    ProgressMeter.next!(pm; showvalues=[(:num_vortices,i)])
-	    print("now")
-	    #num_vortices += length(result)
-	end
+	    ProgressMeter.next!(pm; showvalues=[(:num_barriers,num_barriers)])
+	    num_barriers += length(barriers)
+    end
 
     vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
