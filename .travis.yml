@@ -1,21 +1,22 @@
 os:
-    - linux
+  - linux
+  - osx
 
 language: julia
 
 julia:
-    - 1.0
-    - nightly
+  - 1.0
+  - 1.1
+  - nightly
 
 notifications:
-    email: false
+  email: false
 
 git:
-    depth: 99999
-
+  depth: 99999
 
 before_install:
-      - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git"));'
+  - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git"));'
 
 jobs:
   include:
@@ -26,6 +27,7 @@ jobs:
         - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate(); Pkg.add("Documenter"); Pkg.add("Literate"); Pkg.add("AxisArrays"); Pkg.add("Interpolations"); Pkg.add("Distances"); Pkg.add("JLD2"); Pkg.add("OrdinaryDiffEq"); Pkg.add("Clustering"); Pkg.add("Arpack"); Pkg.add("Plots"); Pkg.add("StaticArrays"); Pkg.add("Tensors"); Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git")); Pkg.clone(pwd()); Pkg.build("Plots"); Pkg.resolve(); Pkg.instantiate(); using Plots'
         - julia --color=yes --project=docs/ docs/make.jl
       after_success: skip
+
 deploy:
-    on:
-        branch: master
+  on:
+    branch: master
