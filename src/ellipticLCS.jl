@@ -90,17 +90,24 @@ struct LCSParameters
     pmin::Float64
     pmax::Float64
     rdist::Float64
+    tolerance_ode::Float64
+    maxiters_ode::Int64
+    maxiters_bisection::Int64
 end
-function LCSParameters(;
+function LCSParameters(
             indexradius::Float64=0.1,
             boxradius::Float64=0.5,
             combine_pairs::Bool=true,
             n_seeds::Int64=60,
             pmin::Float64=0.7,
             pmax::Float64=1.5,
-            rdist::Float64=1e-4)
+            rdist::Float64=1e-4,
+            tolerance_ode=1e-8,
+            maxiters_ode::Int64=2000,
+            maxiters_bisection::Int64=20
+            )
 
-    LCSParameters(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist)
+    LCSParameters(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist,maxiters_ode,maxiters_bisection)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
@@ -339,9 +346,15 @@ function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
     end
 end
 
-function Poincaré_return_distance(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
+function Poincaré_return_distance(
+                        vf,
+                        seed::SVector{2,T},
+                        save::Bool=false;
+                        tolerance_ode::Float64=1e-8,
+                        maxiters_ode::Int64=2000
+                        ) where T <: Real
 
-    sol,retcode = compute_returning_orbit(vf, seed, save)
+    sol,retcode = compute_returning_orbit(vf, seed, save,maxiters_ode,tolerance_ode)
     # check if result due to callback
     if retcode == 0
         return sol[end][1] - seed[1]
@@ -434,14 +447,17 @@ function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}
 end
 
 """
-    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
+    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000,maxiters_bisection=20)
 
 Compute the outermost closed orbit for a given Poincaré section `ps`, a vector field
 constructor `ηfield`, and an LCScache `cache`. Keyword arguments `pmin` and `pmax`
 correspond to the range of shift parameters in which closed orbits are sought;
 `rev` determines whether closed orbits are sought from the outside inwards (`true`)
 or from the inside outwards (`false`). `rdist` sets the required return distance for
-an orbit to be considered as closed.
+an orbit to be considered as closed. The parameter `maxiters_ode` gives the maximum number
+of steps taken by the ODE solver when computing the closed orbit, the ode solver uses tolerance
+given by `tolerance_ode`. The parameter `maxiters_bisection` gives the maximum number of iterations
+used by the bisection algorithm to find closed orbits.
 """
 function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 ηfield,
@@ -449,7 +465,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 rev::Bool=true,
                                 pmin::Real=0.7,
                                 pmax::Real=1.5,
-                                rdist::Real=1e-4
+                                rdist::Real=1e-4,
+                                tolerance_ode::Float64=1e-8,
+                                maxiters_ode::Int64=2000,
+                                maxiters_bisection::Int64=20
                                 ) where {S1 <: Real}
     if cache isa LCScache # tensor-based LCS computation
         l1itp = ITP.LinearInterpolation(cache.λ₁)
@@ -459,7 +478,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     end
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     prd(λ::Float64, σ::Bool, seed::SVector{2,S1}, cache) =
-            Poincaré_return_distance(ηfield(λ, σ, cache), seed)
+            Poincaré_return_distance(ηfield(λ, σ, cache), seed;
+                tolerance_ode=tolerance_ode,
+                maxiters_ode=maxiters_ode
+                )
 
     # VERSION 2: 3D-interpolant
     # η(λ::Float64, signum::Bool) = begin
@@ -485,11 +507,11 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         λ⁰ = 0.0
         σ = false
         try
-            λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
+            λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist,maxiters_bisection)
         catch
             σ = true
             try
-                λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
+                λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist,maxiters_bisection)
             catch
             end
         end
@@ -606,7 +628,10 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
             	    ps = SVector{2}.(vs, vy)
 
                     result = compute_closed_orbits(ps, ηfield, cache;
-                            rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+                            rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                            tolerance_ode=p.tolerance_ode,maxiters_ode=p.maxiters_ode,
+                            maxiters_bisection=p.maxiters_bisection
+                            )
             	    put!(results_rc, (vx,vy,result))
             	end
         	catch e
@@ -703,13 +728,19 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
         # closed orbits extraction
         if verbose
             result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                    tolerance_ode=p.tolerance_ode,maxiters_ode=p.maxiters_ode,
+                    maxiters_bisection=p.maxiters_bisection
+                    )
             @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
                 "yielded $(length(result)) transport barrier" *
                 (length(result) > 1 ? "s." : ".")
         else
             result = compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                    tolerance_ode=p.tolerance_ode,maxiters_ode=p.maxiters_ode,
+                    maxiters_bisection=p.maxiters_bisection
+                    )
         end
         return EllipticVortex(vc.coords, result)
     end
