@@ -340,7 +340,7 @@ function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
         return (sol.u,retcode)
     catch e
         if isa(e, BoundsError)
-	    return (SArray{Tuple{2},T, 1,2}[@SVector [NaN,NaN] ],2)
+    	    return (SArray{Tuple{2},T, 1,2}[@SVector [NaN,NaN] ],2)
         end
         rethrow(e)
     end
@@ -406,22 +406,23 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=20) where T <: Re
         if isnan(fa)
             firsttime || error("NaN values between non-NaN values")
             i+=1
-	    a += (b-a)/(maxiter+1)
+    	    a += (b-a)/(maxiter+1)
             fa = f(a)
             continue
         elseif isnan(fb)
             firsttime || error("NaN values between non-NaN values")
             i+=1
-	    b -= (b-a)/(maxiter+1)
+    	    b -= (b-a)/(maxiter+1)
             fb = f(b)
             continue
         end
         i += 1
+        fa*fb <= 0 || error("No real root in [a,b]")
         c = (a + b) / 2 # bisection
         # c = (a*fb-b*fa)/(fb-fa) # regula falsi
         fc = f(c)
         if abs(fc) < tol
-            break
+            return c
         elseif fa * fc > 0
             a = c  # Root is in the right half of [a,b].
             fa = fc
@@ -429,8 +430,7 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=20) where T <: Re
             b = c  # Root is in the left half of [a,b].
         end
     end
-    # @info "needed $(2+i) function evaluations"
-    return c
+    error("Maximum iterations reached")
 end
 
 function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}) where {S1 <: Real, S2 <: Real}
