@@ -506,106 +506,101 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 
     #This is where results go
     vortices = EllipticVortex{S}[]
-    @sync begin
-        #Type of restricted field is quite complex, therefore make a variable for it here
-        Ttype = AxisArrays.AxisArray{
-    	 SymmetricTensor{2,2,S,3}, 2,
-    	 Array{SymmetricTensor{2,2,S,3},2},
-    	 Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
-               AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}}
-           }
 
-        # We make two remote channels. The master process pushes to jobs_rc in order
-        # (vx, vy, vr, p, outermost, T_local):
-        #     * vx::S,vy::S (coordinates of vortex center)
-        #     * vr::S (length of Poincaré section)
-        #     * p::LCSParameters
-        #     * T_local (A local copy of the tensor field)
-        #     * outermost::Bool (whether to only search for outermost barriers)
-        # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
-        # the results in results_rc
+    #Type of restricted field is quite complex, therefore make a variable for it here
+    Ttype = AxisArrays.AxisArray{
+     SymmetricTensor{2,2,S,3}, 2,
+     Array{SymmetricTensor{2,2,S,3},2},
+     Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
+           AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}}
+       }
 
-        jobs_rc = RemoteChannel(() -> Channel{Tuple{S,S,S,LCSParameters,Bool,Ttype}}(nprocs()))
-        results_rc = RemoteChannel(() -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2*nprocs()))
+    # We make two remote channels. The master process pushes to jobs_rc in order
+    # (vx, vy, vr, p, outermost, T_local):
+    #     * vx::S,vy::S (coordinates of vortex center)
+    #     * vr::S (length of Poincaré section)
+    #     * p::LCSParameters
+    #     * T_local (A local copy of the tensor field)
+    #     * outermost::Bool (whether to only search for outermost barriers)
+    # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
+    # the results in results_rc
 
-        #Start an asynchronous producer task that puts stuff onto jobs_rc
-        producer_task = @async try
-        	map(vortexcenters) do vc
-        	    # set up Poincaré section
-        	    vx = vc.coords[1]
-        	    vy = vc.coords[2]
-        	    vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
-        	    # localize tensor field
-        	    T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
-        	    put!(jobs_rc, (vx, vy, vr, p, outermost, T_local))
-        	end
-        	isopen(jobs_rc) && close(jobs_rc)
-        catch e
-            print("Error in producing jobs for workers: ")
-            println(e)
-            close(jobs_rc)
-            close(results_rc)
+    jobs_rc = RemoteChannel(() -> Channel{Tuple{S,S,S,LCSParameters,Bool,Ttype}}(nprocs()))
+    results_rc = RemoteChannel(() -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2*nprocs()))
+
+    #Start an asynchronous producer task that puts stuff onto jobs_rc
+    producer_task = @async try
+        map(vortexcenters) do vc
+            # set up Poincaré section
+            vx = vc.coords[1]
+            vy = vc.coords[2]
+            vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+            # localize tensor field
+            T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+            put!(jobs_rc, (vx, vy, vr, p, outermost, T_local))
         end
-
-        #This is run as consumer job on workers
-        function consumer_job()
-        	try
-            	while true
-            	    vx, vy, vr, p, outermost, T_local = take!(jobs_rc)
-            	    vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
-
-            	    cache = orient(T_local[:,:], @SVector [vx,vy])
-            	    ps = SVector{2}.(vs, vy)
-
-                    result = compute_closed_orbits(ps, ηfield, cache;
-                            rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
-                            tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
-                            maxiters_bisection=p.maxiters_bisection
-                            )
-            	    put!(results_rc, (vx, vy, result))
-            	end
-        	catch e
-                if isopen(jobs_rc)
-                    print("Worker: ")
-            	    println(e)
-                    flush(stdout)
-                    isopen(results_rc) && close(results_rc)
-                    return 1
-                else
-                    return 0
-                end
-        	end
-        end # consumer_job
-
-        #Start the consumer jobs
-        consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
-
-        #How many vortex centers we have
-        num_jobs = length(vortexcenters)
-        num_barriers = 0
-        if ! verbose
-            mapping_function = map
-        else
-            pm = Progress(num_jobs, desc="Detecting vortices")
-            mapping_function = (x,y) -> progress_map(x, y; progress=pm)
-        end
-        mapping_function(1:num_jobs) do i
-    	    vx, vy, barriers = take!(results_rc)
-    	    num_barriers += length(barriers)
-            if verbose
-                ProgressMeter.next!(pm; showvalues=[(:num_barriers, num_barriers)])
-            end
-            push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
-        end
-
-        #Cleanup, make sure everything finished etc...
-        #Is probably redundant by the use of @sync
-        wait(producer_task)
         isopen(jobs_rc) && close(jobs_rc)
-        isopen(results_rc) && close(results_rc)
-        if 1 ∈ wait.(consumer_jobs)
-            raise(AssertionError("Caught error on worker"))
+    catch e
+        print("Error in producing jobs for workers: ")
+        println(e)
+        close(jobs_rc)
+        close(results_rc)
+    end
+
+    #This is run as consumer job on workers
+    function consumer_job()
+        try
+            while true
+                vx, vy, vr, p, outermost, T_local = take!(jobs_rc)
+                vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+
+                cache = orient(T_local[:,:], @SVector [vx,vy])
+                ps = SVector{2}.(vs, vy)
+
+                result = compute_closed_orbits(ps, ηfield, cache;
+                        rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                        tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
+                        maxiters_bisection=p.maxiters_bisection
+                        )
+                put!(results_rc, (vx, vy, result))
+            end
+        catch e
+            if isopen(jobs_rc)
+                print("Worker: ")
+                println(e)
+                flush(stdout)
+                isopen(results_rc) && close(results_rc)
+                return 1
+            else
+                return 0
+            end
         end
+    end # consumer_job
+
+    #Start the consumer jobs
+    consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
+
+    #How many vortex centers we have
+    num_jobs = length(vortexcenters)
+    num_barriers = 0
+    if verbose
+        pm = Progress(num_jobs, desc="Detecting vortices")
+    end
+    map(1:num_jobs) do i
+        vx, vy, barriers = take!(results_rc)
+        num_barriers += length(barriers)
+        if verbose
+            ProgressMeter.next!(pm; showvalues=[(:num_barriers, num_barriers)])
+        end
+        push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
+    end
+
+    #Cleanup, make sure everything finished etc...
+    wait(producer_task)
+    isopen(jobs_rc) && close(jobs_rc)
+    isopen(results_rc) && close(results_rc)
+    if 1 ∈ wait.(consumer_jobs)
+        raise(AssertionError("Caught error on worker"))
     end
 
     #Get rid of vortices without barriers
@@ -634,117 +629,112 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortices = EllipticVortex{S}[]
-    @sync begin
-        #Type of restricted field is quite complex, therefore make a variable for it here
-        qType = AxisArrays.AxisArray{
-    	 SVector{2,S}, 2,
-    	 Array{SVector{2,S},2},
-    	 Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
-               AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}
-              }
-            }
 
-        # We make two remote channels. The master process pushes to jobs_rc in order
-        # (vx, vy, vr, p, outermost, T_local):
-        #     * vx::S,vy::S (coordinates of vortex center)
-        #     * vr::S (length of Poincaré section)
-        #     * p::LCSParameters
-        #     * q_local (A local copy of the vector field)
-        #     * outermost::Bool (whether to only search for outermost barriers)
-        # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
-        # the results in results_rc
+    #Type of restricted field is quite complex, therefore make a variable for it here
+    qType = AxisArrays.AxisArray{
+     SVector{2,S}, 2,
+     Array{SVector{2,S},2},
+     Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
+           AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}
+          }
+        }
 
-        jobs_rc = RemoteChannel(() -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(nprocs()))
-        results_rc = RemoteChannel(() -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2*nprocs()))
+    # We make two remote channels. The master process pushes to jobs_rc in order
+    # (vx, vy, vr, p, outermost, T_local):
+    #     * vx::S,vy::S (coordinates of vortex center)
+    #     * vr::S (length of Poincaré section)
+    #     * p::LCSParameters
+    #     * q_local (A local copy of the vector field)
+    #     * outermost::Bool (whether to only search for outermost barriers)
+    # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
+    # the results in results_rc
 
-        #Start an asynchronous producer task that puts stuff onto jobs_rc
-        producer_task = @async try
-        	map(vortexcenters) do vc
-        	    # set up Poincaré section
-        	    vx = vc.coords[1]
-        	    vy = vc.coords[2]
-        	    vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
-        	    # localize tensor field
-        	    q_local = q[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
-        	    put!(jobs_rc, (vx, vy, vr, p, outermost, q_local))
-        	end
-        	isopen(jobs_rc) && close(jobs_rc)
-        catch e
-            print("Error in producing jobs for workers: ")
-            println(e)
-            close(jobs_rc)
-            close(results_rc)
+    jobs_rc = RemoteChannel(() -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(nprocs()))
+    results_rc = RemoteChannel(() -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2*nprocs()))
+
+    #Start an asynchronous producer task that puts stuff onto jobs_rc
+    producer_task = @async try
+        map(vortexcenters) do vc
+            # set up Poincaré section
+            vx = vc.coords[1]
+            vy = vc.coords[2]
+            vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+            # localize tensor field
+            q_local = q[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+            put!(jobs_rc, (vx, vy, vr, p, outermost, q_local))
         end
-
-        #This is run as consumer job on workers
-        function consumer_job()
-        	try
-            	while true
-            	    vx, vy, vr, p, outermost, q_local = take!(jobs_rc)
-            	    vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
-            	    ps = SVector{2}.(vs, vy)
-
-                    Ω = SMatrix{2,2}(0., -1., 1., 0.)
-                    cache = deepcopy(q_local)
-                    normsqq = map(v -> norm(v)^2, q_local)
-                    nitp = ITP.LinearInterpolation(normsqq)
-                    invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
-                    @inline function ηfield(λ, s, cache)
-                        cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
-                                        ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
-                        itp = ITP.LinearInterpolation(cache)
-                        return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
-                    end
-
-                    result = compute_closed_orbits(ps, ηfield, cache;
-                            rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
-                            tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
-                            maxiters_bisection=p.maxiters_bisection
-                            )
-            	    put!(results_rc, (vx, vy, result))
-            	end
-        	catch e
-                if isopen(jobs_rc)
-                    print("Worker: ")
-            	    println(e)
-                    flush(stdout)
-                    isopen(results_rc) && close(results_rc)
-                    return 1
-                else
-                    return 0
-                end
-        	end
-        end # consumer_job
-
-        #Start the consumer jobs
-        consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
-
-        #How many vortex centers we have
-        num_jobs = length(vortexcenters)
-        num_barriers = 0
-        if ! verbose
-            mapping_function = map
-        else
-            pm = Progress(num_jobs, desc="Detecting vortices")
-            mapping_function = (x,y) -> progress_map(x, y; progress=pm)
-        end
-        mapping_function(1:num_jobs) do i
-    	    vx, vy, barriers = take!(results_rc)
-    	    num_barriers += length(barriers)
-            if verbose
-                ProgressMeter.next!(pm; showvalues=[(:num_barriers, num_barriers)])
-            end
-            push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
-        end
-
-        #Cleanup, make sure everything finished etc...
-        #Is probably redundant by the use of @sync
-        wait(producer_task)
         isopen(jobs_rc) && close(jobs_rc)
-        isopen(results_rc) && close(results_rc)
-        if 1 ∈ wait.(consumer_jobs)
-            raise(AssertionError("Caught error on worker"))
+    catch e
+        print("Error in producing jobs for workers: ")
+        println(e)
+        close(jobs_rc)
+        close(results_rc)
+    end
+
+    #This is run as consumer job on workers
+    function consumer_job()
+        try
+            while true
+                vx, vy, vr, p, outermost, q_local = take!(jobs_rc)
+                vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+                ps = SVector{2}.(vs, vy)
+
+                Ω = SMatrix{2,2}(0., -1., 1., 0.)
+                cache = deepcopy(q_local)
+                normsqq = map(v -> norm(v)^2, q_local)
+                nitp = ITP.LinearInterpolation(normsqq)
+                invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
+                @inline function ηfield(λ, s, cache)
+                    cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
+                                    ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
+                    itp = ITP.LinearInterpolation(cache)
+                    return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
+                end
+
+                result = compute_closed_orbits(ps, ηfield, cache;
+                        rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                        tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
+                        maxiters_bisection=p.maxiters_bisection
+                        )
+                put!(results_rc, (vx, vy, result))
+            end
+        catch e
+            if isopen(jobs_rc)
+                print("Worker: ")
+                println(e)
+                flush(stdout)
+                isopen(results_rc) && close(results_rc)
+                return 1
+            else
+                return 0
+            end
         end
+    end # consumer_job
+
+    #Start the consumer jobs
+    consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
+
+    #How many vortex centers we have
+    num_jobs = length(vortexcenters)
+    num_barriers = 0
+    if verbose
+        pm = Progress(num_jobs, desc="Detecting vortices")
+    end
+    map(1:num_jobs) do i
+        vx, vy, barriers = take!(results_rc)
+        num_barriers += length(barriers)
+        if verbose
+            ProgressMeter.next!(pm; showvalues=[(:num_barriers, num_barriers)])
+        end
+        push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
+    end
+
+    #Cleanup, make sure everything finished etc...
+    wait(producer_task)
+    isopen(jobs_rc) && close(jobs_rc)
+    isopen(results_rc) && close(results_rc)
+    if 1 ∈ wait.(consumer_jobs)
+        raise(AssertionError("Caught error on worker"))
     end
 
     # get rid of vortices without barriers
