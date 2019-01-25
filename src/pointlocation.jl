@@ -259,7 +259,7 @@ end
 
 
 #TODO: Make this more robust
-function in_tetrahedron(a,b,c,d,p)::Bool
+function in_tetrahedron(a,b,c,d,p)
     function mydet(p1,p2,p3)
         M = zeros(3,3)
         M[:,1] = p1
@@ -319,29 +319,16 @@ function locatePoint(
     k = n3+1
 
     if S == JuAFEM.Tetrahedron
-        function node_array(nx,ny,i,j,k)
-                return (i-1) + nx*(j-1) + (nx*ny)*(k-1)
-        end
-        nx = loc.nx
-        ny = loc.ny
-        nodes = (node_array(nx,ny,i,j,k), node_array(nx,ny,i+1,j,k), node_array(nx,ny,i+1,j+1,k), node_array(nx,ny,i,j+1,k),
-                   node_array(nx,ny,i,j,k+1), node_array(nx,ny,i+1,j,k+1), node_array(nx,ny,i+1,j+1,k+1), node_array(nx,ny,i,j+1,k+1))
+        node_array = reshape(collect(0:(loc.nx*loc.ny*loc.nz - 1)), (loc.nx, loc.ny, loc.nz))
+        nodes = (node_array[i,j,k], node_array[i+1,j,k], node_array[i+1,j+1,k], node_array[i,j+1,k],
+                   node_array[i,j,k+1], node_array[i+1,j,k+1], node_array[i+1,j+1,k+1], node_array[i,j+1,k+1])
    else
-
-        function node_arrayp2(nx,ny,i,j,k)
-                nx_real = 2*nx - 1
-                ny_real = 2*nx - 1
-                return (i-1) + nx_real*(j-1) + (nx_real*ny_real)*(k-1)
-        end
-       #node_array = reshape(
-       #    collect(0:( (2*loc.nx-1)*(2*loc.ny-1)*(2*loc.nz - 1) - 1)), (2*loc.nx - 1, 2*loc.ny - 1,2*loc.nz-1)
-       #   )
-       #nodes = node_array[(2*(i-1) + 1):(2*i +1), (2*(j-1) + 1):(2*j+1), (2*(k-1)+1):(2*k+1)]
+       node_array = reshape(
+           collect(0:( (2*loc.nx-1)*(2*loc.ny-1)*(2*loc.nz - 1) - 1)), (2*loc.nx - 1, 2*loc.ny - 1,2*loc.nz-1)
+           )
        #TODO: does this cause a type instability?
-       nodes = [node_arrayp2(nx,ny,a,b,c) for a in (2*(i-1) + 1):(2*i + 1),
-                                           b in (2*(j-1) + 1):(2*k + 1),
-                                           c in (2*(j-1) + 1):(2*k + 1)
-                                           ]
+       #TODO: Finish this.
+       nodes = node_array[(2*(i-1) + 1):(2*i +1), (2*(j-1) + 1):(2*j+1), (2*(k-1)+1):(2*k+1)]
    end
 
     standard_cube = [Vec{3}((0.,0.,0.)),Vec{3}((1.,0.,0.)),Vec{3}((1.,1.,0.)),Tensors. Vec{3}((0.,1.,0.)),
