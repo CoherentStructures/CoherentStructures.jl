@@ -90,17 +90,24 @@ struct LCSParameters
     pmin::Float64
     pmax::Float64
     rdist::Float64
+    tolerance_ode::Float64
+    maxiters_ode::Int64
+    maxiters_bisection::Int64
 end
-function LCSParameters(;
+function LCSParameters(
             indexradius::Float64=0.1,
             boxradius::Float64=0.5,
             combine_pairs::Bool=true,
             n_seeds::Int64=60,
             pmin::Float64=0.7,
             pmax::Float64=1.5,
-            rdist::Float64=1e-4)
+            rdist::Float64=1e-4,
+            tolerance_ode=1e-8,
+            maxiters_ode::Int64=2000,
+            maxiters_bisection::Int64=20
+            )
 
-    LCSParameters(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist)
+    LCSParameters(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist, maxiters_ode, maxiters_bisection)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
@@ -307,52 +314,52 @@ end
 Computes returning orbits under the velocity field `vf`, originating from `seed`.
 The optional argument `save` controls whether intermediate locations of the
 returning orbit should be saved.
+Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached,
+2 for out of bounds error, 3 for other error).
 """
-function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
-
+function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
+                maxiters::Int64=2000, tolerance::Float64=1e-8) where T <: Real
     condition(u, t, integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     # return _flow(vf, seed, range(0., stop=20., length=200); tolerance=1e-8, callback=cb, verbose=false)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., 20.))
-    sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=2e3,
-            dense=false, save_everystep=save, reltol=1e-8, abstol=1e-8,
-            callback=cb, verbose=false).u
+    try
+        sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=maxiters,
+                dense=false, save_everystep=save, reltol=tolerance, abstol=tolerance,
+                callback=cb, verbose=false)
+        retcode = 0
+        if sol.retcode == :Terminated
+            retcode = 0
+        elseif sol.retcode == :MaxIters
+            retcode = 1
+        else
+            retcode = 3
+        end
+        return (sol.u, retcode)
+    catch e
+        if isa(e, BoundsError)
+    	    return (SArray{Tuple{2},T,1,2}[@SVector [NaN,NaN] ], 2)
+        end
+        rethrow(e)
+    end
 end
 
-function Poincaré_return_distance(vf, seed::SVector{2,T}, save::Bool=false) where T <: Real
+function Poincaré_return_distance(
+                        vf,
+                        seed::SVector{2,T},
+                        save::Bool=false;
+                        tolerance_ode::Float64=1e-8,
+                        maxiters_ode::Int64=2000
+                        ) where T <: Real
 
-    sol = compute_returning_orbit(vf, seed, save)
+    sol, retcode = compute_returning_orbit(vf, seed, save, maxiters_ode, tolerance_ode)
     # check if result due to callback
-    if abs(sol[end][2] - seed[2]) <= 1e-1
+    if retcode == 0
         return sol[end][1] - seed[1]
     else
         return NaN
     end
-end
-
-function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=15) where T <: Real
-    fa, fb = f(a), f(b)
-    fa*fb <= 0 || error("No real root in [a,b]")
-    i = 0
-    local c
-    while b-a > tol
-        i += 1
-        i != maxiter || error("Max iteration exceeded")
-        c = (a + b) / 2 # bisection
-        # c = (a*fb-b*fa)/(fb-fa) # regula falsi
-        fc = f(c)
-        if abs(fc) < tol
-            break
-        elseif fa * fc > 0
-            a = c  # Root is in the right half of [a,b].
-            fa = fc
-        else
-            b = c  # Root is in the left half of [a,b].
-        end
-    end
-    # @info "needed $(2+i) function evaluations"
-    return c
 end
 
 function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}) where {S1 <: Real, S2 <: Real}
@@ -369,14 +376,17 @@ function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}
 end
 
 """
-    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)
+    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000,maxiters_bisection=20)
 
 Compute the outermost closed orbit for a given Poincaré section `ps`, a vector field
 constructor `ηfield`, and an LCScache `cache`. Keyword arguments `pmin` and `pmax`
 correspond to the range of shift parameters in which closed orbits are sought;
 `rev` determines whether closed orbits are sought from the outside inwards (`true`)
 or from the inside outwards (`false`). `rdist` sets the required return distance for
-an orbit to be considered as closed.
+an orbit to be considered as closed. The parameter `maxiters_ode` gives the maximum number
+of steps taken by the ODE solver when computing the closed orbit, the ode solver uses tolerance
+given by `tolerance_ode`. The parameter `maxiters_bisection` gives the maximum number of iterations
+used by the bisection algorithm to find closed orbits.
 """
 function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 ηfield,
@@ -384,7 +394,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 rev::Bool=true,
                                 pmin::Real=0.7,
                                 pmax::Real=1.5,
-                                rdist::Real=1e-4
+                                rdist::Real=1e-4,
+                                tolerance_ode::Float64=1e-8,
+                                maxiters_ode::Int64=2000,
+                                maxiters_bisection::Int64=20
                                 ) where {S1 <: Real}
     if cache isa LCScache # tensor-based LCS computation
         l1itp = ITP.LinearInterpolation(cache.λ₁)
@@ -394,7 +407,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     end
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     prd(λ::Float64, σ::Bool, seed::SVector{2,S1}, cache) =
-            Poincaré_return_distance(ηfield(λ, σ, cache), seed)
+            Poincaré_return_distance(ηfield(λ, σ, cache), seed;
+                tolerance_ode=tolerance_ode,
+                maxiters_ode=maxiters_ode
+                )
 
     # VERSION 2: 3D-interpolant
     # η(λ::Float64, signum::Bool) = begin
@@ -418,27 +434,29 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
         λ⁰ = 0.0
+        σ = false
         try
-            global σ = false
-            λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
+            λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
         catch
-            global σ = true
+            σ = true
             try
-                λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist)
+                λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
             catch
             end
         end
         if !iszero(λ⁰)
-            orbit = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
-            closed = norm(orbit[1] - orbit[end]) <= rdist
-            predicate = qs -> cache isa LCScache ?
-                l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
-                nitp(qs[1], qs[2]) >= λ⁰^2
-            uniform = all(predicate, orbit)
-            if (closed && uniform)
-                push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
-                rev && break
-            end
+            orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true)
+    	    if retcode == 0
+        		closed = norm(orbit[1] - orbit[end]) <= rdist
+        		predicate = qs -> cache isa LCScache ?
+        	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
+    		            nitp(qs[1], qs[2]) >= λ⁰^2
+        		uniform = all(predicate, orbit)
+        		if (closed && uniform)
+        		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
+        		    rev && break
+        		end
+    	    end
         end
     end
     return vortices
@@ -477,46 +495,120 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     vortexcenters = singularities[getindices(singularities) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    # loop over potential vortex centers, return detected closed orbits
-    vortices = pmap(vortexcenters) do vc
-        # set up Poincaré section
-        vx = vc.coords[1]
-        vy = vc.coords[2]
-        vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
-        vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
-        ps = SVector{2}.(vs, vy)
-
-        # localize tensor field
-        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
-
-        # for computational tractability, pre-orient the eigenvector fields
-        # restrict search to star-shaped coherent vortices
-        # ξ₁ is oriented counter-clockwise, ξ₂ is oriented outwards
-        cache = orient(T_local, vc.coords)
-
-        # vector field constructor function
-        @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-            @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
-            @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
-            @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
-            itp = ITP.LinearInterpolation(c.η)
-            return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
-        end
-
-        # closed orbits extraction
-        if verbose
-            result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-            @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
-                "yielded $(length(result)) transport barrier" *
-                (length(result) > 1 ? "s." : ".")
-        else
-            result = compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-        end
-        return EllipticVortex(vc.coords, result)
+    # vector field constructor function
+    @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
+        @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
+        @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
+        @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+        itp = ITP.LinearInterpolation(c.η)
+        return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
     end
 
+    #This is where results go
+    vortices = EllipticVortex{S}[]
+    @sync begin
+        #Type of restricted field is quite complex, therefore make a variable for it here
+        Ttype = AxisArrays.AxisArray{
+    	 SymmetricTensor{2,2,S,3}, 2,
+    	 Array{SymmetricTensor{2,2,S,3},2},
+    	 Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
+               AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}}
+           }
+
+        # We make two remote channels. The master process pushes to jobs_rc in order
+        # (vx, vy, vr, p, outermost, T_local):
+        #     * vx::S,vy::S (coordinates of vortex center)
+        #     * vr::S (length of Poincaré section)
+        #     * p::LCSParameters
+        #     * T_local (A local copy of the tensor field)
+        #     * outermost::Bool (whether to only search for outermost barriers)
+        # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
+        # the results in results_rc
+
+        jobs_rc = RemoteChannel(() -> Channel{Tuple{S,S,S,LCSParameters,Bool,Ttype}}(nprocs()))
+        results_rc = RemoteChannel(() -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2*nprocs()))
+
+        #Start an asynchronous producer task that puts stuff onto jobs_rc
+        producer_task = @async try
+        	map(vortexcenters) do vc
+        	    # set up Poincaré section
+        	    vx = vc.coords[1]
+        	    vy = vc.coords[2]
+        	    vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+        	    # localize tensor field
+        	    T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        	    put!(jobs_rc, (vx, vy, vr, p, outermost, T_local))
+        	end
+        	isopen(jobs_rc) && close(jobs_rc)
+        catch e
+            print("Error in producing jobs for workers: ")
+            println(e)
+            close(jobs_rc)
+            close(results_rc)
+        end
+
+        #This is run as consumer job on workers
+        function consumer_job()
+        	try
+            	while true
+            	    vx, vy, vr, p, outermost, T_local = take!(jobs_rc)
+            	    vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+
+            	    cache = orient(T_local[:,:], @SVector [vx,vy])
+            	    ps = SVector{2}.(vs, vy)
+
+                    result = compute_closed_orbits(ps, ηfield, cache;
+                            rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                            tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
+                            maxiters_bisection=p.maxiters_bisection
+                            )
+            	    put!(results_rc, (vx, vy, result))
+            	end
+        	catch e
+                if isopen(jobs_rc)
+                    print("Worker: ")
+            	    println(e)
+                    flush(stdout)
+                    isopen(results_rc) && close(results_rc)
+                    return 1
+                else
+                    return 0
+                end
+        	end
+        end # consumer_job
+
+        #Start the consumer jobs
+        consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
+
+        #How many vortex centers we have
+        num_jobs = length(vortexcenters)
+        num_barriers = 0
+        if ! verbose
+            mapping_function = map
+        else
+            pm = Progress(num_jobs, desc="Detecting vortices")
+            mapping_function = (x,y) -> progress_map(x, y; progress=pm)
+        end
+        mapping_function(1:num_jobs) do i
+    	    vx, vy, barriers = take!(results_rc)
+    	    num_barriers += length(barriers)
+            if verbose
+                ProgressMeter.next!(pm; showvalues=[(:num_barriers, num_barriers)])
+            end
+            push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
+        end
+
+        #Cleanup, make sure everything finished etc...
+        #Is probably redundant by the use of @sync
+        wait(producer_task)
+        isopen(jobs_rc) && close(jobs_rc)
+        isopen(results_rc) && close(results_rc)
+        if 1 ∈ wait.(consumer_jobs)
+            raise(AssertionError("Caught error on worker"))
+        end
+    end
+
+    #Get rid of vortices without barriers
     vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, singularities
@@ -541,45 +633,121 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     vortexcenters = critpts[getindices(critpts) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    # loop over potential vortex centers, return detected closed orbits
-    vortices = pmap(vortexcenters) do vc
-        # set up Poincaré section
-        vx = vc.coords[1]
-        vy = vc.coords[2]
-        vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
-        vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
-        ps = SVector{2}.(vs, vy)
+    vortices = EllipticVortex{S}[]
+    @sync begin
+        #Type of restricted field is quite complex, therefore make a variable for it here
+        qType = AxisArrays.AxisArray{
+    	 SVector{2,S}, 2,
+    	 Array{SVector{2,S},2},
+    	 Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
+               AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}
+              }
+            }
 
-        # localize tensor field
-        q_local = q[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        # We make two remote channels. The master process pushes to jobs_rc in order
+        # (vx, vy, vr, p, outermost, T_local):
+        #     * vx::S,vy::S (coordinates of vortex center)
+        #     * vr::S (length of Poincaré section)
+        #     * p::LCSParameters
+        #     * q_local (A local copy of the vector field)
+        #     * outermost::Bool (whether to only search for outermost barriers)
+        # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
+        # the results in results_rc
 
-        # vector field constructor function
-        Ω = SMatrix{2,2}(0., -1., 1., 0.)
-        cache = deepcopy(q_local)
-        normsqq = map(v -> norm(v)^2, q_local)
-        nitp = ITP.LinearInterpolation(normsqq)
-        invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
-        @inline function ηfield(λ, s, cache)
-            cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
-                            ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
-            itp = ITP.LinearInterpolation(cache)
-            return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
+        jobs_rc = RemoteChannel(() -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(nprocs()))
+        results_rc = RemoteChannel(() -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2*nprocs()))
+
+        #Start an asynchronous producer task that puts stuff onto jobs_rc
+        producer_task = @async try
+        	map(vortexcenters) do vc
+        	    # set up Poincaré section
+        	    vx = vc.coords[1]
+        	    vy = vc.coords[2]
+        	    vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+        	    # localize tensor field
+        	    q_local = q[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        	    put!(jobs_rc, (vx, vy, vr, p, outermost, q_local))
+        	end
+        	isopen(jobs_rc) && close(jobs_rc)
+        catch e
+            print("Error in producing jobs for workers: ")
+            println(e)
+            close(jobs_rc)
+            close(results_rc)
         end
 
-        # closed orbits extraction
-        if verbose
-            result, t, _ = @timed compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
-            @info "Vortex candidate $(ps[1]) was finished in $t seconds and " *
-                "yielded $(length(result)) transport barrier" *
-                (length(result) > 1 ? "s." : ".")
+        #This is run as consumer job on workers
+        function consumer_job()
+        	try
+            	while true
+            	    vx, vy, vr, p, outermost, q_local = take!(jobs_rc)
+            	    vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+            	    ps = SVector{2}.(vs, vy)
+
+                    Ω = SMatrix{2,2}(0., -1., 1., 0.)
+                    cache = deepcopy(q_local)
+                    normsqq = map(v -> norm(v)^2, q_local)
+                    nitp = ITP.LinearInterpolation(normsqq)
+                    invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
+                    @inline function ηfield(λ, s, cache)
+                        cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
+                                        ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
+                        itp = ITP.LinearInterpolation(cache)
+                        return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
+                    end
+
+                    result = compute_closed_orbits(ps, ηfield, cache;
+                            rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
+                            tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
+                            maxiters_bisection=p.maxiters_bisection
+                            )
+            	    put!(results_rc, (vx, vy, result))
+            	end
+        	catch e
+                if isopen(jobs_rc)
+                    print("Worker: ")
+            	    println(e)
+                    flush(stdout)
+                    isopen(results_rc) && close(results_rc)
+                    return 1
+                else
+                    return 0
+                end
+        	end
+        end # consumer_job
+
+        #Start the consumer jobs
+        consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
+
+        #How many vortex centers we have
+        num_jobs = length(vortexcenters)
+        num_barriers = 0
+        if ! verbose
+            mapping_function = map
         else
-            result = compute_closed_orbits(ps, ηfield, cache;
-                    rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist)
+            pm = Progress(num_jobs, desc="Detecting vortices")
+            mapping_function = (x,y) -> progress_map(x, y; progress=pm)
         end
-        return EllipticVortex(vc.coords, result)
+        mapping_function(1:num_jobs) do i
+    	    vx, vy, barriers = take!(results_rc)
+    	    num_barriers += length(barriers)
+            if verbose
+                ProgressMeter.next!(pm; showvalues=[(:num_barriers, num_barriers)])
+            end
+            push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
+        end
+
+        #Cleanup, make sure everything finished etc...
+        #Is probably redundant by the use of @sync
+        wait(producer_task)
+        isopen(jobs_rc) && close(jobs_rc)
+        isopen(results_rc) && close(results_rc)
+        if 1 ∈ wait.(consumer_jobs)
+            raise(AssertionError("Caught error on worker"))
+        end
     end
 
+    # get rid of vortices without barriers
     vortexlist = vortices[map(r -> !isempty(r.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, critpts

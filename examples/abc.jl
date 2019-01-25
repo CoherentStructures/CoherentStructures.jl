@@ -30,7 +30,7 @@ for z in range(0,stop=2π,length=10)
     ys = range(0,stop=2π,length=50)
     Plots.display(
         Plots.heatmap(xs,ys,
-        (x,y) -> evaluate_function_from_dofvals(abcctx,u, [x,y,z]),
+        (x,y) -> evaluate_function_from_dofvals(abcctx,u, Vec{3}((x,y,z))),
         title="z = $z",clim=(-1,1)
     ))
 end
