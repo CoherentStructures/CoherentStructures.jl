@@ -981,7 +981,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_returning_orbit",
     "category": "function",
-    "text": "compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)\n\nComputes returning orbits under the velocity field vf, originating from seed. The optional argument save controls whether intermediate locations of the returning orbit should be saved.\n\n\n\n\n\n"
+    "text": "compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)\n\nComputes returning orbits under the velocity field vf, originating from seed. The optional argument save controls whether intermediate locations of the returning orbit should be saved. Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached, 2 for out of bounds error, 3 for other error).\n\n\n\n\n\n"
 },
 
 {
@@ -989,7 +989,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_closed_orbits",
     "category": "function",
-    "text": "compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4)\n\nCompute the outermost closed orbit for a given Poincaré section ps, a vector field constructor ηfield, and an LCScache cache. Keyword arguments pmin and pmax correspond to the range of shift parameters in which closed orbits are sought; rev determines whether closed orbits are sought from the outside inwards (true) or from the inside outwards (false). rdist sets the required return distance for an orbit to be considered as closed.\n\n\n\n\n\n"
+    "text": "compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000,maxiters_bisection=20)\n\nCompute the outermost closed orbit for a given Poincaré section ps, a vector field constructor ηfield, and an LCScache cache. Keyword arguments pmin and pmax correspond to the range of shift parameters in which closed orbits are sought; rev determines whether closed orbits are sought from the outside inwards (true) or from the inside outwards (false). rdist sets the required return distance for an orbit to be considered as closed. The parameter maxiters_ode gives the maximum number of steps taken by the ODE solver when computing the closed orbit, the ode solver uses tolerance given by tolerance_ode. The parameter maxiters_bisection gives the maximum number of iterations used by the bisection algorithm to find closed orbits.\n\n\n\n\n\n"
 },
 
 {
