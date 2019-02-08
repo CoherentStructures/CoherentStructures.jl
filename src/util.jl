@@ -2,27 +2,26 @@
 #Various utility functions
 
 # bisection is used in closed orbit detection in ellipticLCS.jl
-function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=20) where T <: Real
+function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=20,margin_step::T=(b-a)/20) where T <: Real
+    @assert margin_step > 0
     fa, fb = f(a), f(b)
     local c::T
     i = 0
     firsttime=true
     while (b - a > tol)
         i < maxiter || error("Max iteration exceeded")
-        #TODO: think of using a second parameter othern than maxiter to determine how much to shift by.
-        if isnan(fa)
+        if isnan(fa) && abs(a-b) > margin_step
             firsttime || error("NaN values between non-NaN values")
-            i += 1
-    	    a += (b - a) / (maxiter + 1)
+    	    a += margin_step
             fa = f(a)
             continue
-        elseif isnan(fb)
+        elseif isnan(fb) && abs(a-b) > margin_step
             firsttime || error("NaN values between non-NaN values")
-            i += 1
-    	    b -= (b - a) / (maxiter + 1)
+    	    b -= margin_step
             fb = f(b)
             continue
         end
+        firsttime=false
         i += 1
         fa * fb <= 0 || error("No real root in [a,b]")
         c = (a + b) / 2 # bisection
