@@ -139,7 +139,7 @@ function _cylinder_flow(u, p, t)
     x = u[1]
     y = u[2]
     return SVector{2,Float64}(
-        c - A(t) * sin(x - ν * t) * cos(y) + ε * G(g(x, y, t)) + sin(t / 2),
+        c - A(t) * sin(x - ν * t) * cos(y) + ε * G(g(x, y, t))*sin(t / 2),
         A(t) * cos(x - ν * t) * sin(y)
         )
 end
