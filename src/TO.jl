@@ -102,7 +102,7 @@ function nonAdaptiveTOCollocation(
 end
 
 """
-    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus, LL,UR, bdata, volume_preserving=true,flow_map_mode=0] )
+    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus,on_cylinder, LL,UR, bdata, volume_preserving=true,flow_map_mode=0] )
 
 Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)`` where
 ``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay triangulation on images of grid points from ctx
@@ -111,7 +111,8 @@ and ``T_n`` is the Transfer-operator for ``x \\mapsto flow_maps(x,times)[n]`` an
 
 If `times==nothing`, take ``N=1`` above and use the map ``x \\mapsto flow_maps(x)` instead of the version with `t_n`.
 
-If `on_torus` is true, the Delaunay Triangulation is done on the torus. Here we require `bdata` for boundary information
+If `on_torus` is true, the Delaunay Triangulation is done on the torus.
+If `on_cylinder` is true, then triangulation is done on cylinder (periodic) x. In both of these cases we require `bdata` for boundary information
 on the original domain as well as `LL` and `UR` as lower-left and upper-right corners of the image.
 
 If `volume_preserving == false`, add a volume_correction term to ``a_1`` (See paper by Froyland & Junge).
@@ -125,13 +126,14 @@ function adaptiveTOCollocationStiffnessMatrix(
         ;
         quadrature_order=default_quadrature_order,
         on_torus::Bool=false,
+        on_cylinder::Bool=false,
         LL_future::AbstractVector{Float64}=ctx.spatialBounds[1],
         UR_future::AbstractVector{Float64}=ctx.spatialBounds[2],
         bdata::boundaryData=boundaryData(),
         volume_preserving=true,
         flow_map_mode=0
         )
-    if !on_torus  && length(bdata.periodic_dofs_from) != 0
+    if !(on_torus || on_cylinder)  && length(bdata.periodic_dofs_from) != 0
         @warn "This function probably doesn't work for this case"
     end
 
@@ -165,7 +167,7 @@ function adaptiveTOCollocationStiffnessMatrix(
     for n in 1:N
         flow_map_t = j -> flow_map_images[n,j]
         new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx,flow_map_t;
-                                on_torus=on_torus,LL_future=LL_future,UR_future=UR_future,bdata=bdata,
+                                on_torus=on_torus,on_cylinder=on_cylinder,LL_future=LL_future,UR_future=UR_future,bdata=bdata,
                                 flow_map_mode=1
                                 )
 
@@ -243,13 +245,13 @@ If `flow_map_mode==0` (default), apply `flow_map` to node coordinates. If `flow_
 apply `flow_map` to node index
 """
 function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
-        on_torus=false,bdata=boundaryData(),LL_future=ctx.spatialBounds[1], UR_future=ctx.spatialBounds[2],
+        on_torus=false,on_cylinder=false,bdata=boundaryData(),LL_future=ctx.spatialBounds[1], UR_future=ctx.spatialBounds[2],
         quadrature_order=default_quadrature_order,
         flow_map_mode=0
         ) where dim
 
-    if isEmptyBC(bdata) && on_torus==true
-        throw(AssertionError("Require bdata parameter if on_torus==true"))
+    if isEmptyBC(bdata) && (on_torus || on_cylinder)
+        throw(AssertionError("Require bdata parameter if on_torus==true or on_cylinder==true"))
     end
 
     #Push forward "original" nodes
@@ -267,7 +269,7 @@ function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
     end
     new_ctx, new_bdata = irregularDelaunayGrid(
                             new_nodes_in_bcdof_order;
-                            on_torus=on_torus,LL=LL_future,UR=UR_future,
+                            on_torus=on_torus,on_cylinder=on_cylinder,LL=LL_future,UR=UR_future,
                             quadrature_order=quadrature_order
                             )
 
@@ -283,7 +285,7 @@ end
 
 
 """
-    adaptiveTOCollocation(ctx,flow_map; [on_torus=false, bdata,LL,UR, volume_preserving=true])
+    adaptiveTOCollocation(ctx,flow_map; [on_torus=false,on_cylinder=false, bdata,LL,UR, volume_preserving=true])
 
 Calculate the represenation matrix for ``J_h I_h T`` where ``T`` is the Transfer-Operator
 for `flow_map` and ``J_h`` is the nodal interpolation operator for `ctx` and ``I_h`` is the
@@ -291,20 +293,21 @@ nodal interpolation operator onto a grid which has nodes at future time given by
 of nodal basis points of ``f``.
 
 If `on_torus==true`, then everything is done with periodic boundary conditions.
+For `on_cylinder==true`, periodic only in x-direction.
 If `volume_preserving==false`, a correction is made for non-volume-preserving maps.
 """
 function adaptiveTOCollocation(ctx::gridContext{dim}, flow_map::Function;
-     on_torus::Bool=false,  bdata=nothing, LL=[0.0,0.0],UR=[1.0,1.0],
+     on_torus::Bool=false,on_cylinder::Bool=false,  bdata=nothing, LL=[0.0,0.0],UR=[1.0,1.0],
      volume_preserving=true,projection_method=:naTO
      ) where dim
 
-    if on_torus
+    if on_torus || on_cylinder
         if bdata === nothing
             throw(AssertionError("bdata == nothing"))
         end
         npoints = ctx.n - length(bdata.periodic_dofs_from)
         ctx_new, bdata_new, volume_change = adaptiveTOFutureGrid(ctx, flow_map;
-             on_torus=on_torus, LL=LL, UR=UR,bdata=bdata)
+             on_torus=on_torus,on_cylinder=on_cylinder, LL=LL, UR=UR,bdata=bdata)
         if projection_method == :naTO
             ALPHA_bc, _ = nonAdaptiveTOCollocation(ctx_new,x->x,ctx;
                 volume_preserving=true,bdata_domain=bdata_new,bdata_codomain=bdata)

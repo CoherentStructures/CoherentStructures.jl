@@ -306,6 +306,7 @@ end
 
 Create a P1-Lagrange grid based on Delaunay Triangulation.
 If `on_torus==true`, triangulates on a periodic domain (in both directions)
+If `on_cylinder==true`, triangulates on a periodic domain in x-direction
 defined by `LL` (lower-left corner) and `UR` (upper-right corner).
 The parameter `ip` defines what kind of shape functions to use, the default is P1-Lagrange (can also be piecewise constant).
 i
@@ -317,16 +318,17 @@ function gridContext{2}(
             node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order,
             on_torus=false,
+            on_cylinder=false,
             LL=nothing,
             UR=nothing,
             ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}(),
             )
-    if on_torus
+    if on_torus || on_cylinder
         @assert !( LL == nothing || UR == nothing)
     end
     grid, loc = JFM.generate_grid(
             JFM.Triangle, node_list;
-            on_torus=on_torus,LL=LL,UR=UR
+            on_torus=on_torus,on_cylinder=on_cylinder,LL=LL,UR=UR
             )
     dh = JFM.DofHandler(grid)
     qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
@@ -349,18 +351,18 @@ function gridContext{2}(
 end
 
 """
-    irregularDelaunayGrid(nodes_in; [on_torus=true,LL,UR,PC=false,...])
+    irregularDelaunayGrid(nodes_in; [on_torus=false,on_cylinder=false,LL,UR,PC=false,...])
 
 Triangulate the nodes `nodes_in` and return a `gridContext` and `bdata` for them.
 If `on_torus==true`, the triangulation is done on a torus.
 If `PC==true`, return a mesh with piecewise constant shape-functions, else P1 Lagrange.
 """
 function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
-    on_torus=false, LL=nothing, UR=nothing,
+    on_torus=false, on_cylinder=false, LL=nothing, UR=nothing,
     PC=false,
     kwargs...
     )
-    if on_torus
+    if on_torus || on_cylinder
         @assert !(LL == nothing || UR == nothing)
     end
     if !PC
@@ -369,13 +371,15 @@ function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
         ip = JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
     end
     ctx = CoherentStructures.gridContext{2}(JFM.Triangle,
-        nodes_in;on_torus=on_torus,LL=LL,UR=UR,ip=ip,
+        nodes_in;on_torus=on_torus,on_cylinder=on_cylinder,LL=LL,UR=UR,ip=ip,
         kwargs...
         )
-    if !on_torus
-        bdata = boundaryData()
-    else
+    if on_torus
         bdata = boundaryData(ctx,PEuclidean(UR .- LL))
+    elseif on_cylinder
+        bdata = boundaryData(ctx,PEuclidean([UR[1] - LL[1],Inf]))
+    else
+        bdata = boundaryData()
     end
     return ctx, bdata
 end
@@ -399,11 +403,13 @@ end
 
 
 """
-    regularDelaunayGrid(numnodes=(25,25), LL, UR; [quadrature_order,on_torus=false, nudge_epsilon=1e-5,PC=false])
+    regularDelaunayGrid(numnodes=(25,25), LL, UR; [quadrature_order,on_torus=false,on_cylinder=false, nudge_epsilon=1e-5,PC=false])
 
 Create a regular grid on a square with lower left corner `LL` and upper-right corner `UR`.
 Internally uses Delauny Triangulation.
-If `on_torus==true`, uses a periodic Delaunay triangulation. To avoid degenerate special cases,
+If `on_torus==true`, uses a periodic Delaunay triangulation in both directions.
+If `on_cylinder==true` uses a periodic Delaunay triangulatin in x direction only.
+ To avoid degenerate special cases,
 all nodes are given a random `nudge`, the strength of which depends on `numnodes` and `nudge_epsilon`.
 If `PC==true`, returns a piecewise constant grid. Else returns a P1-Lagrange grid.
 """
@@ -413,6 +419,7 @@ function regularDelaunayGrid(
             UR::AbstractVector=[1.0, 1.0];
             quadrature_order::Int=default_quadrature_order,
             on_torus=false,
+            on_cylinder=false,
             nudge_epsilon::Float64=1e-5,
             PC=false
         )
@@ -424,7 +431,7 @@ function regularDelaunayGrid(
         ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}()
     end
     node_list = vec([Vec{2}((x, y)) for y in Y, x in X])
-    if on_torus
+    if on_torus || on_cylinder
         function nudge(point)
             nudgefactor = (UR .- LL)  .* nudge_epsilon ./ numnodes
             return Vec{2}(
@@ -438,6 +445,7 @@ function regularDelaunayGrid(
          node_list;
          quadrature_order=quadrature_order,
          on_torus=on_torus,
+         on_cylinder=on_cylinder,
          LL=LL,
          UR=UR,
          ip=ip
@@ -1150,10 +1158,10 @@ function delaunay2(x::Vector{Vec{2,Float64}})
 end
 
 
-#See if this cell, or vertical and horizontal translations
+#See if this cell, or horizontal (and vertical if on_cylinder==false) translations
 #of it have already been added to the triangulation.
 #This is a helper function
-function in_cells_used(cells_used_arg,element::Tuple{Int,Int,Int},num_nodes_in)::Int
+function in_cells_used(cells_used_arg,element::Tuple{Int,Int,Int},num_nodes_in,on_cylinder=false)::Int
     function moveby(i::Int,xdir::Int,ydir::Int)::Int
         xpos = div((i-1),3*num_nodes_in)
         ypos = rem(div((i-1),num_nodes_in),3)
@@ -1194,8 +1202,9 @@ function in_cells_used(cells_used_arg,element::Tuple{Int,Int,Int},num_nodes_in):
         ypos = addToPosition(ypos,ydir)
         return remainder + 3*num_nodes_in*xpos + ypos*num_nodes_in + 1
     end
+    ydirections = on_cylinder ? (0:0) : (-1:1)
     for directionx in -1:1
-        for directiony in -1:1
+        for directiony in ydirections
             #TODO: optimize this for speed
             moved_cell = Tuple{Int,Int,Int}(sort(collect(moveby.(element,directionx,directiony))))
             if moved_cell ∈ keys(cells_used_arg)
@@ -1211,13 +1220,14 @@ end
 """
 Function for creating a grid from scattered nodes.
 Calls VoronoiDelaunay for delaunay triangulation. Makes a periodic triangulation
-if `on_torus` is set to `true`.
+if `on_torus` is set to `true` similarly with `on_cylinder`.
 """
 function JuAFEM.generate_grid(::Type{JFM.Triangle},
      nodes_in::Vector{Vec{2,Float64}};
-     on_torus=false,LL=nothing,UR=nothing
+     on_torus=false,on_cylinder=false,LL=nothing,UR=nothing
      )
-    if on_torus
+    @assert !(on_torus && on_cylinder)
+    if on_torus || on_cylinder
         @assert !(LL == nothing || UR == nothing)
     end
 
@@ -1241,6 +1251,17 @@ function JuAFEM.generate_grid(::Type{JFM.Triangle},
                     push!(nodes_to_triangulate,Vec{2}((new_point[1],new_point[2])))
                     push!(points_mapping,index)
                 end
+            end
+        end
+    elseif on_cylinder
+        dx = UR[1] - LL[1]
+        dy = UR[2] - LL[2]
+        for i in [0,1,-1]
+            j = 0
+            for (index,node) in enumerate(nodes_in)
+                new_point = node .+ (i*dx,j*dy)
+                push!(nodes_to_triangulate,Vec{2}((new_point[1],new_point[2])))
+                push!(points_mapping,index)
             end
         end
     else
@@ -1300,7 +1321,7 @@ function JuAFEM.generate_grid(::Type{JFM.Triangle},
             new_tri_nodes_from_tess = (tri._a.id, tri._c.id, tri._b.id)
         end
 
-        if !on_torus
+        if !(on_torus || on_cylinder)
             push!(cells, JFM.Triangle(new_tri_nodes_from_tess))
             cell_number_table[triindex.ix-1] = length(cells)
         else
@@ -1313,7 +1334,7 @@ function JuAFEM.generate_grid(::Type{JFM.Triangle},
                 #version of this cell
                 thiscell = in_cells_used(cells_used,
                                     Tuple{Int,Int,Int}(new_tri_nodes_from_tess),
-                                    num_nodes_in)
+                                    num_nodes_in,on_cylinder)
                 if thiscell != 0
                     #We have, so nothing to do here except record this.
                    cell_number_table[triindex.ix-1] = thiscell
@@ -1366,10 +1387,10 @@ function JuAFEM.generate_grid(::Type{JFM.Triangle},
         end
         tri_iterator = Base.iterate(tess,triindex)
     end
-    #Write down location of remining cells
-    if on_torus
+    #Write down location of remaining cells
+    if on_torus || on_cylinder
         for (c,index) in cells_to_deal_with
-            thiscell = in_cells_used(cells_used,c,num_nodes_in)
+            thiscell = in_cells_used(cells_used,c,num_nodes_in,on_cylinder)
             cell_number_table[index] = thiscell
         end
     end
@@ -1399,34 +1420,6 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
 
     points_mapping = Vector{Int}[]
 
-    for (index,node) in enumerate(nodes_in)
-        if on_torus
-            for i in -1:1
-                for j in -1:1
-                    new_point = node .+ (i*dx,j*dy)
-                    push!(nodes_to_triangulate,new_point)
-                    push!(points_mapping,index)
-                end
-            end
-        else
-            push!(nodes_to_triangulate)
-            push!(points_mapping,index)
-        end
-    end
-    for (index,node) in enumerate(nodes_in)
-        if on_torus
-            for i in -1:1
-                for j in -1:1
-                    new_point = node .+ (i*dx,j*dy)
-                    push!(new_points,new_point)
-                    push!(points_mapping,index)
-                end
-            end
-        else
-        push!(new_points,node)
-        push!(points_mapping,index)
-        end
-    end
     tess, m, scale_x, scale_y, minx, miny = delaunay2(nodes_to_triangulate)
     locator = p2DelaunayCellLocator(m, scale_x, scale_y, minx, miny, tess,points_mapping)
     nodes = map(JFM.Node, nodes_in)
