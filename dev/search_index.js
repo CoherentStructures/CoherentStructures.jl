@@ -573,7 +573,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FEM-based methods",
     "title": "CoherentStructures.regularDelaunayGrid",
     "category": "function",
-    "text": "regularDelaunayGrid(numnodes=(25,25), LL, UR; [quadrature_order,on_torus=false, nudge_epsilon=1e-5,PC=false])\n\nCreate a regular grid on a square with lower left corner LL and upper-right corner UR. Internally uses Delauny Triangulation. If on_torus==true, uses a periodic Delaunay triangulation. To avoid degenerate special cases, all nodes are given a random nudge, the strength of which depends on numnodes and nudge_epsilon. If PC==true, returns a piecewise constant grid. Else returns a P1-Lagrange grid.\n\n\n\n\n\n"
+    "text": "regularDelaunayGrid(numnodes=(25,25), LL, UR; [quadrature_order,on_torus=false,on_cylinder=false, nudge_epsilon=1e-5,PC=false])\n\nCreate a regular grid on a square with lower left corner LL and upper-right corner UR. Internally uses Delauny Triangulation. If on_torus==true, uses a periodic Delaunay triangulation in both directions. If on_cylinder==true uses a periodic Delaunay triangulatin in x direction only.  To avoid degenerate special cases, all nodes are given a random nudge, the strength of which depends on numnodes and nudge_epsilon. If PC==true, returns a piecewise constant grid. Else returns a P1-Lagrange grid.\n\n\n\n\n\n"
 },
 
 {
@@ -581,7 +581,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FEM-based methods",
     "title": "CoherentStructures.irregularDelaunayGrid",
     "category": "function",
-    "text": "irregularDelaunayGrid(nodes_in; [on_torus=true,LL,UR,PC=false,...])\n\nTriangulate the nodes nodes_in and return a gridContext and bdata for them. If on_torus==true, the triangulation is done on a torus. If PC==true, return a mesh with piecewise constant shape-functions, else P1 Lagrange.\n\n\n\n\n\n"
+    "text": "irregularDelaunayGrid(nodes_in; [on_torus=false,on_cylinder=false,LL,UR,PC=false,...])\n\nTriangulate the nodes nodes_in and return a gridContext and bdata for them. If on_torus==true, the triangulation is done on a torus. If PC==true, return a mesh with piecewise constant shape-functions, else P1 Lagrange.\n\n\n\n\n\n"
 },
 
 {
