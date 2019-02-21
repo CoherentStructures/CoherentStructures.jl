@@ -92,7 +92,7 @@ struct LCSParameters
     rdist::Float64
     tolerance_ode::Float64
     maxiters_ode::Int64
-    orbit_length::Float64
+    max_orbit_length::Float64
     maxiters_bisection::Int64
     function LCSParameters(
                 indexradius::Float64=0.1,
@@ -104,11 +104,26 @@ struct LCSParameters
                 rdist::Float64=1e-4,
                 tolerance_ode::Float64=1e-8,
                 maxiters_ode::Int64=2000,
-                orbit_length::Float64=20.0,
+                max_orbit_length::Float64=20.0,
+                maxiters_bisection::Int64=20
+                )
+        return new(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist,tolerance_ode, maxiters_ode,max_orbit_length, maxiters_bisection)
+    end
+    function LCSParameters(;
+                indexradius::Float64=0.1,
+                boxradius::Float64=0.5,
+                combine_pairs::Bool=true,
+                n_seeds::Int64=60,
+                pmin::Float64=0.7,
+                pmax::Float64=1.5,
+                rdist::Float64=1e-4,
+                tolerance_ode::Float64=1e-8,
+                maxiters_ode::Int64=2000,
+                max_orbit_length::Float64=20.0,
                 maxiters_bisection::Int64=20
                 )
 
-        return new(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist,tolerance_ode, maxiters_ode,orbit_length, maxiters_bisection)
+        return new(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist,tolerance_ode, maxiters_ode,max_orbit_length, maxiters_bisection)
     end
 end
 
@@ -312,7 +327,7 @@ end
 
 ######################## closed orbit computations #############################
 """
-    compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)
+    compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false,maxiters, tolerance,max_orbit_length)
 Computes returning orbits under the velocity field `vf`, originating from `seed`.
 The optional argument `save` controls whether intermediate locations of the
 returning orbit should be saved.
@@ -320,12 +335,13 @@ Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached,
 2 for out of bounds error, 3 for other error).
 """
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
-                maxiters::Int64=2000, tolerance::Float64=1e-8,maxlength::Float64=20.0) where T <: Real
+                maxiters::Int64=2000, tolerance::Float64=1e-8,max_orbit_length::Float64=20.0
+                ) where T <: Real
     condition(u, t, integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     # return _flow(vf, seed, range(0., stop=20., length=200); tolerance=1e-8, callback=cb, verbose=false)
-    prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., maxlength))
+    prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., max_orbit_length))
     try
         sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=maxiters,
                 dense=false, save_everystep=save, reltol=tolerance, abstol=tolerance,
@@ -353,10 +369,10 @@ function Poincaré_return_distance(
                         save::Bool=false;
                         tolerance_ode::Float64=1e-8,
                         maxiters_ode::Int64=2000,
-                        orbit_length::Float64=20.0
+                        max_orbit_length::Float64=20.0
                         ) where T <: Real
 
-    sol, retcode = compute_returning_orbit(vf, seed, save, maxiters_ode, tolerance_ode,orbit_length)
+    sol, retcode = compute_returning_orbit(vf, seed, save, maxiters_ode, tolerance_ode,max_orbit_length)
     # check if result due to callback
     if retcode == 0
         return sol[end][1] - seed[1]
@@ -400,7 +416,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 rdist::Real=1e-4,
                                 tolerance_ode::Float64=1e-8,
                                 maxiters_ode::Int64=2000,
-                                orbit_length::Float64=20.0,
+                                max_orbit_length::Float64=20.0,
                                 maxiters_bisection::Int64=20
                                 ) where {S1 <: Real}
     if cache isa LCScache # tensor-based LCS computation
@@ -413,7 +429,8 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     prd(λ::Float64, σ::Bool, seed::SVector{2,S1}, cache) =
             Poincaré_return_distance(ηfield(λ, σ, cache), seed;
                 tolerance_ode=tolerance_ode,
-                maxiters_ode=maxiters_ode
+                maxiters_ode=maxiters_ode,
+                max_orbit_length=max_orbit_length
                 )
 
     # VERSION 2: 3D-interpolant
@@ -437,19 +454,14 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     vortices = EllipticBarrier{S1}[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
-        λ⁰ = 0.0
         σ = false
-        try
-            λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
-        catch
+        bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
+        if bisection_retcode != zero_found
             σ = true
-            try
-                λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
-            catch
-            end
+            bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
         end
-        if !iszero(λ⁰)
-            orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true,maxiters_ode,tolerance_ode,orbit_length)
+        if bisection_retcode == zero_found
+            orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true,maxiters_ode,tolerance_ode,max_orbit_length)
     	    if retcode == 0
         		closed = norm(orbit[1] - orbit[end]) <= rdist
         		predicate = qs -> cache isa LCScache ?
@@ -586,7 +598,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                 result = compute_closed_orbits(ps, ηfield, cache;
                         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
                         tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
-                        orbit_length=p.orbit_length,
+                        max_orbit_length=p.max_orbit_length,
                         maxiters_bisection=p.maxiters_bisection
                         )
                 put!(results_rc, (vx, vy, result))
@@ -731,7 +743,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
                 result = compute_closed_orbits(ps, ηfield, cache;
                         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
                         tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
-                        orbit_length=p.orbit_length,
+                        max_orbit_length=p.max_orbit_length,
                         maxiters_bisection=p.maxiters_bisection
                         )
                 put!(results_rc, (vx, vy, result))

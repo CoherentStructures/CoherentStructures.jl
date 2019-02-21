@@ -1,34 +1,38 @@
 #(c) 2017 Nathanael Schilling & Daniel Karrasch
 #Various utility functions
 
+@enum BisectionStatus zero_found=0 maxiters_exceeded=1 nans_between=2 no_real_root=3
+
 # bisection is used in closed orbit detection in ellipticLCS.jl
-function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=20,margin_step::T=(b-a)/20) where T <: Real
+function bisection(f, a::T, b::T, tol::Real=1e-4,
+        maxiter::Int=20,margin_step::T=(b-a)/20
+        )::Tuple{BisectionStatus, T} where T <: Real
     @assert margin_step > 0
     fa, fb = f(a), f(b)
     local c::T
     i = 0
     firsttime=true
-    while (b - a > tol)
-        i < maxiter || error("Max iteration exceeded")
+    while true
+        i < maxiter || return (maxiters_exceeded, T(NaN))
         if isnan(fa) && abs(a-b) > margin_step
-            firsttime || error("NaN values between non-NaN values")
+            firsttime || return (nans_between, T(NaN))
     	    a += margin_step
             fa = f(a)
             continue
         elseif isnan(fb) && abs(a-b) > margin_step
-            firsttime || error("NaN values between non-NaN values")
+            firsttime || return (nans_between, T(NaN))
     	    b -= margin_step
             fb = f(b)
             continue
         end
         firsttime=false
         i += 1
-        fa * fb <= 0 || error("No real root in [a,b]")
+        fa * fb <= 0 || return (no_real_root, T(NaN))
         c = (a + b) / 2 # bisection
         # c = (a*fb-b*fa)/(fb-fa) # regula falsi
         fc = f(c)
         if abs(fc) < tol
-            return c
+            return (zero_found,c)
         elseif fa * fc > 0
             a = c  # Root is in the right half of [a,b].
             fa = fc
@@ -36,7 +40,6 @@ function bisection(f, a::T, b::T, tol::Real=1e-4, maxiter::Int=20,margin_step::T
             b = c  # Root is in the left half of [a,b].
         end
     end
-    error("Maximum iterations reached")
 end
 
 """
