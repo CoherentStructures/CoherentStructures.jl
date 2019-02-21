@@ -28,8 +28,11 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
         firsttime=false
         i += 1
         fa * fb <= 0 || return (no_real_root, T(NaN))
-        c = (a + b) / 2 # bisection
-        # c = (a*fb-b*fa)/(fb-fa) # regula falsi
+        if i > 3
+            c = (a + b) / 2 # bisection
+        else
+            c = (a*fb-b*fa)/(fb-fa) # regula falsi
+        end
         fc = f(c)
         if abs(fc) < tol
             return (zero_found,c)
