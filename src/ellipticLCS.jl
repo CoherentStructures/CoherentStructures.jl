@@ -468,7 +468,8 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
     		            nitp(qs[1], qs[2]) >= λ⁰^2
         		uniform = all(predicate, orbit)
-        		if (closed && uniform)
+                in_well_defined_orbit = all(x->!in_undefined_square(x,cache))
+        		if (closed && uniform && in_well_defined_orbit)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
         		    rev && break
         		end
@@ -791,4 +792,35 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     vortexlist = vortices[map(r -> !isempty(r.barriers), vortices)]
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, critpts
+end
+
+
+function in_defined_square(xs,cache)
+    xspan = cache.η.axes[1]
+    yspan = cache.η.axes[2]
+    nx = length(xspan)
+    ny = length(yspan)
+
+    for x in xs
+        xid,_ = gooddivrem(nx*(x[1] - xspan[1])/(xspan[2] - xspan[1]),1.0)
+        yid,_ = gooddivrem(ny*(x[2] - yspan[1])/(yspan[2] - xspan[2]),1.0)
+
+        if xid == nx
+            xid = nx - 1
+        end
+        if yid == ny
+            yid = ny - 1
+        end
+
+        ps = [ηfield[xindex + di,yindex + dj] for di in [0,1], dj in [0,1]]
+
+        for i in 1:2
+            for j in i:2
+                if ps[i] ⋅ ps[j]  <= 0
+                    return false
+                end
+            end
+        end
+    end
+    return true
 end
