@@ -981,7 +981,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Geodesic vortices",
     "title": "CoherentStructures.compute_returning_orbit",
     "category": "function",
-    "text": "compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false)\n\nComputes returning orbits under the velocity field vf, originating from seed. The optional argument save controls whether intermediate locations of the returning orbit should be saved. Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached, 2 for out of bounds error, 3 for other error).\n\n\n\n\n\n"
+    "text": "compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false,maxiters, tolerance,max_orbit_length)\n\nComputes returning orbits under the velocity field vf, originating from seed. The optional argument save controls whether intermediate locations of the returning orbit should be saved. Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached, 2 for out of bounds error, 3 for other error).\n\n\n\n\n\n"
 },
 
 {
