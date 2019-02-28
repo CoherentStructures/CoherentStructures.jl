@@ -68,7 +68,8 @@ end
 @testset "ellipticLCS" begin
     q = @inferred LCSParameters()
     @test q isa LCSParameters
-    p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
+    # p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
+    p = @inferred LCSParameters(0.5)
     @test p isa LCSParameters
     cache = @inferred CS.orient(T, SVector{2}(0.25, 0.5))
     @test cache isa CS.LCScache
@@ -88,7 +89,7 @@ end
         yspan = range(-1, stop=1, length=ny)
         P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
-        p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 1.0, combine, 60, 0.5, 1.5, 1e-4)
+        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine, 60, 0.5, 1.5, 1e-4)
 
         vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
