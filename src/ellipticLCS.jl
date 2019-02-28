@@ -455,10 +455,16 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
         σ = false
-        bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
+	pmin_local = max(pmin, l1itp(ps[i][1],ps[i][2]))
+	pmax_local = min(pmax, l2itp(ps[i][1],ps[i][2]))
+	margin_step = (pmax_local - pmin_local)/20
+	if ! (margin_step > 0)
+	    continue
+	end
+        bisection_retcode,λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step )
         if bisection_retcode != zero_found
             σ = true
-            bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin, pmax, rdist, maxiters_bisection)
+            bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection,margin_step)
         end
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true,maxiters_ode,tolerance_ode,max_orbit_length)
@@ -468,8 +474,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
     		            nitp(qs[1], qs[2]) >= λ⁰^2
         		uniform = all(predicate, orbit)
-                in_well_defined_squares = in_defined_squares(orbit, cache)
-        		if (closed && uniform && in_well_defined_squares)
+			in_well_defined_squares = in_defined_squares(orbit, cache)
+			contains_singularity = contains_point(orbit,ps[1])
+
+        		if (closed && uniform && in_well_defined_squares && contains_singularity)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
         		    rev && break
         		end
@@ -515,11 +523,25 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 
     # vector field constructor function
     @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-        @. c.α = min(sqrt(max(c.λ₂ - λ, 0) / c.Δ), 1)
-        @. c.β = min(sqrt(max(λ - c.λ₁, 0) / c.Δ), 1)
-        @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
+	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
+	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+
         itp = ITP.LinearInterpolation(c.η)
-        return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
+	
+	function myfun(u,p,t)
+	    result = itp(u[1],u[2])
+	    if isnan(result[1]) || isnan(result[2])
+		global itpglob = itp
+		global cacheglob = c
+		global lambdaglob = λ
+		throw(AssertionError("Got NaN value for $(u[1]), $(u[2])"))
+	    end
+	    return result
+	end
+	return OrdinaryDiffEq.ODEFunction(myfun)
+	
+        #return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
     end
 
     #This is where results go
@@ -814,8 +836,8 @@ function in_defined_squares(xs,cache)
 
         ps = [cache.η[xid + di,yid + dj] for di in [0,1], dj in [0,1]]
 
-        for i in 1:2
-            for j in i:2
+        for i in 1:4
+	    for j in (i+1):4
                 if ps[i] ⋅ ps[j]  <= 0
                     return false
                 end
@@ -823,4 +845,16 @@ function in_defined_squares(xs,cache)
         end
     end
     return true
+end
+
+function contains_point(xs, point_to_check)	
+    points_to_center = [x - point_to_check for x in xs]
+    angles = [atan(x[2],x[1]) for x in points_to_center]
+    lx = length(xs)
+    res = 0.0
+    for i in 0:(lx-1)
+	res += periodic_diff(angles[i+1], angles[((i+1) % lx) + 1],2π)
+    end
+    res /= 2π
+    return (round(Int,res) != 0)
 end
