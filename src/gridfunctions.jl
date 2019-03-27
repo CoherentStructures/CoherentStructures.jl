@@ -874,7 +874,7 @@ assumed to be in node order. This is more efficient than
 """
 function evaluate_function_from_node_or_cellvals(
     ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
-    outside_value=0.0, project_in=false,throw_errors=true)::S where {dim,S,W}
+    outside_value=NaN, project_in=false,throw_errors=true)::S where {dim,S,W}
 
     x::Vec{dim,W} = project_in_xin(ctx,x_in,project_in)
 
@@ -911,7 +911,7 @@ function evaluate_function_from_node_or_cellvals(
 end
 
 """
-    evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=0.0,project_in=fals)
+    evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=NaN,project_in=fals)
 
 Evaluate the function at point x_in with coefficients of dofs given by `dofvals` (in dof-order).
 Return `outside_value` if point is out of bounds.
@@ -921,7 +921,7 @@ is more efficient.
 """
 function evaluate_function_from_dofvals(
     ctx::gridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
-    outside_value=0.0, project_in=false)::S where {dim,S,W}
+    outside_value=NaN, project_in=false)::S where {dim,S,W}
 
     if isa(ctx.ip, JFM.Lagrange)
         vals_reorder = vals[ctx.node_to_dof]
@@ -1040,7 +1040,7 @@ If caught exceptions should be rethrown, set `throw_errors=true`
 function evaluate_function_from_dofvals_multiple(
     ctx::gridContext{dim}, dofvals::AbstractMatrix{S},
     x_in::AbstractVector{Vec{dim,W}};
-    outside_value=0.0, project_in=false,throw_errors=false
+    outside_value=NaN, project_in=false,throw_errors=false
     )::SparseMatrixCSC{S,Int64} where { dim,S,W, }
     u_vals = zeros(S,size(dofvals))
     if isa(ctx.ip, JFM.Lagrange)
