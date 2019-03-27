@@ -11,9 +11,9 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
     fa, fb = f(a), f(b)
 
     if abs(fa) < tol
-	return (zero_found,a)
-    elseif abs(fb) > tol
-	return (zero_found,b)
+    	return (zero_found,a)
+    elseif abs(fb) < tol
+    	return (zero_found,b)
     end
 
     local c::T
@@ -21,12 +21,12 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
     firsttime=true
     while true
         i < maxiter || return (maxiters_exceeded, T(NaN))
-	if isnan(fa) && abs(a-b) > margin_step && ( a + margin_step > a)
+    	if isnan(fa) && abs(a-b) > margin_step && ( a + margin_step > a)
             firsttime || return (nans_between, T(NaN))
     	    a += margin_step
             fa = f(a)
             continue
-	elseif isnan(fb) && abs(a-b) > margin_step && (b - margin_step < b)
+    	elseif isnan(fb) && abs(a-b) > margin_step && (b - margin_step < b)
             firsttime || return (nans_between, T(NaN))
     	    b -= margin_step
             fb = f(b)
@@ -35,7 +35,7 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
         firsttime=false
         i += 1
         fa * fb <= 0 || return (no_real_root, T(NaN))
-	if i > 3 || (fb - fa)  == 0
+    	if i > 3 || (fb - fa)  == 0
             c = (a + b) / 2 # bisection
         else
             c = (a*fb-b*fa)/(fb-fa) # regula falsi
