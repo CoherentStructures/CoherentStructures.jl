@@ -1,7 +1,7 @@
 #(c) 2017 Nathanael Schilling & Daniel Karrasch
 #Various utility functions
 
-@enum BisectionStatus zero_found=0 maxiters_exceeded=1 nans_between=2 no_real_root=3
+@enum BisectionStatus::Int zero_found=0 maxiters_exceeded=1 nans_between=2 no_real_root=3
 
 # bisection is used in closed orbit detection in ellipticLCS.jl
 function bisection(f, a::T, b::T, tol::Real=1e-4,

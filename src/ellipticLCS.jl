@@ -74,56 +74,69 @@ end
 Container for parameters used in elliptic LCS computations.
 
 ## Fields
-* `indexradius::Float64=0.1`: radius for singularity type detection
-* `boxradius::Float64=0.5`: "radius" of localization square for closed orbit detection
+* `boxradius::Float64`: "radius" of localization square for closed orbit detection
+* `indexradius=1e-2boxradius`: radius for singularity type detection
 * `combine_pairs=true`: whether isolated singularity pairs should be merged
-* `n_seeds::Int64=60`: number of seed points on the Poincaré section
-* `pmin::Float64=0.7`: lower bound on the parameter in the ``\\eta``-field
-* `pmax::Float64=1.5`: upper bound on the parameter in the ``\\eta``-field
-* `rdist::Float64=1e-4`: required return distances for closed orbits
+* `n_seeds::Int=100`: number of seed points on the Poincaré section
+* `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
+* `pmax=2.0`: upper bound on the parameter in the ``\\eta``-field
+* `rdist=1e-4boxradius`: required return distances for closed orbits
+* `tolerance_ode=1e-8boxradius`: absolute and relative tolerance in orbit integration
+* `maxiters_ode::Int=2000`: maximum number of integration steps
+* `max_orbit_length=8boxradius`: maximum length of orbit length
+* `maxiters_bisection::Int=20`: maximum steps in bisection procedure
+
+## Usage
+```julia
+p = LCSParameters(2.5)
+```
 """
 struct LCSParameters
-    indexradius::Float64
     boxradius::Float64
+    indexradius::Float64
     combine_pairs::Bool
-    n_seeds::Int64
+    n_seeds::Int
     pmin::Float64
     pmax::Float64
     rdist::Float64
     tolerance_ode::Float64
-    maxiters_ode::Int64
+    maxiters_ode::Int
     max_orbit_length::Float64
-    maxiters_bisection::Int64
+    maxiters_bisection::Int
     function LCSParameters(
-                indexradius::Float64=0.1,
-                boxradius::Float64=0.5,
+                boxradius::Real,
+                indexradius::Real=1e-3boxradius,
                 combine_pairs::Bool=true,
-                n_seeds::Int64=60,
-                pmin::Float64=0.7,
-                pmax::Float64=1.5,
-                rdist::Float64=1e-4,
-                tolerance_ode::Float64=1e-8,
-                maxiters_ode::Int64=2000,
-                max_orbit_length::Float64=20.0,
-                maxiters_bisection::Int64=20
+                n_seeds::Int=100,
+                pmin::Real=0.7,
+                pmax::Real=2.0,
+                rdist::Real=1e-4boxradius,
+                tolerance_ode::Real=1e-8boxradius,
+                maxiters_ode::Int=1000,
+                max_orbit_length::Real=8boxradius,
+                maxiters_bisection::Int=30
                 )
-        return new(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist,tolerance_ode, maxiters_ode,max_orbit_length, maxiters_bisection)
+        return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
+                    float(pmin), float(pmax), float(rdist), float(tolerance_ode),
+                    maxiters_ode, float(max_orbit_length), maxiters_bisection)
     end
     function LCSParameters(;
-                indexradius::Float64=0.1,
-                boxradius::Float64=0.5,
+                boxradius::Real=1.0,
+                indexradius::Real=1e-3boxradius,
                 combine_pairs::Bool=true,
-                n_seeds::Int64=60,
-                pmin::Float64=0.7,
-                pmax::Float64=1.5,
-                rdist::Float64=1e-4,
-                tolerance_ode::Float64=1e-8,
-                maxiters_ode::Int64=2000,
-                max_orbit_length::Float64=20.0,
-                maxiters_bisection::Int64=20
+                n_seeds::Int=100,
+                pmin::Real=0.7,
+                pmax::Real=2.0,
+                rdist::Real=1e-4boxradius,
+                tolerance_ode::Real=1e-8boxradius,
+                maxiters_ode::Int=1000,
+                max_orbit_length::Real=8boxradius,
+                maxiters_bisection::Int=30
                 )
 
-        return new(indexradius, boxradius, combine_pairs, n_seeds, pmin, pmax, rdist,tolerance_ode, maxiters_ode,max_orbit_length, maxiters_bisection)
+        return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
+                    float(pmin), float(pmax), float(rdist), float(tolerance_ode),
+                    maxiters_ode, float(max_orbit_length), maxiters_bisection)
     end
 end
 
@@ -335,12 +348,11 @@ Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached,
 2 for out of bounds error, 3 for other error).
 """
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
-                maxiters::Int64=2000, tolerance::Float64=1e-8,max_orbit_length::Float64=20.0
-                ) where T <: Real
+                maxiters::Int64=2000, tolerance::Float64=1e-8,
+                max_orbit_length::Float64=20.0) where T <: Real
     condition(u, t, integrator) = u[2] - seed[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
-    # return _flow(vf, seed, range(0., stop=20., length=200); tolerance=1e-8, callback=cb, verbose=false)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., max_orbit_length))
     try
         sol = OrdinaryDiffEq.solve(prob, OrdinaryDiffEq.Tsit5(), maxiters=maxiters,
@@ -372,7 +384,7 @@ function Poincaré_return_distance(
                         max_orbit_length::Float64=20.0
                         ) where T <: Real
 
-    sol, retcode = compute_returning_orbit(vf, seed, save, maxiters_ode, tolerance_ode,max_orbit_length)
+    sol, retcode = compute_returning_orbit(vf, seed, save, maxiters_ode, tolerance_ode, max_orbit_length)
     # check if result due to callback
     if retcode == 0
         return sol[end][1] - seed[1]
@@ -454,28 +466,29 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     vortices = EllipticBarrier{S1}[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
+        pmin_local = max(pmin, l1itp(ps[i][1],ps[i][2]))
+        pmax_local = min(pmax, l2itp(ps[i][1],ps[i][2]))
+        margin_step = (pmax_local - pmin_local)/20
+        if ! (margin_step > 0)
+            continue
+        end
+
         σ = false
-	pmin_local = max(pmin, l1itp(ps[i][1],ps[i][2]))
-	pmax_local = min(pmax, l2itp(ps[i][1],ps[i][2]))
-	margin_step = (pmax_local - pmin_local)/20
-	if ! (margin_step > 0)
-	    continue
-	end
         bisection_retcode,λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step )
         if bisection_retcode != zero_found
             σ = true
             bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection,margin_step)
         end
         if bisection_retcode == zero_found
-            orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true,maxiters_ode,tolerance_ode,max_orbit_length)
+            orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
     	    if retcode == 0
         		closed = norm(orbit[1] - orbit[end]) <= rdist
         		predicate = qs -> cache isa LCScache ?
         	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
     		            nitp(qs[1], qs[2]) >= λ⁰^2
         		uniform = all(predicate, orbit)
-			in_well_defined_squares = in_defined_squares(orbit, cache)
-			contains_singularity = contains_point(orbit,ps[1])
+                in_well_defined_squares = in_defined_squares(orbit, cache)
+                contains_singularity = contains_point(orbit,ps[1])
 
         		if (closed && uniform && in_well_defined_squares && contains_singularity)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))

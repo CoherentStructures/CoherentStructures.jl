@@ -104,7 +104,7 @@ mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
         tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(0.5)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 
 # The results are then visualized as follows.
@@ -117,9 +117,7 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             xlims=(xmin, xmax), ylims=(ymin, ymax))
 scatter!(getcoords(singularities), color=:red, label="singularities")
 scatter!([vortex.center for vortex in vortices], color=:yellow, label="vortex cores")
-for vortex in vortices
-    for barrier in vortex.barriers
-        plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
-    end
+for vortex in vortices, barrier in vortex.barriers
+    plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
 end
 DISPLAY_PLOT(fig, rot_double_gyre_geodesic_vortices)
