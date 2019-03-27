@@ -103,6 +103,9 @@ struct LCSParameters
     maxiters_ode::Int
     max_orbit_length::Float64
     maxiters_bisection::Int
+    singularity_in_orbit::Bool
+    only_smooth_orbits::Bool
+    only_uniform_orbits::Bool
     function LCSParameters(
                 boxradius::Real,
                 indexradius::Real=1e-3boxradius,
@@ -114,11 +117,15 @@ struct LCSParameters
                 tolerance_ode::Real=1e-8boxradius,
                 maxiters_ode::Int=1000,
                 max_orbit_length::Real=8boxradius,
-                maxiters_bisection::Int=30
+                maxiters_bisection::Int=30,
+                singularity_in_orbit=true,
+                only_smooth_orbits::Bool=true,
+                only_uniform_orbits::Bool=true
                 )
         return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
-                    maxiters_ode, float(max_orbit_length), maxiters_bisection)
+                    maxiters_ode, float(max_orbit_length), maxiters_bisection,
+            singularity_in_orbit,only_smooth_orbits,only_uniform_orbits)
     end
     function LCSParameters(;
                 boxradius::Real=1.0,
@@ -131,12 +138,16 @@ struct LCSParameters
                 tolerance_ode::Real=1e-8boxradius,
                 maxiters_ode::Int=1000,
                 max_orbit_length::Real=8boxradius,
-                maxiters_bisection::Int=30
+                maxiters_bisection::Int=30,
+                singularity_in_orbit::Bool=true,
+                only_smooth_orbits::Bool=true,
+                only_uniform_orbits::Bool=true
                 )
 
         return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
-                    maxiters_ode, float(max_orbit_length), maxiters_bisection)
+                    maxiters_ode, float(max_orbit_length), maxiters_bisection,singularity_in_orbit,
+                    only_smooth_orbits,only_uniform_orbits)
     end
 end
 
@@ -335,7 +346,7 @@ function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
                                 combine_pairs=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    critical_point_detection(ξ, combine_distance, π; combine_pairs=combine_pairs)
+    return critical_point_detection(ξ, combine_distance, π; combine_pairs=combine_pairs)
 end
 
 ######################## closed orbit computations #############################
@@ -429,7 +440,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                                 tolerance_ode::Float64=1e-8,
                                 maxiters_ode::Int64=2000,
                                 max_orbit_length::Float64=20.0,
-                                maxiters_bisection::Int64=20
+                                maxiters_bisection::Int64=20,
+                                singularity_in_orbit=true,
+                                only_smooth_orbits=true,
+                                only_uniform_orbits=true
                                 ) where {S1 <: Real}
     if cache isa LCScache # tensor-based LCS computation
         l1itp = ITP.LinearInterpolation(cache.λ₁)
@@ -486,9 +500,9 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         		predicate = qs -> cache isa LCScache ?
         	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
     		            nitp(qs[1], qs[2]) >= λ⁰^2
-        		uniform = all(predicate, orbit)
-                in_well_defined_squares = in_defined_squares(orbit, cache)
-                contains_singularity = contains_point(orbit,ps[1])
+        		uniform = only_uniform_orbits ? all(predicate, orbit) : true
+                in_well_defined_squares = only_smooth_orbits ?  in_defined_squares(orbit, cache) : true
+                contains_singularity = singularity_in_orbit ? contains_point(orbit,ps[1]) : true
 
         		if (closed && uniform && in_well_defined_squares && contains_singularity)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
@@ -536,25 +550,17 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 
     # vector field constructor function
     @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
-	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
-	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+    	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
+    	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
+    	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
 
         itp = ITP.LinearInterpolation(c.η)
-	
-	function myfun(u,p,t)
-	    result = itp(u[1],u[2])
-	    if isnan(result[1]) || isnan(result[2])
-		global itpglob = itp
-		global cacheglob = c
-		global lambdaglob = λ
-		throw(AssertionError("Got NaN value for $(u[1]), $(u[2])"))
-	    end
-	    return result
-	end
-	return OrdinaryDiffEq.ODEFunction(myfun)
-	
-        #return OrdinaryDiffEq.ODEFunction((u, p, t) -> itp(u[1], u[2]))
+
+    	function unit_length_itp(u,p,t)
+    	    result = itp(u[1],u[2])
+    	    return result / sqrt(result[1]^2 + result[2]^2)
+    	end
+    	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
     end
 
     #This is where results go
@@ -635,7 +641,9 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
                         tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
                         max_orbit_length=p.max_orbit_length,
-                        maxiters_bisection=p.maxiters_bisection
+                        maxiters_bisection=p.maxiters_bisection,
+                        singularity_in_orbit=p.singularity_in_orbit,
+                        only_smooth_orbits=p.only_smooth_orbits
                         )
                 put!(results_rc, (vx, vy, result))
                 num_processed += 1
@@ -780,7 +788,9 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
                         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
                         tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
                         max_orbit_length=p.max_orbit_length,
-                        maxiters_bisection=p.maxiters_bisection
+                        maxiters_bisection=p.maxiters_bisection,
+                        singularity_in_orbit=p.singularity_in_orbit,
+                        only_smooth_orbits=p.only_smooth_orbits
                         )
                 put!(results_rc, (vx, vy, result))
             end
@@ -847,20 +857,20 @@ function in_defined_squares(xs,cache)
             yid = ny - 1
         end
 
-        ps = [cache.η[xid + di,yid + dj] for di in [0,1], dj in [0,1]]
+        ps = [cache.η[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
 
         for i in 1:4
-	    for j in (i+1):4
-                if ps[i] ⋅ ps[j]  <= 0
-                    return false
+    	    for j in (i+1):4
+                    if ps[i] ⋅ ps[j]  < 0
+                        return false
+                    end
                 end
-            end
         end
     end
     return true
 end
 
-function contains_point(xs, point_to_check)	
+function contains_point(xs, point_to_check)
     points_to_center = [x - point_to_check for x in xs]
     angles = [atan(x[2],x[1]) for x in points_to_center]
     lx = length(xs)
