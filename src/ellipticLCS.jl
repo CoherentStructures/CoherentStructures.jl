@@ -120,24 +120,24 @@ struct LCSParameters
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                     maxiters_ode, float(max_orbit_length), maxiters_bisection)
     end
-    function LCSParameters(;
-                boxradius::Real=1.0,
-                indexradius::Real=1e-3boxradius,
-                combine_pairs::Bool=true,
-                n_seeds::Int=100,
-                pmin::Real=0.7,
-                pmax::Real=2.0,
-                rdist::Real=1e-4boxradius,
-                tolerance_ode::Real=1e-8boxradius,
-                maxiters_ode::Int=1000,
-                max_orbit_length::Real=8boxradius,
-                maxiters_bisection::Int=30
-                )
+end
+function LCSParameters(;
+            boxradius::Real=1.0,
+            indexradius::Real=1e-3boxradius,
+            combine_pairs::Bool=true,
+            n_seeds::Int=100,
+            pmin::Real=0.7,
+            pmax::Real=2.0,
+            rdist::Real=1e-4boxradius,
+            tolerance_ode::Real=1e-8boxradius,
+            maxiters_ode::Int=1000,
+            max_orbit_length::Real=8boxradius,
+            maxiters_bisection::Int=30
+            )
 
-        return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
-                    float(pmin), float(pmax), float(rdist), float(tolerance_ode),
-                    maxiters_ode, float(max_orbit_length), maxiters_bisection)
-    end
+    return LCSParameters(float(boxradius), float(indexradius), combine_pairs, n_seeds,
+                float(pmin), float(pmax), float(rdist), float(tolerance_ode),
+                maxiters_ode, float(max_orbit_length), maxiters_bisection)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
