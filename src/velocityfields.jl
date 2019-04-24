@@ -81,8 +81,8 @@ interp_rhs! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= p(u[1], u[2], t)
 function standardMap(u)
     a = 0.971635
     return SVector{2,Float64}((
-        mod(u[1] + u[2] + a*sin(u[1]), 2π),
-        mod(u[2] + a*sin(u[1]), 2π)
+        mod2pi(u[1] + u[2] + a*sin(u[1])),
+        mod2pi(u[2] + a*sin(u[1]))
         ))
 end
 function standardMapInv(Tu::AbstractArray{T}) where T <: Number
@@ -100,8 +100,8 @@ function DstandardMap(u)
 end
 function standardMap8(u)
     return SVector{2,Float64}((
-        mod(u[1] + u[2],2π),
-        mod(u[2] + 8*sin(u[1] + u[2]),2π)
+        mod2pi(u[1] + u[2]),
+        mod2pi(u[2] + 8*sin(u[1] + u[2]))
         ))
 end
 function DstandardMap8(u)
@@ -111,8 +111,8 @@ function DstandardMap8(u)
 end
 function standardMap8Inv(Tu)
     return SVector{2,Float64}((
-    mod(Tu[1]  - Tu[2] + 8*sin(Tu[1]),2π),
-    mod(Tu[2] - 8*sin(Tu[1]),2π)
+    mod2pi(Tu[1]  - Tu[2] + 8*sin(Tu[1])),
+    mod2pi(Tu[2] - 8*sin(Tu[1]))
     ))
 end
 

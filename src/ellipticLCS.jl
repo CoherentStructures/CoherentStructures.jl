@@ -160,7 +160,7 @@ Computes critical points/singularities of vector and line fields, respectively.
 representation of the vector/line field. Choose `modulus=2π` for vector
 fields, and `modulus=π` for line fields.
 """
-function compute_singularities(α::AxisArray{<:Real,2}, modulus)
+function compute_singularities(α::AxisArray{<:Real,2}, αdist::Function=((x, y) -> rem2pi(x - y, RoundNearest)))
     xspan, yspan = α.axes
     singularities = Singularity{typeof(step(xspan.val) / 2)}[] # sing_out
     xstephalf = step(xspan.val) / 2
@@ -168,10 +168,10 @@ function compute_singularities(α::AxisArray{<:Real,2}, modulus)
     # go counter-clockwise around each grid cell and add angles
     # for cells with non-vanishing index, collect cell midpoints
     for (j,y) in enumerate(yspan[1:end-1]), (i,x) in enumerate(xspan[1:end-1])
-        temp  = periodic_diff(α[i+1,j], α[i,j], modulus) # to the right
-        temp += periodic_diff(α[i+1,j+1], α[i+1,j], modulus) # to the top
-        temp += periodic_diff(α[i,j+1], α[i+1,j+1], modulus) # to the left
-        temp += periodic_diff(α[i,j], α[i,j+1], modulus) # to the bottom
+        temp  = αdist(α[i+1,j], α[i,j]) # to the right
+        temp += αdist(α[i+1,j+1], α[i+1,j]) # to the top
+        temp += αdist(α[i,j+1], α[i+1,j+1]) # to the left
+        temp += αdist(α[i,j], α[i,j+1]) # to the bottom
         index = round(Int, temp/π) // 2
         if index != 0
             push!(singularities, Singularity(SVector{2}(x + xstephalf, y + ystephalf), index))
@@ -293,21 +293,28 @@ function combine_isolated_wedges(singularities::Vector{Singularity{T}}) where {T
 end
 
 """
-    critical_point_detection(vs, combine_distance, γ; combine_pairs=true)
+    critical_point_detection(vs, combine_distance, αdist; combine_pairs=true)
 
 Computes critical points of a vector/line field `vs`, given as an `AxisArray`.
 Critical points with distance less or equal to `combine_distance` are
-combined by averaging the coordinates and adding the respective indices. The parameter
-`γ` should be chosen `π` for line fields and `2π` for vector fields; cf.
-[`compute_singularities`](@ref). If `combine_pairs is `true, pairs of singularities
-that are mutually the closest ones are included in the final list.
+combined by averaging the coordinates and adding the respective indices. The
+argument `αdist` is a distance function for angles. The default is
+
+    (x, y) -> rem2pi(x - y, RoundNearest)
+
+suitable for vector fields. Choose
+
+    (x, y) -> rem(x - y, float(π), RoundNearest)
+
+for line fields; cf. [`compute_singularities`](@ref). If `combine_pairs is `true,
+pairs of singularities that are mutually the closest ones are included in the final list.
 """
 function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
                                     combine_distance::Real,
-                                    γ::Real;
+                                    αdist::Function=((x, y) -> rem2pi(x - y, RoundNearest));
                                     combine_pairs=true)
     α = map(v -> atan(v[2], v[1]), vs)
-    singularities = compute_singularities(α, γ)
+    singularities = compute_singularities(α, αdist)
     new_singularities = combine_singularities(singularities, combine_distance)
     if combine_pairs
         #There could still be wedge-singularities that
@@ -335,7 +342,7 @@ function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
                                 combine_pairs=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    critical_point_detection(ξ, combine_distance, π; combine_pairs=combine_pairs)
+    critical_point_detection(ξ, combine_distance, (x, y) -> rem(x - y, float(π), RoundNearest); combine_pairs=combine_pairs)
 end
 
 ######################## closed orbit computations #############################

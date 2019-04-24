@@ -10,22 +10,22 @@ const CS = CoherentStructures
                 AA.AxisArray(SVector{2}.(-x, -y'), x, y),
                 AA.AxisArray(SVector{2}.(-y', x), x, y))
             α = map(v -> atan(v[2], v[1]), v)
-            S = @inferred compute_singularities(α, 2π)
+            S = @inferred compute_singularities(α)
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            S = @inferred critical_point_detection(v, 0.1, 2π; combine_pairs=false)
+            S = @inferred critical_point_detection(v, 0.1; combine_pairs=false)
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
         end
         v = AA.AxisArray(SVector{2}.(x, -y'), x, y)
         α = map(v -> atan(v[2], v[1]), v)
-        S = @inferred compute_singularities(α, 2π)
+        S = @inferred compute_singularities(α)
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = critical_point_detection(v, 0.1, 2π; combine_pairs=false)
+        S = critical_point_detection(v, 0.1; combine_pairs=false)
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
@@ -46,7 +46,7 @@ T = @inferred map(mCG_tensor, P)
 @testset "combine singularities" begin
     ξ = map(t -> eigvecs(t)[:,1], T)
     α = map(v -> atan(v[2], v[1]), ξ)
-    singularities = @inferred compute_singularities(α, π)
+    singularities = @inferred compute_singularities(α, (x, y) -> rem(x - y, float(π), RoundNearest))
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
     @inferred CoherentStructures.combine_isolated_wedges(new_singularities)
     r₁ , r₂ = 2rand(2)
@@ -61,7 +61,7 @@ end
     seed = SVector{2}(rand(), 0)
     d = @inferred CS.Poincaré_return_distance(vf(1), seed)
     @test d ≈ 0 atol = 1e-5
-    λ⁰ = (@inferred CS.bisection(λ -> CS.Poincaré_return_distance(vf(λ), seed), 0.7, 1.4, 1e-4))[2]
+    λ⁰ = (@inferred CS.bisection(λ -> CS.Poincaré_return_distance(vf(λ), seed), 0.7, 1.4, 1e-6))[2]
     @test λ⁰ ≈ 1 rtol=1e-3
 end
 
