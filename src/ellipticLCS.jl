@@ -691,7 +691,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     # detect centers of elliptic (in the index sense) regions
     xspan = q.axes[1]
     xmax = xspan[end]
-    critpts = critical_point_detection(q, p.indexradius, 2π; combine_pairs=p.combine_pairs)
+    critpts = critical_point_detection(q, p.indexradius; combine_pairs=p.combine_pairs)
     verbose && @info "Found $(length(critpts)) critical points..."
     vortexcenters = critpts[getindices(critpts) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
