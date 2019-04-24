@@ -61,7 +61,7 @@ end
     seed = SVector{2}(rand(), 0)
     d = @inferred CS.Poincaré_return_distance(vf(1), seed)
     @test d ≈ 0 atol = 1e-5
-    λ⁰ = (@inferred CS.bisection(λ -> CS.Poincaré_return_distance(vf(λ), seed), 0.7, 1.4, 1e-6))[2]
+    λ⁰ = (@inferred CS.bisection(λ -> CS.Poincaré_return_distance(vf(λ), seed), 0.7, 1.4, 1e-6, 40))[2]
     @test λ⁰ ≈ 1 rtol=1e-3
 end
 
