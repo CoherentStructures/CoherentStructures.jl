@@ -12,6 +12,7 @@ struct LinFlowMap{dim,T,N}
     p::Array{Trajectory{dim,T},N}
 end
 
+
 """
     flow(odefun,  u0, tspan; tolerance, p, solver) -> Vector{Vector}
 
