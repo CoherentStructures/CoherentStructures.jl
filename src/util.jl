@@ -296,26 +296,3 @@ end
     end
     res
 end
-
-
-"""
-    periodic_diff(x, y, p)
-
-Return the number `z` with minimum absolute value so that `y + z ≡ x (mod p)``.
-"""
-function periodic_diff(xin, yin, p)
-    if isnan(xin) || isnan(yin)
-        return NaN
-    end
-    x = Base.mod(xin, p)
-    y = Base.mod(yin, p)
-    if x >= y
-        dplus = x - y
-        dminus = y - (x - p)
-        result = abs(dplus) < abs(dminus) ? dplus : -dminus
-    else
-        result = -periodic_diff(y, x, p)
-    end
-    #@assert Base.mod(yin + result - xin,p) == 0.0
-    return result
-end
