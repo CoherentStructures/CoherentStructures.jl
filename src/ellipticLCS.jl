@@ -361,7 +361,7 @@ Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached,
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
                 maxiters::Int64=2000, tolerance::Float64=1e-8,
                 max_orbit_length::Float64=20.0) where T <: Real
-    condition(u, t, integrator) = u[2] - seed[2]
+    condition(u, t, integrator) = seed[2] - u[2]
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., max_orbit_length))
@@ -408,7 +408,7 @@ function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}
     xspan, yspan = T.axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
     Δλ = AxisArray(λ₂ .- λ₁, T.axes)
-    Ω = SMatrix{2,2}(0., -1., 1., 0.)
+    Ω = SMatrix{2,2}(0., 1., -1., 0.)
     star = AxisArray([SVector{2}(x, y) - center for x in xspan.val, y in yspan.val], T.axes)
     c1 = AxisArray(sign.(dot.([Ω] .* star, ξ₁)), T.axes)
     ξ₁ .*= c1
