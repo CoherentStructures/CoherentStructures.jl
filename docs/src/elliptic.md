@@ -99,6 +99,13 @@ compute_singularities
 combine_singularities
 combine_isolated_wedges
 ```
+The function [`compute_singularities`](@ref) requires one of two signed distance
+functions for angles. These are [`s1dist`](@ref) for vector fields, and
+[`p1dist](@ref) for line fields.
+```@docs
+s1dist
+p1dist
+```
 From all virtual/merged singularities those with a suitable index are selected.
 Around each elliptic singularity the tensor field is localized and passed on for
 closed orbit detection.

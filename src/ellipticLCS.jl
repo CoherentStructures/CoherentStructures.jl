@@ -86,9 +86,10 @@ Container for parameters used in elliptic LCS computations.
 * `max_orbit_length=8boxradius`: maximum length of orbit length
 * `maxiters_bisection::Int=20`: maximum steps in bisection procedure
 
-## Usage
-```julia
-p = LCSParameters(2.5)
+## Example
+```jldoctest
+julia> p = LCSParameters(2.5)
+LCSParameters(2.5, 0.0025, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 ```
 """
 struct LCSParameters
@@ -162,27 +163,56 @@ struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
     η::AxisArray{Tv,2}
 end
 
+"""
+    s1dist(α, β)
+
+Computes the signed length of the angle of the shortest circle segment going
+from angle `β` to angle `α`, as computed on the full circle.
+
+# Examples
+```jldoctest
+julia> s1dist(π/2, 0)
+1.5707963267948966
+
+julia> s1dist(0, π/2)
+-1.5707963267948966
+"""
+@inline s1dist(x::Real, y::Real) = rem2pi(float(x - y), RoundNearest)
+
+"""
+    p1dist(α, β)
+
+Computes the signed length of the angle of the shortest circle segment going
+from angle `β` to angle `α [± π]`, as computed on the half circle.
+
+# Examples
+```jldoctest
+julia> p1dist(π, 0)
+0.0
+"""
+@inline p1dist(x::Real, y::Real) = rem(float(x - y), float(π), RoundNearest)
+
 ##################### singularity/critical point detection #####################
 """
-    compute_singularities(α, modulus) -> Vector{Singularity}
+    compute_singularities(v, dist=s1dist) -> Vector{Singularity}
 
-Computes critical points/singularities of vector and line fields, respectively.
-`α` is a scalar field (array) which is assumed to contain some consistent angle
-representation of the vector/line field. Choose `modulus=2π` for vector
-fields, and `modulus=π` for line fields.
+Computes critical points and singularities of vector and line fields `v`,
+respectively. The argument `dist` is a signed distance function for angles.
+Choose `s1dist` (default) for vector fields, and `p1dist` for line fields.
 """
-function compute_singularities(α::AxisArray{<:Real,2}, αdist::Function=((x, y) -> rem2pi(x - y, RoundNearest)))
-    xspan, yspan = α.axes
-    singularities = Singularity{typeof(step(xspan.val) / 2)}[] # sing_out
+function compute_singularities(v::AxisArray{<: SVector{2,<:Real},2}, dist::Function=s1dist)
+    xspan, yspan = v.axes
+    α = map(u -> atan(u[2], u[1]), v)
+    singularities = Singularity{typeof(step(xspan.val) / 2)}[]
     xstephalf = step(xspan.val) / 2
     ystephalf = step(yspan.val) / 2
     # go counter-clockwise around each grid cell and add angles
     # for cells with non-vanishing index, collect cell midpoints
     for (j,y) in enumerate(yspan[1:end-1]), (i,x) in enumerate(xspan[1:end-1])
-        temp  = αdist(α[i+1,j], α[i,j]) # to the right
-        temp += αdist(α[i+1,j+1], α[i+1,j]) # to the top
-        temp += αdist(α[i,j+1], α[i+1,j+1]) # to the left
-        temp += αdist(α[i,j], α[i,j+1]) # to the bottom
+        temp  = dist(α[i+1,j], α[i,j]) # to the right
+        temp += dist(α[i+1,j+1], α[i+1,j]) # to the top
+        temp += dist(α[i,j+1], α[i+1,j+1]) # to the left
+        temp += dist(α[i,j], α[i,j+1]) # to the bottom
         index = round(Int, temp/π) // 2
         if index != 0
             push!(singularities, Singularity(SVector{2}(x + xstephalf, y + ystephalf), index))
@@ -198,15 +228,14 @@ This function does the equivalent of:
 Build a graph where singularities are vertices, and two vertices share
 an edge iff the coordinates of the corresponding vertices (given by `sing_coordinates`)
 have a distance leq `combine_distance`. Find all connected components of this graph,
-and return a list of their mean coordinate and sum of `sing_indices`
+and return a list of their mean coordinate and sum of `sing_indices`.
 """
 function combine_singularities(singularities::Vector{Singularity{T}}, combine_distance::Real) where {T<:Real}
 
-    #Do a breath-first search of all singularities
-    #that are "connected" in the sense of
-    #there being a path of singularities with each
-    #segment less than `combine_distance` to it
-    #Average the coordinates, add the indices
+    # Do a breath-first search of all singularities that are "connected" in the
+    # sense that there is a path of singularities with each segment less than
+    # `combine_distance`
+    # Average the coordinates, add the indices
 
     N = length(singularities)
 
@@ -257,6 +286,7 @@ end
 
 """
     combine_isolated_wedges(singularities)
+
 Determines singularities which are mutually closest neighbors and combines them
 as one, while adding their indices.
 """
@@ -304,28 +334,23 @@ function combine_isolated_wedges(singularities::Vector{Singularity{T}}) where {T
 end
 
 """
-    critical_point_detection(vs, combine_distance, αdist; combine_pairs=true)
+    critical_point_detection(vs, combine_distance, dist=s1dist; combine_pairs=true) -> Vector{Singularity}
 
 Computes critical points of a vector/line field `vs`, given as an `AxisArray`.
 Critical points with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices. The
-argument `αdist` is a distance function for angles. The default is
+argument `dist` is a signed distance function for angles: choose [`s1dist`](@ref)
+for vector fields, and [`p1dist`](@ref) for line fields; cf. [`compute_singularities`](@ref).
+If `combine_pairs is `true, pairs of singularities that are mutually the closest
+ones are included in the final list.
 
-    (x, y) -> rem2pi(x - y, RoundNearest)
-
-suitable for vector fields. Choose
-
-    (x, y) -> rem(x - y, float(π), RoundNearest)
-
-for line fields; cf. [`compute_singularities`](@ref). If `combine_pairs is `true,
-pairs of singularities that are mutually the closest ones are included in the final list.
+Returns a vector of [`Singularity`](@ref)s.
 """
 function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
                                     combine_distance::Real,
-                                    αdist::Function=((x, y) -> rem2pi(x - y, RoundNearest));
+                                    dist::Function=s1dist;
                                     combine_pairs=true)
-    α = map(v -> atan(v[2], v[1]), vs)
-    singularities = compute_singularities(α, αdist)
+    singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
     if combine_pairs
         #There could still be wedge-singularities that
@@ -343,27 +368,27 @@ Calculates line-field singularities of the first eigenvector of `T` by taking
 a discrete differential-geometric approach. Singularities are calculated on each
 cell. Singularities with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices. If
-`combine_pairs` is `true, pairs of singularities that are mutually the
-closest ones are included in the final list.
+`combine_pairs` is `true`, pairs of singularities that are mutually closest to
+each other are included in the final list.
 
-Returns a vector of [`Singularity`](@ref)s. Returned indices correspond to twice
-the mathematically defined indices of line fields to get integer values.
+Returns a vector of [`Singularity`](@ref)s.
 """
 function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
                                 combine_pairs=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    critical_point_detection(ξ, combine_distance, (x, y) -> rem(x - y, float(π), RoundNearest); combine_pairs=combine_pairs)
+    critical_point_detection(ξ, combine_distance, p1dist; combine_pairs=combine_pairs)
 end
 
 ######################## closed orbit computations #############################
 """
-    compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false,maxiters, tolerance,max_orbit_length)
+    compute_returning_orbit(vf, seed::SVector{2}, save::Bool=false, maxiters=2000, tolerance=1e-8, max_orbit_length=20.0)
+
 Computes returning orbits under the velocity field `vf`, originating from `seed`.
 The optional argument `save` controls whether intermediate locations of the
 returning orbit should be saved.
-Returns a tuple of orbit and statuscode (0 for success, 1 for maxiters reached,
-2 for out of bounds error, 3 for other error).
+Returns a tuple of `orbit` and `statuscode` (`0` for success, `1` for `maxiters`
+reached, `2` for out of bounds error, 3 for other error).
 """
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
                 maxiters::Int64=2000, tolerance::Float64=1e-8,
@@ -425,7 +450,7 @@ function orient(T::AxisArray{SymmetricTensor{2,2,S1,3},2}, center::SVector{2,S2}
 end
 
 """
-    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000,maxiters_bisection=20)
+    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000, maxiters_bisection=20)
 
 Compute the outermost closed orbit for a given Poincaré section `ps`, a vector field
 constructor `ηfield`, and an LCScache `cache`. Keyword arguments `pmin` and `pmax`
@@ -533,7 +558,9 @@ computational parameters. Returns a list of `EllipticBarrier`-type objects.
 The keyword arguments and their default values are:
 *   `outermost=true`: only the outermost barriers, i.e., the vortex
     boundaries are returned, otherwise all detected transport barrieres;
-*   `verbose=true`: show intermediate computational information
+*   `verbose=true`: show intermediate computational information;
+*   `debug=false`: whether to use the debug mode, which avoids parallelization
+    for more precise error messages.
 """
 function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractRange{S},
@@ -709,6 +736,20 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     return vortexlist, singularities
 end
 
+"""
+    constrainedLCS(T::AbstractArray, xspan, yspan, p; kwargs...)
+    constrainedLCS(T::AxisArray, p; kwargs...)
+
+Computes constrained transport barriers as closed orbits of the transport vector
+field on the 2D computational grid spanned by `xspan` and `yspan`.
+`p` is an [`LCSParameters`](@ref)-type container of computational parameters.
+Returns a list of `EllipticBarrier`-type objects.
+
+The keyword arguments and their default values are:
+*   `outermost=true`: only the outermost barriers, i.e., the vortex
+    boundaries are returned, otherwise all detected transport barrieres;
+*   `verbose=true`: show intermediate computational information
+"""
 function constrainedLCS(q::AbstractMatrix{SVector{2,<:Real}},
                         xspan::AbstractRange{<:Real},
                         yspan::AbstractRange{<:Real},
