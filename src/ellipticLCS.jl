@@ -602,7 +602,8 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 
     	function unit_length_itp(u,p,t)
     	    result = itp(u[1],u[2])
-    	    return result / sqrt(result[1]^2 + result[2]^2)
+            normresult = sqrt(result[1]^2 + result[2]^2)
+    	    return normresult == 0 ? result :  result / normresult
     	end
     	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
     end
