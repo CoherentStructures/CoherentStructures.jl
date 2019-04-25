@@ -9,8 +9,7 @@ const CS = CoherentStructures
         for v in (AA.AxisArray(SVector{2}.(x, y'), x, y),
                 AA.AxisArray(SVector{2}.(-x, -y'), x, y),
                 AA.AxisArray(SVector{2}.(-y', x), x, y))
-            α = map(v -> atan(v[2], v[1]), v)
-            S = @inferred compute_singularities(α)
+            S = @inferred compute_singularities(v)
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
@@ -20,8 +19,7 @@ const CS = CoherentStructures
             @test S[1].index == 1
         end
         v = AA.AxisArray(SVector{2}.(x, -y'), x, y)
-        α = map(v -> atan(v[2], v[1]), v)
-        S = @inferred compute_singularities(α)
+        S = @inferred compute_singularities(v)
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
@@ -44,9 +42,8 @@ mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, 1.e-6)
 T = @inferred map(mCG_tensor, P)
 
 @testset "combine singularities" begin
-    ξ = map(t -> eigvecs(t)[:,1], T)
-    α = map(v -> atan(v[2], v[1]), ξ)
-    singularities = @inferred compute_singularities(α, (x, y) -> rem(x - y, float(π), RoundNearest))
+    ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
+    singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
     @inferred CoherentStructures.combine_isolated_wedges(new_singularities)
     r₁ , r₂ = 2rand(2)
