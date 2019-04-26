@@ -128,28 +128,29 @@ struct LCSParameters
                     maxiters_ode, float(max_orbit_length), maxiters_bisection,
             only_enclosing,only_smooth,only_uniform)
     end
-    function LCSParameters(;
-                boxradius::Real=1.0,
-                indexradius::Real=1e-3boxradius,
-                combine_pairs::Bool=true,
-                n_seeds::Int=100,
-                pmin::Real=0.7,
-                pmax::Real=2.0,
-                rdist::Real=1e-4boxradius,
-                tolerance_ode::Real=1e-8boxradius,
-                maxiters_ode::Int=1000,
-                max_orbit_length::Real=8boxradius,
-                maxiters_bisection::Int=30,
-                only_enclosing::Bool=true,
-                only_smooth::Bool=true,
-                only_uniform::Bool=true
-                )
+end
 
-        return LCSParameters(float(boxradius), float(indexradius), combine_pairs, n_seeds,
-                    float(pmin), float(pmax), float(rdist), float(tolerance_ode),
-                    maxiters_ode, float(max_orbit_length), maxiters_bisection,only_enclosing,
-                    only_smooth,only_uniform)
-    end
+function LCSParameters(;
+            boxradius::Real=1.0,
+            indexradius::Real=1e-3boxradius,
+            combine_pairs::Bool=true,
+            n_seeds::Int=100,
+            pmin::Real=0.7,
+            pmax::Real=2.0,
+            rdist::Real=1e-4boxradius,
+            tolerance_ode::Real=1e-8boxradius,
+            maxiters_ode::Int=1000,
+            max_orbit_length::Real=8boxradius,
+            maxiters_bisection::Int=30,
+            only_enclosing::Bool=true,
+            only_smooth::Bool=true,
+            only_uniform::Bool=true
+            )
+
+    return LCSParameters(float(boxradius), float(indexradius), combine_pairs, n_seeds,
+                float(pmin), float(pmax), float(rdist), float(tolerance_ode),
+                maxiters_ode, float(max_orbit_length), maxiters_bisection,only_enclosing,
+                only_smooth,only_uniform)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
@@ -516,7 +517,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
             pmin_local = max(pmin, l1itp(ps[i][1],ps[i][2]))
             pmax_local = min(pmax, l2itp(ps[i][1],ps[i][2]))
             margin_step = (pmax_local - pmin_local)/20
-            if ! (margin_step > 0)
+            if !(margin_step > 0)
                 continue
             end
         else #TODO: can something like the above be done for the constrained LCS setting too?
@@ -526,10 +527,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         end
 
         σ = false
-        bisection_retcode,λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step )
+        bisection_retcode, λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step )
         if bisection_retcode != zero_found
             σ = true
-            bisection_retcode,λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection,margin_step)
+            bisection_retcode, λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection,margin_step)
         end
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
@@ -540,7 +541,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     		            nitp(qs[1], qs[2]) >= λ⁰^2
         		uniform = only_uniform ? all(predicate, orbit) : true
                 if cache isa LCScache
-                    in_well_defined_squares = only_smooth ?  in_defined_squares(orbit, cache) : true
+                    in_well_defined_squares = only_smooth ? in_defined_squares(orbit, cache) : true
                 else
                     in_well_defined_squares = true
                 end
