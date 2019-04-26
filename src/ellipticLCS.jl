@@ -946,8 +946,8 @@ function in_defined_squares(xs,cache)
     ny = length(yspan)
 
     for x in xs
-        xid,_ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1]),1.0)
-        yid,_ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1]),1.0)
+        xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1]), 1.0)
+        yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1]), 1.0)
 
         if xid == nx
             xid = nx - 1
