@@ -85,6 +85,9 @@ Container for parameters used in elliptic LCS computations.
 * `maxiters_ode::Int=2000`: maximum number of integration steps
 * `max_orbit_length=8boxradius`: maximum length of orbit length
 * `maxiters_bisection::Int=20`: maximum steps in bisection procedure
+* `only_enclosing::Bool=true`: whether the orbit must enclose the starting point of the Poincaré section
+* `only_smooth::Bool=true`: whether or not to reject orbits with "corners". 
+* `only_uniform::Bool=true`: whether or not to reject orbits that are not uniform
 
 ## Example
 ```jldoctest
@@ -126,7 +129,7 @@ struct LCSParameters
         return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                     maxiters_ode, float(max_orbit_length), maxiters_bisection,
-            only_enclosing,only_smooth,only_uniform)
+		    only_enclosing, only_smooth, only_uniform)
     end
 end
 
@@ -149,8 +152,8 @@ function LCSParameters(;
 
     return LCSParameters(float(boxradius), float(indexradius), combine_pairs, n_seeds,
                 float(pmin), float(pmax), float(rdist), float(tolerance_ode),
-                maxiters_ode, float(max_orbit_length), maxiters_bisection,only_enclosing,
-                only_smooth,only_uniform)
+                maxiters_ode, float(max_orbit_length), maxiters_bisection, only_enclosing,
+                only_smooth, only_uniform)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
@@ -530,7 +533,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         bisection_retcode, λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step )
         if bisection_retcode != zero_found
             σ = true
-            bisection_retcode, λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection,margin_step)
+            bisection_retcode, λ⁰= bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step)
         end
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
@@ -545,12 +548,14 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                 else
                     in_well_defined_squares = true
                 end
+
                 contains_singularity = only_enclosing ? contains_point(orbit,ps[1]) : true
 
-        		if (closed && uniform && in_well_defined_squares && contains_singularity)
-        		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
-        		    rev && break
-        		end
+		if (closed && uniform && in_well_defined_squares && contains_singularity)
+		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
+		    rev && break
+		end
+
     	    end
         end
     end
