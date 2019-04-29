@@ -654,13 +654,13 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     if !debug
         producer_task = @async try
                 map(makejob,vortexcenters)
-                isopen(jobs_rc) && close(jobs_rc)
+		isopen(jobs_rc) && close(jobs_rc)
             catch e
                 print("Error in producing jobs for workers: ")
                 println(e)
                 flush(stdout)
-                close(jobs_rc)
-                close(results_rc)
+		isopen(results_rc) && close(results_rc)
+		isopen(jobs_rc) && close(jobs_rc)
         end
     else
         map(makejob,vortexcenters)
@@ -701,8 +701,9 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
             if debug
                 rethrow(e)
             end
-            if !isopen(jobs_rc) && error_on_take && isa(e,InvalidStateException)
-                return 0
+
+            if error_on_take && !isopen(jobs_rc) 
+		    return 0
             else
                 print("Worker: ")
                 println(e)
@@ -888,7 +889,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
             if debug
                 rethrow(e)
             end
-            if !isopen(jobs_rc) && error_on_take && isa(e,InvalidStateException)
+            if !isopen(jobs_rc) && error_on_take 
                 return 0
             else
                 print("Worker: ")
