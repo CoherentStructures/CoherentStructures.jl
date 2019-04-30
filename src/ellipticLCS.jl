@@ -74,10 +74,10 @@ end
 Container for parameters used in elliptic LCS computations.
 
 ## Fields
-* `boxradius::Float64`: "radius" of localization square for closed orbit detection
+* `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-2boxradius`: radius for singularity type detection
 * `combine_pairs=true`: whether isolated singularity pairs should be merged
-* `n_seeds::Int=100`: number of seed points on the Poincaré section
+* `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax=2.0`: upper bound on the parameter in the ``\\eta``-field
 * `rdist=1e-4boxradius`: required return distances for closed orbits
@@ -86,7 +86,7 @@ Container for parameters used in elliptic LCS computations.
 * `max_orbit_length=8boxradius`: maximum length of orbit length
 * `maxiters_bisection::Int=20`: maximum steps in bisection procedure
 * `only_enclosing::Bool=true`: whether the orbit must enclose the starting point of the Poincaré section
-* `only_smooth::Bool=true`: whether or not to reject orbits with "corners". 
+* `only_smooth::Bool=true`: whether or not to reject orbits with "corners".
 * `only_uniform::Bool=true`: whether or not to reject orbits that are not uniform
 
 ## Example
@@ -110,6 +110,7 @@ struct LCSParameters
     only_enclosing::Bool
     only_smooth::Bool
     only_uniform::Bool
+
     function LCSParameters(
                 boxradius::Real,
                 indexradius::Real=1e-3boxradius,
@@ -122,14 +123,14 @@ struct LCSParameters
                 maxiters_ode::Int=1000,
                 max_orbit_length::Real=8boxradius,
                 maxiters_bisection::Int=30,
-                only_enclosing=true,
+                only_enclosing::Bool=true,
                 only_smooth::Bool=true,
                 only_uniform::Bool=true
                 )
         return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                     maxiters_ode, float(max_orbit_length), maxiters_bisection,
-		    only_enclosing, only_smooth, only_uniform)
+                    only_enclosing, only_smooth, only_uniform)
     end
 end
 
@@ -152,8 +153,8 @@ function LCSParameters(;
 
     return LCSParameters(float(boxradius), float(indexradius), combine_pairs, n_seeds,
                 float(pmin), float(pmax), float(rdist), float(tolerance_ode),
-                maxiters_ode, float(max_orbit_length), maxiters_bisection, only_enclosing,
-                only_smooth, only_uniform)
+                maxiters_ode, float(max_orbit_length), maxiters_bisection,
+                only_enclosing, only_smooth, only_uniform)
 end
 
 struct LCScache{Ts <: Real, Tv <: SVector{2,<: Real}}
@@ -456,7 +457,7 @@ end
 """
     compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000, maxiters_bisection=20)
 
-Compute the outermost closed orbit for a given Poincaré section `ps`, a vector field
+Compute the (outermost) closed orbit for a given Poincaré section `ps`, a vector field
 constructor `ηfield`, and an LCScache `cache`. Keyword arguments `pmin` and `pmax`
 correspond to the range of shift parameters in which closed orbits are sought;
 `rev` determines whether closed orbits are sought from the outside inwards (`true`)
@@ -551,11 +552,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
 
                 contains_singularity = only_enclosing ? contains_point(orbit,ps[1]) : true
 
-		if (closed && uniform && in_well_defined_squares && contains_singularity)
-		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
-		    rev && break
-		end
-
+        		if (closed && uniform && in_well_defined_squares && contains_singularity)
+        		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
+        		    rev && break
+        		end
     	    end
         end
     end
@@ -707,7 +707,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                 rethrow(e)
             end
 
-            if error_on_take && !isopen(jobs_rc) 
+            if error_on_take && !isopen(jobs_rc)
 		    return 0
             else
                 print("Worker: ")
@@ -770,6 +770,8 @@ The keyword arguments and their default values are:
 *   `outermost=true`: only the outermost barriers, i.e., the vortex
     boundaries are returned, otherwise all detected transport barrieres;
 *   `verbose=true`: show intermediate computational information
+*   `debug=false`: whether to use the debug mode, which avoids parallelization
+    for more precise error messages.
 """
 function constrainedLCS(q::AbstractMatrix{SVector{2,<:Real}},
                         xspan::AbstractRange{<:Real},
@@ -894,7 +896,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
             if debug
                 rethrow(e)
             end
-            if !isopen(jobs_rc) && error_on_take 
+            if !isopen(jobs_rc) && error_on_take
                 return 0
             else
                 print("Worker: ")
@@ -927,7 +929,6 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
         push!(vortices, EllipticVortex((@SVector [vx, vy]), barriers))
     end
 
-
     if !debug
         #Cleanup, make sure everything finished etc...
         wait(producer_task)
@@ -945,7 +946,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
 end
 
 
-function in_defined_squares(xs,cache)
+function in_defined_squares(xs, cache)
     xspan = cache.η.axes[1]
     yspan = cache.η.axes[2]
     nx = length(xspan)
@@ -955,21 +956,17 @@ function in_defined_squares(xs,cache)
         xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1]), 1.0)
         yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1]), 1.0)
 
-        if xid == nx
-            xid = nx - 1
-        end
-        if yid == ny
-            yid = ny - 1
-        end
+        xid == nx && xid = nx - 1
+        yid == ny && yid = ny - 1
 
         ps = [cache.η[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
 
         for i in 1:4
     	    for j in (i+1):4
-                    if ps[i] ⋅ ps[j]  < 0
-                        return false
-                    end
+                if ps[i] ⋅ ps[j]  < 0
+                    return false
                 end
+            end
         end
     end
     return true
@@ -977,11 +974,11 @@ end
 
 function contains_point(xs, point_to_check)
     points_to_center = [x - point_to_check for x in xs]
-    angles = [atan(x[2],x[1]) for x in points_to_center]
+    angles = [atan(x[2], x[1]) for x in points_to_center]
     lx = length(xs)
     res = 0.0
     for i in 0:(lx-1)
-	res += s1dist(angles[i+1], angles[((i+1) % lx) + 1])
+        res += s1dist(angles[i+1], angles[((i+1) % lx) + 1])
     end
     res /= 2π
     return (round(Int,res) != 0)
