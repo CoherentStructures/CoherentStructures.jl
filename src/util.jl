@@ -5,21 +5,28 @@
 
 # bisection is used in closed orbit detection in ellipticLCS.jl
 function bisection(f, a::T, b::T, tol::Real=1e-4,
-        maxiter::Int=20,margin_step::T=(b-a)/20
+        maxiter::Int=20, margin_step::T=(b-a)/20
         )::Tuple{BisectionStatus, T} where T <: Real
     @assert margin_step > 0
     fa, fb = f(a), f(b)
+
+    if abs(fa) < tol
+    	return (zero_found, a)
+    elseif abs(fb) < tol
+    	return (zero_found, b)
+    end
+
     local c::T
     i = 0
     firsttime=true
     while true
         i < maxiter || return (maxiters_exceeded, T(NaN))
-        if isnan(fa) && abs(a-b) > margin_step
+    	if isnan(fa) && abs(a-b) > margin_step && (a + margin_step > a)
             firsttime || return (nans_between, T(NaN))
     	    a += margin_step
             fa = f(a)
             continue
-        elseif isnan(fb) && abs(a-b) > margin_step
+    	elseif isnan(fb) && abs(a-b) > margin_step && (b - margin_step < b)
             firsttime || return (nans_between, T(NaN))
     	    b -= margin_step
             fb = f(b)
@@ -28,8 +35,12 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
         firsttime=false
         i += 1
         fa * fb <= 0 || return (no_real_root, T(NaN))
-        c = (a + b) / 2 # bisection
-        # c = (a*fb-b*fa)/(fb-fa) # regula falsi
+        #We use bisection in general, but regular falsi for the first 4 iterations if doing so is well-defined.
+    	if i > 3 || (fb - fa)  == 0
+            c = (a + b) / 2 # bisection
+        else
+            c = (a*fb-b*fa)/(fb-fa) # regula falsi
+        end
         fc = f(c)
         if abs(fc) < tol
             return (zero_found,c)
