@@ -44,8 +44,8 @@ const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 import AxisArrays
 const AA = AxisArrays
 q = 91
-t_initial = minimum(Time)
-t_final = t_initial + 90
+const t_initial = minimum(Time)
+const t_final = t_initial + 90
 const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
 nx = 300
@@ -77,6 +77,49 @@ for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
 end
 DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
+
+# ## Objective Eulerian coherent structures (OECS)
+
+# With only minor modifications, we are also able to compute OECSs. We start by
+# loading some packages and define the rate-of-strain tensor function.
+
+using Interpolations, Tensors
+function rate_of_strain_tensor(xin)
+    x, y = xin
+    grad = Interpolations.gradient(VI, x, y, t_initial)
+    df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
+    return symmetric(df)
+end
+
+# To make live more exciting, we choose a larger domain.
+
+xmin, xmax, ymin, ymax = -12.0, 7.0, -38.1, -22.0
+nx = 950
+ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+
+# Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.
+
+S = map(rate_of_strain_tensor, P)
+p = LCSParameters(boxradius=2.5, indexradius=0.25, pmin=-1, pmax=1, rdist=2.5e-3)
+vortices, singularities = ellipticLCS(S, p, outermost=true)
+
+λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
+fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
+            aspect_ratio=1, color=:viridis, leg=true,
+            title="Minor eigenvalue",
+            xlims=(xmin, xmax), ylims=(ymin, ymax)
+            )
+scatter!([s.coords for s in singularities if s.index == 1//2 ], color=:yellow, label="wedge")
+scatter!([s.coords for s in singularities if s.index == -1//2 ], color=:purple, label="trisector")
+scatter!([s.coords for s in singularities if s.index == 1 ], color=:white, label="elliptic")
+for vortex in vortices, barrier in vortex.barriers
+    plot!(barrier.curve, w=2, label="")
+end
+scatter!(vec(SVector{2}.(Lon, Lat')), color=:red, label="", alpha=0.1)
+DISPLAY_PLOT(fig, ocean_flow_oecs)
 
 # ## FEM-based methods
 
