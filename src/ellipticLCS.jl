@@ -956,8 +956,8 @@ function in_defined_squares(xs, cache)
         xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1]), 1.0)
         yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1]), 1.0)
 
-        xid == nx && xid = nx - 1
-        yid == ny && yid = ny - 1
+        xid = xid == nx ? nx - 1 : xid
+        yid = yid == ny ? ny - 1 : yid
 
         ps = [cache.η[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
 
