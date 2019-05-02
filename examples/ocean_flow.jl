@@ -32,7 +32,8 @@ nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays
 
-# Next, we load and interpolate the velocity data sets.
+# Next, we load and interpolate the velocity data sets. Loading the data sets defines
+# `Lon`, `Lat`, `Time`, `UT`, `VT`.
 
 using JLD2
 JLD2.@load(OCEAN_FLOW_FILE)
@@ -84,9 +85,12 @@ DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 # loading some packages and define the rate-of-strain tensor function.
 
 using Interpolations, Tensors
+
+const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+
 function rate_of_strain_tensor(xin)
     x, y = xin
-    grad = Interpolations.gradient(VI, x, y, t_initial)
+    grad = Interpolations.gradient(VI, x, y)
     df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
     return symmetric(df)
 end
@@ -103,22 +107,21 @@ P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 # Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.
 
 S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, indexradius=0.25, pmin=-1, pmax=1, rdist=2.5e-3)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
 fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
             aspect_ratio=1, color=:viridis, leg=true,
-            title="Minor eigenvalue",
+            title="Minor eigenvalue field and OECSs",
             xlims=(xmin, xmax), ylims=(ymin, ymax)
             )
 scatter!([s.coords for s in singularities if s.index == 1//2 ], color=:yellow, label="wedge")
 scatter!([s.coords for s in singularities if s.index == -1//2 ], color=:purple, label="trisector")
 scatter!([s.coords for s in singularities if s.index == 1 ], color=:white, label="elliptic")
 for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, label="")
+    plot!(barrier.curve, w=2, color=:red, label="")
 end
-scatter!(vec(SVector{2}.(Lon, Lat')), color=:red, label="", alpha=0.1)
 DISPLAY_PLOT(fig, ocean_flow_oecs)
 
 # ## FEM-based methods
@@ -130,21 +133,19 @@ DISPLAY_PLOT(fig, ocean_flow_oecs)
 using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
-#Import and interpolate ocean dataset
-#The @load macro initializes Lon,Lat,Time,UT,VT
-
 JLD2.@load(OCEAN_FLOW_FILE)
 
 VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
-#Define a flow function from it
+# Next, we define a flow function from it.
+                                                
 t_initial = minimum(Time)
 t_final = t_initial + 90
 times = [t_initial, t_final]
 flow_map = u0 -> flow(interp_rhs, u0, times;
     p=VI, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
 
-# Next we set up the domain. We want to use zero Dirichlet boundary conditions here.
+# Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.
 
 LL = [-4.0, -34.0]
 UR = [6.0, -28.0]
