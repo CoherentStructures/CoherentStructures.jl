@@ -69,7 +69,7 @@ mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
           D=DiffTensor, tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ny)
-p = LCSParameters(3*max(step(xspan), step(yspan)), 2.0, true, 60, 0.7, 1.5, 1e-4)
+p = LCSParameters(2.0)
 vortices, singularities = ellipticLCS(C̅, p)
 
 # The result is visualized as follows:
@@ -82,10 +82,8 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             xlims=(0, 6.371π), ylims=(ymin, ymax))
 scatter!(getcoords(singularities), color=:red, label="singularities")
 scatter!([vortex.center for vortex in vortices], color=:yellow, label="vortex cores")
-for vortex in vortices
-    for barrier in vortex.barriers
-        plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
-    end
+for vortex in vortices, barrier in vortex.barriers
+    plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
 end
 DISPLAY_PLOT(fig, bickley_geodesic_vortices)
 

@@ -12,6 +12,8 @@ export
 	EllipticBarrier,
 	EllipticVortex,
 	LCSParameters,
+	s1dist,
+	p1dist,
 	compute_singularities,
 	singularity_detection,
 	critical_point_detection,
