@@ -302,7 +302,7 @@ end
 
 #= #TODO 1.0
 """
-    gridContext{2}(JuAFEM.Triangle, node_list; [on_torus=false,LL,UR,quadrature_order=default_quadrature_order,ip])
+    gridContext{2}(JuAFEM.Triangle, node_list; [on_torus=false,on_cylinder=false,LL,UR,quadrature_order=default_quadrature_order,ip])
 
 Create a P1-Lagrange grid based on Delaunay Triangulation.
 If `on_torus==true`, triangulates on a periodic domain (in both directions)
