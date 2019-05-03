@@ -95,7 +95,7 @@ function rate_of_strain_tensor(xin)
     return symmetric(df)
 end
 
-# To make live more exciting, we choose a larger domain.
+# To make life more exciting, we choose a larger domain.
 
 xmin, xmax, ymin, ymax = -12.0, 7.0, -38.1, -22.0
 nx = 950
@@ -110,10 +110,12 @@ S = map(rate_of_strain_tensor, P)
 p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
+# Finally, the result is visualized as follows.
+
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
 fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
             aspect_ratio=1, color=:viridis, leg=true,
-            title="Minor eigenvalue field and OECSs",
+            title="Minor rate-of-strain field and OECSs",
             xlims=(xmin, xmax), ylims=(ymin, ymax)
             )
 scatter!([s.coords for s in singularities if s.index == 1//2 ], color=:yellow, label="wedge")
