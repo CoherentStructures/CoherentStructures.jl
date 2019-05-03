@@ -90,7 +90,7 @@ const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic
 
 function rate_of_strain_tensor(xin)
     x, y = xin
-    grad = Interpolations.gradient(VI, x, y)
+    grad = Interpolations.gradient(V, x, y)
     df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
     return symmetric(df)
 end
@@ -138,7 +138,7 @@ JLD2.@load(OCEAN_FLOW_FILE)
 VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Next, we define a flow function from it.
-                                                
+
 t_initial = minimum(Time)
 t_final = t_initial + 90
 times = [t_initial, t_final]
