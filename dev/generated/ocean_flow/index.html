@@ -42,19 +42,17 @@ function rate_of_strain_tensor(xin)
     grad = Interpolations.gradient(V, x, y)
     df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
     return symmetric(df)
-end</code></pre><p>To make live more exciting, we choose a larger domain.</p><pre><code class="language-julia">xmin, xmax, ymin, ymax = -12.0, 7.0, -38.1, -22.0
+end</code></pre><p>To make life more exciting, we choose a larger domain.</p><pre><code class="language-julia">xmin, xmax, ymin, ymax = -12.0, 7.0, -38.1, -22.0
 nx = 950
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AA.AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)</code></pre><p>Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.</p><pre><code class="language-julia">S = map(rate_of_strain_tensor, P)
 p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
-vortices, singularities = ellipticLCS(S, p, outermost=true)
-
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
+vortices, singularities = ellipticLCS(S, p, outermost=true)</code></pre><p>Finally, the result is visualized as follows.</p><pre><code class="language-julia">λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
 fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
             aspect_ratio=1, color=:viridis, leg=true,
-            title=&quot;Minor eigenvalue field and OECSs&quot;,
+            title=&quot;Minor rate-of-strain field and OECSs&quot;,
             xlims=(xmin, xmax), ylims=(ymin, ymax)
             )
 scatter!([s.coords for s in singularities if s.index == 1//2 ], color=:yellow, label=&quot;wedge&quot;)
