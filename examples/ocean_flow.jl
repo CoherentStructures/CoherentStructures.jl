@@ -136,7 +136,7 @@ import JLD2, OrdinaryDiffEq, Plots
 
 JLD2.@load(OCEAN_FLOW_FILE)
 
-VI = interpolateVF(Lon, Lat, Time, UT, VT)
+UV = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Next, we define a flow function from it.
 
@@ -144,7 +144,7 @@ t_initial = minimum(Time)
 t_final = t_initial + 90
 times = [t_initial, t_final]
 flow_map = u0 -> flow(interp_rhs, u0, times;
-    p=VI, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
+    p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
 
 # Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.
 
