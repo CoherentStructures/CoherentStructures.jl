@@ -75,7 +75,7 @@ Container for parameters used in elliptic LCS computations.
 
 ## Fields
 * `boxradius`: "radius" of localization square for closed orbit detection
-* `indexradius=1e-2boxradius`: radius for singularity type detection
+* `indexradius=1e-1boxradius`: radius for singularity type detection
 * `combine_pairs=true`: whether isolated singularity pairs should be merged
 * `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
@@ -92,7 +92,7 @@ Container for parameters used in elliptic LCS computations.
 ## Example
 ```jldoctest
 julia> p = LCSParameters(2.5)
-LCSParameters(2.5, 0.0025, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
+LCSParameters(2.5, 0.25, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 ```
 """
 struct LCSParameters
@@ -113,7 +113,7 @@ struct LCSParameters
 
     function LCSParameters(
                 boxradius::Real,
-                indexradius::Real=1e-3boxradius,
+                indexradius::Real=1e-1boxradius,
                 combine_pairs::Bool=true,
                 n_seeds::Int=100,
                 pmin::Real=0.7,
@@ -752,7 +752,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     end
 
     #Get rid of vortices without barriers
-    vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
+    vortexlist = filter(v -> !isempty(v.barriers), vortices)
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, singularities
 end
@@ -940,7 +940,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     end
 
     #Get rid of vortices without barriers
-    vortexlist = vortices[map(v -> !isempty(v.barriers), vortices)]
+    vortexlist = filter(v -> !isempty(v.barriers), vortices)
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, critpts
 end
