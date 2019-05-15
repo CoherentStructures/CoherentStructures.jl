@@ -90,7 +90,7 @@ Container for parameters used in elliptic LCS computations.
 * `only_uniform::Bool=true`: whether or not to reject orbits that are not uniform
 
 ## Example
-```jldoctest
+```
 julia> p = LCSParameters(2.5)
 LCSParameters(2.5, 0.25, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 ```
@@ -136,7 +136,7 @@ end
 
 function LCSParameters(;
             boxradius::Real=1.0,
-            indexradius::Real=1e-3boxradius,
+            indexradius::Real=1e-1boxradius,
             combine_pairs::Bool=true,
             n_seeds::Int=100,
             pmin::Real=0.7,
