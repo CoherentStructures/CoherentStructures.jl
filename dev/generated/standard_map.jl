@@ -1,8 +1,8 @@
 using Random
 
 a = 0.971635
-f(a,x) = (mod(x[1] + x[2] + a*sin(x[1]), 2π),
-          mod(x[2] + a*sin(x[1]), 2π))
+f(a,x) = (mod2pi(x[1] + x[2] + a*sin(x[1])),
+          mod2pi(x[2] + a*sin(x[1])))
 
 X = []
 for i in 1:50

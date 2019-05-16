@@ -7,8 +7,7 @@ using JLD2
 JLD2.@load("Ocean_geostrophic_velocity.jld2")
 const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
-import AxisArrays
-const AA = AxisArrays
+using AxisArrays
 q = 91
 const t_initial = minimum(Time)
 const t_final = t_initial + 90
@@ -18,7 +17,7 @@ nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 const δ = 1.e-5
 mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
     p=VI, tolerance=1e-6, solver=Tsit5())
@@ -33,8 +32,8 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers",
             xlims=(xmin, xmax), ylims=(ymin, ymax))
-scatter!(getcoords(singularities), color=:red, label="singularities")
-scatter!([vortex.center for vortex in vortices], color=:yellow, label="vortex cores")
+scatter!([s.coords.data for s in singularities], color=:red, label="singularities")
+scatter!([vortex.center.data for vortex in vortices], color=:yellow, label="vortex cores")
 for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
 end
@@ -56,7 +55,7 @@ nx = 950
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
 S = map(rate_of_strain_tensor, P)
 p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
@@ -68,9 +67,9 @@ fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
             title="Minor rate-of-strain field and OECSs",
             xlims=(xmin, xmax), ylims=(ymin, ymax)
             )
-scatter!([s.coords for s in singularities if s.index == 1//2 ], color=:yellow, label="wedge")
-scatter!([s.coords for s in singularities if s.index == -1//2 ], color=:purple, label="trisector")
-scatter!([s.coords for s in singularities if s.index == 1 ], color=:white, label="elliptic")
+scatter!([s.coords.data for s in singularities if s.index == 1//2], color=:yellow, label="wedge")
+scatter!([s.coords.data for s in singularities if s.index == -1//2], color=:purple, label="trisector")
+scatter!([s.coords.data for s in singularities if s.index == 1], color=:white, label="elliptic")
 for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, color=:red, label="")
 end
@@ -81,13 +80,13 @@ import JLD2, OrdinaryDiffEq, Plots
 
 JLD2.@load("Ocean_geostrophic_velocity.jld2")
 
-VI = interpolateVF(Lon, Lat, Time, UT, VT)
+UV = interpolateVF(Lon, Lat, Time, UT, VT)
 
 t_initial = minimum(Time)
 t_final = t_initial + 90
 times = [t_initial, t_final]
 flow_map = u0 -> flow(interp_rhs, u0, times;
-    p=VI, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
+    p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
 
 LL = [-4.0, -34.0]
 UR = [6.0, -28.0]

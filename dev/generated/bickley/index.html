@@ -22,8 +22,7 @@ nprocs() == 1 &amp;&amp; addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
 using StaticArrays
-import AxisArrays
-const AA = AxisArrays
+using AxisArrays
 q = 81
 const tspan = range(0., stop=3456000., length=q)
 ny = 61
@@ -31,7 +30,7 @@ nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
 const δ = 1.e-6
 const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
 mCG_tensor = u -&gt; av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
@@ -45,8 +44,8 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title=&quot;DBS field and transport barriers&quot;,
             xlims=(0, 6.371π), ylims=(ymin, ymax))
-scatter!(getcoords(singularities), color=:red, label=&quot;singularities&quot;)
-scatter!([vortex.center for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
+scatter!([s.coords.data for s in singularities], color=:red, label=&quot;singularities&quot;)
+scatter!([vortex.center.data for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
 for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, label=&quot;T = $(round(barrier.p, digits=2))&quot;)
 end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ bickley_geodesic_vortices.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">LL = [0.0, -3.0]; UR = [6.371π, 3.0]

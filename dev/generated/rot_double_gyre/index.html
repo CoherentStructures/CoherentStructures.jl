@@ -21,15 +21,14 @@ nprocs() == 1 &amp;&amp; addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq
 using StaticArrays
-import AxisArrays
-const AA = AxisArrays
-const q = 51
+using AxisArrays
+q = 51
 const tspan = range(0., stop=1., length=q)
 nx = ny = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
 const δ = 1.e-6
 mCG_tensor = u -&gt; av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ;
         tolerance=1e-6, solver=Tsit5())
@@ -42,8 +41,8 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title=&quot;DBS field and transport barriers&quot;,
             xlims=(xmin, xmax), ylims=(ymin, ymax))
-scatter!(getcoords(singularities), color=:red, label=&quot;singularities&quot;)
-scatter!([vortex.center for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
+scatter!([s.coords.data for s in singularities], color=:red, label=&quot;singularities&quot;)
+scatter!([vortex.center.data for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
 for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, label=&quot;T = $(round(barrier.p, digits=2))&quot;)
 end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ rot_double_gyre_geodesic_vortices.png" alt/></p><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../../"><span class="direction">Previous</span><span class="title">Home</span></a><a class="next" href="../standard_map/"><span class="direction">Next</span><span class="title">Standard map</span></a></footer></article></body></html>
