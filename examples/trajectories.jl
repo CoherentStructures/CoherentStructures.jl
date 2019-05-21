@@ -19,7 +19,7 @@
 
 # We first generate some trajectories on a set of `n' random points for the double gyre.
 
-using CoherentStructures
+using CoherentStructures,Tensors
 
 n = 500
 tspan=range(0,stop=1.0, length=20)
@@ -68,7 +68,7 @@ res = iterated_kmeans(20, permutedims(V[:,2:n_partition]), n_partition)
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i] * i for i in 1:n_partition])
 
-#We plot the result. The result looks "messy" due to the 
+#We plot the result. The result looks "messy" due to the
 # fact that we used quite few trajectories
 fig = plot_u(ctx, u_combined, 400, 400;
     color=:viridis, colorbar=:none, title="$n_partition-partition of double gyre")
