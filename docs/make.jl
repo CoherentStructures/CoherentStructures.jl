@@ -74,6 +74,20 @@ Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), "/tmp/";
 
 run(`julia --project=docs/ /tmp/bickley.jl`)
 
+Literate.markdown(joinpath(@__DIR__, "..", "examples/trajectories.jl"), OUTPUT;
+    documenter=false,preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "examples/trajectories.jl"), OUTPUT;
+    execute=false,preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "examples/trajectories.jl"), OUTPUT;
+    preprocess=preprocess_script
+    )
+Literate.script(joinpath(@__DIR__, "..", "examples/trajectories.jl"), "/tmp/";
+    preprocess=preprocess_script2
+    )
+
+run(`julia --project=docs/ /tmp/trajectories.jl`)
+
+
 
 Literate.markdown(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
     documenter=false,preprocess=preprocess_markdown)
@@ -141,6 +155,7 @@ makedocs(
             "Standard map" => "generated/standard_map.md"
             "Bickley jet" => "generated/bickley.md"
             "Geostrophic ocean flow" => "generated/ocean_flow.md"
+            "Working with trajectories" => "generated/trajectories.md"
             ]
         "Basics" => "basics.md"
         "Methods" => [
