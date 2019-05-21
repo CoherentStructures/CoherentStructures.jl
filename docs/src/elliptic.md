@@ -101,7 +101,7 @@ combine_isolated_wedges
 ```
 The function [`compute_singularities`](@ref) requires one of two signed distance
 functions for angles. These are [`s1dist`](@ref) for vector fields, and
-[`p1dist](@ref) for line fields.
+[`p1dist`](@ref) for line fields.
 ```@docs
 s1dist
 p1dist

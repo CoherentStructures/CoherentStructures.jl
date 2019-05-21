@@ -53,7 +53,7 @@ T = @inferred map(mCG_tensor, P)
 end
 
 @testset "closed orbit detection" begin
-    Ω = SMatrix{2,2}(0, -1, 1, 0)
+    Ω = SMatrix{2,2}(0, 1, -1, 0)
     vf(λ) = OrdinaryDiffEq.ODEFunction((u, p, t) -> (Ω - (1 - λ) * I) * u)
     seed = SVector{2}(rand(), 0)
     d = @inferred CS.Poincaré_return_distance(vf(1), seed)
@@ -79,7 +79,7 @@ end
 end
 
 @testset "constrainedLCS" begin
-    Ω = SMatrix{2,2}(0, -1, 1, 0)
+    Ω = SMatrix{2,2}(0, 1, -1, 0)
     Z = zeros(SVector{2})
     for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false)
         xspan = range(-1, stop=1, length=nx)
@@ -88,14 +88,14 @@ end
         q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine, 60, 0.5, 1.5, 1e-4)
 
-        vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false)
+        vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false,debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
         @test singularities isa Vector{Singularity{Float64}}
         @test vortices[1].center ≈ Z atol=max(step(xspan), step(yspan))
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
 
-        vortices, singularities = constrainedLCS(q, p; outermost=false, verbose=false)
+        vortices, singularities = constrainedLCS(q, p; outermost=false, verbose=false,debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) > 1
         @test singularities isa Vector{Singularity{Float64}}
         @test length(singularities) == 1
