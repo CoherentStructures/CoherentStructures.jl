@@ -10,3 +10,4 @@ page.
 * [Standard map](@The standard map)
 * [Bickley jet flow](@Bickley Jet)
 * [Geostrophic ocean surface flow](@Geostrophic Ocean Flow)
+* [Working with trajectories](@Working with trajectories)

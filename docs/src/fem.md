@@ -174,7 +174,9 @@ CurrentModule = CoherentStructures
 ```@docs
 assembleStiffnessMatrix
 assembleMassMatrix
+adaptiveTOCollocationStiffnessMatrix
 ```
+
 
 ### Constructing Grids
 

@@ -117,7 +117,8 @@ on the original domain as well as `LL` and `UR` as lower-left and upper-right co
 
 If `volume_preserving == false`, add a volume_correction term to ``a_1`` (See paper by Froyland & Junge).
 
-If `flow_map_mode==0`, apply flow map to nodal basis function coordinates. Else apply it to index number.
+If `flow_map_mode==0`, apply flow map to nodal basis function coordinates.
+If `flow_map_mode==1`, apply flow map to nodal basis function index number (allows for precomputed trajectories).
 """
 function adaptiveTOCollocationStiffnessMatrix(
         ctx::gridContext{2},

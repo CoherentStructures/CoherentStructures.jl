@@ -53,8 +53,7 @@ nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
 using StaticArrays
-import AxisArrays
-const AA = AxisArrays
+using AxisArrays
 q = 81
 const tspan = range(0., stop=3456000., length=q)
 ny = 61
@@ -62,7 +61,7 @@ nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 const δ = 1.e-6
 const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
 mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
@@ -80,8 +79,8 @@ fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
             aspect_ratio=1, color=:viridis, leg=true,
             title="DBS field and transport barriers",
             xlims=(0, 6.371π), ylims=(ymin, ymax))
-scatter!(getcoords(singularities), color=:red, label="singularities")
-scatter!([vortex.center for vortex in vortices], color=:yellow, label="vortex cores")
+scatter!([s.coords.data for s in singularities], color=:red, label="singularities")
+scatter!([vortex.center.data for vortex in vortices], color=:yellow, label="vortex cores")
 for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
 end

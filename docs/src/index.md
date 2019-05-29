@@ -20,3 +20,15 @@ First, install the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package
 Then, run the following in the Julia REPL:
 
     ]add https://github.com/CoherentStructures/CoherentStructures.jl.git
+
+
+## Overview of supported methods
+
+We currently support methods based on [finite elements](@FEM-Based Methods) and the dynamic Laplacian,
+those based on [geodesic vortices](@Geodesic vortices) (such as "black-hole vortices", "material
+barriers", "OECS") and methods based on the [graph Laplacian](@Graph Laplacian-based methods).
+
+The graph Laplacian methods and the "TO" forms of the dynamic Laplacian FEM methods work directly on trajectories.
+
+For more information on specific methods, consult the relevant pages of the documentation or the
+[examples](@Examples) pages.
