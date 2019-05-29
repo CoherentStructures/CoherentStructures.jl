@@ -911,6 +911,49 @@ function evaluate_function_from_node_or_cellvals(
 end
 
 """
+    evaluate_function_from_node_or_cellvalsFDiff
+
+Like `evaluate_function_from_node_or_cellvals` but with more type-restrictions and ForwardDiff compatibility.
+"""
+function evaluate_function_from_node_or_cellvalsFDiff(
+    ctx::gridContext{dim}, vals::Vector{Float64}, x_in::Vec{dim,W};
+    outside_value=NaN, project_in=false,throw_errors=true)::W where {dim,W}
+
+    x::Vec{dim,W} = project_in_xin(ctx,x_in,project_in)
+
+    @assert length(vals) == ctx.n
+
+    local_coordinates::Vec{dim,W}, nodes::Vector{Int}, cellid::Int = try
+         locatePoint(ctx, x)
+    catch y
+        if isa(y,DomainError)
+            return outside_value
+        end
+        if throw_errors
+            print("Unexpected error for $x")
+            rethrow(y)
+        else
+            return outside_value
+        end
+    end
+
+    result::W = zero(W)
+
+    if isa(ctx.ip, JFM.Lagrange)
+        for (j, nodeid) in enumerate(nodes)
+            val::W = JFM.value(ctx.ip, j, local_coordinates)
+            result += vals[nodeid]*val
+        end
+    elseif isa(ctx.ip,JFM.PiecewiseConstant)
+        val = JFM.value(ctx.ip, 1, local_coordinates)
+        result += vals[cellid]*val
+    else
+        throw(AssertionError("Unknown interpolation"))
+    end
+    return result
+end
+
+"""
     evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=NaN,project_in=fals)
 
 Evaluate the function at point x_in with coefficients of dofs given by `dofvals` (in dof-order).
