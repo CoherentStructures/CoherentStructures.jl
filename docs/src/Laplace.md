@@ -28,15 +28,14 @@ mutualKNN
 neighborhood
 ```
 
-Other sparsification methods can be implemented by defining a corresponding [`sparseaffinitykernel`](@ref) instance.
+Other sparsification methods can be implemented by defining a corresponding [`spdist`](@ref) instance.
 
 ### Diffusion-maps type graph Laplacian methods
 
 ```@docs
-diff_op
+spdist
 sparse_diff_op_family
 sparse_diff_op
-sparseaffinitykernel
 kde_normalize!
 row_normalize!
 ```

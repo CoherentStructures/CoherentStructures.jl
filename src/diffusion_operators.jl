@@ -52,71 +52,9 @@ function DM_heatflow(flow_fun,
 end
 
 # diffusion operator/graph Laplacian related functions
-"""
-    diff_op(data, sp_method, kernel = gaussian_kernel; α=1.0, metric=Euclidean"()")
-
-Return a diffusion/Markov matrix `P`.
-
-## Arguments
-   * `data`: 2D array with columns correspdonding to data points;
-   * `sp_method`: employed sparsification method ([`neighborhood`](@ref) or [`mutualKNN`](@ref));
-   * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
-   * `α`: exponent in diffusion-map normalization;
-   * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
-"""
-function diff_op(data::AbstractMatrix{T},
-                    sp_method::neighborhood,
-                    kernel = gaussian_kernel;
-                    α=1.0,
-                    metric::Distances.Metric = Distances.Euclidean()
-                )::SparseMatrixCSC{T,Int} where T <: Real
-
-    N = size(data, 2)
-    D = Distances.pairwise(metric, data)
-    CIs::Vector{CartesianIndex{2}} = findall(D .<= sp_method.ε)
-    Vs::Vector{T} = kernel.(D[CIs])
-    CIs´ = reinterpret(Int, reshape(CIs, 1, :)) # to avoid allocation
-    P = sparse(view(CIs´, 1, :), view(CIs´, 2, :), Vs, N, N)
-    (α != 0) && (@inbounds kde_normalize!(P, α))
-    row_normalize!(P)
-    return P
-end
-
-function diff_op(data::AbstractMatrix{T},
-                    sp_method::Union{KNN,mutualKNN},
-                    kernel = gaussian_kernel;
-                    α=1.0,
-                    metric::Distances.Metric = Distances.Euclidean()
-                )::SparseMatrixCSC{T,Int} where T <: Real
-
-    N, k = size(data, 2), sp_method.k
-    D = Distances.pairwise(metric, data)
-    Is = SharedArray{Int}(N*(k+1))
-    Js = SharedArray{Int}(N*(k+1))
-    Vs = SharedArray{T}(N*(k+1))
-    index = Vector{Int}(undef, k+1)
-    Distributed.@everywhere index = $index
-    @inbounds @sync Distributed.@distributed for i=1:N
-        di = view(D,i,:)
-        partialsortperm!(index, di, 1:(k+1))
-        Is[(i-1)*(k+1)+1:i*(k+1)] .= i
-        Js[(i-1)*(k+1)+1:i*(k+1)] = index
-        Vs[(i-1)*(k+1)+1:i*(k+1)] = kernel.(di[index])
-    end
-    P = sparse(Is, Js, Vs, N, N)
-    if sp_method isa KNN
-        @. P = max(P, permutedims(P))
-    else # sp_method isa mutualKNN
-        @. P = min(P, permutedims(P))
-    end
-    α>0 && (@inbounds kde_normalize!(P, α))
-    row_normalize!(P)
-    return P
-end
 
 """
-    sparse_diff_op_family(data, sp_method, kernel=gaussian_kernel, dim=2; op_reduce, α, metric)
+    sparse_diff_op_family(data, sp_method, kernel=gaussian_kernel; op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -124,29 +62,23 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `data`: 2D array with columns correspdonding to data points;
    * `sp_method`: sparsification method;
    * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`;
-   * `dim`: the columns are interpreted as concatenations of `dim`-
-     dimensional points, to which `metric` is applied individually;
    * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
      `P -> prod(LMs.LinearMap,Iterators.reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-function sparse_diff_op_family( data::AbstractMatrix,
-                                sp_method::S,
-                                kernel = gaussian_kernel,
-                                dim::Int = 2;
+function sparse_diff_op_family(data::AbstractVector{<:AbstractVector{<:SVector}},
+                                sp_method::SparsificationMethod,
+                                kernel = gaussian_kernel;
                                 op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P)))),
                                 α=1.0,
                                 metric::Distances.Metric = Distances.Euclidean()
-                                ) where {S <: SparsificationMethod}
-    dimt, N = size(data)
-    q, r = divrem(dimt, dim)
-    @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
-
-    P = Distributed.pmap(1:q) do t
-        Pₜ = sparse_diff_op(data[(t-1)*dim+1:t*dim,:], sp_method, kernel;
-                                    α=α, metric=metric)
+                                )
+    N = length(data) # number of trajectories
+    q = length(data[1]) # number of time steps
+    P = map(1:q) do t
+        Pₜ = sparse_diff_op(getindex.(data, t), sp_method, kernel; α=α, metric=metric)
         # println("Timestep $t/$q done")
         # Pₜ
     end
@@ -167,70 +99,19 @@ Return a sparse diffusion/Markov matrix `P`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-@inline function sparse_diff_op(data::AbstractMatrix,
-                        sp_method::S,
+@inline function sparse_diff_op(data::Union{T, AbstractVector{T}},
+                        sp_method::SparsificationMethod,
                         kernel = gaussian_kernel;
                         α=1.0,
                         metric::Distances.Metric = Distances.Euclidean()
-                        ) where {S <: SparsificationMethod}
-
-    typeof(metric) == STmetric && metric.p < 1 && throw(error("Cannot use balltrees for sparsification with p = $(metric.p) < 1."))
-    P = sparseaffinitykernel(data, sp_method, kernel, metric)
-    α>0 && (@inbounds kde_normalize!(P, α))
+                        ) where {T<:AbstractVector{<:SVector}}
+    P = spdist(data, sp_method, metric)
+    Pvals = P.nzval
+    Pvals .= kernel.(Pvals)
+    droptol!(P, eps(eltype(P)))
+    @inbounds kde_normalize!(P, α)
     row_normalize!(P)
     return P
-end
-
-"""
-    sparseaffinitykernel(data, sp_method, kernel, metric=Euclidean()) -> SparseMatrixCSC
-
-Return a sparse matrix `W` where ``w_{ij} = k(x_i, x_j)``.
-The ``x_i`` are taken from the columns of `data`. Entries are
-only calculated for pairs determined by the sparsification method `sp_method`.
-Default metric is `Euclidean()`.
-"""
-@inline function sparseaffinitykernel(data::AbstractMatrix{T},
-                               sp_method::Union{KNN, mutualKNN},
-                               kernel=gaussian_kernel,
-                               metric::Distances.PreMetric=Distances.Euclidean()
-                               ) where T <: Real
-    dim, N = size(data)
-
-    if typeof(metric) <: NN.MinkowskiMetric
-        tree = NN.KDTree(data, metric;  leafsize = 10)
-    else
-        tree = NN.BallTree(data, metric; leafsize = 10)
-    end
-    idxs::Vector{Vector{Int}}, dists::Vector{Vector{T}} = NN.knn(tree, data, sp_method.k, false)
-    Js::Vector{Int} = vcat(idxs...)
-    Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs = kernel.(vcat(dists...))
-    W = sparse(Is, Js, Vs, N, N)
-    droptol!(W, eps(eltype(W)))
-    if typeof(sp_method) <: KNN
-        return max.(W, permutedims(W))
-    else
-        return min.(W, permutedims(W))
-    end
-end
-
-@inline function sparseaffinitykernel(data::AbstractMatrix{T},
-                               sp_method::neighborhood,
-                               kernel,
-                               metric::Distances.PreMetric = Distances.Euclidean()
-                               ) where T <: Real
-    dim, N = size(data)
-    # TODO: check for better leafsize values
-    if typeof(metric) <: NN.MinkowskiMetric
-        tree = NN.KDTree(data, metric;  leafsize = 10)
-    else
-        tree = NN.BallTree(data, metric; leafsize = 10)
-    end
-    idxs = NN.inrange(tree, data, sp_method.ε, false)
-    Js = vcat(idxs...)
-    Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    Vs = kernel.(Distances.colwise(metric, view(data, :, Is), view(data, :, Js)))
-    return sparse(Is, Js, Vs, N, N)
 end
 
 """
@@ -240,9 +121,18 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
 @inline function kde_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
+    if α == 0
+        return A
+    end
     n = LinearAlgebra.checksquare(A)
     qₑ = A * ones(eltype(A), size(A, 2))
-    qₑ .= inv.(qₑ.^α)
+    if α == 1
+        qₑ .= inv.(qₑ)
+    elseif α == 1/2
+        qₑ .= inv.(sqrt.(qₑ))
+    else
+        qₑ .= inv.(qₑ.^α)
+    end
     Anzval = A.nzval
     Arowval = A.rowval
     @inbounds for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
@@ -251,9 +141,18 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     return A
 end
 @inline function kde_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
+    if α == 0
+        return A
+    end
     @boundscheck LinearAlgebra.checksquare(A)
     qₑ = A * ones(eltype(A), size(A, 2))
-    qₑ .= inv.(qₑ.^α)
+    if α == 1
+        qₑ .= inv.(qₑ)
+    elseif α == 1/2
+        qₑ .= inv.(sqrt.(qₑ))
+    else
+        qₑ .= inv.(qₑ.^α)
+    end
     A .= qₑ .* A .* permutedims(qₑ)
     return A
 end
@@ -264,8 +163,11 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
 @inline function row_normalize!(A::AbstractMatrix)
-    dᵅ = Diagonal(A * ones(eltype(A), size(A, 2)))
-    ldiv!(dᵅ, A)
+    # this should be once Julia PR #30208 is backported:
+    # dᵅ = Diagonal(A * ones(eltype(A), size(A, 2)))
+    # ldiv!(dᵅ, A)
+    dᵅ = Diagonal(inv.(A * ones(eltype(A), size(A, 2))))
+    lmul!(dᵅ, A)
     return A
 end
 
@@ -287,32 +189,26 @@ metric is applied to the whole columns of `data`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-function sparse_adjacency(data::AbstractMatrix{T}, ε, dim::Int;
-                            metric::Distances.Metric = Distances.Euclidean()
-                        )::SparseMatrixCSC{Float64,Int} where {T <: Real}
-    dimt, N = size(data)
-    q, r = divrem(dimt, dim)
-    @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
-
-    IJs = Distributed.pmap(1:q) do t
-        I, J = sparse_adjacency_list( data[(t-1)*dim+1:t*dim,:], ε; metric = metric )
+function sparse_adjacency(data::AbstractVector{<:AbstractVector{<:SVector}}, ε;
+                            metric::Distances.Metric = Distances.Euclidean())
+    N = length(data) # number of trajectories
+    q = length(data[1]) # number of time steps
+    IJs = map(1:q) do t
+        I, J = sparse_adjacency_list(getindex.(data, t), ε; metric = metric)
         # println("Timestep $t/$q done")
         # I, J
     end
     Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
     Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
-    Vs::Vector{Float64} = fill(1.0, length(Is))
+    Vs = fill(1.0, length(Is))
     return sparse(Is, Js, Vs, N, N, *)
 end
-
-function sparse_adjacency(data::AbstractMatrix, ε;
+function sparse_adjacency(data::AbstractVector{<:SVector}, ε;
                             metric::Distances.Metric = Distances.Euclidean()
                             )::SparseMatrixCSC{Float64,Int}
-    dimt, N = size(data)
-    q, r = divrem(dimt, dim)
-    @assert r == 0 "first dimension of solution matrix is not a multiple of spatial dimension $(dim)"
+    N = length(data)
     Is, Js = sparse_adjacency_list(data, ε; metric=metric)
-    Vs = fill(1.0, length(I))
+    Vs = fill(1.0, length(Is))
     return sparse(Is, Js, Vs, N, N, *)
 end
 
@@ -327,17 +223,11 @@ Return two lists of indices of data points that are adjacent.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-@inline function sparse_adjacency_list(data::AbstractMatrix{T},
-                                ε::S;
-                                metric::Distances.Metric = Distances.Euclidean()
-                               )::Tuple{Vector{Int},Vector{Int}} where {T <: Real, S <: Real}
+@inline function sparse_adjacency_list(data::Union{T, AbstractVector{T}}, ε::Real;
+                                metric::Distances.Metric = Distances.Euclidean())::Tuple{Vector{Int},Vector{Int}} where {T<:AbstractVector{<:SVector}}
 
-    typeof(metric) <: STmetric && metric.p < 1 && throw(error("Cannot use balltrees for sparsification with $(metric.p)<1."))
-    if typeof(metric) <: NN.MinkowskiMetric
-        tree = NN.KDTree(data, metric;  leafsize = metric == STmetric ? 20 : 10)
-    else
-        tree = NN.BallTree(data, metric; leafsize = metric == STmetric ? 20 : 10)
-    end
+    (metric isa STmetric && metric.p < 1) && throw(error("Cannot use balltrees for sparsification with $(metric.p)<1."))
+    tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
     idxs = NN.inrange(tree, data, ε, false)
     Js::Vector{Int} = vcat(idxs...)
     Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
@@ -353,15 +243,14 @@ end
  `P` may be dense or sparse, or a `LinearMap` matrix-vector multiplication
  is given by a function.
  """
-function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
-
+function stationary_distribution(P::LinMaps{T}) where T <: Real
      E = Arpack.eigs(P; nev=1, ncv=50)
      Π = dropdims(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
-     prod(ext) < 0 && throw(error("Both signs in stationary distribution (extrema are $ext)"))
-     if (ext[1] < 0)
-         Π .= .-Π
+     if (prod(ext) < 0) && (all(abs.(ext) .> eps(eltype(ext))))
+         throw(error("Both signs in stationary distribution (extrema are $ext)"))
      end
+     Π .= abs.(Π)
      return Π
  end
 
@@ -390,7 +279,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  """
 function diffusion_coordinates(P::LinMaps,n_coords::Int)
     N = LinearAlgebra.checksquare(P)
-    n_coords <= N && throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
+    n_coords <= N || throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
     Π = stationary_distribution(transpose(P))
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
