@@ -73,13 +73,13 @@ function diff_op(data::AbstractMatrix{T},
                 )::SparseMatrixCSC{T,Int} where T <: Real
 
     N = size(data, 2)
-    D = Distances.pairwise(metric,data)
+    D = Distances.pairwise(metric, data)
     CIs::Vector{CartesianIndex{2}} = findall(D .<= sp_method.ε)
     Vs::Vector{T} = kernel.(D[CIs])
     CIs´ = reinterpret(Int, reshape(CIs, 1, :)) # to avoid allocation
     P = sparse(view(CIs´, 1, :), view(CIs´, 2, :), Vs, N, N)
-    (α != 0) && kde_normalize!(P, α)
-    wLap_normalize!(P)
+    (α != 0) && (@inbounds kde_normalize!(P, α))
+    row_normalize!(P)
     return P
 end
 
@@ -91,7 +91,7 @@ function diff_op(data::AbstractMatrix{T},
                 )::SparseMatrixCSC{T,Int} where T <: Real
 
     N, k = size(data, 2), sp_method.k
-    D = Distances.pairwise(metric,data)
+    D = Distances.pairwise(metric, data)
     Is = SharedArray{Int}(N*(k+1))
     Js = SharedArray{Int}(N*(k+1))
     Vs = SharedArray{T}(N*(k+1))
@@ -106,12 +106,12 @@ function diff_op(data::AbstractMatrix{T},
     end
     P = sparse(Is, Js, Vs, N, N)
     if sp_method isa KNN
-        @. P = max(P, PermutedDimsArray(P, (2,1)))
+        @. P = max(P, permutedims(P))
     else # sp_method isa mutualKNN
-        @. P = min(P, PermutedDimsArray(P, (2,1)))
+        @. P = min(P, permutedims(P))
     end
-    α>0 && kde_normalize!(P, α)
-    wLap_normalize!(P)
+    α>0 && (@inbounds kde_normalize!(P, α))
+    row_normalize!(P)
     return P
 end
 
@@ -174,10 +174,10 @@ Return a sparse diffusion/Markov matrix `P`.
                         metric::Distances.Metric = Distances.Euclidean()
                         ) where {S <: SparsificationMethod}
 
-    typeof(metric) == STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
+    typeof(metric) == STmetric && metric.p < 1 && throw(error("Cannot use balltrees for sparsification with p = $(metric.p) < 1."))
     P = sparseaffinitykernel(data, sp_method, kernel, metric)
-    α>0 && kde_normalize!(P, α)
-    wLap_normalize!(P)
+    α>0 && (@inbounds kde_normalize!(P, α))
+    row_normalize!(P)
     return P
 end
 
@@ -240,49 +240,34 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
 """
 @inline function kde_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
-    # TODO: remove this function in Julia 1.0.2
     n = LinearAlgebra.checksquare(A)
-    qₑ = dropdims(sum(A, dims=2), dims=2) .^-α
+    qₑ = A * ones(eltype(A), size(A, 2))
+    qₑ .= inv.(qₑ.^α)
     Anzval = A.nzval
     Arowval = A.rowval
-    for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
-        @inbounds Anzval[p] *= qₑ[col]
-        @inbounds Anzval[p] *= qₑ[Arowval[p]]
+    @inbounds for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
+        Anzval[p] = qₑ[Arowval[p]] * Anzval[p] * qₑ[col]
     end
     return A
 end
 @inline function kde_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
-    LinearAlgebra.checksquare(A)
-    qₑ = Diagonal(dropdims(sum(A, dims=2), dims=2) .^-α)
-    rmul!(A, qₑ)
-    lmul!(qₑ, A)
+    @boundscheck LinearAlgebra.checksquare(A)
+    qₑ = A * ones(eltype(A), size(A, 2))
+    qₑ .= inv.(qₑ.^α)
+    A .= qₑ .* A .* permutedims(qₑ)
     return A
 end
 
 """
-    wLap_normalize!(A)
+    row_normalize!(A)
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function wLap_normalize!(A::SparseMatrixCSC{T}) where {T <: Real}
-    # TODO: remove this function in Julia 1.0.2
-    n = LinearAlgebra.checksquare(A)
-    # dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
-    dᵅ = inv.(dropdims(sum(A, dims=2), dims=2))
-    # lmul!(dᵅ, A)
-    Anzval = A.nzval
-    Arowval = A.rowval
-    for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
-        @inbounds Anzval[p] *= dᵅ[Arowval[p]]
-    end
+@inline function row_normalize!(A::AbstractMatrix)
+    dᵅ = Diagonal(A * ones(eltype(A), size(A, 2)))
+    ldiv!(dᵅ, A)
     return A
- end
- @inline function wLap_normalize!(A::AbstractMatrix{T}) where {T <: Real}
-     LinearAlgebra.checksquare(A)
-     dᵅ = Diagonal(inv.(dropdims(sum(A, dims=2), dims=2)))
-     lmul!(dᵅ, A)
-     return A
-  end
+end
 
 # adjacency-related functions
 
@@ -347,7 +332,7 @@ Return two lists of indices of data points that are adjacent.
                                 metric::Distances.Metric = Distances.Euclidean()
                                )::Tuple{Vector{Int},Vector{Int}} where {T <: Real, S <: Real}
 
-    typeof(metric) <: STmetric && metric.p < 1 && throw("Cannot use balltrees for sparsification with $(metric.p)<1.")
+    typeof(metric) <: STmetric && metric.p < 1 && throw(error("Cannot use balltrees for sparsification with $(metric.p)<1."))
     if typeof(metric) <: NN.MinkowskiMetric
         tree = NN.KDTree(data, metric;  leafsize = metric == STmetric ? 20 : 10)
     else
@@ -375,14 +360,13 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
      ext = extrema(Π)
      prod(ext) < 0 && throw(error("Both signs in stationary distribution (extrema are $ext)"))
      if (ext[1] < 0)
-         Π .= -Π
+         Π .= .-Π
      end
      return Π
  end
 
  @inline function L_mul_Lt(L::LMs.LinearMap{T},
                             Π::Vector{T})::LMs.LinearMap{T} where T <: Real
-
      Πsqrt = Diagonal(sqrt.(Π))
      Πinv  = Diagonal(inv.(Π))
      return LMs.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
@@ -391,11 +375,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
 
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LMs.LinearMap{T} where T <: Real
-
-     Πsqrt = Diagonal(sqrt.(Π))
-     Πinvsqrt = Diagonal(inv.(Πsqrt))
-     lmul!(Πsqrt, L)
-     rmul!(L, Πinvsqrt)
+     L .= sqrt.(Π) .* L .* permutedims(inv.(sqrt.(Π)))
      LMap = LMs.LinearMap(L)
      return LMs.LinearMap(LMap * transpose(LMap); issymmetric=true,
                 ishermitian=true, isposdef=true)
@@ -410,7 +390,7 @@ function stationary_distribution(P::LinMaps{T})::Vector{T} where T <: Real
  """
 function diffusion_coordinates(P::LinMaps,n_coords::Int)
     N = LinearAlgebra.checksquare(P)
-
+    n_coords <= N && throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
     Π = stationary_distribution(transpose(P))
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
@@ -427,7 +407,7 @@ function diffusion_coordinates(P::LinMaps,n_coords::Int)
         "Using absolute value instead."
     end
 
-    Σ .= (sqrt∘abs).(Σ)
+    Σ .= sqrt.(abs.(Σ))
     Ψ = E[2]
 
     # Compute diffusion map Ψ and extract the diffusion coordinates

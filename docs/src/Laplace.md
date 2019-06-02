@@ -38,7 +38,7 @@ sparse_diff_op_family
 sparse_diff_op
 sparseaffinitykernel
 kde_normalize!
-wLap_normalize!
+row_normalize!
 ```
 
 ### Adjancency-matrix-based graph Laplacian methods
