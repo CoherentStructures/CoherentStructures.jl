@@ -258,34 +258,34 @@ function eulerian_videos(ctx,
                          throw_errors=false,kwargs...)
     allvideos = [frameCollection([]) for i in 1:num_videos]
 
-    for (index,t) in enumerate(range(t0,stop=tf,length=nt))
+    for (index, t) in enumerate(range(t0, stop=tf, length=nt))
     	print("Processing frame $index")
         if t != t0
-        	current_inv_flow_map = x -> inverse_flow_map_t(t,x)
+        	current_inv_flow_map = x -> inverse_flow_map_t(t, x)
         else
-            current_inv_flow_map = x->x
+            current_inv_flow_map = x -> x
         end
-        x1 = range(LL[1],stop=UR[1],length=nx)
-        x2 = range(LL[2],stop=UR[2],length=ny)
-        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(current_inv_flow_map,[x1,x2],throw_errors=throw_errors)
+        x1 = range(LL[1], stop=UR[1], length=nx)
+        x2 = range(LL[2], stop=UR[2], length=ny)
+        euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(current_inv_flow_map, [x1, x2], throw_errors=throw_errors)
         euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
         for i in 1:nx, j in 1:ny
             euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
 	    end
 
-        zs_all = SharedArray{Float64}(ny,nx,num_videos)
-        current_us = SharedArray{Float64}(ctx.n,num_videos)
+        zs_all = SharedArray{Float64}(ny, nx, num_videos)
+        current_us = SharedArray{Float64}(ctx.n, num_videos)
         for i in 1:num_videos
-	    current_us[:,i] = get_full_dofvals(ctx,us(i,t); bdata = bdata)[ctx.node_to_dof]
+            current_us[:,i] = get_full_dofvals(ctx,us(i,t); bdata = bdata)[ctx.node_to_dof]
         end
         @sync @distributed for xindex in 1:nx
             #@distributed for current_index in eachindex(z_all)
             for yindex in 1:ny
                 for i in 1:num_videos
             	    current_u = current_us[:,i]
-                    zs_all[yindex,xindex, i]= evaluate_function_from_node_or_cellvals(
+                    zs_all[yindex, xindex, i]= evaluate_function_from_node_or_cellvals(
                         ctx, current_u,
-                        euler_to_lagrange_points[yindex,xindex];
+                        euler_to_lagrange_points[yindex, xindex];
                         outside_value=NaN
                         )
                 end
@@ -293,9 +293,13 @@ function eulerian_videos(ctx,
         end
         for i in 1:num_videos
     	    if extra_kwargs_fun != nothing
-        		curframe = plot_u_eulerian(ctx, zeros(ctx.n) , current_inv_flow_map,LL,UR, nx,ny;zs=zs_all[:,:,i],euler_to_lagrange_points=euler_to_lagrange_points,extra_kwargs_fun(i,t)...,kwargs...);
+        		curframe = plot_u_eulerian(ctx, zeros(ctx.n) , current_inv_flow_map, LL, UR, nx, ny;
+                            zs=zs_all[:,:,i], euler_to_lagrange_points=euler_to_lagrange_points,
+                            extra_kwargs_fun(i, t)..., kwargs...);
     	    else
-        		curframe = plot_u_eulerian(ctx, zeros(ctx.n), current_inv_flow_map,LL,UR, nx,ny;zs=zs_all[:,:,i],euler_to_lagrange_points=euler_to_lagrange_points,kwargs...);
+        		curframe = plot_u_eulerian(ctx, zeros(ctx.n), current_inv_flow_map, LL, UR, nx, ny;
+                            zs=zs_all[:,:,i], euler_to_lagrange_points=euler_to_lagrange_points,
+                            kwargs...);
     	    end
             push!(allvideos[i].frames, curframe)
         end
@@ -338,13 +342,14 @@ Like `eulerian_videos`, but `u(t)` is a vector of dofs, and `extra_kwargs_fun(t)
 Returns only one result, on which `Plots.animate()` can be applied.
 """
 function eulerian_video(ctx, u::Function, inverse_flow_map_t,t0,tf, nx, ny, nt, LL, UR;extra_kwargs_fun=nothing,kwargs...)
-    usfun = (index,t) -> u(t)
-    if (extra_kwargs_fun!= nothing)
-        extra_kwargs_fun_out = (i,t) -> extra_kwargs_fun(t)
+    usfun = (index, t) -> u(t)
+    if (extra_kwargs_fun != nothing)
+        extra_kwargs_fun_out = (i, t) -> extra_kwargs_fun(t)
     else
         extra_kwargs_fun_out = nothing
     end
-    return eulerian_videos(ctx,usfun,inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR,1;extra_kwargs_fun=extra_kwargs_fun_out,kwargs...)[1]
+    return eulerian_videos(ctx, usfun, inverse_flow_map_t, t0, tf, nx, ny, nt, LL, UR, 1;
+            extra_kwargs_fun=extra_kwargs_fun_out, kwargs...)[1]
 end
 
 #=
