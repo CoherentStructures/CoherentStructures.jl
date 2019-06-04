@@ -393,12 +393,12 @@ end
 
 Replace all occurences of `sym` in `expr` by `s_expr`.
 """
-sym_subst(expr::Symbol, sym::Symbol, s_expr::Union{Symbol, Expr}) =
+sym_subst(expr::Symbol, sym::Symbol, s_expr) =
     begin
         expr == sym ? s_expr : expr
     end
 
-sym_subst(expr::Expr,   sym::Symbol, s_expr::Union{Symbol, Expr}) =
+sym_subst(expr::Expr,   sym::Symbol, s_expr) =
     begin
         Expr(expr.head, sym_subst.(expr.args, [sym], [s_expr])...)
     end
@@ -413,7 +413,7 @@ sym_subst(expr, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
     end
 
 # fallback
-sym_subst(expr, sym::Symbol, s_expr::Union{Symbol, Expr}) = expr
+sym_subst(expr, sym::Symbol, s_expr) = expr
 
 """
     has_free_symb(ex::Expr, bound_vars)
