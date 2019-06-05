@@ -40,7 +40,7 @@ end
 
 # meta function
 function DM_heatflow(flow_fun, p0, sp_method::SparsificationMethod, kernel;
-                        metric::Distances.Metric = Distances.Euclidean())
+                        metric::Distances.SemiMetric = Distances.Euclidean())
 
     data = pmap(flow_fun, p0; batch_size=ceil(sqrt(length(p0))))
     sparse_diff_op_family(data, sp_method, kernel; metric=metric)
@@ -70,7 +70,7 @@ function sparse_diff_op_family(data::AbstractVector{<:AbstractVector{<:SVector}}
                                 kernel = gaussian_kernel;
                                 op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P)))),
                                 α=1.0,
-                                metric::Distances.Metric = Distances.Euclidean()
+                                metric::Distances.SemiMetric = Distances.Euclidean()
                                 )
     N = length(data) # number of trajectories
     N == 0 && throw("no data available")
@@ -104,7 +104,7 @@ Return a sparse diffusion/Markov matrix `P`.
                         sp_method::SparsificationMethod,
                         kernel = gaussian_kernel;
                         α=1.0,
-                        metric::Distances.Metric = Distances.Euclidean()
+                        metric::Distances.SemiMetric = Distances.Euclidean()
                         ) where {T<:AbstractVector{<:SVector}}
     P = spdist(data, sp_method, metric)
     Pvals = P.nzval
@@ -131,7 +131,7 @@ The `metric` is applied to the states of the trajectories given in `data`.
    * `metric`: distance function.
 """
 function sparse_adjacency(data::AbstractVector{<:AbstractVector{<:SVector}}, ε;
-                            metric::Distances.Metric=Distances.Euclidean())
+                            metric::Distances.SemiMetric=Distances.Euclidean())
     N = length(data)        # number of trajectories
     q = length(data[1])     # number of time steps
     IJs = map(1:q) do t
@@ -144,7 +144,7 @@ function sparse_adjacency(data::AbstractVector{<:AbstractVector{<:SVector}}, ε;
     Vs = fill(1.0, length(Is))
     return sparse(Is, Js, Vs, N, N, *)
 end
-function sparse_adjacency(data::AbstractVector{<:SVector}, ε; metric::Distances.Metric=Distances.Euclidean())
+function sparse_adjacency(data::AbstractVector{<:SVector}, ε; metric::Distances.SemiMetric=Distances.Euclidean())
     N = length(data)        # number of states
     Is, Js = sparse_adjacency_list(data, ε; metric=metric)
     Vs = fill(1.0, length(Is))
@@ -166,7 +166,7 @@ with index `i` and `j` such that ``metric(x_i, x_j)\\leq \\varepsilon``.
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
 function sparse_adjacency_list(data::Union{T, AbstractVector{T}}, ε::Real;
-                                metric::Distances.Metric = Distances.Euclidean()) where {T<:AbstractVector{<:SVector}}
+                                metric::Distances.SemiMetric = Distances.Euclidean()) where {T<:AbstractVector{<:SVector}}
 
     (metric isa STmetric && metric.p < 1) && throw(error("Cannot use balltrees for sparsification with $(metric.p)<1."))
     tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
