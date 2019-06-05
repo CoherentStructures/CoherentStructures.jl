@@ -16,9 +16,19 @@ julia> kernel(0.)
 1.0
 """
 function gaussian(σ::Real=1.0)
-    p = 4σ
+    p = float(4σ)
     @eval x -> exp(-abs2(x) / $p)
 end
+"""
+    gaussiancutoff(σ, θ)
+
+Computes the positive value at which [`gaussian(σ)`](@CoherentStructures.gaussian)
+equals `θ`, i.e.,
+```math
+\\sqrt{-4\\sigma\\log(\\theta)}
+```
+"""
+gaussiancutoff(σ::Real, cutoff::Real=eps()) = sqrt(-4σ*log(cutoff))
 
 const LinMaps{T} = Union{LinearMaps.LinearMap{T}, AbstractMatrix{T}}
 

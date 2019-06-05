@@ -41,6 +41,7 @@ Since the Euclidean heat kernel is ubiquitous in diffusion maps-based computatio
 we provide it for convenience.
 ```@docs
 gaussian
+gaussiancutoff
 ```
 To compute sparse distance matrices, use [`spdist](@ref).
 ```@docs

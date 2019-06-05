@@ -25,6 +25,7 @@ export
 
 	#diffusion_operators.jl
 	gaussian,
+	gaussiancutoff,
 	KNN,
 	MutualKNN,
 	Neighborhood,
