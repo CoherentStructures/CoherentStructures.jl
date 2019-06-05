@@ -1,6 +1,24 @@
-# (c) 2018 Alvaro de Diego & Daniel Karrasch
+# (c) 2018-2019 Daniel Karrasch & Alvaro de Diego
 
-const gaussian_kernel = x::Number -> exp(-abs2(x))
+"""
+    gaussian(σ)
+
+Returns the Euclidean heat kernel as a callable function
+```math
+x \\mapsto \\exp(-\\frac{x^2}{4\\sigma})
+```
+
+## Example
+```jldoctest
+julia> kernel = gaussian(2.0);
+
+julia> kernel(0.)
+1.0
+"""
+function gaussian(σ::Real=1.0)
+    p = 4σ
+    @eval x -> exp(-abs2(x) / $p)
+end
 
 const LinMaps{T} = Union{LinearMaps.LinearMap{T}, AbstractMatrix{T}}
 
@@ -134,7 +152,7 @@ function sparse_adjacency(data::AbstractVector{<:AbstractVector{<:SVector}}, ε;
                             metric::Distances.SemiMetric=Distances.Euclidean())
     N = length(data)        # number of trajectories
     q = length(data[1])     # number of time steps
-    IJs = map(1:q) do t
+    IJs = pmap(1:q) do t
         I, J = sparse_adjacency_list(getindex.(data, t), ε; metric = metric)
         # println("Timestep $t/$q done")
         # I, J

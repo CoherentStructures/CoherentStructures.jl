@@ -24,6 +24,7 @@ export
 	constrainedLCS,
 
 	#diffusion_operators.jl
+	gaussian,
 	KNN,
 	MutualKNN,
 	Neighborhood,
