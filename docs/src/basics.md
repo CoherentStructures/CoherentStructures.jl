@@ -93,7 +93,7 @@ tensor_invariants
 
 ## Distance computations
 
-To compute distances w.r.t. standard metrics, there exists the excellent
+For computing distances w.r.t. standard metrics, there exists the excellent
 [`Distance.jl`](https://github.com/JuliaStats/Distances.jl) package. For example,
 the Euclidean distance between two points is computed by any of the last two lines:
 ```
@@ -105,8 +105,13 @@ euclidean(x, y)
 Other metrics of potential interest include `Haversine(r)`, the geodesic
 distance of two points on the sphere with radius `r`, and `PeriodicEuclidean(L)`,
 the distance on a torus or cylinder. Here, `L` is a vector containing the period
-of each dimension, `Inf` for non-periodic dimensions. In `CoherentStructures.jl`,
-there is one more metric type implemented:
+of each dimension, `Inf` for non-periodic dimensions.
+```@docs
+Distances.Euclidean
+Distances.Haversine
+```
+<!-- to be included once tagged: Distances.PeriodicEuclidean -->
+In `CoherentStructures.jl`, there is one more metric type implemented:
 ```@docs
 STmetric
 ```

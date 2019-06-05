@@ -24,8 +24,8 @@ graph Laplacian methods, see below.
 
 ```@docs
 KNN
-mutualKNN
-neighborhood
+MutualKNN
+Neighborhood
 ```
 
 Other sparsification methods can be implemented by defining a corresponding [`spdist`](@ref) instance.

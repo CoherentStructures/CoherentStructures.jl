@@ -9,13 +9,23 @@ x = y = [@SVector rand(2) for _ in 1:21]
     @test @inferred evaluate(STmetric(Euclidean(), -2), x, y) ≈ 0
     @test @inferred evaluate(STmetric(Euclidean(), Inf), x, y) ≈ 0
     @test @inferred evaluate(STmetric(Euclidean(), -Inf), x, y) ≈ 0
-    b = @benchmark evaluate($(STmetric()), $x, $y)
-    @test b.allocs == 0
+    b = @benchmarkable evaluate($(STmetric()), $x, $y)
+    @test run(b, samples=4).allocs == 0
 end
 
-@testset "pairwise spatiotemporal metric" begin
-    @test (@inferred pairwise(STmetric(), [x], [y])) == reshape([0.0], 1, 1)
-    @test (@inferred pairwise(STmetric(), [x])) == reshape([0.0], 1, 1)
+X = [[@SVector rand(2) for _ in 1:21] for _ in 1:10]
+Y = [[@SVector rand(2) for _ in 1:21] for _ in 1:11]
+R = zeros(10, 10)
+r = zeros(length(X), length(Y))
+@testset "pairwise(!) spatiotemporal metric" begin
+    @test @inferred pairwise(STmetric(), [x], [y]) == reshape([0.0], 1, 1)
+    @test @inferred pairwise(STmetric(), [x]) == reshape([0.0], 1, 1)
+    @test @inferred pairwise!(R, STmetric(), X) == @inferred pairwise(STmetric(), X)
+    b = @benchmarkable pairwise!($R, $(STmetric()), $X)
+    @test run(b, samples=4).allocs == 0
+    @test size(pairwise(STmetric(), X, Y)) == (length(X), length(Y))
+    b = @benchmarkable pairwise!($r, $(STmetric()), $X, $Y)
+    @test run(b, samples=4).allocs == 0
 end
 
 Y = [[@SVector rand(2) for _ in 1:21] for _ in 1:10]
@@ -23,6 +33,6 @@ d = zeros(10)
 @testset "colwise spatiotemporal metric" begin
     dist = map(y -> evaluate(STmetric(), x, y), Y)
     @test colwise!(d, STmetric(), x, Y) ≈ dist
-    b = @benchmark colwise!($d, $(STmetric()), $x, $Y)
-    @test b.allocs == 0
+    b = @benchmarkable colwise!($d, $(STmetric()), $x, $Y)
+    @test run(b, samples=4).allocs == 0
 end

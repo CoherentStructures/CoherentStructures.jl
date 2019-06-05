@@ -1,4 +1,4 @@
-# (c) 2018-19 Alvaro de Diego & Daniel Karrasch
+# (c) 2018-19 Daniel Karrasch & Alvaro de Diego
 
 import Distances: evaluate, eval_reduce, eval_end
 import Distances: pairwise, pairwise!, colwise, colwise!
@@ -105,15 +105,17 @@ peuclidean(a::Number, b::Number, p::Number) = begin d = mod(abs(a - b), p); d = 
 ########## spatiotemporal, time averaged metrics ##############
 
 """
-    STmetric(metric, dim, p)
+    STmetric(metric, p)
 
-Creates a spatiotemporal, averaged-in-time metric.
+Creates a spatiotemporal, averaged-in-time metric. At each time instance, the
+distance between two states `a` and `b` is computed via `evaluate(metric, a, b)`.
+The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 
-## Properties
-
-   * `metric` is a metric as defined in the `Distances` package, e.g.,
-     `Euclidean`, `PeriodicEuclidean`, or `Haversine`; default is `Euclidean`;
-   * `p` corresponds to the kind of average applied to the vector of spatial distances,
+## Fields
+   * `metric<:Distances.SemiMetric`: a (semi-)metric as defined in the `Distances.jl`
+     package, e.g., `Euclidean()`, `PeriodicEuclidean(L)`, or `Haversine(r)`;
+	 default is `Euclidean()`;
+   * `p`: corresponds to the kind of average applied to the spatial distances,
    	 default is `p=1`:
      - `p = Inf`: maximum
      - `p = 2`: mean squared average
@@ -123,16 +125,16 @@ Creates a spatiotemporal, averaged-in-time metric.
 
 ## Example
 ```jldoctest
-julia> using Distances, StaticArrays; x = y = [@SVector rand(2) for _ in 1:10];
+julia> using Distances, StaticArrays; x = [@SVector rand(2) for _ in 1:10];
 
-julia> STmetric()
+julia> metric = STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
 STmetric{Euclidean,Int64}(Euclidean(0.0), 1)
 
-julia> evaluate(STmetric(Euclidean(), 1), x, y)
+julia> evaluate(metric, x, x)
 0.0
 ```
 """
-struct STmetric{M<:Dists.PreMetric, T<:Real} <: Dists.Metric
+struct STmetric{M<:Dists.SemiMetric, T<:Real} <: Dists.SemiMetric
     metric::M
     p::T
 end
@@ -151,7 +153,7 @@ STmetric(d::Dists.PreMetric=Dists.Euclidean()) = STmetric(d, 1)
         return zero(Float64)
     end
 	@inbounds begin
-		s = Dists.eval_start(d.metric, zero(eltype(a)), zero(eltype(b)))
+		s = zero(result_type(d, a, b))
     	if IndexStyle(a, b) === IndexLinear()
 			@simd for I in 1:length(a)
                 ai = a[I]
@@ -175,6 +177,11 @@ STmetric(d::Dists.PreMetric=Dists.Euclidean()) = STmetric(d, 1)
 		end
 		return Dists.eval_end(d, s / la)
     end
+end
+
+function Dists.result_type(d::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector})
+	T = result_type(d.metric, zero(eltype(a)), zero(eltype(b)))
+	return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)) / 2))
 end
 
 @inline function Dists.eval_reduce(d::STmetric, s1, s2)
@@ -215,7 +222,7 @@ end
 end
 
 stmetric(a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector},
-			d::Dists.PreMetric=Dists.Euclidean(), p::Real=1) =
+			d::Dists.SemiMetric=Dists.Euclidean(), p::Real=1) =
     evaluate(STmetric(d, p), a, b)
 
 function pairwise!(r::AbstractMatrix, metric::STmetric,
@@ -231,7 +238,6 @@ function pairwise!(r::AbstractMatrix, metric::STmetric,
     end
     r
 end
-
 function pairwise!(r::AbstractMatrix, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
                    dims::Union{Nothing,Integer}=nothing)
 	la = length(a)
@@ -243,7 +249,7 @@ function pairwise!(r::AbstractMatrix, metric::STmetric, a::AbstractVector{<:Abst
         end
         r[j, j] = 0
         for i = 1:(j - 1)
-            r[i, j] = r[j, i]   # leveraging the symmetry of SemiMetric
+            r[i, j] = r[j, i]
         end
     end
     r
@@ -253,26 +259,56 @@ function pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector
                   dims::Union{Nothing,Integer}=nothing)
     la = length(a)
     lb = length(b)
-    r = Matrix{result_type(metric.metric, a[1][1], b[1][1])}(undef, la, lb)
+	(la == 0 || lb == 0) && return reshape(Float64[], 0, 0)
+    r = Matrix{result_type(metric, a[1], b[1])}(undef, la, lb)
     pairwise!(r, metric, a, b)
 end
-
 function pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
                   dims::Union{Nothing,Integer}=nothing)
     la = length(a)
-    r = Matrix{result_type(metric.metric, a[1][1], a[1][1])}(undef, la, la)
+	la == 0 && return reshape(Float64[], 0, 0)
+    r = Matrix{result_type(metric, a[1], a[1])}(undef, la, la)
     pairwise!(r, metric, a)
 end
 
 function colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
 	lb = length(b)
-    length(r) == lb ||
-    throw(DimensionMismatch("Incorrect length of r (got $(length(r)), expected $lb)."))
+    length(r) == lb || throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
 	@inbounds for i = 1:lb
         r[i] = evaluate(metric, a, b[i])
     end
     r
 end
+function colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
+	colwise!(r, metric, b, a)
+end
+function colwise!(r::AbstractVector, metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
+	la = length(a)
+	lb = length(b)
+	la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
+	la == length(r) || throw(DimensionMismatch("incorrect size of r, got $(length(r)), but expected $la"))
+	@inbounds for i = 1:la
+        r[i] = evaluate(metric, a[i], b[i])
+    end
+    r
+end
+
+function colwise(metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
+	lb = length(b)
+	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), lb), metric, a, b)
+end
+function colwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
+	la = length(a)
+	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, b, a)
+end
+function colwise(metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
+	la = length(a)
+	lb = length(b)
+    la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
+	la == 0 && return reshape(Float64[], 0, 0)
+	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, a, b)
+end
+
 ################## sparse pairwise distance computation ###################
 """
     spdist(data, sp_method, metric=Euclidean()) -> SparseMatrixCSC
