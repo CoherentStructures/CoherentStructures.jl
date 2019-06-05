@@ -25,15 +25,13 @@ export
 
 	#diffusion_operators.jl
 	KNN,
-	mutualKNN,
-	neighborhood,
+	MutualKNN,
+	Neighborhood,
 	DM_heatflow,
-	diff_op,
 	sparse_diff_op_family,
 	sparse_diff_op,
-	sparseaffinitykernel,
 	kde_normalize!,
-	wlap_normalize!,
+	row_normalize!,
 	sparse_adjacency_family,
 	sparse_adjacency,
 	stationary_distribution,
@@ -45,6 +43,7 @@ export
 	peuclidean,
 	STmetric,
 	stmetric,
+	spdist,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,

@@ -320,7 +320,7 @@ function spdist(data::AbstractVector{<:SVector}, sp_method::SparsificationMethod
     N = length(data) # number of states
 	# TODO: check for better leafsize values
     tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
-	if sp_method isa neighborhood
+	if sp_method isa Neighborhood
 		idxs = NN.inrange(tree, data, sp_method.ε, false)
 		Js = vcat(idxs...)
 	    Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
@@ -336,13 +336,13 @@ function spdist(data::AbstractVector{<:SVector}, sp_method::SparsificationMethod
 		Dtvals = permutedims(D).nzval
 	    if sp_method isa KNN
 	        Dvals .= max.(Dvals, Dtvals)
-	    else # sp_method isa mutualKNN
+	    else # sp_method isa MutualKNN
 	        Dvals .= min.(Dvals, Dtvals)
 	    end
 		return D
 	end
 end
-function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::neighborhood, metric::STmetric)
+function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Neighborhood, metric::STmetric)
 	N = length(data) # number of trajectories
 	Is = collect(1:N)
 	Js = collect(1:N)
@@ -361,7 +361,7 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::ne
     end
 	return sparse(Is, Js, Vs, N, N)
 end
-function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Union{KNN,mutualKNN}, metric::STmetric)
+function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Union{KNN,MutualKNN}, metric::STmetric)
 	N, k = length(data), sp_method.k
     Is = SharedArray{Int}(N*(k+1))
     Js = SharedArray{Int}(N*(k+1))
@@ -382,7 +382,7 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Un
 	Dtvals = permutedims(D).nzval
     if sp_method isa KNN
         Dvals .= max.(Dvals, Dtvals)
-    else # sp_method isa mutualKNN
+    else # sp_method isa MutualKNN
         Dvals .= min.(Dvals, Dtvals)
     end
 	return D
