@@ -16,41 +16,39 @@ f = u -> flow(bickleyJet, u, tspan)
 sol = map(f, p0)
 n_coords = 7
 
-for par in (false, true)
-    if par && (nprocs() == 1)
-        addprocs()
-        @everywhere using CoherentStructures
-    end
-    @testset "sparse_diff_op_family, parallel=$par" begin
-        ε = 1e-3
-        @everywhere @eval kernel = x -> exp(-abs2(x) / $(float(4ε)))
-        P = sparse_diff_op_family(sol, Neighborhood(gaussiancutoff(ε)), kernel;
-                        metric=metric, parallel=par)
-        @test P isa CoherentStructures.LinMaps
+(nprocs() == 1) && addprocs()
+@everywhere using CoherentStructures
 
-        P = sparse_diff_op_family(sol, Neighborhood(gaussiancutoff(ε)), kernel;
-                        op_reduce=Statistics.mean, metric=metric, parallel=par)
-        @test P isa CoherentStructures.LinMaps
+@testset "sparse_diff_op_family" begin
+    ε = 1e-3
+    @everywhere @eval kernel = x -> exp(-abs2(x) / $(float(4ε)))
+    sparsify = Neighborhood(gaussiancutoff(ε))
+    P = sparse_diff_op_family(sol, sparsify, kernel; metric=metric)
+    @test P isa CoherentStructures.LinMaps
 
-        ε = 0.2
-        P = sparse_diff_op_family(sol, Neighborhood(ε), Base.one;
-                        op_reduce=(P -> max.(P...)), α=0, metric=metric, parallel=par)
-        @test P isa CoherentStructures.LinMaps
-    end
+    P = sparse_diff_op_family(sol, sparsify, kernel, Statistics.mean; metric=metric)
+    @test P isa CoherentStructures.LinMaps
 
-    @testset "SparsificationMethods, parallel=$par" begin
-        ε = 5e-1
-        k = 10
-
-        kernel = gaussian(ε)
-        P = sparse_diff_op(sol, Neighborhood(gaussiancutoff(ε)), kernel; metric=dist)
-        @test P isa CoherentStructures.LinMaps
-
-        P = sparse_diff_op(sol, MutualKNN(k), kernel; metric=dist)
-        @test P isa CoherentStructures.LinMaps
-
-        P = sparse_diff_op(sol, KNN(k), kernel; metric=dist)
-        @test P isa CoherentStructures.LinMaps
-    end
+    ε = 0.2
+    sparsify = Neighborhood(ε)
+    P = sparse_diff_op_family(sol, sparsify, Base.one, P -> max.(P...); α=0, metric=metric)
+    @test P isa CoherentStructures.LinMaps
 end
+
+@testset "SparsificationMethods" begin
+    ε = 5e-1
+    k = 10
+
+    kernel = gaussian(ε)
+    sparsify = Neighborhood(gaussiancutoff(ε))
+    P = sparse_diff_op(sol, sparsify, kernel; metric=dist)
+    @test P isa CoherentStructures.LinMaps
+
+    P = sparse_diff_op(sol, MutualKNN(k), kernel; metric=dist)
+    @test P isa CoherentStructures.LinMaps
+
+    P = sparse_diff_op(sol, KNN(k), kernel; metric=dist)
+    @test P isa CoherentStructures.LinMaps
+end
+
 rmprocs(2:nprocs())

@@ -83,34 +83,36 @@ end
 Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
-   * `data`: 2D array with columns correspdonding to data points;
-   * `sp_method`: sparsification method;
-   * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x/4σ)`.
+   * `data`: a list of trajectories, each a list of states of type `SVector`;
+   * `sp_method`: a [`sparsification method`](@SparsificationMethod);
+   * `kernel`: diffusion kernel, e.g., [`gaussian(σ)`](@gaussian);
+   * `op_reduce=P -> prod(LMs.LinearMap,Iterators.reverse(P))`: time-reduction of
+     diffusion operators, e.g. `mean` (space-time diffusion maps), `P -> max.(P...)`
+     (network-based coherence) or the default (time coupled diffusion maps)
 
 ## Keyword arguments
-   * `op_reduce`: time-reduction of diffusion operators, e.g. `mean` or
-     `P -> prod(LMs.LinearMap,Iterators.reverse(P))` (default)
-   * `α`: exponent in diffusion-map normalization;
-   * `metric`: distance function w.r.t. which the kernel is computed, however,
+   * `α=1`: exponent in diffusion-map normalization;
+   * `metric=Euclidean()`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``;
-   * `parallel::Bool`: whether to use parallel computing.
+   * `verbose=false`: whether to print intermediate progress reports.
 """
 function sparse_diff_op_family(data::AbstractVector{<:AbstractVector{<:SVector}},
                                 sp_method::SparsificationMethod,
-                                kernel = gaussian();
-                                op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P)))),
-                                α::Real=1.0,
+                                kernel = gaussian(),
+                                op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P))));
+                                α::Real=1,
                                 metric::Dists.SemiMetric = Dists.Euclidean(),
-                                parallel::Bool=false
+                                verbose::Bool=false
                                 )
     N = length(data) # number of trajectories
     N == 0 && throw("no data available")
     q = length(data[1]) # number of time steps
     q == 0 && throw("trajectories have length 0")
-    mapfun = parallel ? Distributed.pmap : map
     timeslices = map(i -> getindex.(data, i), 1:q)
-    P = mapfun(timeslices) do timeslice
-        sparse_diff_op(timeslice, sp_method, kernel; α=α, metric=metric)
+    P = Distributed.pmap(enumerate(timeslices)) do (t, timeslice)
+        Pt = sparse_diff_op(timeslice, sp_method, kernel; α=α, metric=metric)
+        verbose && println("time step $t/$q done")
+        Pt
     end
     return op_reduce(P)
 end
@@ -121,9 +123,10 @@ end
 Return a sparse diffusion/Markov matrix `P`.
 
 ## Arguments
-   * `data`: 2D array with columns correspdonding to data points;
-   * `sp_method`: sparsification method;
-   * `kernel`: diffusion kernel, e.g., `x -> exp(-x*x)` (default).
+   * `data`: a list of trajectories, each a list of states of type `SVector`, or
+     a list of states of type `SVector`;
+   * `sp_method`: a [`sparsification method`](@SparsificationMethod);
+   * `kernel`: diffusion kernel, e.g., [`gaussian(σ)`](@gaussian);
 
 ## Keyword arguments
    * `α`: exponent in diffusion-map normalization;
@@ -159,12 +162,12 @@ function sparse_diff_op(data::Union{T, AbstractVector{T}},
 end
 
 """
-    kde_normalize!(A, α = 1.0)
+    kde_normalize!(A, α = 1)
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
-``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is 1.0.
+``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is `1`.
 """
-@inline function kde_normalize!(A::SparseMatrixCSC{T}, α=1.0) where {T <: Real}
+@inline function kde_normalize!(A::SparseMatrixCSC{<:Real}, α::Real=1)
     if α == 0
         return A
     end
@@ -179,12 +182,12 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     end
     Anzval = A.nzval
     Arowval = A.rowval
-    @inbounds for col = 1:n, p = A.colptr[col]:(A.colptr[col+1]-1)
+    @inbounds for col = 1:n, p = SparseArrays.nzrange(A, col)
         Anzval[p] = qₑ[Arowval[p]] * Anzval[p] * qₑ[col]
     end
     return A
 end
-@inline function kde_normalize!(A::AbstractMatrix{T}, α=1.0) where {T <: Real}
+@inline function kde_normalize!(A::AbstractMatrix{<:Real}, α::Real=1)
     if α == 0
         return A
     end
@@ -208,8 +211,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 """
 @inline function row_normalize!(A::AbstractMatrix)
     # this should be once Julia PR #30208 is backported:
-    # dᵅ = Diagonal(A * ones(eltype(A), size(A, 2)))
-    # ldiv!(dᵅ, A)
+    # ldiv!(Diagonal(A * ones(eltype(A), size(A, 2))), A)
     dᵅ = Diagonal(inv.(A * ones(eltype(A), size(A, 2))))
     lmul!(dᵅ, A)
     return A
@@ -242,7 +244,6 @@ function stationary_distribution(P::LinMaps{T}) where T <: Real
      return LMs.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
-
  @inline function L_mul_Lt(L::AbstractMatrix{T},
                             Π::Vector{T})::LMs.LinearMap{T} where T <: Real
      L .= sqrt.(Π) .* L .* permutedims(inv.(sqrt.(Π)))
@@ -252,13 +253,13 @@ function stationary_distribution(P::LinMaps{T}) where T <: Real
  end
 
  """
-     diffusion_coordinates(P,n_coords) -> (Σ::Vector, Ψ::Matrix)
+     diffusion_coordinates(P, n_coords) -> (Σ::Vector, Ψ::Matrix)
 
  Compute the (time-coupled) diffusion coordinates `Ψ` and the coordinate weights
  `Σ` for a linear map `P`. `n_coords` determines the number of diffusion
  coordinates to be computed.
  """
-function diffusion_coordinates(P::LinMaps,n_coords::Int)
+function diffusion_coordinates(P::LinMaps, n_coords::Int)
     N = LinearAlgebra.checksquare(P)
     n_coords <= N || throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
     Π = stationary_distribution(transpose(P))
@@ -293,7 +294,7 @@ end
  Returns the distance matrix of pairs of points whose diffusion distances
  correspond to the diffusion coordinates given by `diff_coord`.
  """
- function diffusion_distance(Ψ::AbstractMatrix{T})::Symmetric{T,Array{T,2}} where T
+ function diffusion_distance(Ψ::AbstractMatrix)
      D = Dists.pairwise(Dists.Euclidean(), Ψ)
-     return Symmetric(D)
+     return D
  end
