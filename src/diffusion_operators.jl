@@ -16,10 +16,11 @@ julia> kernel(0.)
 1.0
 """
 function gaussian(σ::Real=1.0)
-    @eval function (x)
-        exp(-abs2(x) / $(float(4σ)))
+    let s = -1/4σ
+        x -> exp(s*abs2(x))
     end
 end
+
 """
     gaussiancutoff(σ, θ)
 
