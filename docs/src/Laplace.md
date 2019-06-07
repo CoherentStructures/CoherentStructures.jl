@@ -43,7 +43,8 @@ we provide it for convenience.
 gaussian
 gaussiancutoff
 ```
-To compute sparse distance matrices, use [`spdist](@ref).
+To compute a sparse distance matrix (or adjacency matrix, depending on the
+[`SparsificationMethod`](@ref)), use [`spdist`](@ref).
 ```@docs
 spdist
 ```
@@ -51,8 +52,6 @@ The main high-level functions for the above-listed methods are the following.
 ```@docs
 sparse_diff_op_family
 sparse_diff_op
-sparse_adjacency
-sparse_adjacency_list
 ```
 
 ### Normalization functions

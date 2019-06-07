@@ -16,8 +16,9 @@ julia> kernel(0.)
 1.0
 """
 function gaussian(σ::Real=1.0)
-    p = float(4σ)
-    @eval x -> exp(-abs2(x) / $p)
+    @eval function (x)
+        exp(-abs2(x) / $(float(4σ)))
+    end
 end
 """
     gaussiancutoff(σ, θ)
@@ -68,7 +69,7 @@ end
 
 # meta function
 function DM_heatflow(flow_fun, p0, sp_method::SparsificationMethod, kernel;
-                        metric::Distances.SemiMetric = Distances.Euclidean())
+                        metric::Dists.SemiMetric = Dists.Euclidean())
 
     data = pmap(flow_fun, p0; batch_size=ceil(sqrt(length(p0))))
     sparse_diff_op_family(data, sp_method, kernel; metric=metric)
@@ -77,7 +78,7 @@ end
 # diffusion operator/graph Laplacian related functions
 
 """
-    sparse_diff_op_family(data, sp_method, kernel=gaussian_kernel; op_reduce, α, metric)
+    sparse_diff_op_family(data, sp_method, kernel=gaussian(); op_reduce, α, metric)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
@@ -91,26 +92,27 @@ Return a list of sparse diffusion/Markov matrices `P`.
      `P -> prod(LMs.LinearMap,Iterators.reverse(P))` (default)
    * `α`: exponent in diffusion-map normalization;
    * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
+     only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``;
+   * `parallel::Bool`: whether to use parallel computing.
 """
 function sparse_diff_op_family(data::AbstractVector{<:AbstractVector{<:SVector}},
                                 sp_method::SparsificationMethod,
-                                kernel = gaussian_kernel;
+                                kernel = gaussian();
                                 op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P)))),
-                                α=1.0,
-                                metric::Distances.SemiMetric = Distances.Euclidean()
+                                α::Real=1.0,
+                                metric::Dists.SemiMetric = Dists.Euclidean(),
+                                parallel::Bool=false
                                 )
     N = length(data) # number of trajectories
     N == 0 && throw("no data available")
     q = length(data[1]) # number of time steps
     q == 0 && throw("trajectories have length 0")
-    P = map(1:q) do t
-        Pₜ = sparse_diff_op(getindex.(data, t), sp_method, kernel; α=α, metric=metric)
-        # println("Timestep $t/$q done")
-        # Pₜ
+    mapfun = parallel ? Distributed.pmap : map
+    timeslices = map(i -> getindex.(data, i), 1:q)
+    P = mapfun(timeslices) do timeslice
+        sparse_diff_op(timeslice, sp_method, kernel; α=α, metric=metric)
     end
-    P = op_reduce(P)
-    return P
+    return op_reduce(P)
 end
 
 """
@@ -128,80 +130,32 @@ Return a sparse diffusion/Markov matrix `P`.
    * `metric`: distance function w.r.t. which the kernel is computed, however,
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
-@inline function sparse_diff_op(data::Union{T, AbstractVector{T}},
+function sparse_diff_op(data::Union{T, AbstractVector{T}},
                         sp_method::SparsificationMethod,
-                        kernel = gaussian_kernel;
-                        α=1.0,
-                        metric::Distances.SemiMetric = Distances.Euclidean()
+                        kernel = gaussian();
+                        α::Real=1.0,
+                        metric::Dists.SemiMetric = Dists.Euclidean()
                         ) where {T<:AbstractVector{<:SVector}}
     P = spdist(data, sp_method, metric)
-    Pvals = P.nzval
-    Pvals .= kernel.(Pvals)
+    N = LinearAlgebra.checksquare(P)
+    if sp_method isa Neighborhood # P corresponds to the adjacency matrix
+        if kernel != Base.one # otherwise no need to change entries
+            rows = SparseArrays.rowvals(P)
+            vals = SparseArrays.nonzeros(P)
+            for i = 1:N
+               for j in SparseArrays.nzrange(P, i)
+                  vals[j] = kernel(Dists.evaluate(metric, data[rows[j]], data[i]))
+               end
+            end
+        end
+    else # sp_method isa *KNN (P already contains the distances), need to apply kernel
+        vals = SparseArrays.nonzeros(P)
+        vals .= kernel.(vals)
+    end
     droptol!(P, eps(eltype(P)))
     @inbounds kde_normalize!(P, α)
     row_normalize!(P)
     return P
-end
-
-# adjacency-related functions
-
-"""
-    sparse_adjacency(data, ε; metric) -> SparseMatrixCSC
-
-Return a sparse adjacency matrix `A` with float entries `0.0` or `1.0`.
-The `metric` is applied to the states of the trajectories given in `data`.
-
-## Arguments
-   * `data`: vector of trajectories (`Vector{SVector}`) or of states (`SVector`);
-   * `ε`: distance threshold.
-
-## Keyword arguments
-   * `metric`: distance function.
-"""
-function sparse_adjacency(data::AbstractVector{<:AbstractVector{<:SVector}}, ε;
-                            metric::Distances.SemiMetric=Distances.Euclidean())
-    N = length(data)        # number of trajectories
-    q = length(data[1])     # number of time steps
-    IJs = pmap(1:q) do t
-        I, J = sparse_adjacency_list(getindex.(data, t), ε; metric = metric)
-        # println("Timestep $t/$q done")
-        # I, J
-    end
-    Is::Vector{Int} = vcat([ijs[1] for ijs in IJs]...)
-    Js::Vector{Int} = vcat([ijs[2] for ijs in IJs]...)
-    Vs = fill(1.0, length(Is))
-    return sparse(Is, Js, Vs, N, N, *)
-end
-function sparse_adjacency(data::AbstractVector{<:SVector}, ε; metric::Distances.SemiMetric=Distances.Euclidean())
-    N = length(data)        # number of states
-    Is, Js = sparse_adjacency_list(data, ε; metric=metric)
-    Vs = fill(1.0, length(Is))
-    return sparse(Is, Js, Vs, N, N, *)
-end
-
-"""
-    sparse_adjacency_list(data, ε; metric=Euclidean()) -> idxs::Vector{Vector}
-
-Returns two lists of indices of data points that are adjacent, i.e., of points
-with index `i` and `j` such that ``metric(x_i, x_j)\\leq \\varepsilon``.
-
-## Arguments
-   * `data`: 2D array with columns correspdonding to data points;
-   * `ε`: distance threshold.
-
-## Keyword arguments
-   * `metric`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
-"""
-function sparse_adjacency_list(data::Union{T, AbstractVector{T}}, ε::Real;
-                                metric::Distances.SemiMetric = Distances.Euclidean()) where {T<:AbstractVector{<:SVector}}
-
-    (metric isa STmetric && metric.p < 1) && throw(error("Cannot use balltrees for sparsification with $(metric.p)<1."))
-    tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
-    idxs = NN.inrange(tree, data, ε, false)
-    Js::Vector{Int} = vcat(idxs...)
-    Is::Vector{Int} = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    return Is, Js
 end
 
 """
@@ -340,6 +294,6 @@ end
  correspond to the diffusion coordinates given by `diff_coord`.
  """
  function diffusion_distance(Ψ::AbstractMatrix{T})::Symmetric{T,Array{T,2}} where T
-     D = Distances.pairwise(Distances.Euclidean(), Ψ)
+     D = Dists.pairwise(Dists.Euclidean(), Ψ)
      return Symmetric(D)
  end

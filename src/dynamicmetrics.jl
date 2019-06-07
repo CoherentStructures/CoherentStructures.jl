@@ -316,49 +316,56 @@ end
 Return a sparse distance matrix as determined by the sparsification method `sp_method`
 and `metric`.
 """
-function spdist(data::AbstractVector{<:SVector}, sp_method::SparsificationMethod, metric::Dists.PreMetric=Distances.Euclidean())
+function spdist(data::AbstractVector{<:SVector}, sp_method::Neighborhood, metric::Dists.PreMetric=Distances.Euclidean())
     N = length(data) # number of states
 	# TODO: check for better leafsize values
     tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
-	if sp_method isa Neighborhood
-		idxs = NN.inrange(tree, data, sp_method.ε, false)
-		Js = vcat(idxs...)
-	    Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-	    Ds = [Dists.evaluate(metric, data[i], data[j]) for (i,j) in zip(Is, Js)]
-	    return sparse(Is, Js, Ds, N, N)
-	else # sp_method isa *KNN
-		idxs, dists = NN.knn(tree, data, sp_method.k, false)
-    	Js = vcat(idxs...)
-    	Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
-    	Ds = vcat(dists...)
-    	D = sparse(Is, Js, Ds, N, N)
-		Dvals = D.nzval
-		Dtvals = permutedims(D).nzval
-	    if sp_method isa KNN
-	        Dvals .= max.(Dvals, Dtvals)
-	    else # sp_method isa MutualKNN
-	        Dvals .= min.(Dvals, Dtvals)
-	    end
-		return D
-	end
+	idxs = NN.inrange(tree, data, sp_method.ε, false)
+	Js = vcat(idxs...)
+    Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
+	Vs = fill(1.0, length(Is))
+    return sparse(Is, Js, Vs, N, N, *)
+end
+function spdist(data::AbstractVector{<:SVector}, sp_method::Union{KNN,MutualKNN}, metric::Dists.PreMetric=Distances.Euclidean())
+	N = length(data) # number of states
+	# TODO: check for better leafsize values
+    tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
+	idxs, dists = NN.knn(tree, data, sp_method.k, false)
+	Js = vcat(idxs...)
+	Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
+	Ds = vcat(dists...)
+	D = sparse(Is, Js, Ds, N, N)
+	Dvals = nonzeros(D)
+	Dtvals = nonzeros(permutedims(D))
+    if sp_method isa KNN
+        Dvals .= max.(Dvals, Dtvals)
+    else # sp_method isa MutualKNN
+        Dvals .= min.(Dvals, Dtvals)
+    end
+	return D
 end
 function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Neighborhood, metric::STmetric)
 	N = length(data) # number of trajectories
-	Is = collect(1:N)
-	Js = collect(1:N)
-	Vs = zeros(Dists.result_type(metric.metric, data[1][1], data[1][1]), N)
-	sizehint!.((Is, Js, Vs), 100N)
-	@inbounds for j = 1:N
-        aj = data[j]
-        for i = (j + 1):N
-            temp = evaluate(metric, data[i], aj)
+	T = Dists.result_type(metric, data[1], data[1])
+	I1 = collect(1:N)
+	J1 = collect(1:N)
+	V1 = zeros(T, N)
+	IJV = Distributed.pmap(1:N) do j
+		Is, Js, Vs = Int[], Int[], T[]
+		@inbounds aj = data[j]
+        @inbounds for i = (j + 1):N
+            temp = Dists.evaluate(metric, data[i], aj)
 			if temp < sp_method.ε
 				push!(Is, i, j)
 				push!(Js, j, i)
 				push!(Vs, temp, temp)
 			end
         end
-    end
+		Is, Js, Vs
+	end
+	Is = vcat(I1, getindex.(IJV, 1)...)
+	Js = vcat(J1, getindex.(IJV, 2)...)
+	Vs = vcat(V1, getindex.(IJV, 3)...)
 	return sparse(Is, Js, Vs, N, N)
 end
 function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Union{KNN,MutualKNN}, metric::STmetric)
