@@ -6,7 +6,8 @@ CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures
 Julia.
 
 For an introduction to LCS methods, usage examples, and implementation details,
-see the documentation.
+see the documentation. In particular, please access the code examples also via
+the documentation, and not via the `examples` folder.
 
 ## Documentation
 [![][docs-latest-img]][docs-latest-url]
