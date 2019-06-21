@@ -101,6 +101,12 @@ export
 	plot_ftle,
 	eulerian_videos,
 	eulerian_video,
+	plot_barrier,
+	plot_barrier!,
+	plot_singularities,
+	plot_singularities!,
+	plot_vortices,
+	plot_vortices!,
 
 	#pullbacktensors.jl
 	flow,

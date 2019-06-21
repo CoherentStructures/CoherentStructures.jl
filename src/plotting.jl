@@ -37,20 +37,6 @@ end
 
 
 
-function get_full_dofvals(ctx,dof_vals; bdata=nothing)
-    if (bdata==nothing) && (ctx.n != length(dof_vals))
-        dbcs = getHomDBCS(ctx)
-        if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
-            error("Input u has wrong length")
-        end
-        dof_values = undoBCS(ctx,dof_vals,dbcs)
-    elseif (bdata != nothing)
-        dof_values = undoBCS(ctx,dof_vals,bdata)
-    else
-        dof_values = dof_vals
-    end
-    return dof_values
-end
 
 RecipesBase.@userplot Plot_U_Eulerian
 RecipesBase.@recipe function f(
@@ -510,3 +496,106 @@ Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. trans
 Unless `pass_on_errors` is set to `true`, errors from calculating FTLE values are caught and ignored.
 """
 plot_ftle
+
+
+RecipesBase.@userplot Plot_Singularities
+RecipesBase.@recipe function f(
+            as::Plot_Singularities;
+           )
+    singularities = as.args[1]
+    seriestype --> :scatter
+    function getcolor(ind)
+        if ind == 1//1
+            return :white
+        end
+        if ind == 1//2
+            return :orange
+        end
+        if ind == -1//2
+            return :blue
+        end
+        if ind == 3//2
+            return :purple
+        end
+        if ind > 3//2
+            return :brown
+        end
+        if ind == -3//2
+            return :green
+        end
+        if ind < -3//2
+            return :black
+        end
+    end
+    singularity_colors = [getcolor(s.index) for s in singularities]
+    points = [s.coords.data for s in singularities]
+    color --> singularity_colors
+    label --> "singularities"
+    points
+end
+
+
+
+RecipesBase.@userplot Plot_Barrier
+RecipesBase.@recipe function f(
+            as::Plot_Barrier;
+           )
+    barrier = as.args[1].curve
+    label --> ""
+    aspect_ratio --> 1
+    w --> 3
+    barrier
+end
+
+RecipesBase.@userplot Plot_DBS
+RecipesBase.@recipe function f(
+            as::Plot_DBS;
+           )
+    traceT = as.args[1]
+    LL = as.args[2]
+    UR = as.args[3]
+    xspan = traceT.axes[1].val
+    aspect_ratio --> 1
+    yspan = traceT.axes[2].val
+    xlims --> (LL[1],UR[1])
+    ylims --> (LL[2],UR[2])
+    color --> :viridis
+    seriestype --> :heatmap
+    xspan,yspan, permutedims(log10.(traceT))
+end
+
+RecipesBase.@userplot Empty_Heatmap
+RecipesBase.@recipe function f(
+            as::Empty_Heatmap;
+           )
+    LL = as.args[1]
+    UR = as.args[2]
+    xspan = range(LL[1],stop=UR[1],length=2)
+    yspan = range(LL[2],stop=UR[2],length=2)
+    xlims --> (LL[1],UR[1])
+    ylims --> (LL[2],UR[2])
+    traceT = [NaN for x in xspan, y in yspan]
+    colorbar --> :none
+    seriestype --> :heatmap
+    xspan,yspan, traceT
+end
+
+"""
+    plot_vortices(vortices,singularities,[LL,UR ;traceT])
+
+Makes a plot from the output of ellipticLCS
+"""
+function plot_vortices(vortices,singularities,LL,UR;traceT=nothing, kwargs...)
+    if traceT != nothing
+       fig =  plot_dbs(traceT,LL,UR; kwargs...)
+    else
+        fig = empty_heatmap(LL,UR; kwargs...)
+    end
+    for v in vortices
+        for b in v.barriers
+            plot_barrier!( b; kwargs...)
+        end
+    end
+    plot_singularities!(singularities; kwargs...)
+    fig
+end
