@@ -35,23 +35,6 @@ function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=10
     end
 end
 
-
-
-function get_full_dofvals(ctx,dof_vals; bdata=nothing)
-    if (bdata==nothing) && (ctx.n != length(dof_vals))
-        dbcs = getHomDBCS(ctx)
-        if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
-            error("Input u has wrong length")
-        end
-        dof_values = undoBCS(ctx,dof_vals,dbcs)
-    elseif (bdata != nothing)
-        dof_values = undoBCS(ctx,dof_vals,bdata)
-    else
-        dof_values = dof_vals
-    end
-    return dof_values
-end
-
 RecipesBase.@userplot Plot_U_Eulerian
 RecipesBase.@recipe function f(
         as::Plot_U_Eulerian;

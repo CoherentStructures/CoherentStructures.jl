@@ -24,16 +24,16 @@ export
 	constrainedLCS,
 
 	#diffusion_operators.jl
-	gaussian,
-	gaussiancutoff,
 	KNN,
-	MutualKNN,
-	Neighborhood,
+	mutualKNN,
+	neighborhood,
 	DM_heatflow,
+	diff_op,
 	sparse_diff_op_family,
 	sparse_diff_op,
+	sparseaffinitykernel,
 	kde_normalize!,
-	row_normalize!,
+	wlap_normalize!,
 	sparse_adjacency_family,
 	sparse_adjacency,
 	stationary_distribution,
@@ -45,7 +45,6 @@ export
 	peuclidean,
 	STmetric,
 	stmetric,
-	spdist,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,
@@ -153,4 +152,7 @@ export
 	standardMapInv,
 	DstandardMap,
 	abcFlow,
-	cylinder_flow
+	cylinder_flow,
+
+	#seba.jl
+	SEBA
