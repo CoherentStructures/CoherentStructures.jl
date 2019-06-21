@@ -41,7 +41,7 @@ import ForwardDiff
 
 import JuAFEM
 const JFM = JuAFEM
-import RecipesBase
+using RecipesBase
 import SymEngine
 
 # contains a list of exported functions

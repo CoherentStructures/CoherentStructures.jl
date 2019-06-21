@@ -36,8 +36,6 @@ function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=10
 end
 
 
-
-
 RecipesBase.@userplot Plot_U_Eulerian
 RecipesBase.@recipe function f(
         as::Plot_U_Eulerian;
