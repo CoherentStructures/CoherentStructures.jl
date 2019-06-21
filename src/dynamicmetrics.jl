@@ -1,5 +1,9 @@
-# (c) 2018 Alvaro de Diego & Daniel Karrasch
+# (c) 2018-19 Daniel Karrasch & Alvaro de Diego
 
+import Distances: evaluate, eval_reduce, eval_end
+import Distances: pairwise, pairwise!, colwise, colwise!
+
+###### should be deleted once Distances.jl with PeriodicEuclidean is tagged ####
 import Distances: result_type, evaluate, eval_start, eval_op
 import Distances: eval_reduce, eval_end, pairwise, pairwise!
 
@@ -96,20 +100,23 @@ end
 peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
 peuclidean(a::AbstractArray, b::AbstractArray) = euclidean(a, b)
 peuclidean(a::Number, b::Number, p::Number) = begin d = mod(abs(a - b), p); d = min(d, p - d) end
+####### delete until here ####################
 
 ########## spatiotemporal, time averaged metrics ##############
 
 """
-    STmetric(Smetric, dim, p)
+    STmetric(metric, p)
 
-Creates a spatiotemporal, averaged in time metric.
+Creates a spatiotemporal, averaged-in-time metric. At each time instance, the
+distance between two states `a` and `b` is computed via `evaluate(metric, a, b)`.
+The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 
-## Properties
-
-   * `Smetric` is a metric as defined in the `Distances` package, e.g.,
-     `Euclidean`, `PEuclidean`, or `Haversine`;
-   * `dim` corresponds to the spatial dimension;
-   * `p` corresponds to the kind of average applied to the vector of spatial distances:
+## Fields
+   * `metric<:Distances.SemiMetric`: a (semi-)metric as defined in the `Distances.jl`
+     package, e.g., `Euclidean()`, `PeriodicEuclidean(L)`, or `Haversine(r)`;
+	 default is `Euclidean()`;
+   * `p`: corresponds to the kind of average applied to the spatial distances,
+   	 default is `p=1`:
      - `p = Inf`: maximum
      - `p = 2`: mean squared average
      - `p = 1`: arithmetic mean
@@ -117,78 +124,276 @@ Creates a spatiotemporal, averaged in time metric.
      - `p = -Inf`: minimum (does not yield a metric!)
 
 ## Example
-```julia
-julia> x, y = rand(10), rand(10)
+```jldoctest
+julia> using Distances, StaticArrays; x = [@SVector rand(2) for _ in 1:10];
 
-julia> Distances.evaluate(STmetric(Distances.Euclidean(),2,1),x,y)
+julia> metric = STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
+STmetric{Euclidean,Int64}(Euclidean(0.0), 1)
+
+julia> evaluate(metric, x, x)
+0.0
 ```
 """
-struct STmetric{M <: Dists.Metric, T <: Real} <: Dists.Metric
-    Smetric::M
-    dim::Int
+struct STmetric{M<:Dists.SemiMetric, T<:Real} <: Dists.SemiMetric
+    metric::M
     p::T
 end
 
 # defaults: metric = Euclidean(), dim = 2, p = 1
-STmetric()                          = STmetric(Dists.Euclidean(), 2, 1)
-STmetric(p::Real)                   = STmetric(Dists.Euclidean(), 2, p)
-STmetric(d::Dists.Metric)           = STmetric(d, 2, 1)
-STmetric(d::Dists.Metric, p::Real)  = STmetric(d, 2, p)
+STmetric(d::Dists.PreMetric=Dists.Euclidean()) = STmetric(d, 1)
 
 # Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function Dists.evaluate(d::STmetric, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
+@inline Base.@propagate_inbounds function Dists.evaluate(d::STmetric,
+            a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector})
     la = length(a)
     lb = length(b)
-    (q, r) = divrem(la,d.dim)
-    p = copy(d.p)
     @boundscheck if la != lb
-        throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
-    elseif r!= 0
-        throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
+        throw(DimensionMismatch("first array has length $la which does not match the length of the second, $lb."))
+    elseif la == 0
+        return zero(Float64)
     end
-    if la == 0
-        return zero(result_type(d, a, b))
+	@inbounds begin
+		s = zero(result_type(d, a, b))
+    	if IndexStyle(a, b) === IndexLinear()
+			@simd for I in 1:length(a)
+                ai = a[I]
+                bi = b[I]
+        		s = Dists.eval_reduce(d, s, Dists.evaluate(d.metric, ai, bi))
+			end
+		else
+			if size(a) == size(b)
+                @simd for I in eachindex(a, b)
+                    ai = a[I]
+                    bi = b[I]
+					s = Dists.eval_reduce(d, s, Dists.evaluate(d.metric, ai, bi))
+				end
+			else
+				for (Ia, Ib) in zip(eachindex(a), eachindex(b))
+					ai = a[Ia]
+					bi = b[Ib]
+					s = Dists.eval_reduce(d, s, Dists.evaluate(d.metric, ai, bi))
+				end
+			end
+		end
+		return Dists.eval_end(d, s / la)
     end
-    return reduce_time(d, eval_space(d, a, b, q), q)
 end
 
-# this version is needed for NearestNeighbors `NNTree`
-@inline function Dists.evaluate(d::STmetric, a::AbstractArray, b::AbstractArray)
+function Dists.result_type(d::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector})
+	T = result_type(d.metric, zero(eltype(a)), zero(eltype(b)))
+	return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)) / 2))
+end
+
+@inline function Dists.eval_reduce(d::STmetric, s1, s2)
+    p = d.p
+    if p == 1
+        return s1 + s2
+    elseif p == 2
+        return s1 + s2 * s2
+    elseif p == -2
+        return s1 + 1 / (s2 * s2)
+    elseif p == -1
+        return s1 + 1 / s2
+    elseif p == Inf
+        return max(s1, s2)
+    elseif p == -Inf
+        return min(s1, s2)
+    else
+        return s1 + s2 ^ d.p
+    end
+end
+@inline function Dists.eval_end(d::STmetric, s)
+	p = d.p
+    if p == 1
+        return s
+    elseif p == 2
+        return √s
+    elseif p == -2
+        return 1 / √s
+    elseif p == -1
+        return 1 / s
+    elseif p == Inf
+        return s
+    elseif p == -Inf
+        return s
+    else
+        return s ^ (1 / d.p)
+    end
+end
+
+stmetric(a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector},
+			d::Dists.SemiMetric=Dists.Euclidean(), p::Real=1) =
+    evaluate(STmetric(d, p), a, b)
+
+function pairwise!(r::AbstractMatrix, metric::STmetric,
+                   a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:AbstractVector{<:SVector}};
+                   dims::Union{Nothing,Integer}=nothing)
+    la, lb = length.((a, b))
+    size(r) == (la, lb) || throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((na, nb)))."))
+	@inbounds for j = 1:lb
+        bj = b[j]
+        for i = 1:la
+            r[i, j] = evaluate(metric, a[i], bj)
+        end
+    end
+    r
+end
+function pairwise!(r::AbstractMatrix, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
+                   dims::Union{Nothing,Integer}=nothing)
+	la = length(a)
+    size(r) == (la, la) || throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((n, n)))."))
+	@inbounds for j = 1:la
+        aj = a[j]
+        for i = (j + 1):la
+            r[i, j] = evaluate(metric, a[i], aj)
+        end
+        r[j, j] = 0
+        for i = 1:(j - 1)
+            r[i, j] = r[j, i]
+        end
+    end
+    r
+end
+
+function pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:AbstractVector{<:SVector}};
+                  dims::Union{Nothing,Integer}=nothing)
     la = length(a)
     lb = length(b)
-    (q, r) = divrem(la,d.dim)
-    @boundscheck if la != lb
-        throw(DimensionMismatch("First array has size $(size(a)) which does not match the size of the second, $(size(b))."))
-    elseif r!= 0
-        throw(DimensionMismatch("Number of rows is not a multiple of spatial dimension $(d.dim)."))
-    end
-    if la == 0
-        return zero(result_type(d, a, b))
-    end
-    return reduce_time(d, eval_space(d, a, b, q), q)
+	(la == 0 || lb == 0) && return reshape(Float64[], 0, 0)
+    r = Matrix{result_type(metric, a[1], b[1])}(undef, la, lb)
+    pairwise!(r, metric, a, b)
+end
+function pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
+                  dims::Union{Nothing,Integer}=nothing)
+    la = length(a)
+	la == 0 && return reshape(Float64[], 0, 0)
+    r = Matrix{result_type(metric, a[1], a[1])}(undef, la, la)
+    pairwise!(r, metric, a)
 end
 
-function Dists.result_type(d::STmetric, a::AbstractArray{T1}, b::AbstractArray{T2}) where {T1, T2}
-    result_type(d.Smetric, a, b)
+function colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
+	lb = length(b)
+    length(r) == lb || throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
+	@inbounds for i = 1:lb
+        r[i] = evaluate(metric, a, b[i])
+    end
+    r
+end
+function colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
+	colwise!(r, metric, b, a)
+end
+function colwise!(r::AbstractVector, metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
+	la = length(a)
+	lb = length(b)
+	la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
+	la == length(r) || throw(DimensionMismatch("incorrect size of r, got $(length(r)), but expected $la"))
+	@inbounds for i = 1:la
+        r[i] = evaluate(metric, a[i], b[i])
+    end
+    r
 end
 
-@inline eval_space(d::STmetric, a::AbstractArray, b::AbstractArray, q::Int) =
-        Distances.colwise(d.Smetric, reshape(a, d.dim, q), reshape(b, d.dim, q))
-@inline eval_space!(dist::AbstractVector, d::STmetric, a::AbstractArray, b::AbstractArray, q::Int) =
-        Distances.colwise!(dist, d.Smetric, reshape(a, d.dim, q), reshape(b, d.dim, q))
+function colwise(metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
+	lb = length(b)
+	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), lb), metric, a, b)
+end
+function colwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
+	la = length(a)
+	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, b, a)
+end
+function colwise(metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
+	la = length(a)
+	lb = length(b)
+    la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
+	la == 0 && return reshape(Float64[], 0, 0)
+	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, a, b)
+end
 
-@inline reduce_time(d::STmetric, s, q) = q^(-1 / d.p) * norm(s, d.p)
+################## sparse pairwise distance computation ###################
+"""
+    spdist(data, sp_method, metric=Euclidean()) -> SparseMatrixCSC
 
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric, dim::Int, p::Real) =
-        evaluate(STmetric(d, dim, p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric, p::Real) =
-        evaluate(STmetric(d, p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, d::Dists.Metric) =
-        evaluate(STmetric(d), a, b)
-stmetric(a::AbstractArray, b::AbstractArray, p::Real) =
-        evaluate(STmetric(p), a, b)
-stmetric(a::AbstractArray, b::AbstractArray) =
-        evaluate(STmetric(), a, b)
+Return a sparse distance matrix as determined by the sparsification method `sp_method`
+and `metric`.
+"""
+function spdist(data::AbstractVector{<:SVector}, sp_method::Neighborhood, metric::Dists.PreMetric=Distances.Euclidean())
+    N = length(data) # number of states
+	# TODO: check for better leafsize values
+    tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
+	idxs = NN.inrange(tree, data, sp_method.ε, false)
+	Js = vcat(idxs...)
+    Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
+	Vs = fill(1.0, length(Is))
+    return sparse(Is, Js, Vs, N, N, *)
+end
+function spdist(data::AbstractVector{<:SVector}, sp_method::Union{KNN,MutualKNN}, metric::Dists.PreMetric=Distances.Euclidean())
+	N = length(data) # number of states
+	# TODO: check for better leafsize values
+    tree = metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric;  leafsize = 10) : NN.BallTree(data, metric; leafsize = 10)
+	idxs, dists = NN.knn(tree, data, sp_method.k, false)
+	Js = vcat(idxs...)
+	Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
+	Ds = vcat(dists...)
+	D = sparse(Is, Js, Ds, N, N)
+	Dvals = nonzeros(D)
+	Dtvals = nonzeros(permutedims(D))
+    if sp_method isa KNN
+        Dvals .= max.(Dvals, Dtvals)
+    else # sp_method isa MutualKNN
+        Dvals .= min.(Dvals, Dtvals)
+    end
+	return D
+end
+function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Neighborhood, metric::STmetric)
+	N = length(data) # number of trajectories
+	T = Dists.result_type(metric, data[1], data[1])
+	I1 = collect(1:N)
+	J1 = collect(1:N)
+	V1 = zeros(T, N)
+	IJV = Distributed.pmap(1:N) do j
+		Is, Js, Vs = Int[], Int[], T[]
+		@inbounds aj = data[j]
+        @inbounds for i = (j + 1):N
+            temp = Dists.evaluate(metric, data[i], aj)
+			if temp < sp_method.ε
+				push!(Is, i, j)
+				push!(Js, j, i)
+				push!(Vs, temp, temp)
+			end
+        end
+		Is, Js, Vs
+	end
+	Is = vcat(I1, getindex.(IJV, 1)...)
+	Js = vcat(J1, getindex.(IJV, 2)...)
+	Vs = vcat(V1, getindex.(IJV, 3)...)
+	return sparse(Is, Js, Vs, N, N)
+end
+function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Union{KNN,MutualKNN}, metric::STmetric)
+	N, k = length(data), sp_method.k
+    Is = SharedArray{Int}(N*(k+1))
+    Js = SharedArray{Int}(N*(k+1))
+	T = typeof(evaluate(metric, data[1], data[1]))
+    Ds = SharedArray{T}(N*(k+1))
+    index = Vector{Int}(undef, k+1)
+	ds = Vector{T}(undef, N)
+    # Distributed.@everywhere index = Vector{Int}(undef, k+1)
+    @inbounds @sync Distributed.@distributed for i=1:N
+		colwise!(ds, metric, data[i], data)
+        partialsortperm!(index, ds, 1:(k+1))
+        Is[(i-1)*(k+1)+1:i*(k+1)] .= i
+        Js[(i-1)*(k+1)+1:i*(k+1)] = index
+        Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
+    end
+	D = sparse(Is, Js, Ds, N, N)
+	Dvals = D.nzval
+	Dtvals = permutedims(D).nzval
+    if sp_method isa KNN
+        Dvals .= max.(Dvals, Dtvals)
+    else # sp_method isa MutualKNN
+        Dvals .= min.(Dvals, Dtvals)
+    end
+	return D
+end
 
 ########### parallel pairwise computation #################
 
