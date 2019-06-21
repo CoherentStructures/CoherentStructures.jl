@@ -11,9 +11,14 @@ function SEBA(Vin;μ=0.99/sqrt(size(Vin,1)),tol=1e-14,maxiter=5000)
     n,nev = size(Vin)
     V = Matrix(qr(Vin).Q)
     S = zeros(n,nev)
-    R = diagm(0 => ones(nev))
-    print(nev)
+    R = diagm(0 => ones(size(Vin,2)))#TODO: Allow this as optional argument?
+    for i in 1:nev
+        if maximum(V[:,i]) - minimum(V[:,i]) < 1e-14
+            V[:,i] .+= (rand(p) .- 0.5)*1e-12
+        end
+    end
     numiter = 1
+    #R = zeros(size(R))
     while true
         Z = V*(permutedims(R))
         for i in 1:nev

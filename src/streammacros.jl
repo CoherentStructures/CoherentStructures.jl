@@ -88,7 +88,7 @@ julia> f2([1.0,1.0], nothing, 0.0)
 """
 macro velo_from_stream(H::Symbol, formulas::Expr)
     V, _ = streamline_derivatives(H, formulas)
-    V = sym_subst.(V, [[:x,:y]], [[:(u[1]), :(u[2])]])
+    V = sym_subst.(V, [[:x,:y,:p]], [[:(u[1]), :(u[2]),:(p[1])]])
     quote
         OrdinaryDiffEq.ODEFunction((u, p, t) -> SVector{2}($(V[1]), $(V[2])))
     end
@@ -127,8 +127,8 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     V, DV = streamline_derivatives(H, formulas)
 
     # substitute :x and :y by access to the first column of a matrix u
-     V = sym_subst.( V, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
-    DV = sym_subst.(DV, [[:x,:y]], [[:(u[1,1]), :(u[2,1])]])
+     V = sym_subst.( V, [[:x,:y,:p]], [[:(u[1,1]), :(u[2,1]),:(p[1])]])
+    DV = sym_subst.(DV, [[:x,:y,:p]], [[:(u[1,1]), :(u[2,1]),:(p[1])]])
 
     quote
         OrdinaryDiffEq.ODEFunction((u, p, t) -> begin
@@ -184,7 +184,7 @@ end
 function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
     # (additional to symbols defined in Base)
-    bound_symbols = [:x, :y, :t, keys(diff_dict)...]
+    bound_symbols = [:x, :y,:p, :t, keys(diff_dict)...]
     H = substitutions(H, formulas, bound_symbols)
 
 
@@ -208,6 +208,7 @@ end
 
 sgn(x) = (x > 0) ? one(x) : (x < 0) ? -one(x) : zero(x)
 heaviside(x) = 0 < x ? one(x) : zero(x)
+window(x,a,b) = (a <= x < b) ? one(x) : zero(x)
 
 
 # manually define  derivatives for functions that SymEngine cant differentiate
@@ -216,6 +217,7 @@ diff_dict[:abs] = :sgn
 diff_dict[:sgn] = :zero
 diff_dict[:heaviside] = :zero
 diff_dict[:zero] = :zero
+diff_dict[:window] = :zero
 
 function expr_diff(expr::Expr, var::Symbol)
     # not a nice way to differentiate expressions, but ReverseDiffSource
