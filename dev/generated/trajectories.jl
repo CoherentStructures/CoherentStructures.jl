@@ -38,5 +38,89 @@ fig = plot_u(ctx, u_combined, 400, 400;
 
 Plots.plot(fig)
 
+using Distributed
+(nprocs() == 1) && addprocs()
+
+@everywhere using CoherentStructures
+using LinearAlgebra, LinearMaps, StaticArrays, Distances, Plots
+
+tspan = range(10*24*3600, stop=30*24*3600, length=21)
+m = 100; n = 31; N = m*n
+x = range(0.0, stop=6.371π, length=m)
+y = range(-3.0, stop=3.0, length=n)
+f = u -> flow(bickleyJet, u, tspan,  tolerance=1e-6)
+p0 = vec(SVector{2}.(x, y'))
+trajectories = pmap(f, p0; batch_size=m)
+
+per = [6.371π, Inf]
+
+#We calculate 6 diffusion coordinates for each example
+n_coords=6
+
+ε = 1e-3
+kernel = gaussian(ε)
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel;
+                metric=PEuclidean(per))
+λ, Ψ = diffusion_coordinates(P, n_coords)
+
+field = permutedims(reshape(Ψ[:,2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+field = permutedims(reshape(Ψ[:,3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+
+ε = 5e-1
+k = 200
+dist = STmetric(PEuclidean(per), 1)
+kernel = gaussian(ε)
+P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=dist
+    )
+λ, Ψ = diffusion_coordinates(P, n_coords)
+
+field = permutedims(reshape(Ψ[:,2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+field = permutedims(reshape(Ψ[:,3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+
+Ψ2 = SEBA(Ψ)
+
+field = permutedims(reshape(Ψ2[:,1], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+field = permutedims(reshape(Ψ2[:,2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+
+using Statistics
+ε = 1e-3
+kernel = gaussian(ε)
+using CoherentStructures
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel, mean; metric=PEuclidean(per)
+    );
+n_coords=6
+@time λ, Ψ = diffusion_coordinates(P, n_coords)
+
+field = permutedims(reshape(Ψ[:,2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+field = permutedims(reshape(Ψ[:,3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+
+ε = 0.2
+P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> max.(P...); α=0, metric=PEuclidean(per)
+    );
+λ, Ψ = diffusion_coordinates(P, n_coords)
+
+field = permutedims(reshape(Ψ[:,2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+field = permutedims(reshape(Ψ[:,3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+Plots.plot(fig)
+
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 

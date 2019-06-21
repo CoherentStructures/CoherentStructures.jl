@@ -68,7 +68,9 @@ M = assembleMassMatrix(ctx, bdata=bdata)
 λ, v = eigs(K, M, which=:SM, nev= 10)
 
 import Plots
-plot_real_spectrum(λ)
+fig_spectrum = plot_real_spectrum(λ);
+
+Plots.plot(fig_spectrum)
 
 using Clustering
 ctx2, _ = regularTriangularGrid((200, 60), LL, UR)

@@ -60,7 +60,7 @@ M = assembleMassMatrix(ctx, bdata=bdata)
 λ, v = eigs(K, M, which=:SM, nev= 10)
 
 import Plots
-plot_real_spectrum(λ)</code></pre><p>K-means clustering yields the coherent vortices.</p><pre><code class="language-julia">using Clustering
+fig_spectrum = plot_real_spectrum(λ);</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ bickley_fem_spectrum.png" alt/></p><p>K-means clustering yields the coherent vortices.</p><pre><code class="language-julia">using Clustering
 ctx2, _ = regularTriangularGrid((200, 60), LL, UR)
 v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
 
