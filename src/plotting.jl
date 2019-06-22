@@ -7,7 +7,7 @@ The domain to be plotted on is given by `ctx.spatialBounds`.
 The function is evaluated on a regular `nx` by `ny` grid, the resulting plot is a heatmap.
 Keyword arguments are passed down to `plot_u_eulerian`, which this function calls internally.
 """
-function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100,
+function plot_u(ctx::gridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100,
                 LL=ctx.spatialBounds[1],UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...
                 ) where dim
     id = x -> x
@@ -20,11 +20,11 @@ function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100
     end
 end
 
-function plot_u(ctx,dof_vals::Vector{Complex{Float64}},args...;kwargs...)
+function plot_u(ctx,dof_vals::Vector{Complex{<:Real}},args...;kwargs...)
     return plot_u(ctx,real.(dof_vals),args...; title="Plotting real part!", kwargs...)
 end
 
-function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100; bdata=nothing, kwargs...) where dim
+function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100; bdata=nothing, kwargs...) where dim
     id = x -> x
     if dim == 1
         plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
@@ -67,14 +67,14 @@ RecipesBase.@recipe function f(
         # x1 = Float64[]
         # x2 = Float64[]
         # values = Float64[]
-        u_values = get_full_dofvals(ctx,dof_vals;bdata=bdata)
-        x1 = range(LL[1],stop=UR[1],length=nx)
-        x2 = range(LL[2],stop=UR[2],length=ny)
+        u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
+        x1 = range(LL[1], stop=UR[1], length=nx)
+        x2 = range(LL[2], stop=UR[2], length=ny)
         if euler_to_lagrange_points == nothing
-            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1,x2],throw_errors=throw_errors)
+            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1, x2], throw_errors=throw_errors)
             euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
             for i in 1:nx, j in 1:ny
-                euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
+                euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1], euler_to_lagrange_points_raw[j,i,2]])
     	    end
     	end
 
@@ -86,7 +86,7 @@ RecipesBase.@recipe function f(
                             throw_errors=throw_errors
                             )
 
-            z = reshape(z_raw.nzval,size(euler_to_lagrange_points))
+            z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -105,11 +105,11 @@ RecipesBase.@recipe function f(
         else
             nx = 100
         end
-        u_values = get_full_dofvals(ctx,dof_vals;bdata=bdata)
-        x1 = range(LL[1],UR[1],length=nx)
+        u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
+        x1 = range(LL[1], stop=UR[1], length=nx)
 
         if euler_to_lagrange_points == nothing
-            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1])
+            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1])
             euler_to_lagrange_points = [zero(Vec{1}) for x in x1]
             for i in 1:nx
                 euler_to_lagrange_points[i] = Vec{1}([euler_to_lagrange_points_raw[i]])
@@ -122,7 +122,7 @@ RecipesBase.@recipe function f(
                             vec(euler_to_lagrange_points),
                             outside_value=NaN
                             )
-            z = reshape(z_raw.nzval,size(euler_to_lagrange_points))
+            z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -130,8 +130,8 @@ RecipesBase.@recipe function f(
         end
 
         seriestype --> :line
-        xlim --> (LL[1],UR[1])
-        x1,z
+        xlim --> (LL[1], UR[1])
+        x1, z
     end
 end
 

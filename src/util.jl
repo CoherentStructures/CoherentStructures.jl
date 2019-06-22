@@ -177,23 +177,22 @@ end
 """
     kmeansresult2LCS(kmeansresult)
 
-Takes the result-object from kmeans(),
-and returns a coefficient vector (in dof order)
+Takes the result of `kmeans`, and returns a coefficient vector (in dof order),
 corresponding to (interpolated) indicator functions.
 
 # Example
 ```
-v, λ = eigs(K,M)
+v, λ = eigs(K, M)
 numclusters = 5
-res = kmeans(permutedims(v[:,1:numclusters]),numclusters+1)
+res = kmeans(permutedims(v[:, 1:numclusters]), numclusters+1)
 u = kmeansresult2LCS(res)
-plot_u(ctx,u)
+plot_u(ctx, u)
 ```
 """
 function kmeansresult2LCS(kmeansresult)
     n = length(kmeansresult.assignments)
     numclusters = size(kmeansresult.centers)[2]
-    u = zeros(n,numclusters)
+    u = zeros(n, numclusters)
     for j in 1:n
         for i in 1:numclusters
             u[j,i] = kmeansresult.assignments[j] == i ? 1.0 : 0.0
