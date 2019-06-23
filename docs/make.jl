@@ -150,7 +150,7 @@ makedocs(
     sitename="CoherentStructures.jl",
     pages = Any[
         "Home" => "index.md"
-        "Examples" => ["examples.md",
+        "Examples" => ["examples.md"
             "Rotating double gyre" => "generated/rot_double_gyre.md"
             "Standard map" => "generated/standard_map.md"
             "Bickley jet" => "generated/bickley.md"
