@@ -5,7 +5,7 @@
 
 Returns the Euclidean heat kernel as a callable function
 ```math
-x \\mapsto \\exp(-\\frac{x^2}{4\\sigma})
+x \\mapsto \\exp\\left(-\\frac{x^2}{4\\sigma}\\right)
 ```
 
 ## Example
@@ -35,7 +35,7 @@ gaussiancutoff(σ::Real, cutoff::Real=eps()) = sqrt(-4σ*log(cutoff))
 const LinMaps{T} = Union{LinearMaps.LinearMap{T}, AbstractMatrix{T}}
 
 """
-    KNN(k)
+    KNN(k) <: SparsificationMethod
 
 Defines the KNN (k-nearest neighbors) sparsification method. In this
 approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
@@ -47,7 +47,7 @@ struct KNN <: SparsificationMethod
 end
 
 """
-    MutualKNN(k)
+    MutualKNN(k) <: SparsificationMethod
 
 Defines the mutual KNN (k-nearest neighbors) sparsification method. In this
 approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
@@ -59,7 +59,7 @@ struct MutualKNN <: SparsificationMethod
 end
 
 """
-    Neighborhood(ε)
+    Neighborhood(ε) <: SparsificationMethod
 
 Defines the ε-Neighborhood sparsification method. In the final graph Laplacian,
 only those particle pairs are included which have distance less than `ε`.

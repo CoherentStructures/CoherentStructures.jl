@@ -127,10 +127,10 @@ The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 ```jldoctest
 julia> using Distances, StaticArrays; x = [@SVector rand(2) for _ in 1:10];
 
-julia> metric = STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
+julia> STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
 STmetric{Euclidean,Int64}(Euclidean(0.0), 1)
 
-julia> evaluate(metric, x, x)
+julia> evaluate(STmetric(Euclidean(), 1), x, x)
 0.0
 ```
 """

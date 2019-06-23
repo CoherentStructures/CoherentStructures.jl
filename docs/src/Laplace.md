@@ -18,7 +18,7 @@ In the LCS context, these ideas have been adopted in the following works:
    <!-- * De Diego et al., 2018 -->
 
 For demonstrations on example cases, please consult the page on
-[working with trajectories](@Working with trajectories).
+[Working with trajectories](@ref).
 
 ## Function documentation
 
@@ -27,6 +27,7 @@ For demonstrations on example cases, please consult the page on
 Three commonly used sparsification methods are implemented for use with various
 graph Laplacian methods.
 ```@docs
+SparsificationMethod
 KNN
 MutualKNN
 Neighborhood
@@ -57,8 +58,8 @@ sparse_diff_op
 ### Normalization functions
 
 In the diffusion maps framework, there are two commonly used normalization steps:
-1. kernel-density estimate normalization ([`kde_normalize!](@ref)), and
-2. row normalization ([`row_normalize!](@ref)), to obtain a diffusion/Markov
+1. kernel-density estimate normalization ([`kde_normalize!`](@ref)), and
+2. row normalization ([`row_normalize!`](@ref)), to obtain a diffusion/Markov
    operator (w.r.t. right- or left-action).
 ```@docs
 kde_normalize!
