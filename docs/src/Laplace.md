@@ -15,7 +15,6 @@ In the LCS context, these ideas have been adopted in the following works:
    * [Hadjighasem et al., 2016](http://dx.doi.org/10.1103/PhysRevE.93.063107)
    * [Banisch & Koltai, 2017](https://dx.doi.org/10.1063/1.4971788)
    * [Rypina et al., 2017](https://dx.doi.org/10.5194/npg-24-189-2017)/[Padberg-Gehle & Schneide, 2018](https://dx.doi.org/10.5194/npg-24-661-2017)
-   <!-- * De Diego et al., 2018 -->
 
 For demonstrations on example cases, please consult the page on
 [Working with trajectories](@ref).
