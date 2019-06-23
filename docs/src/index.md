@@ -25,7 +25,7 @@ Then, run the following in the Julia REPL:
 ## Overview of supported methods
 
 We currently support the following methods:
-* [FEM-Based Methods](@ref), which perform finite-element discretizations of the dynamic Laplacian,
+* [Finite-element discretizations of the dynamic Laplacian](@ref),
 * [Geodesic elliptic material vortices](@ref), such as "black-hole vortices", "material barriers" and "OECS", as well as
 * [Graph Laplacian/diffusion maps-based LCS methods](@ref) for spectral clustering/diffusion maps inspired LCS approaches.
 

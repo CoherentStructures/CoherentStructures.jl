@@ -124,7 +124,7 @@ The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
      - `p = -Inf`: minimum (does not yield a metric!)
 
 ## Example
-```jldoctest
+```
 julia> using Distances, StaticArrays; x = [@SVector rand(2) for _ in 1:10];
 
 julia> STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged

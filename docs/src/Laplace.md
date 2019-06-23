@@ -27,14 +27,13 @@ For demonstrations on example cases, please consult the page on
 Three commonly used sparsification methods are implemented for use with various
 graph Laplacian methods.
 ```@docs
-SparsificationMethod
 KNN
 MutualKNN
 Neighborhood
 ```
 
-Other sparsification methods can be implemented by defining a corresponding
-[`spdist`](@ref) instance.
+Other sparsification methods can be implemented by defining a
+`SparsificationMethod` type and a corresponding [`spdist`](@ref) method.
 
 ### Diffusion-maps-type/adjancency-matrix-based graph Laplacian methods
 
@@ -45,7 +44,7 @@ gaussian
 gaussiancutoff
 ```
 To compute a sparse distance matrix (or adjacency matrix, depending on the
-[`SparsificationMethod`](@ref)), use [`spdist`](@ref).
+[sparsification method](@Sparsification methods)), use [`spdist`](@ref).
 ```@docs
 spdist
 ```
@@ -60,7 +59,7 @@ sparse_diff_op
 In the diffusion maps framework, there are two commonly used normalization steps:
 1. kernel-density estimate normalization ([`kde_normalize!`](@ref)), and
 2. row normalization ([`row_normalize!`](@ref)), to obtain a diffusion/Markov
-   operator (w.r.t. right- or left-action).
+   operator (w.r.t. right- and left-action, respectively).
 ```@docs
 kde_normalize!
 row_normalize!
