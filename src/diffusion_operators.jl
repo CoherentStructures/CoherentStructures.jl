@@ -24,7 +24,7 @@ end
 """
     gaussiancutoff(σ, θ)
 
-Computes the positive value at which [`gaussian(σ)`](@CoherentStructures.gaussian)
+Computes the positive value at which [`gaussian`](@ref)
 equals `θ`, i.e.,
 ```math
 \\sqrt{-4\\sigma\\log(\\theta)}
@@ -85,8 +85,8 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
    * `data`: a list of trajectories, each a list of states of type `SVector`;
-   * `sp_method`: a [`sparsification method`](@SparsificationMethod);
-   * `kernel`: diffusion kernel, e.g., [`gaussian(σ)`](@gaussian);
+   * `sp_method`: a sparsification method;
+   * `kernel`: diffusion kernel, e.g., [`gaussian`](@ref);
    * `op_reduce=P -> prod(LMs.LinearMap,Iterators.reverse(P))`: time-reduction of
      diffusion operators, e.g. `mean` (space-time diffusion maps), `P -> max.(P...)`
      (network-based coherence) or the default (time coupled diffusion maps)
@@ -126,8 +126,8 @@ Return a sparse diffusion/Markov matrix `P`.
 ## Arguments
    * `data`: a list of trajectories, each a list of states of type `SVector`, or
      a list of states of type `SVector`;
-   * `sp_method`: a [`sparsification method`](@SparsificationMethod);
-   * `kernel`: diffusion kernel, e.g., [`gaussian(σ)`](@gaussian);
+   * `sp_method`: a sparsification method;
+   * `kernel`: diffusion kernel, e.g., [`gaussian`](@ref);
 
 ## Keyword arguments
    * `α`: exponent in diffusion-map normalization;

@@ -10,12 +10,10 @@
 #md #     [`trajectories.jl`](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/trajectories.jl).
 #md #
 
-# Some of the methods in `CoherentStructures.jl` currently work with velocity fields only.
-# However, there are also some methods that work on trajectories directly. These include
-# the graph Laplacian based methods and the Transfer-Operator based methods for approximating the
+# In the following, we demonstrate how to use coherent structure detection methods
+# that work directly on trajectory data sets. These include the graph
+# Laplace-based and the transfer operator-based methods for approximating the
 # dynamic Laplacian.
-
-# We show here how to use some of these methods.
 
 # ## FEM adaptive TO method
 
