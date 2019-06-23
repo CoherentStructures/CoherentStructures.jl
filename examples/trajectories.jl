@@ -10,33 +10,34 @@
 #md #     [`trajectories.jl`](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/trajectories.jl).
 #md #
 
-# Some of the methods in `CoherentStructures.jl` currently work with velocity fields only.
-# However, there are also some methods that work on trajectories directly. These include
-# the graph Laplacian based methods and the Transfer-Operator based methods for approximating the
+# In the following, we demonstrate how to use coherent structure detection methods
+# that work directly on trajectory data sets. These include the graph
+# Laplace-based and the transfer operator-based methods for approximating the
 # dynamic Laplacian.
-
-# We show here how to use some of these methods.
 
 # ## FEM adaptive TO method
 
-# We first generate some trajectories on a set of `n` random points for the double gyre.
+# We first generate some trajectories on a set of `n` random points for the
+# rotating double gyre flow.
 
-using CoherentStructures, Tensors
+using CoherentStructures, StaticArrays, Tensors
 
 n = 500
 tspan = range(0, stop=1.0, length=20)
-initial_points = [Vec{2}(rand(2)) for i in 1:n]
-trajectories = [flow(rot_double_gyre, initial_points[i], tspan) for i in 1:n]
+xs, ys = rand(n), rand(n)
+particles = SVector{2}.(xs, ys)
+trajectories = [flow(rot_double_gyre, particles[i], tspan) for i in 1:n]
 
+# Based on the initial particle positions we generate a triangulation.
+# If this call fails or does not return, the initial positions may not be unique.
+# In that case, simply generate a different set of random initial positions.
 
-# Generate a triangulation
-# If this call fails or does not return, the initial points may not be unique.
+ctx, _ = irregularDelaunayGrid(Vec{2}.(particles))
 
-ctx, _ = irregularDelaunayGrid(initial_points)
+# Next, we generate the stiffness and mass matrices and solve the generalized
+# eigenproblem.
 
-# Generate stiffness and mass matrices, solve eigenproblem.
-# If this call fails or does not return the initial points may not be unique.
-S = adaptiveTOCollocationStiffnessMatrix(ctx, (i,ts) -> trajectories[i], tspan; flow_map_mode=1)
+S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], tspan; flow_map_mode=1)
 M = assembleMassMatrix(ctx)
 
 using Arpack
@@ -44,140 +45,153 @@ using Arpack
 
 # We can plot the spectrum obtained.
 
-import Plots
-plot_real_spectrum(λ)
+using Plots
+fig = plot_real_spectrum(λ)
+DISPLAY_PLOT(fig, spectrum_to_laplace)
 
-# K-means clustering yields the coherent vortices.
+# We may extract coherent vortices with k-means clustering.
 
 using Clustering
-function iterated_kmeans(numiterations, args...)
+function iterated_kmeans(iterations, args...)
     best = kmeans(args...)
-    for i in 1:(numiterations - 1)
+    for i in 1:(iterations - 1)
         cur = kmeans(args...)
         if cur.totalcost < best.totalcost
             best = cur
         end
     end
-    return best
+    return best.assignments
 end
 
-n_partition = 3
-res = iterated_kmeans(20, permutedims(V[:,2:n_partition]), n_partition)
-u = kmeansresult2LCS(res)
-u_combined = sum([u[:,i] * i for i in 1:n_partition])
+partitions = 3
+clusters = iterated_kmeans(20, permutedims(V[:, 2:partitions]), partitions)
 
-# We plot the result. The result looks "messy" due to the fact that we used
-# only few trajectories.
+# A simple scatter plot visualization looks as follows.
 
-fig = plot_u(ctx, u_combined, 400, 400;
-    color=:viridis, colorbar=:none, title="$n_partition-partition of double gyre")
+fig = scatter(xs, ys, zcolor=clusters[ctx.node_to_dof], markersize=8)
+DISPLAY_PLOT(fig, trajectories_fem_scatter)
 
+# Alternatively, we may also plot the cluster assignments on the whole irregular
+# grid.
+
+fig = plot_u(ctx, float(clusters), 400, 400;
+    color=:viridis, colorbar=:none, title="$partitions-partition of rotating double gyre")
 DISPLAY_PLOT(fig, trajectories_fem)
 
-# ## Graph Laplace based methods
+# ## Graph Laplace-based methods
 
-# Optionally add processes to run things in parallel
+# In the following, we demonstrate how to apply several graph Laplace-based coherent
+# structure detection methods. For references and technical details, we refer to
+# the corresponding [Graph Laplacian/diffusion maps-based LCS methods](@ref) page.
+
+# As an example, this is how we can add more processes to run code in parallel.
+
 using Distributed
 (nprocs() == 1) && addprocs()
 
-# We first load some dependencies and our package
+# We first load our package and some dependencies.
 
 @everywhere using CoherentStructures
-using LinearAlgebra, LinearMaps, StaticArrays, Distances, Plots
+using StaticArrays, Distances, Plots
 
-# Setup the problem, and get some trajectories
-# We use a regular grid at initial time to make plotting easier.
-# We use relatively few trajectories, as some methods take very long with many trajectories
-tspan = range(10*24*3600, stop=30*24*3600, length=21)
-m = 100; n = 31; N = m*n
+# Next, we define the usual flow parameters. For visualization convenience,
+# we use a regular grid at initial time.
+
+tspan = range(10*24*3600.0, stop=30*24*3600.0, length=41)
+m = 120; n = 41; N = m*n
 x = range(0.0, stop=6.371π, length=m)
 y = range(-3.0, stop=3.0, length=n)
-f = u -> flow(bickleyJet, u, tspan,  tolerance=1e-6)
-p0 = vec(SVector{2}.(x, y'))
-trajectories = pmap(f, p0; batch_size=m)
+f = u -> flow(bickleyJet, u, tspan, tolerance=1e-6)
+particles = vec(SVector{2}.(x, y'))
+trajectories = pmap(f, particles; batch_size=m)
 
-# The problem is periodic in x, but not y
-per = [6.371π, Inf]
+# The flow is defined on a cylinder with the following periods in x and y. The
+# variable `metric` defines the (spatial) distance metric.
 
-#We calculate 6 diffusion coordinates for each example
-n_coords=6
+periods = [6.371π, Inf]
+metric = PEuclidean(periods)
 
-# We now illustrate some of the different Graph-Laplace based methods
+# We would like calculate 6 diffusion coordinates for each example.
 
-# ### time coupled diffusion coordinates  (Marshall & Hirn, 2018)
-# Note that the results would look much better here if we had used more trajectories!
-ε = 1e-3
-kernel = gaussian(ε)
-P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel;
-                metric=PEuclidean(per))
-λ, Ψ = diffusion_coordinates(P, n_coords)
+n_coords = 6
 
-# Plot some resulting eigenvectors
-field = permutedims(reshape(Ψ[:,2], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
-DISPLAY_PLOT(fig, mahirn18ev2)
-field = permutedims(reshape(Ψ[:,3], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
-DISPLAY_PLOT(fig, mahirn18ev3)
+# We now illustrate some of the different graph Laplace-based methods, and simply
+# visualize some eigenvectors, mostly without further postprocessing.
 
-# ### L_1 time averaging with gaussian kernel Hadjighasem et al, 2016
+# ### L_1 time averaging with gaussian kernel [Hadjighasem, Karrasch, Teramoto & Haller, 2016]
 
 ε = 5e-1
-k = 200
-dist = STmetric(PEuclidean(per), 1)
 kernel = gaussian(ε)
-P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=dist
-    )
+P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=STmetric(metric, 1))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
-field = permutedims(reshape(Ψ[:,2], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+# We plot the second and third eigenvectors.
+
+field = permutedims(reshape(Ψ[:, 2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, ha16ev2)
-field = permutedims(reshape(Ψ[:,3], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+
+field = permutedims(reshape(Ψ[:, 3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, ha16ev3)
 
 # ### Use of SEBA to extract features
-# We could have also used "SEBA" from Froyland, Rock & Sakellariou 2019
+
+# For feature extraction from operator eigenvectors, one may use the "SEBA"
+# method developed by [Froyland, Rock & Sakellariou, 2019].
+
 Ψ2 = SEBA(Ψ)
 
-# We plot two of the SEBA features extracted
-field = permutedims(reshape(Ψ2[:,1], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+# We plot two of the SEBA features extracted.
+
+field = permutedims(reshape(Ψ2[:, 1], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, ha16seba1)
-field = permutedims(reshape(Ψ2[:,2], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+
+field = permutedims(reshape(Ψ2[:, 2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, ha16seba2)
 
+# ### Space-time diffusion maps [Banisch & Koltai, 2017]
 
-# ### space-time diffusion maps,  Banisch & Koltai, 2017
-# Again here the results would look better with more trajectories
-using Statistics
+import Statistics: mean
 ε = 1e-3
 kernel = gaussian(ε)
-using CoherentStructures
-P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel, mean; metric=PEuclidean(per)
-    );
-n_coords=6
-@time λ, Ψ = diffusion_coordinates(P, n_coords)
-
-field = permutedims(reshape(Ψ[:,2], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
-DISPLAY_PLOT(fig, bakoev2)
-field = permutedims(reshape(Ψ[:,3], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
-DISPLAY_PLOT(fig, bakoev3)
-
-
-# ### L_-Inf time averaging, Padberg-Gehle & Schneide, 2018
-ε = 0.2
-P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> max.(P...); α=0, metric=PEuclidean(per)
-    );
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel, mean; metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
-field = permutedims(reshape(Ψ[:,2], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+field = permutedims(reshape(Ψ[:, 2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
+DISPLAY_PLOT(fig, bakoev2)
+
+field = permutedims(reshape(Ψ[:, 3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
+DISPLAY_PLOT(fig, bakoev3)
+
+# ### Network-based approach [Padberg-Gehle & Schneide, 2018]
+ε = 0.2
+P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> max.(P...); α=0, metric=metric)
+λ, Ψ = diffusion_coordinates(P, n_coords)
+
+field = permutedims(reshape(Ψ[:, 2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, pascheev2)
-field = permutedims(reshape(Ψ[:,3], m, n))
-fig = Plots.heatmap(x, y, field, aspect_ratio=1,color=:viridis)
+
+field = permutedims(reshape(Ψ[:, 3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, pascheev3)
+
+# ### Time coupled diffusion coordinates [Marshall & Hirn, 2018]
+
+ε = 1e-3
+kernel = gaussian(ε)
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=metric)
+λ, Ψ = diffusion_coordinates(P, n_coords)
+
+field = permutedims(reshape(Ψ[:, 2], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
+DISPLAY_PLOT(fig, mahirn18ev2)
+
+field = permutedims(reshape(Ψ[:, 3], m, n))
+fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
+DISPLAY_PLOT(fig, mahirn18ev3)

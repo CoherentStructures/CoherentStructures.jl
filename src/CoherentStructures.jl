@@ -48,6 +48,13 @@ import SymEngine
 include("exports.jl")
 
 # diffusion operator-related functions
+"""
+    abstract type SparsificationMethod
+
+Abstract type for sparsification methods.
+Concrete subtypes are [`KNN`](@ref), [`MutualKNN`](@ref),
+and [`Neighborhood`](@ref).
+"""
 abstract type SparsificationMethod end
 include("diffusion_operators.jl")
 

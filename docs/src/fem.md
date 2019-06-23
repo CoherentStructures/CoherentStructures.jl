@@ -1,4 +1,4 @@
-# FEM-Based Methods
+# Finite-element discretizations of the dynamic Laplacian
 
 These methods rely on the theory outlined by Froyland's [*Dynamical Laplacian*]
 (http://arxiv.org/pdf/1411.7186v4.pdf)

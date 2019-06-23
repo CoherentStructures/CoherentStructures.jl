@@ -1,7 +1,7 @@
 #md # ```@meta
 #md #   EditURL = "../../../examples/rot_double_gyre.jl"
 #md # ```
-# # Rotating Double Gyre
+# # Rotating double gyre
 #
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:
