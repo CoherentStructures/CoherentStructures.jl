@@ -5,7 +5,7 @@
 
 Returns the Euclidean heat kernel as a callable function
 ```math
-x \\mapsto \\exp(-\\frac{x^2}{4\\sigma})
+x \\mapsto \\exp\\left(-\\frac{x^2}{4\\sigma}\\right)
 ```
 
 ## Example
@@ -24,7 +24,7 @@ end
 """
     gaussiancutoff(σ, θ)
 
-Computes the positive value at which [`gaussian(σ)`](@CoherentStructures.gaussian)
+Computes the positive value at which [`gaussian`](@ref)
 equals `θ`, i.e.,
 ```math
 \\sqrt{-4\\sigma\\log(\\theta)}
@@ -35,7 +35,7 @@ gaussiancutoff(σ::Real, cutoff::Real=eps()) = sqrt(-4σ*log(cutoff))
 const LinMaps{T} = Union{LinearMaps.LinearMap{T}, AbstractMatrix{T}}
 
 """
-    KNN(k)
+    KNN(k) <: SparsificationMethod
 
 Defines the KNN (k-nearest neighbors) sparsification method. In this
 approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
@@ -47,7 +47,7 @@ struct KNN <: SparsificationMethod
 end
 
 """
-    MutualKNN(k)
+    MutualKNN(k) <: SparsificationMethod
 
 Defines the mutual KNN (k-nearest neighbors) sparsification method. In this
 approach, first `k` nearest neighbors are sought. In the final graph Laplacian,
@@ -59,7 +59,7 @@ struct MutualKNN <: SparsificationMethod
 end
 
 """
-    Neighborhood(ε)
+    Neighborhood(ε) <: SparsificationMethod
 
 Defines the ε-Neighborhood sparsification method. In the final graph Laplacian,
 only those particle pairs are included which have distance less than `ε`.
@@ -85,8 +85,8 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
    * `data`: a list of trajectories, each a list of states of type `SVector`;
-   * `sp_method`: a [`sparsification method`](@SparsificationMethod);
-   * `kernel`: diffusion kernel, e.g., [`gaussian(σ)`](@gaussian);
+   * `sp_method`: a sparsification method;
+   * `kernel`: diffusion kernel, e.g., [`gaussian`](@ref);
    * `op_reduce=P -> prod(LMs.LinearMap,Iterators.reverse(P))`: time-reduction of
      diffusion operators, e.g. `mean` (space-time diffusion maps), `P -> max.(P...)`
      (network-based coherence) or the default (time coupled diffusion maps)
@@ -126,8 +126,8 @@ Return a sparse diffusion/Markov matrix `P`.
 ## Arguments
    * `data`: a list of trajectories, each a list of states of type `SVector`, or
      a list of states of type `SVector`;
-   * `sp_method`: a [`sparsification method`](@SparsificationMethod);
-   * `kernel`: diffusion kernel, e.g., [`gaussian(σ)`](@gaussian);
+   * `sp_method`: a sparsification method;
+   * `kernel`: diffusion kernel, e.g., [`gaussian`](@ref);
 
 ## Keyword arguments
    * `α`: exponent in diffusion-map normalization;
