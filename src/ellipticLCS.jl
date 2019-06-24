@@ -577,11 +577,13 @@ The keyword arguments and their default values are:
 *   `verbose=true`: show intermediate computational information;
 *   `debug=false`: whether to use the debug mode, which avoids parallelization
     for more precise error messages.
+*   `singularity_predicate = nothing`: provide an optional callback to reject certain singularity candidates.
 """
 function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractRange{S},
                         yspan::AbstractRange{S},
                         p::LCSParameters=LCSParameters();
+                        singularity_predicate=nothing,
                         kwargs...) where S <: Real
     ellipticLCS(AxisArray(T, xspan, yspan), p; kwargs...)
 end
@@ -589,11 +591,15 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true,
-                        debug::Bool=false) where S <: Real
+                        debug::Bool=false,
+                        singularity_predicate=nothing) where S <: Real
     # detect centers of elliptic (in the index sense) regions
     xspan = T.axes[1]
     xmax = xspan[end]
     singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs)
+    if singularity_predicate != nothing
+        singularities = filter(singularity_predicate,singularities)
+    end
     verbose && @info "Found $(length(singularities)) singularities..."
     vortexcenters = singularities[getindices(singularities) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
@@ -982,4 +988,37 @@ function contains_point(xs, point_to_check)
     end
     res /= 2π
     return (round(Int,res) != 0)
+end
+
+"""
+    materialBarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false]
+
+Calculates material barriers to diffusive and stochastic transport.
+"""
+function materialBarriers(odefun,xspan,yspan, tspan,lcsp;
+        δ=1e-6,tolerance=1e-6, p=nothing,on_torus=false,kwargs...
+        )
+    P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+    T0 = pmap(u -> av_weighted_CG_tensor(odefun, u, tspan, δ;
+        p=p, tolerance=tolerance),P0)
+    if !on_torus
+        T = T0
+        predicate = x->true
+    else
+        xmin = xspan[1]
+        xmax = xspan[end] + step(xspan)
+        xdiff = xmax - xmin
+        ymin =  yspan[1]
+        ymax = yspan[end] + step(yspan)
+        ydiff = ymax - ymin
+        nx = length(xspan)
+        ny = length(yspan)
+        xrange = range(xmin - xdiff, stop = xmax + xdiff, length=3*nx+1)[1:end-1]
+        yrange = range(ymin - ydiff, stop = ymax + ydiff, length=3*ny+1)[1:end-1]
+        T3 =  hcat(T0,T0,T0)
+        T = AxisArray(vcat(T3,T3,T3),xrange,yrange)
+        predicate = x-> (xmin <=  x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
+    end
+    vortices, singularities = ellipticLCS(T, lcsp; singularity_predicate=predicate, kwargs...)
+    return vortices,singularities, tensor_invariants(T0)[5]
 end

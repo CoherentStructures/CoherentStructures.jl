@@ -22,6 +22,7 @@ export
 	compute_closed_orbits,
 	ellipticLCS,
 	constrainedLCS,
+	materialBarriers,
 
 	#diffusion_operators.jl
 	gaussian,
