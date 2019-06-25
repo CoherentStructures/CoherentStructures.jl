@@ -12,3 +12,5 @@ include("test_elliptic.jl")
 include("test_dyn_metric.jl")
 
 include("test_diff_ops.jl")
+
+include("test_odesolvers.jl")
