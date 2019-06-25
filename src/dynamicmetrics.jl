@@ -27,7 +27,6 @@ julia> evaluate(PEuclidean(L), x, y)
 struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
     periods::W
 end
-PEuclidean() = Dists.Euclidean()
 
 # Specialized for Arrays and avoids a branch on the size
 @inline Base.@propagate_inbounds function Dists.evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
@@ -93,7 +92,12 @@ end
 @inline function Dists.eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
     zero(result_type(d, a, b))
 end
-@inline Dists.eval_op(::PEuclidean, ai, bi, li) = begin d = mod(abs(ai - bi), li); d = min(d, li-d); abs2(d) end
+@inline function Dists.eval_op(d::PEuclidean, ai, bi, p)
+    s1 = abs(ai - bi)
+    s2 = mod(s1, p)
+    s3 = min(s2, p - s2)
+    abs2(s3)
+end
 @inline Dists.eval_reduce(::PEuclidean, s1, s2) = s1 + s2
 @inline Dists.eval_end(::PEuclidean, s) = sqrt(s)
 
@@ -374,12 +378,12 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Un
     Js = SharedArray{Int}(N*(k+1))
 	T = typeof(evaluate(metric, data[1], data[1]))
     Ds = SharedArray{T}(N*(k+1))
-    index = Vector{Int}(undef, k+1)
+    # index = Vector{Int}(undef, k+1)
 	ds = Vector{T}(undef, N)
     # Distributed.@everywhere index = Vector{Int}(undef, k+1)
     @inbounds @sync Distributed.@distributed for i=1:N
 		colwise!(ds, metric, data[i], data)
-        partialsortperm!(index, ds, 1:(k+1))
+        index = partialsortperm(ds, 1:(k+1))
         Is[(i-1)*(k+1)+1:i*(k+1)] .= i
         Js[(i-1)*(k+1)+1:i*(k+1)] = index
         Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
