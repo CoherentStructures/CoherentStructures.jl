@@ -14,7 +14,7 @@ function SEBA(Vin; μ=0.99/sqrt(size(Vin, 1)), tol=1e-14, maxiter=5000)
     R = diagm(0 => ones(size(Vin, 2)))#TODO: Allow this as optional argument?
     for i in 1:nev
         if maximum(V[:,i]) - minimum(V[:,i]) < 1e-14
-            V[:,i] .+= (rand() - 0.5) * 1e-12
+            V[:,i] .+= (rand.() - 0.5) * 1e-12
         end
     end
     numiter = 1
