@@ -163,4 +163,8 @@ export
 	cylinder_flow,
 
 	#seba.jl
-	SEBA
+	SEBA,
+
+	#odesolvers.jl
+	LinearImplicitEuler,
+	LinearMEBDF2
