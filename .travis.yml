@@ -29,6 +29,6 @@ jobs:
       julia: 1.0
       os: linux
       script:
-        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate(); Pkg.add("Documenter"); Pkg.add("Literate"); Pkg.add("AxisArrays"); Pkg.add("BenchmarkTools"); Pkg.add("Interpolations"); Pkg.add("Distances"); Pkg.add("JLD2"); Pkg.add("OrdinaryDiffEq"); Pkg.add("DiffEqOperators"); Pkg.add("Clustering"); Pkg.add("Arpack"); Pkg.add("Plots"); Pkg.add("StaticArrays"); Pkg.add("LinearMaps"); Pkg.add("Tensors"); Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git")); Pkg.clone(pwd()); Pkg.build("Plots"); Pkg.resolve(); Pkg.instantiate(); using Plots'
+        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate(); Pkg.add("Documenter"); Pkg.add("Literate"); Pkg.add("AxisArrays"); Pkg.add("BenchmarkTools"); Pkg.add("Interpolations"); Pkg.add("Distances"); Pkg.add("JLD2"); Pkg.add("OrdinaryDiffEq"); Pkg.add("Clustering"); Pkg.add("Arpack"); Pkg.add("Plots"); Pkg.add("StaticArrays"); Pkg.add("LinearMaps"); Pkg.add("Tensors"); Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git")); Pkg.clone(pwd()); Pkg.build("Plots"); Pkg.resolve(); Pkg.instantiate(); using Plots'
         - julia --color=yes --project=docs/ docs/make.jl
       after_success: skip
