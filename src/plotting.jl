@@ -533,7 +533,7 @@ RecipesBase.@recipe function f(
     singularity_colors = [getcolor(s.index) for s in singularities]
     points = [s.coords.data for s in singularities]
     color --> singularity_colors
-    label --> "singularities"
+    label --> ""
     points
 end
 
@@ -541,12 +541,13 @@ end
 
 RecipesBase.@userplot Plot_Barrier
 RecipesBase.@recipe function f(
-            as::Plot_Barrier;
+            as::Plot_Barrier;barrier_width=3,barrier_color=:red
            )
     barrier = as.args[1].curve
     label --> ""
     aspect_ratio --> 1
-    w --> 3
+    w --> barrier_width
+    color --> barrier_color
     barrier
 end
 
@@ -583,12 +584,17 @@ RecipesBase.@recipe function f(
     xspan,yspan, traceT
 end
 
+
+
 """
     plot_vortices(vortices,singularities,[LL,UR ;traceT])
 
 Makes a plot from the output of ellipticLCS
 """
-function plot_vortices(vortices,singularities,LL,UR;traceT=nothing, kwargs...)
+function plot_vortices(vortices,singularities,LL,UR;traceT=nothing,
+    barrier_width=3,barrier_color=:red,
+    include_singularities=true, kwargs...
+    )
     if traceT != nothing
        fig =  plot_dbs(traceT,LL,UR; kwargs...)
     else
@@ -596,9 +602,11 @@ function plot_vortices(vortices,singularities,LL,UR;traceT=nothing, kwargs...)
     end
     for v in vortices
         for b in v.barriers
-            plot_barrier!( b; kwargs...)
+            plot_barrier!( b;barrier_width=barrier_width,barrier_color=barrier_color, kwargs...)
         end
     end
-    plot_singularities!(singularities; kwargs...)
+    if include_singularities
+        plot_singularities!(singularities; kwargs...)
+    end
     fig
 end
