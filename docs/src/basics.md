@@ -38,9 +38,9 @@ these macros.
 
 Another typical use case is when velocities are given as a data set. In this
 case, one first interpolates the velocity components with [`interpolateVF`](@ref)
-to obtain callable interpolation functions, say, `UI` and `VI`. The corresponding
-vector field is then [`interp_rhs`](@ref), into which the velocity interpolants
-enter via the parameter argument `p`; see below for examples.
+to obtain a callable interpolation function, say, `UI`. The corresponding vector
+field is then [`interp_rhs`](@ref), into which the velocity interpolant enters
+via the parameter argument `p`; see below for examples.
 
 ```@docs
 interpolateVF
@@ -48,19 +48,10 @@ interp_rhs
 interp_rhs!
 ```
 
-## Flow maps
+## (Linearized) Flow map
 
 ```@docs
 flow
-```
-
-```@docs
-parallel_flow
-```
-
-## Linearized flow map
-
-```@docs
 linearized_flow
 ```
 
@@ -68,22 +59,14 @@ linearized_flow
 
 ```@docs
 CG_tensor
-```
-
-```@docs
 mean_diff_tensor
-```
-
-```@docs
 av_weighted_CG_tensor
-```
-
-```@docs
 pullback_tensors
 pullback_metric_tensor
 pullback_diffusion_tensor
 pullback_SDE_diffusion_tensor
 ```
+
 A second-order symmetric two-dimensional tensor (field) may be diagonalized
 (pointwise), ie., an eigendecomposition is computed, by the following function.
 

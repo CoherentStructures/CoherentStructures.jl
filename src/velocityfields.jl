@@ -58,11 +58,18 @@ end
 """
     interp_rhs(u, p, t) -> SVector{2}
 
-Defines a 2D vector field that is readily usable for trajectory integration from
-vector field interpolants of the x- and y-direction, resp. It assumes that the
-interpolants are provided as a 2-tuple `(UI, VI)` via the parameter `p`. Here,
-`UI` and `VI` are the interpolants for the x- and y-components of the velocity
-field.
+Defines an out-of-place 2D vector field that is readily usable for trajectory
+integration from a vector field interpolant. It assumes that the interpolant is
+provided via the parameter `p`, usually in the [`flow`](@ref) or tensor functions.
+
+# Example
+```
+julia> UI = interpolateVF(X, Y, T, U, V)
+
+julia> f = u -> flow(interp_rhs, u, tspan; p=UI)
+
+julia> mCG_tensor = u -> CG_tensor(interp_rhs, u, tspan, δ; p=UI)
+```
 """
 interp_rhs = OrdinaryDiffEq.ODEFunction((u, p, t) -> p(u[1], u[2], t))
 
@@ -70,10 +77,17 @@ interp_rhs = OrdinaryDiffEq.ODEFunction((u, p, t) -> p(u[1], u[2], t))
     interp_rhs!(du, u, p, t) -> Vector
 
 Defines a mutating/inplace 2D vector field that is readily usable for trajectory
-integration from vector field interpolants of the x- and y-direction, resp. It
-assumes that the interpolants are provided as a 2-tuple `(UI, VI)` via the
-parameter `p`. Here, `UI` and `VI` are the interpolants for the x- and
-y-components of the velocity field.
+integration from a vector field interpolant. It assumes that the interpolant is
+provided via the parameter `p`.
+
+# Example
+```
+julia> UI = interpolateVF(X, Y, T, U, V)
+
+julia> f = u -> flow(interp_rhs!, u, tspan; p=UI)
+
+julia> mCG_tensor = u -> CG_tensor(interp_rhs!, u, tspan, δ; p=UI)
+```
 """
 interp_rhs! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= p(u[1], u[2], t))
 

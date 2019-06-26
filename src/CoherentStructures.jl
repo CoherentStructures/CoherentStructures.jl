@@ -19,6 +19,7 @@ using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 import DiffEqBase
 import OrdinaryDiffEq
+import DiffEqOperators
 import Distances
 const Dists = Distances
 import NearestNeighbors
@@ -83,7 +84,6 @@ include("seba.jl")
 #Functions related to isoperimetry
 include("isoperimetry.jl")
 
-
 ##Extensions to JuAFEM dealing with non-curved grids
 ##Support for evaluating functions at grid points, delaunay Triangulations
 
@@ -101,6 +101,9 @@ include("FEMassembly.jl")
 
 # solving advection-diffusion equation
 include("advection_diffusion.jl")
+
+# odesolvers
+include("odesolvers.jl")
 
 # transfer operator-based methods
 include("TO.jl")

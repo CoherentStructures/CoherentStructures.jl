@@ -158,7 +158,7 @@ function sparse_diff_op(data::Union{T, AbstractVector{T}},
     end
     droptol!(P, eps(eltype(P)))
     @inbounds kde_normalize!(P, α)
-    row_normalize!(P)
+    kernel != Base.one && row_normalize!(P)
     return P
 end
 
