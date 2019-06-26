@@ -1000,7 +1000,7 @@ function materialBarriers(odefun,xspan,yspan, tspan,lcsp;
         )
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
     T0 = pmap(u -> av_weighted_CG_tensor(odefun, u, tspan, δ;
-        p=p, tolerance=tolerance),P0)
+            p=p, tolerance=tolerance),P0; batch_size=div(length(xspan)*length(yspan),Distributed.nprocs()))
     if !on_torus
         T = T0
         predicate = x->true
