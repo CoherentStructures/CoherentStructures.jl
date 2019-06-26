@@ -17,9 +17,9 @@ metric = PEuclidean(periods)
 
 n_coords = 6
 
-ε = 5e-1
+ε = 3e-1
 kernel = gaussian(ε)
-P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=STmetric(metric, 1))
+P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε/5)), kernel; metric=STmetric(metric, 1))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
