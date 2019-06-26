@@ -116,16 +116,13 @@ distance between two states `a` and `b` is computed via `evaluate(metric, a, b)`
 The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 
 ## Fields
-   * `metric<:Distances.SemiMetric`: a (semi-)metric as defined in the `Distances.jl`
-     package, e.g., `Euclidean()`, `PeriodicEuclidean(L)`, or `Haversine(r)`;
-	 default is `Euclidean()`;
-   * `p`: corresponds to the kind of average applied to the spatial distances,
-   	 default is `p=1`:
-     - `p = Inf`: maximum
-     - `p = 2`: mean squared average
-     - `p = 1`: arithmetic mean
-     - `p = -1`: harmonic mean (does not yield a metric!)
-     - `p = -Inf`: minimum (does not yield a metric!)
+   * `metric=Euclidean()`: a `SemiMetric` as defined in the `Distances.jl` package, e.g.,
+     [`Euclidean`](@ref), [`PeriodicEuclidean`](@ref), or [`Haversine`](ref);
+      * `p = Inf`: maximum
+      * `p = 2`: mean squared average
+      * `p = 1`: arithmetic mean
+      * `p = -1`: harmonic mean (does not yield a metric!)
+      * `p = -Inf`: minimum (does not yield a metric!)
 
 ## Example
 ```
