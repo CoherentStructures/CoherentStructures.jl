@@ -55,11 +55,11 @@ n_coords = 6
 # We now illustrate some of the different graph Laplace-based methods, and simply
 # visualize some eigenvectors, mostly without further postprocessing.
 
-# ### L_1 time averaging with gaussian kernel [Hadjighasem, Karrasch, Teramoto & Haller, 2016]
+# ### Spectral-clustering approach/L_1 time averaging [Hadjighasem, Karrasch, Teramoto & Haller, 2016]
 
-ε = 5e-1
+ε = 3e-1
 kernel = gaussian(ε)
-P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=STmetric(metric, 1))
+P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε/5)), kernel; metric=STmetric(metric, 1))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 # We plot the second and third eigenvectors.
@@ -120,7 +120,7 @@ field = permutedims(reshape(Ψ[:, 3], m, n))
 fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, bakoev3)
 
-# ### Network-based approach [Padberg-Gehle & Schneide, 2018]
+# ### Network-based approach [Padberg-Gehle & Schneide, 2017]
 ε = 0.2
 P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> row_normalize!(min.(sum(P), 1));
                             α=0, metric=metric)

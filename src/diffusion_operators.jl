@@ -221,14 +221,14 @@ end
 # spectral clustering/diffusion map related functions
 
  """
-     stationary_distribution(P) -> Vector
+     stationary_distribution(P; maxiter=3000) -> Vector
 
  Compute the stationary distribution for a Markov transition operator.
- `P` may be dense or sparse, or a `LinearMap` matrix-vector multiplication
- is given by a function.
+ `P` may be dense or sparse, or a `LinearMap` whose matrix-vector multiplication
+ is given by a function. `maxiter` is passed to `Arpack.eigs`.
  """
-function stationary_distribution(P::LinMaps{T}) where T <: Real
-     E = Arpack.eigs(P; nev=1, ncv=50)
+function stationary_distribution(P::LinMaps{T}; maxiter=3000) where T <: Real
+     E = Arpack.eigs(P; nev=1, ncv=50, maxiter=maxiter)
      Π = dropdims(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
      if (prod(ext) < 0) && (all(abs.(ext) .> eps(eltype(ext))))
@@ -254,20 +254,20 @@ function stationary_distribution(P::LinMaps{T}) where T <: Real
  end
 
  """
-     diffusion_coordinates(P, n_coords) -> (Σ::Vector, Ψ::Matrix)
+     diffusion_coordinates(P, n_coords; maxiter=3000) -> (Σ::Vector, Ψ::Matrix)
 
  Compute the (time-coupled) diffusion coordinates `Ψ` and the coordinate weights
- `Σ` for a linear map `P`. `n_coords` determines the number of diffusion
- coordinates to be computed.
+ `Σ` for a diffusion operator `P`. `n_coords` determines the number of diffusion
+ coordinates to be computed, `maxiter` is passed to `Arpack.eigs`.
  """
-function diffusion_coordinates(P::LinMaps, n_coords::Int)
+function diffusion_coordinates(P::LinMaps, n_coords::Int; maxiter=3000)
     N = LinearAlgebra.checksquare(P)
     n_coords <= N || throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
-    Π = stationary_distribution(transpose(P))
+    Π = stationary_distribution(transpose(P); maxiter=maxiter)
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
-    E = Arpack.eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1))
+    E = Arpack.eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1), maxiter=maxiter)
 
     # eigenvalues close to zero can be negative even though they
     # should be positive.
