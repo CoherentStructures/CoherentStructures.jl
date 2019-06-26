@@ -335,42 +335,25 @@ function spdist(
         return min.(D, permutedims(D))
     end
 end
-function spdist(
-    data::AbstractVector{<:AbstractVector{<:SVector}},
-    sp_method::Neighborhood,
-    metric::STmetric,
-)
-    N = length(data) # number of trajectories
-    T = Dists.result_type(metric, data[1], data[1])
-    I1 = collect(1:N)
-    J1 = collect(1:N)
-    V1 = zeros(T, N)
-    tempfun(j) = begin
-        Is, Js, Vs = Int[], Int[], T[]
-        aj = data[j]
-        for i in (j+1):N
-            temp = Dists.evaluate(metric, data[i], aj)
-            if temp < sp_method.ε
-                push!(Is, i, j)
-                push!(Js, j, i)
-                push!(Vs, temp, temp)
-            end
-        end
-        return Is, Js, Vs
-    end
-    if Distributed.nprocs() > 1
-        IJV = Distributed.pmap(
-            tempfun,
-            1:(N-1);
-            batch_size = (N ÷ Distributed.nprocs()),
-        )
-    else
-        IJV = map(tempfun, 1:(N-1))
-    end
-    Is = vcat(I1, getindex.(IJV, 1)...)
-    Js = vcat(J1, getindex.(IJV, 2)...)
-    Vs = vcat(V1, getindex.(IJV, 3)...)
-    return sparse(Is, Js, Vs, N, N)
+function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Neighborhood, metric::STmetric)
+	N = length(data) # number of trajectories
+	T = Dists.result_type(metric, data[1], data[1])
+	I1 = collect(1:N)
+	J1 = collect(1:N)
+	V1 = zeros(T, N)
+	mapfun = Distributed.nprocs() > 1 ? Distributed.pmap : map
+	IJV = mapfun(collect(1:(N-1))) do j
+		aj = data[j]
+        temp = Dists.colwise(metric, aj, data[(j+1):N])
+		Is = findall(x -> x < sp_method.ε, temp)
+		Js = fill(j, length(Is))
+		temp2 = temp[Is]
+		vcat(Is, Js), vcat(Js, Is), vcat(temp2, temp2)
+	end
+	Is = vcat(I1, getindex.(IJV, 1)...)
+	Js = vcat(J1, getindex.(IJV, 2)...)
+	Vs = vcat(V1, getindex.(IJV, 3)...)
+	return sparse(Is, Js, Vs, N, N)
 end
 function spdist(
     data::AbstractVector{<:AbstractVector{<:SVector}},
