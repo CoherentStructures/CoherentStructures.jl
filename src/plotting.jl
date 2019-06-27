@@ -553,19 +553,19 @@ end
 
 RecipesBase.@userplot Plot_DBS
 RecipesBase.@recipe function f(
-            as::Plot_DBS;
+            as::Plot_DBS;logBg=true
            )
-    traceT = as.args[1]
+    bg = as.args[1]
     LL = as.args[2]
     UR = as.args[3]
-    xspan = traceT.axes[1].val
+    xspan = bg.axes[1].val
     aspect_ratio --> 1
-    yspan = traceT.axes[2].val
+    yspan = bbg.axes[2].val
     xlims --> (LL[1],UR[1])
     ylims --> (LL[2],UR[2])
     color --> :viridis
     seriestype --> :heatmap
-    xspan,yspan, permutedims(log10.(traceT))
+    xspan,yspan, logBg ? permutedims(log10.(bg)) : permutedims(bg)
 end
 
 RecipesBase.@userplot Empty_Heatmap
@@ -578,25 +578,25 @@ RecipesBase.@recipe function f(
     yspan = range(LL[2],stop=UR[2],length=2)
     xlims --> (LL[1],UR[1])
     ylims --> (LL[2],UR[2])
-    traceT = [NaN for x in xspan, y in yspan]
+    bg = [NaN for x in xspan, y in yspan]
     colorbar --> :none
     seriestype --> :heatmap
-    xspan,yspan, traceT
+    xspan,yspan, bg
 end
 
 
 
 """
-    plot_vortices(vortices,singularities,[LL,UR ;traceT])
+    plot_vortices(vortices,singularities,[LL,UR ;bg])
 
 Makes a plot from the output of ellipticLCS
 """
-function plot_vortices(vortices,singularities,LL,UR;traceT=nothing,
+function plot_vortices(vortices,singularities,LL,UR;bg=nothing,logBg=true,
     barrier_width=3,barrier_color=:red,
     include_singularities=true, kwargs...
     )
-    if traceT != nothing
-       fig =  plot_dbs(traceT,LL,UR; kwargs...)
+    if bg != nothing
+       fig =  plot_dbs(bg,LL,UR;logBg=logBg, kwargs...)
     else
         fig = empty_heatmap(LL,UR; kwargs...)
     end

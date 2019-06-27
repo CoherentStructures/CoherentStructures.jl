@@ -111,11 +111,12 @@ S = map(rate_of_strain_tensor, P)
 p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,combine_31=true)
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
-# Finally, the result is visualized as follows.
+# Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges
 
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
-fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax] traceT=traceT )
-
+fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax],bg=λ₁,
+    logBg=false,title="Minor rate-of-strain field and OECSs"
+    )
 DISPLAY_PLOT(fig, ocean_flow_oecs)
 
 # ## FEM-based methods
