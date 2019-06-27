@@ -86,7 +86,7 @@ end
         yspan = range(-1, stop=1, length=ny)
         P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
-        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine, 60, 0.5, 1.5, 1e-4)
+        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine,false, 60, 0.5, 1.5, 1e-4)
 
         vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false,debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
