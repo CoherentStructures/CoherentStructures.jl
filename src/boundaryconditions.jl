@@ -235,10 +235,10 @@ function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
     new_n = length(unique(correspondsTo_row))
     new_m = length(unique(correspondsTo_col))
 
-    if 0 ∈ correspondsTo_col
+    if 0 ∈ correspondsTo_row
         new_n -= 1
     end
-    if 0 ∈ correspondsTo_row
+    if 0 ∈ correspondsTo_col
         new_m -= 1
     end
 
@@ -362,4 +362,3 @@ function get_full_dofvals(ctx,dof_vals; bdata=nothing)
     end
     return dof_values
 end
-
