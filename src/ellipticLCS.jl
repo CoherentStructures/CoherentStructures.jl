@@ -77,6 +77,7 @@ Container for parameters used in elliptic LCS computations.
 * `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-1boxradius`: radius for singularity type detection
 * `combine_pairs=true`: whether isolated singularity pairs should be merged
+* `combine_31=true` : whether 1 trisector + 2 wedge configurations should be merged
 * `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax=2.0`: upper bound on the parameter in the ``\\eta``-field
@@ -99,6 +100,7 @@ struct LCSParameters
     boxradius::Float64
     indexradius::Float64
     combine_pairs::Bool
+    combine_31::Bool
     n_seeds::Int
     pmin::Float64
     pmax::Float64
@@ -115,6 +117,7 @@ struct LCSParameters
                 boxradius::Real,
                 indexradius::Real=1e-1boxradius,
                 combine_pairs::Bool=true,
+                combine_31::Bool=false,
                 n_seeds::Int=100,
                 pmin::Real=0.7,
                 pmax::Real=2.0,
@@ -127,7 +130,7 @@ struct LCSParameters
                 only_smooth::Bool=true,
                 only_uniform::Bool=true
                 )
-        return new(float(boxradius), float(indexradius), combine_pairs, n_seeds,
+        return new(float(boxradius), float(indexradius), combine_pairs,combine_31, n_seeds,
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                     maxiters_ode, float(max_orbit_length), maxiters_bisection,
                     only_enclosing, only_smooth, only_uniform)
@@ -138,6 +141,7 @@ function LCSParameters(;
             boxradius::Real=1.0,
             indexradius::Real=1e-1boxradius,
             combine_pairs::Bool=true,
+            combine_31::Bool=false,
             n_seeds::Int=100,
             pmin::Real=0.7,
             pmax::Real=2.0,
@@ -151,7 +155,7 @@ function LCSParameters(;
             only_uniform::Bool=true
             )
 
-    return LCSParameters(float(boxradius), float(indexradius), combine_pairs, n_seeds,
+    return LCSParameters(float(boxradius), float(indexradius), combine_pairs,combine_31, n_seeds,
                 float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                 maxiters_ode, float(max_orbit_length), maxiters_bisection,
                 only_enclosing, only_smooth, only_uniform)
@@ -339,7 +343,58 @@ function combine_isolated_wedges(singularities::Vector{Singularity{T}}) where {T
 end
 
 """
-    critical_point_detection(vs, combine_distance, dist=s1dist; combine_pairs=true) -> Vector{Singularity}
+    combine_31(singularities)
+
+"""
+
+function combine_31_configuration(singularities::Vector{Singularity{T}}) where {T}
+    N = length(singularities)
+    N <= 2 && return singularities
+    sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
+    sing_seen = falses(N)
+
+    new_singularities = Singularity{T}[] # sing_out
+    sing_out_weight = Int64[]
+
+    #Iterate over all trisector-type singularities
+    for i in 1:N
+        if singularities[i].index != - 1 // 2
+            continue
+        end
+
+        idxs, dists = NN.knn(sing_tree, singularities[i].coords, 4, true)
+        correct_configuration = true
+        for j in 1:3
+            if singularities[idxs[j+1]].index != 1 // 2
+                correct_configuration = false
+            end
+        end
+        if !in_triangle(singularities[i].coords, singularities[idxs[2]].coords,
+            singularities[idxs[3]].coords, singularities[idxs[4]].coords)
+            correct_configuration = false
+        end
+        if !correct_configuration
+            continue
+        end
+
+        for j in 1:3
+            sing_seen[idxs[j+1]] = true
+        end
+        sing_seen[i] = true
+        push!(new_singularities,Singularity(singularities[i].coords, 1//1))
+    end
+
+    #Add whatever singularities are left over
+    for i in 1:N
+        if !sing_seen[i]
+            push!(new_singularities, singularities[i])
+        end
+    end
+    return new_singularities
+end
+
+"""
+    critical_point_detection(vs, combine_distance, dist=s1dist; combine_pairs=true,combine_31=true) -> Vector{Singularity}
 
 Computes critical points of a vector/line field `vs`, given as an `AxisArray`.
 Critical points with distance less or equal to `combine_distance` are
@@ -347,23 +402,29 @@ combined by averaging the coordinates and adding the respective indices. The
 argument `dist` is a signed distance function for angles: choose [`s1dist`](@ref)
 for vector fields, and [`p1dist`](@ref) for line fields; cf. [`compute_singularities`](@ref).
 If `combine_pairs is `true, pairs of singularities that are mutually the closest
-ones are included in the final list.
+ones are included in the final list. If `combine_31` is true, we combine trisector
+type singularities whose nearest 3 neighbors are of wedge type.
 
 Returns a vector of [`Singularity`](@ref)s.
 """
 function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
                                     combine_distance::Real,
                                     dist::Function=s1dist;
-                                    combine_pairs=true)
+                                    combine_pairs=true,
+                                    combine_31=true)
     singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
     if combine_pairs
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
-        return combine_isolated_wedges(new_singularities)
-    else
-        return new_singularities
+        new_singularities =  combine_isolated_wedges(new_singularities)
     end
+    if combine_31
+        #There could also be trisectors with wedge singularities as neighbors
+        #TODO: Think about whether we want to overwrite new_singularities each time
+        new_singularities =  combine_31_configuration(new_singularities)
+    end
+    return new_singularities
 end
 
 """
@@ -374,15 +435,17 @@ a discrete differential-geometric approach. Singularities are calculated on each
 cell. Singularities with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices. If
 `combine_pairs` is `true`, pairs of singularities that are mutually closest to
-each other are included in the final list.
+each other are included in the final list. If `combine_31` is true, trisector-type
+singularities whose 3 nearest neighbors are wedge-type are combined.
 
 Returns a vector of [`Singularity`](@ref)s.
 """
 function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
-                                combine_pairs=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
+                                combine_pairs=true,
+                                combine_31=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    critical_point_detection(ξ, combine_distance, p1dist; combine_pairs=combine_pairs)
+    critical_point_detection(ξ, combine_distance, p1dist; combine_pairs=combine_pairs,combine_31=combine_31)
 end
 
 ######################## closed orbit computations #############################
@@ -596,7 +659,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     # detect centers of elliptic (in the index sense) regions
     xspan = T.axes[1]
     xmax = xspan[end]
-    singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs)
+    singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs,combine_31=p.combine_31)
     if singularity_predicate != nothing
         singularities = filter(singularity_predicate,singularities)
     end
@@ -794,7 +857,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     # detect centers of elliptic (in the index sense) regions
     xspan = q.axes[1]
     xmax = xspan[end]
-    critpts = critical_point_detection(q, p.indexradius; combine_pairs=p.combine_pairs)
+    critpts = critical_point_detection(q, p.indexradius; combine_pairs=p.combine_pairs,combine_31=p.combine_31)
     verbose && @info "Found $(length(critpts)) critical points..."
     vortexcenters = critpts[getindices(critpts) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
