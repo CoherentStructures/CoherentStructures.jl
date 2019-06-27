@@ -560,7 +560,7 @@ RecipesBase.@recipe function f(
     UR = as.args[3]
     xspan = bg.axes[1].val
     aspect_ratio --> 1
-    yspan = bbg.axes[2].val
+    yspan = bg.axes[2].val
     xlims --> (LL[1],UR[1])
     ylims --> (LL[2],UR[2])
     color --> :viridis
