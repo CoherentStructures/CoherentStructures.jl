@@ -351,10 +351,10 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Ne
 	I1 = collect(1:N)
 	J1 = collect(1:N)
 	V1 = zeros(T, N)
-	IJV = Distributed.pmap(1:N) do j
+	tempfun(j) = begin
 		Is, Js, Vs = Int[], Int[], T[]
-		@inbounds aj = data[j]
-        @inbounds for i = (j + 1):N
+		aj = data[j]
+        for i = (j + 1):N
             temp = Dists.evaluate(metric, data[i], aj)
 			if temp < sp_method.ε
 				push!(Is, i, j)
@@ -362,7 +362,12 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Ne
 				push!(Vs, temp, temp)
 			end
         end
-		Is, Js, Vs
+		return Is, Js, Vs
+	end
+	if Distributed.nprocs() > 1
+		IJV = Distributed.pmap(tempfun, 1:(N-1); batch_size=(N÷Distributed.nprocs()))
+	else
+		IJV = map(tempfun, 1:(N-1))
 	end
 	Is = vcat(I1, getindex.(IJV, 1)...)
 	Js = vcat(J1, getindex.(IJV, 2)...)
@@ -393,7 +398,7 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Un
     else # sp_method isa MutualKNN
         Dvals .= min.(Dvals, Dtvals)
     end
-	return D
+	return SparseArrays.dropzeros!(D)
 end
 
 ########### parallel pairwise computation #################

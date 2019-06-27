@@ -14,6 +14,7 @@ julia> kernel = gaussian(2.0);
 
 julia> kernel(0.)
 1.0
+```
 """
 function gaussian(σ::Real=1.0)
     let s = -1/4σ
@@ -79,17 +80,18 @@ end
 # diffusion operator/graph Laplacian related functions
 
 """
-    sparse_diff_op_family(data, sp_method, kernel=gaussian(); op_reduce, α, metric)
+    sparse_diff_op_family(data, sp_method, kernel, op_reduce; α, metric, verbose)
 
 Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Arguments
    * `data`: a list of trajectories, each a list of states of type `SVector`;
    * `sp_method`: a sparsification method;
-   * `kernel`: diffusion kernel, e.g., [`gaussian`](@ref);
-   * `op_reduce=P -> prod(LMs.LinearMap,Iterators.reverse(P))`: time-reduction of
-     diffusion operators, e.g. `mean` (space-time diffusion maps), `P -> max.(P...)`
-     (network-based coherence) or the default (time coupled diffusion maps)
+   * `kernel=gaussian()`: diffusion kernel, e.g., [`gaussian`](@ref);
+   * `op_reduce=P -> prod(LinearMaps.LinearMap, reverse(P))`: time-reduction of
+     diffusion operators, e.g. `Statistics.mean` (space-time diffusion maps),
+     `P -> row_normalize!(max.(sum(P), 1))` (network-based coherence) or the
+     default `P -> prod(LinearMaps.LinearMap, reverse(P))` (time coupled diffusion maps)
 
 ## Keyword arguments
    * `α=1`: exponent in diffusion-map normalization;
@@ -119,7 +121,7 @@ function sparse_diff_op_family(data::AbstractVector{<:AbstractVector{<:SVector}}
 end
 
 """
-    sparse_diff_op(data, sp_method, kernel; α=1.0, metric=Euclidean()) -> SparseMatrixCSC
+    sparse_diff_op(data, sp_method, kernel; α=1, metric=Euclidean()) -> SparseMatrixCSC
 
 Return a sparse diffusion/Markov matrix `P`.
 
@@ -163,7 +165,8 @@ function sparse_diff_op(data::Union{T, AbstractVector{T}},
 end
 
 """
-    kde_normalize!(A, α = 1)
+    kde_normalize!(A, α=1)
+
 Normalize rows and columns of `A` in-place with the respective row-sum to the α-th power;
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is `1`.
@@ -207,6 +210,7 @@ end
 
 """
     row_normalize!(A)
+
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
@@ -221,14 +225,14 @@ end
 # spectral clustering/diffusion map related functions
 
  """
-     stationary_distribution(P) -> Vector
+     stationary_distribution(P; maxiter=3000) -> Vector
 
  Compute the stationary distribution for a Markov transition operator.
- `P` may be dense or sparse, or a `LinearMap` matrix-vector multiplication
- is given by a function.
+ `P` may be dense or sparse, or a `LinearMap` whose matrix-vector multiplication
+ is given by a function. `maxiter` is passed to `Arpack.eigs`.
  """
-function stationary_distribution(P::LinMaps{T}) where T <: Real
-     E = Arpack.eigs(P; nev=1, ncv=50)
+function stationary_distribution(P::LinMaps{T}; maxiter=3000) where T <: Real
+     E = Arpack.eigs(P; nev=1, ncv=50, maxiter=maxiter)
      Π = dropdims(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
      if (prod(ext) < 0) && (all(abs.(ext) .> eps(eltype(ext))))
@@ -254,20 +258,20 @@ function stationary_distribution(P::LinMaps{T}) where T <: Real
  end
 
  """
-     diffusion_coordinates(P, n_coords) -> (Σ::Vector, Ψ::Matrix)
+     diffusion_coordinates(P, n_coords; maxiter=3000) -> (Σ::Vector, Ψ::Matrix)
 
  Compute the (time-coupled) diffusion coordinates `Ψ` and the coordinate weights
- `Σ` for a linear map `P`. `n_coords` determines the number of diffusion
- coordinates to be computed.
+ `Σ` for a diffusion operator `P`. `n_coords` determines the number of diffusion
+ coordinates to be computed, `maxiter` is passed to `Arpack.eigs`.
  """
-function diffusion_coordinates(P::LinMaps, n_coords::Int)
+function diffusion_coordinates(P::LinMaps, n_coords::Int; maxiter=3000)
     N = LinearAlgebra.checksquare(P)
     n_coords <= N || throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
-    Π = stationary_distribution(transpose(P))
+    Π = stationary_distribution(transpose(P); maxiter=maxiter)
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
-    E = Arpack.eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1))
+    E = Arpack.eigs(L; nev=n_coords, ncv=max(50, 2*n_coords+1), maxiter=maxiter)
 
     # eigenvalues close to zero can be negative even though they
     # should be positive.
