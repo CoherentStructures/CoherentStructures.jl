@@ -296,3 +296,18 @@ end
     end
     res
 end
+
+function in_triangle(p, v1,v2,v3)
+    #See https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+    function getside(a,b,c)
+        signedarea = (a[1] - c[1])*(b[2] - c[2]) - (b[1] - c[1])*(a[2] - c[2])
+        return sign(signedarea)
+    end
+    d1 = getside(p,v1,v2)
+    d2 = getside(p,v2,v3)
+    d3 = getside(p,v3,v1)
+
+    has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(has_neg && has_pos);
+end
