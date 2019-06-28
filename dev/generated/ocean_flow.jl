@@ -58,21 +58,13 @@ yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
 S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,combine_31=true)
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
-fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title="Minor rate-of-strain field and OECSs",
-            xlims=(xmin, xmax), ylims=(ymin, ymax)
-            )
-scatter!([s.coords.data for s in singularities if s.index == 1//2], color=:yellow, label="wedge")
-scatter!([s.coords.data for s in singularities if s.index == -1//2], color=:purple, label="trisector")
-scatter!([s.coords.data for s in singularities if s.index == 1], color=:white, label="elliptic")
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, color=:red, label="")
-end
+fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax],bg=λ₁,
+    logBg=false,title="Minor rate-of-strain field and OECSs"
+    )
 Plots.plot(fig)
 
 using CoherentStructures

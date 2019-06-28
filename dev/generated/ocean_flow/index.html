@@ -46,20 +46,12 @@ nx = 950
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)</code></pre><p>Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.</p><pre><code class="language-julia">S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
-vortices, singularities = ellipticLCS(S, p, outermost=true)</code></pre><p>Finally, the result is visualized as follows.</p><pre><code class="language-julia">λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
-fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title=&quot;Minor rate-of-strain field and OECSs&quot;,
-            xlims=(xmin, xmax), ylims=(ymin, ymax)
-            )
-scatter!([s.coords.data for s in singularities if s.index == 1//2], color=:yellow, label=&quot;wedge&quot;)
-scatter!([s.coords.data for s in singularities if s.index == -1//2], color=:purple, label=&quot;trisector&quot;)
-scatter!([s.coords.data for s in singularities if s.index == 1], color=:white, label=&quot;elliptic&quot;)
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, color=:red, label=&quot;&quot;)
-end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ ocean_flow_oecs.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-methods-1" href="#FEM-based-methods-1">FEM-based methods</a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><pre><code class="language-julia">using CoherentStructures
+P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)</code></pre><p>Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs. As there tend to be many 3 wedge + trisector-type singularity combinations with OECSs, we enable the combine_31 heuristic</p><pre><code class="language-julia">S = map(rate_of_strain_tensor, P)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,combine_31=true)
+vortices, singularities = ellipticLCS(S, p, outermost=true)</code></pre><p>Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges</p><pre><code class="language-julia">λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
+fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax],bg=λ₁,
+    logBg=false,title=&quot;Minor rate-of-strain field and OECSs&quot;
+    )</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ ocean_flow_oecs.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-methods-1" href="#FEM-based-methods-1">FEM-based methods</a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><pre><code class="language-julia">using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
 JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
