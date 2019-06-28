@@ -108,7 +108,7 @@ P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 # with OECSs, we enable the combine_31 heuristic
 
 S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,combine_31=true)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,merge_heuristics=[:combine_pairs,:combine_31])
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
 # Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges

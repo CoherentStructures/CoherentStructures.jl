@@ -76,8 +76,9 @@ Container for parameters used in elliptic LCS computations.
 ## Fields
 * `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-1boxradius`: radius for singularity type detection
-* `combine_pairs=true`: whether isolated singularity pairs should be merged
-* `combine_31=true` : whether 1 trisector + 2 wedge configurations should be merged
+* `merge_heuristics`: a list of heuristics for combining singularities, supported are
+* * `:combine_pairs` merge isolated singularity pairs that are mutually nearest neighbors 
+* * `:combine_31` : merge 1 trisector + nearest-neighbor 3 wedge configurations.
 * `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax=2.0`: upper bound on the parameter in the ``\\eta``-field
@@ -99,8 +100,7 @@ LCSParameters(2.5, 0.25, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 struct LCSParameters
     boxradius::Float64
     indexradius::Float64
-    combine_pairs::Bool
-    combine_31::Bool
+    merge_heuristics::Vector{Symbol}
     n_seeds::Int
     pmin::Float64
     pmax::Float64
@@ -116,8 +116,7 @@ struct LCSParameters
     function LCSParameters(
                 boxradius::Real,
                 indexradius::Real=1e-1boxradius,
-                combine_pairs::Bool=true,
-                combine_31::Bool=false,
+                merge_heuristics=[:combine_pairs],
                 n_seeds::Int=100,
                 pmin::Real=0.7,
                 pmax::Real=2.0,
@@ -130,7 +129,7 @@ struct LCSParameters
                 only_smooth::Bool=true,
                 only_uniform::Bool=true
                 )
-        return new(float(boxradius), float(indexradius), combine_pairs,combine_31, n_seeds,
+        return new(float(boxradius), float(indexradius), merge_heuristics, n_seeds,
                     float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                     maxiters_ode, float(max_orbit_length), maxiters_bisection,
                     only_enclosing, only_smooth, only_uniform)
@@ -140,8 +139,7 @@ end
 function LCSParameters(;
             boxradius::Real=1.0,
             indexradius::Real=1e-1boxradius,
-            combine_pairs::Bool=true,
-            combine_31::Bool=false,
+            merge_heuristics=[:combine_pairs],
             n_seeds::Int=100,
             pmin::Real=0.7,
             pmax::Real=2.0,
@@ -155,7 +153,7 @@ function LCSParameters(;
             only_uniform::Bool=true
             )
 
-    return LCSParameters(float(boxradius), float(indexradius), combine_pairs,combine_31, n_seeds,
+    return LCSParameters(float(boxradius), float(indexradius), merge_heuristics, n_seeds,
                 float(pmin), float(pmax), float(rdist), float(tolerance_ode),
                 maxiters_ode, float(max_orbit_length), maxiters_bisection,
                 only_enclosing, only_smooth, only_uniform)
@@ -394,32 +392,30 @@ function combine_31_configuration(singularities::Vector{Singularity{T}}) where {
 end
 
 """
-    critical_point_detection(vs, combine_distance, dist=s1dist; combine_pairs=true,combine_31=true) -> Vector{Singularity}
+    critical_point_detection(vs, combine_distance, dist=s1dist; merge_heuristics=[:combine_pairs]) -> Vector{Singularity}
 
 Computes critical points of a vector/line field `vs`, given as an `AxisArray`.
 Critical points with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices. The
 argument `dist` is a signed distance function for angles: choose [`s1dist`](@ref)
 for vector fields, and [`p1dist`](@ref) for line fields; cf. [`compute_singularities`](@ref).
-If `combine_pairs is `true, pairs of singularities that are mutually the closest
-ones are included in the final list. If `combine_31` is true, we combine trisector
-type singularities whose nearest 3 neighbors are of wedge type.
+Heuristics listed in `merge_heuristics` cf. [`LCSParams`](@ref) are applied to combine singularities.
 
 Returns a vector of [`Singularity`](@ref)s.
 """
 function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
                                     combine_distance::Real,
                                     dist::Function=s1dist;
-                                    combine_pairs=true,
-                                    combine_31=true)
+                                    merge_heuristics=[:combine_pairs]
+                                    )
     singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
-    if combine_pairs
+    if :combine_pairs ∈ merge_heuristics
         #There could still be wedge-singularities that
         #are separated by more than combine_distance
         new_singularities =  combine_isolated_wedges(new_singularities)
     end
-    if combine_31
+    if :combine_31 ∈ merge_heuristics
         #There could also be trisectors with wedge singularities as neighbors
         #TODO: Think about whether we want to overwrite new_singularities each time
         new_singularities =  combine_31_configuration(new_singularities)
@@ -433,19 +429,18 @@ end
 Calculates line-field singularities of the first eigenvector of `T` by taking
 a discrete differential-geometric approach. Singularities are calculated on each
 cell. Singularities with distance less or equal to `combine_distance` are
-combined by averaging the coordinates and adding the respective indices. If
-`combine_pairs` is `true`, pairs of singularities that are mutually closest to
-each other are included in the final list. If `combine_31` is true, trisector-type
-singularities whose 3 nearest neighbors are wedge-type are combined.
+combined by averaging the coordinates and adding the respective indices.
+The heuristics listed in `merge_heuristics` are used to merge singularities, cf. [`LCSParams`](@ref).
+
 
 Returns a vector of [`Singularity`](@ref)s.
 """
 function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
-                                combine_pairs=true,
-                                combine_31=true) where {S <: SymmetricTensor{2,2,<:Real,3}}
+                                merge_heuristics=[:combine_pairs]
+                                ) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    critical_point_detection(ξ, combine_distance, p1dist; combine_pairs=combine_pairs,combine_31=combine_31)
+    critical_point_detection(ξ, combine_distance, p1dist; merge_heuristics=merge_heuristics)
 end
 
 ######################## closed orbit computations #############################
@@ -659,7 +654,7 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     # detect centers of elliptic (in the index sense) regions
     xspan = T.axes[1]
     xmax = xspan[end]
-    singularities = singularity_detection(T, p.indexradius; combine_pairs=p.combine_pairs,combine_31=p.combine_31)
+    singularities = singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics)
     if singularity_predicate != nothing
         singularities = filter(singularity_predicate,singularities)
     end
@@ -857,7 +852,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
     # detect centers of elliptic (in the index sense) regions
     xspan = q.axes[1]
     xmax = xspan[end]
-    critpts = critical_point_detection(q, p.indexradius; combine_pairs=p.combine_pairs,combine_31=p.combine_31)
+    critpts = critical_point_detection(q, p.indexradius; merge_heuristics=p.merge_heuristics)
     verbose && @info "Found $(length(critpts)) critical points..."
     vortexcenters = critpts[getindices(critpts) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
