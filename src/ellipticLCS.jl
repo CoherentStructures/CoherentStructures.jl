@@ -77,7 +77,7 @@ Container for parameters used in elliptic LCS computations.
 * `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-1boxradius`: radius for singularity type detection
 * `merge_heuristics`: a list of heuristics for combining singularities, supported are
-* * `:combine_pairs` merge isolated singularity pairs that are mutually nearest neighbors 
+* * `:combine_pairs` merge isolated singularity pairs that are mutually nearest neighbors
 * * `:combine_31` : merge 1 trisector + nearest-neighbor 3 wedge configurations.
 * `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
@@ -343,6 +343,10 @@ end
 """
     combine_31(singularities)
 
+Takes the list of singularities in `singularities` and combines them so that any -1/2 singularity whose three nearest
+neighbors are 1/2 singularities becomes an elliptic region, provided that the -1/2 singularity is in the triangle spanned
+by the wedges. This configuration is common for OECS, applying to material
+barriers on a large turbulet example yielded only about an additional 1% material barriers.
 """
 
 function combine_31_configuration(singularities::Vector{Singularity{T}}) where {T}
@@ -391,6 +395,83 @@ function combine_31_configuration(singularities::Vector{Singularity{T}}) where {
     return new_singularities
 end
 
+```
+    aggressive_wedge_combine(singularities)
+
+A heuristic for combining singularities which is likely to have a lot of false positives.
+```
+function aggressive_wedge_combine(singularities::Vector{Singularity{T}}) where {T}
+    N = length(singularities)
+    N == 1 && return singularities
+    sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
+    sing_seen = falses(N)
+
+    new_singularities = Singularity{T}[] # sing_out
+    sing_out_weight = Int64[]
+
+    for i in 1:N
+
+        if sing_seen[i]
+            continue
+        end
+
+        cur_sing = singularities[i]
+
+        if cur_sing.index != 1 // 2
+            continue
+        end
+
+
+        #We have an index +1/2 singularity
+        idxs, dists = NN.knn(sing_tree, cur_sing.coords, 2, true)
+        nn_idx = idxs[2]
+        nn_sing = singularities[nn_idx]
+
+        #See if its nearest neighbor is a wedge
+        if nn_sing.index != 1 // 2
+            continue
+        end
+
+
+        midpoint = 0.5 .* (cur_sing.coords .+ nn_sing.coords)
+        width = norm( cur_sing.coords .-  midpoint)
+        idxs2 = NN.inrange(sing_tree,midpoint, width)
+
+        function in_rect(p,p1,p2)
+            xmax = max(p1[1],p2[1])
+            ymax = max(p1[2],p2[2])
+            xmin = min(p1[1],p2[1])
+            ymin = min(p1[2],p2[2])
+
+            return (xmin <= p[1] <= xmax) && (ymin <= p[2] <= ymax)
+        end
+        found_in_rect = false
+        for j in idxs2
+            if j == i || j == idxs[2]
+                continue
+            end
+            if in_rect(singularities[j].coords,cur_sing.coords,nn_sing.coords)
+                found_in_rect = true
+                found_in_rect = false
+            end
+        end
+
+        found_in_rect && continue
+
+        sing_seen[nn_idx] = true
+        sing_seen[i] = true
+        push!(new_singularities, Singularity(0.5 * (singularities[i].coords + singularities[nn_idx].coords), 2 // 2))
+    end
+
+    for i in 1:N
+        if !sing_seen[i]
+            push!(new_singularities, singularities[i])
+        end
+    end
+    return new_singularities
+end
+
+
 """
     critical_point_detection(vs, combine_distance, dist=s1dist; merge_heuristics=[:combine_pairs]) -> Vector{Singularity}
 
@@ -408,6 +489,10 @@ function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
                                     dist::Function=s1dist;
                                     merge_heuristics=[:combine_pairs]
                                     )
+    available_heuristics = [:combine_pairs,:combine_31, :aggressive_wedge_combine]
+    if any(x-> x ∉ available_heuristics, merge_heuristics)
+        @warn "Unknown merge heuristic specified"
+    end
     singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
     if :combine_pairs ∈ merge_heuristics
@@ -419,6 +504,9 @@ function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
         #There could also be trisectors with wedge singularities as neighbors
         #TODO: Think about whether we want to overwrite new_singularities each time
         new_singularities =  combine_31_configuration(new_singularities)
+    end
+    if :aggressive_wedge_combine ∈ merge_heuristics
+        new_singularities = aggressive_wedge_combine(new_singularities)
     end
     return new_singularities
 end
