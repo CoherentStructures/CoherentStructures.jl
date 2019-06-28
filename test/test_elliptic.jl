@@ -13,7 +13,7 @@ const CS = CoherentStructures
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            S = @inferred critical_point_detection(v, 0.1; combine_pairs=false)
+            S = @inferred critical_point_detection(v, 0.1; Symbol[])
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
@@ -23,7 +23,7 @@ const CS = CoherentStructures
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = critical_point_detection(v, 0.1; combine_pairs=false)
+        S = critical_point_detection(v, 0.1; Symbol[])
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
