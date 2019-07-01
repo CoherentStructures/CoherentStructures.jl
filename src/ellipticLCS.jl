@@ -497,7 +497,7 @@ function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
     singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
     for f in merge_heuristics
-        new_singularities = f(singularities)
+        new_singularities = f(new_singularities)
     end
     return new_singularities
 end
@@ -720,13 +720,12 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
                         xspan::AbstractRange{S},
                         yspan::AbstractRange{S},
                         p::LCSParameters=LCSParameters();
-                        singularity_predicate=nothing,
                         kwargs...) where S <: Real
     ellipticLCS(AxisArray(T, xspan, yspan), p; kwargs...)
 end
 function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
-                        verbose::Bool=false,
+                        verbose::Bool=true,
                         unique_vortices=true,
                         singularity_predicate=nothing,
                         kwargs...) where S <: Real
@@ -923,7 +922,7 @@ function makeVortexListUnique(vortices,indexradius)
     vortexcenters  = [v.center for v in vortices]
     vortexcenters_tree = NN.KDTree(vortexcenters, Dists.Euclidean())
     result = typeof(vortices[1])[]
-    for i in 1:n
+    for i in 1:N
         which_not_to_add[i] && continue
         idxs2 = NN.inrange(vortexcenters_tree,vortexcenters[i], 2*indexradius)
         for j in idxs2
