@@ -920,7 +920,7 @@ end
 function makeVortexListUnique(vortices,indexradius) 
     N = length(vortices)
     which_not_to_add = falses(N)
-    vortexcenters  = [v.center.coords for v in vortices]
+    vortexcenters  = [v.center for v in vortices]
     vortexcenters_tree = NN.KDTree(vortexcenters, Dists.Euclidean())
     result = typeof(vortices[1])[]
     for i in 1:n
