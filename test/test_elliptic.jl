@@ -45,7 +45,7 @@ T = @inferred map(mCG_tensor, P)
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
-    @inferred CoherentStructures.combine_isolated_wedges(new_singularities)
+    @inferred CoherentStructures.combine_20(new_singularities)
     r₁ , r₂ = 2rand(2)
     @test sum(getindices(combine_singularities(singularities, r₁))) ==
         sum(getindices(combine_singularities(singularities, r₂))) ==
