@@ -748,8 +748,8 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
-                        vortexcenters::Vector{Singularity{U}}; 
-                        p::LCSParameters=LCSParameters(),
+                        vortexcenters::Vector{Singularity{U}}, 
+                        p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true,
                         debug::Bool=false,
