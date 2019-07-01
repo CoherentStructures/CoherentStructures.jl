@@ -77,8 +77,9 @@ Container for parameters used in elliptic LCS computations.
 * `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-1boxradius`: radius for singularity type detection
 * `merge_heuristics`: a list of heuristics for combining singularities, supported are
-* * `:combine_pairs` merge isolated singularity pairs that are mutually nearest neighbors
-* * `:combine_31` : merge 1 trisector + nearest-neighbor 3 wedge configurations.
+* * `combine_20` merge isolated singularity pairs that are mutually nearest neighbors
+* * `combine_31` : merge 1 trisector + nearest-neighbor 3 wedge configurations.
+* * `combine_20_aggressive`: an additional wedge combination heuristic
 * `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
 * `pmax=2.0`: upper bound on the parameter in the ``\\eta``-field
@@ -100,7 +101,7 @@ LCSParameters(2.5, 0.25, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 struct LCSParameters
     boxradius::Float64
     indexradius::Float64
-    merge_heuristics::Vector{Symbol}
+    merge_heuristics::Vector{Any}
     n_seeds::Int
     pmin::Float64
     pmax::Float64
@@ -116,7 +117,7 @@ struct LCSParameters
     function LCSParameters(
                 boxradius::Real,
                 indexradius::Real=1e-1boxradius,
-                merge_heuristics=[:combine_pairs],
+                merge_heuristics=[combine_20],
                 n_seeds::Int=100,
                 pmin::Real=0.7,
                 pmax::Real=2.0,
@@ -139,7 +140,7 @@ end
 function LCSParameters(;
             boxradius::Real=1.0,
             indexradius::Real=1e-1boxradius,
-            merge_heuristics=[:combine_pairs],
+            merge_heuristics=[combine_20],
             n_seeds::Int=100,
             pmin::Real=0.7,
             pmax::Real=2.0,
@@ -292,12 +293,12 @@ function combine_singularities(singularities::Vector{Singularity{T}}, combine_di
 end
 
 """
-    combine_isolated_wedges(singularities)
+    combine_20(singularities)
 
 Determines singularities which are mutually closest neighbors and combines them
 as one, while adding their indices.
 """
-function combine_isolated_wedges(singularities::Vector{Singularity{T}}) where {T}
+function combine_20(singularities::Vector{Singularity{T}}) where {T}
     N = length(singularities)
     N == 1 && return singularities
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
@@ -396,11 +397,11 @@ function combine_31_configuration(singularities::Vector{Singularity{T}}) where {
 end
 
 ```
-    aggressive_wedge_combine(singularities)
+    combine_20_aggressive(singularities)
 
 A heuristic for combining singularities which is likely to have a lot of false positives.
 ```
-function aggressive_wedge_combine(singularities::Vector{Singularity{T}}) where {T}
+function combine_20_aggressive(singularities::Vector{Singularity{T}}) where {T}
     N = length(singularities)
     N == 1 && return singularities
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
@@ -475,7 +476,7 @@ end
 
 
 """
-    critical_point_detection(vs, combine_distance, dist=s1dist; merge_heuristics=[:combine_pairs]) -> Vector{Singularity}
+    critical_point_detection(vs, combine_distance, dist=s1dist; merge_heuristics=[combine_20]) -> Vector{Singularity}
 
 Computes critical points of a vector/line field `vs`, given as an `AxisArray`.
 Critical points with distance less or equal to `combine_distance` are
@@ -489,32 +490,18 @@ Returns a vector of [`Singularity`](@ref)s.
 function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
                                     combine_distance::Real,
                                     dist::Function=s1dist;
-                                    merge_heuristics=[:combine_pairs]
+                                    merge_heuristics=[combine_20]
                                     )
-    available_heuristics = [:combine_pairs,:combine_31, :aggressive_wedge_combine]
-    if any(x-> x ∉ available_heuristics, merge_heuristics)
-        @warn "Unknown merge heuristic specified"
-    end
     singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
-    if :combine_pairs ∈ merge_heuristics
-        #There could still be wedge-singularities that
-        #are separated by more than combine_distance
-        new_singularities =  combine_isolated_wedges(new_singularities)
-    end
-    if :combine_31 ∈ merge_heuristics
-        #There could also be trisectors with wedge singularities as neighbors
-        #TODO: Think about whether we want to overwrite new_singularities each time
-        new_singularities =  combine_31_configuration(new_singularities)
-    end
-    if :aggressive_wedge_combine ∈ merge_heuristics
-        new_singularities = aggressive_wedge_combine(new_singularities)
+    for f in merge_heuristics
+        new_singularities = f(singularities)
     end
     return new_singularities
 end
 
 """
-    singularity_detection(T, combine_distance; combine_isolated_wedges=true) -> Vector{Singularity}
+    singularity_detection(T, combine_distance; combine_20=true) -> Vector{Singularity}
 
 Calculates line-field singularities of the first eigenvector of `T` by taking
 a discrete differential-geometric approach. Singularities are calculated on each
@@ -527,7 +514,7 @@ Returns a vector of [`Singularity`](@ref)s.
 """
 function singularity_detection(T::AxisArray{S,2},
                                 combine_distance::Float64;
-                                merge_heuristics=[:combine_pairs]
+                                merge_heuristics=[combine_20]
                                 ) where {S <: SymmetricTensor{2,2,<:Real,3}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     critical_point_detection(ξ, combine_distance, p1dist; merge_heuristics=merge_heuristics)
@@ -765,7 +752,6 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         verbose::Bool=true,
                         debug::Bool=false,
                         ) where {S <: Real, U <: Real}
-
     xspan = T.axes[1]
     xmax = xspan[end]
 
