@@ -726,7 +726,7 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
 end
 function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
-                        debug::Bool=false,
+                        verbose::Bool=false,
                         unique_vortices=true,
                         singularity_predicate=nothing,
                         kwargs...) where S <: Real
