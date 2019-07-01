@@ -13,7 +13,7 @@ const CS = CoherentStructures
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            S = @inferred critical_point_detection(v, 0.1; Symbol[])
+            S = @inferred critical_point_detection(v, 0.1; Any[])
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
@@ -23,7 +23,7 @@ const CS = CoherentStructures
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = critical_point_detection(v, 0.1; Symbol[])
+        S = critical_point_detection(v, 0.1; Any[])
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
@@ -89,7 +89,7 @@ end
         if combine
             merge_heuristics=[:combine]
         else
-            merge_heuristics=Symbol[]
+            merge_heuristics=Any[]
         end
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), merge_heuristics, 60, 0.5, 1.5, 1e-4)
 
