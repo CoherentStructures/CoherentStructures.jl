@@ -404,16 +404,13 @@ function aggressive_wedge_combine(singularities::Vector{Singularity{T}}) where {
     N = length(singularities)
     N == 1 && return singularities
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
+    combined_with = [Int64[] for i in 1:N]
     sing_seen = falses(N)
 
     new_singularities = Singularity{T}[] # sing_out
     sing_out_weight = Int64[]
 
     for i in 1:N
-
-        if sing_seen[i]
-            continue
-        end
 
         cur_sing = singularities[i]
 
@@ -426,6 +423,10 @@ function aggressive_wedge_combine(singularities::Vector{Singularity{T}}) where {
         idxs, dists = NN.knn(sing_tree, cur_sing.coords, 2, true)
         nn_idx = idxs[2]
         nn_sing = singularities[nn_idx]
+
+        if nn_idx ∈ combined_with[i]
+            continue
+        end
 
         #See if its nearest neighbor is a wedge
         if nn_sing.index != 1 // 2
@@ -461,6 +462,7 @@ function aggressive_wedge_combine(singularities::Vector{Singularity{T}}) where {
         sing_seen[nn_idx] = true
         sing_seen[i] = true
         push!(new_singularities, Singularity(0.5 * (singularities[i].coords + singularities[nn_idx].coords), 2 // 2))
+        push!(combined_with[nn_idx], i)
     end
 
     for i in 1:N
@@ -735,13 +737,11 @@ function ellipticLCS(T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
 end
 function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         p::LCSParameters=LCSParameters();
-                        outermost::Bool=true,
-                        verbose::Bool=true,
                         debug::Bool=false,
-                        singularity_predicate=nothing) where S <: Real
+                        unique_vortices=true,
+                        singularity_predicate=nothing,
+                        kwargs...) where S <: Real
     # detect centers of elliptic (in the index sense) regions
-    xspan = T.axes[1]
-    xmax = xspan[end]
     singularities = singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics)
     if singularity_predicate != nothing
         singularities = filter(singularity_predicate,singularities)
@@ -749,6 +749,25 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     verbose && @info "Found $(length(singularities)) singularities..."
     vortexcenters = singularities[getindices(singularities) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
+
+    vortices = findVortices(T,vortexcenters,p; verbose=verbose, kwargs...)
+    if unique_vortices
+        vortices = makeVortexListUnique(vortices, p.indexradius)
+    end
+
+    return vortices,singularities
+end
+
+function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
+                        vortexcenters::Vector{Singularity{U}}; 
+                        p::LCSParameters=LCSParameters(),
+                        outermost::Bool=true,
+                        verbose::Bool=true,
+                        debug::Bool=false,
+                        ) where {S <: Real, U <: Real}
+
+    xspan = T.axes[1]
+    xmax = xspan[end]
 
     # vector field constructor function
     @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
@@ -906,7 +925,29 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     #Get rid of vortices without barriers
     vortexlist = filter(v -> !isempty(v.barriers), vortices)
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
-    return vortexlist, singularities
+    return vortexlist
+end
+
+#TODO: Document this more etc...
+function makeVortexListUnique(vortices,indexradius) 
+    N = length(vortices)
+    which_not_to_add = falses(N)
+    vortexcenters  = [v.center.coords for v in vortices]
+    vortexcenters_tree = NN.KDTree(vortexcenters, Dists.Euclidean())
+    result = typeof(vortices[1])[]
+    for i in 1:n
+        which_not_to_add[i] && continue
+        idxs2 = NN.inrange(vortexcenters_tree,vortexcenters[i], 2*indexradius)
+        for j in idxs2
+            j == i && continue
+
+            if contains_point(vortices[j].barriers[1],vortexcenters[i]) || contains_point(vortices[i].barriers[1],vortexcenters[j])
+                which_not_to_add[j] = true
+            end
+        end
+        push!(result,vortices[i])
+    end
+    return result
 end
 
 """
