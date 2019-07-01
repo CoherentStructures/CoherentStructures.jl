@@ -77,8 +77,8 @@ Container for parameters used in elliptic LCS computations.
 * `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-1boxradius`: radius for singularity type detection
 * `merge_heuristics`: a list of heuristics for combining singularities, supported are
-* * `combine_20` merge isolated singularity pairs that are mutually nearest neighbors
-* * `combine_31` : merge 1 trisector + nearest-neighbor 3 wedge configurations.
+* * `combine_20`: merge isolated singularity pairs that are mutually nearest neighbors
+* * `combine_31`: merge 1 trisector + nearest-neighbor 3 wedge configurations.
 * * `combine_20_aggressive`: an additional wedge combination heuristic
 * `n_seeds=100`: number of seed points on the Poincaré section
 * `pmin=0.7`: lower bound on the parameter in the ``\\eta``-field
@@ -344,10 +344,12 @@ end
 """
     combine_31(singularities)
 
-Takes the list of singularities in `singularities` and combines them so that any -1/2 singularity whose three nearest
-neighbors are 1/2 singularities becomes an elliptic region, provided that the -1/2 singularity is in the triangle spanned
-by the wedges. This configuration is common for OECS, applying to material
-barriers on a large turbulet example yielded only about an additional 1% material barriers.
+Takes the list of singularities in `singularities` and combines them
+so that any -1/2 singularity whose three nearest neighbors are 1/2 singularities
+becomes an elliptic region, provided that the -1/2 singularity
+is in the triangle spanned by the wedges. This configuration
+is common for OECS, applying to material barriers on a large
+turbulet example yielded only about an additional 1% material barriers.
 """
 
 function combine_31_configuration(singularities::Vector{Singularity{T}}) where {T}
@@ -501,7 +503,7 @@ function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
 end
 
 """
-    singularity_detection(T, combine_distance; combine_20=true) -> Vector{Singularity}
+    singularity_detection(T, combine_distance; merge_heuristics=[combine_20]) -> Vector{Singularity}
 
 Calculates line-field singularities of the first eigenvector of `T` by taking
 a discrete differential-geometric approach. Singularities are calculated on each
@@ -730,19 +732,19 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         kwargs...) where S <: Real
     # detect centers of elliptic (in the index sense) regions
     singularities = singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics)
-    if singularity_predicate != nothing
+    if singularity_predicate !== nothing
         singularities = filter(singularity_predicate,singularities)
     end
     verbose && @info "Found $(length(singularities)) singularities..."
     vortexcenters = singularities[getindices(singularities) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    vortices = findVortices(T,vortexcenters,p; verbose=verbose, kwargs...)
+    vortices = findVortices(T, vortexcenters, p; verbose=verbose, kwargs...)
     if unique_vortices
         vortices = makeVortexListUnique(vortices, p.indexradius)
     end
 
-    return vortices,singularities
+    return vortices, singularities
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
