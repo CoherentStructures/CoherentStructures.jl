@@ -679,6 +679,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         		closed = norm(orbit[1] - orbit[end]) <= rdist
         		predicate = qs -> cache isa LCScache ?
         	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
+        	            # λ⁰ <= l2itp(qs[1], qs[2]) :
     		            nitp(qs[1], qs[2]) >= λ⁰^2
         		uniform = only_uniform ? all(predicate, orbit) : true
                 if cache isa LCScache
@@ -746,18 +747,70 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     return vortices, singularities
 end
 
-function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
-                        vortexcenters::Vector{Singularity{U}}, 
-                        p::LCSParameters=LCSParameters();
-                        outermost::Bool=true,
-                        verbose::Bool=true,
-                        debug::Bool=false,
-                        ) where {S <: Real, U <: Real}
-    xspan = T.axes[1]
-    xmax = xspan[end]
+function debugAt(
+        T::AxisArray{SymmetricTensor{2,2,S,3},2},
+        orientaround, startwhere= (orientaround .+ (0.0,0.1));
+        p::LCSParameters=LCSParameters()
+    ) where S
 
-    # vector field constructor function
-    @inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
+    cache = orient(T[:,:], @SVector [orientaround[1],orientaround[2]])
+    l1itp = ITP.LinearInterpolation(cache.λ₁)
+    l2itp = ITP.LinearInterpolation(cache.λ₂)
+    result = []
+    for σ ∈ [true,false]
+        for λ ∈ range(p.pmin,stop=p.pmax,length=10)
+            sol, retcode = compute_returning_orbit(
+                ηfield(λ, σ, cache),
+                startwhere, true, p.maxiters_ode,p.tolerance_ode,
+                p.max_orbit_length
+            )
+            push!(result,sol)
+        end
+    end
+
+    prd(λ::Float64, σ::Bool, seed, cache) =
+            Poincaré_return_distance(ηfield(λ, σ, cache), seed;
+                tolerance_ode=p.tolerance_ode,
+                maxiters_ode=p.maxiters_ode,
+                max_orbit_length=p.max_orbit_length
+                )
+    result2 = []
+    for σ ∈ [true,false]
+        lamrange = range(p.pmin,stop=p.pmax,length=30)
+        push!(result2,
+            (lamrange, map(x->prd(x,σ,startwhere,cache), lamrange))
+            )
+    end
+
+    pmin_local = max(p.pmin, l1itp(startwhere[1],startwhere[2]))
+    pmax_local = min(p.pmax, l2itp(startwhere[1],startwhere[2]))
+    println("pmin_local is $pmin_local and pmax_local is $pmax_local")
+    margin_step = (pmax_local - pmin_local)/20
+
+    result3 = (
+        bisection(λ -> prd(λ, true, startwhere, cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step ),
+        bisection(λ -> prd(λ, false, startwhere, cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step )
+        )
+    return result,result2,result3
+end
+
+@inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
+	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
+	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
+	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+
+    itp = ITP.LinearInterpolation(c.η)
+
+	function unit_length_itp(u,p,t)
+	    result = itp(u[1],u[2])
+        normresult = sqrt(result[1]^2 + result[2]^2)
+	    return normresult == 0 ? result :  result / normresult
+	end
+	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
+end
+
+# vector field constructor function
+@inline function ηfield(λ::Float64, σ::Bool, c::LCScache)
     	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
     	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
     	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
@@ -770,7 +823,17 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     	    return normresult == 0 ? result :  result / normresult
     	end
     	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
-    end
+end
+
+function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
+                        vortexcenters::Vector{Singularity{U}},
+                        p::LCSParameters=LCSParameters();
+                        outermost::Bool=true,
+                        verbose::Bool=true,
+                        debug::Bool=false,
+                        ) where {S <: Real, U <: Real}
+    xspan = T.axes[1]
+    xmax = xspan[end]
 
     #This is where results go
     vortices = EllipticVortex{S}[]
@@ -855,7 +918,8 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         max_orbit_length=p.max_orbit_length,
                         maxiters_bisection=p.maxiters_bisection,
                         only_enclosing=p.only_enclosing,
-                        only_smooth=p.only_smooth
+                        only_smooth=p.only_smooth,
+                        only_uniform=p.only_uniform
                         )
                 put!(results_rc, (vx, vy, result))
                 num_processed += 1
@@ -916,7 +980,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 end
 
 #TODO: Document this more etc...
-function makeVortexListUnique(vortices,indexradius) 
+function makeVortexListUnique(vortices,indexradius)
     N = length(vortices)
     which_not_to_add = falses(N)
     vortexcenters  = [v.center for v in vortices]
