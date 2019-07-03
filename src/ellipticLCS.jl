@@ -916,7 +916,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 end
 
 #TODO: Document this more etc...
-function makeVortexListUnique(vortices,indexradius) 
+function makeVortexListUnique(vortices::Vector{EllipticVortex{T}},indexradius)  where T <: Real
     N = length(vortices)
     which_not_to_add = falses(N)
     vortexcenters  = [v.center for v in vortices]
@@ -927,8 +927,9 @@ function makeVortexListUnique(vortices,indexradius)
         idxs2 = NN.inrange(vortexcenters_tree,vortexcenters[i], 2*indexradius)
         for j in idxs2
             j == i && continue
-
-            if contains_point(vortices[j].barriers[1],vortexcenters[i]) || contains_point(vortices[i].barriers[1],vortexcenters[j])
+	    c1 = [(@SVector T[p[1],p[2]]) for p in vortices[j].barriers[1].curve]
+	    c2 = [(@SVector T[p[1],p[2]]) for p in vortices[i].barriers[1].curve]
+            if contains_point(c1,vortexcenters[i]) || contains_point(c2,vortexcenters[j])
                 which_not_to_add[j] = true
             end
         end
