@@ -1,14 +1,13 @@
-using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, Interpolations
-import AxisArrays
-const AA = AxisArrays
+using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures
+using AxisArrays
 const CS = CoherentStructures
 
 @testset "compute critical points" begin
     for x in (range(-1, stop=1, length=50), range(-1, stop=1, length=50)),
         y in (range(-1, stop=1, length=50), range(-1, stop=1, length=50))
-        for v in (AA.AxisArray(SVector{2}.(x, y'), x, y),
-                AA.AxisArray(SVector{2}.(-x, -y'), x, y),
-                AA.AxisArray(SVector{2}.(-y', x), x, y))
+        for v in (AxisArray(SVector{2}.(x, y'), x, y),
+                AxisArray(SVector{2}.(-x, -y'), x, y),
+                AxisArray(SVector{2}.(-y', x), x, y))
             S = @inferred compute_singularities(v)
             @test length(S) == 1
             @test iszero(S[1].coords)
@@ -18,7 +17,7 @@ const CS = CoherentStructures
             @test iszero(S[1].coords)
             @test S[1].index == 1
         end
-        v = AA.AxisArray(SVector{2}.(x, -y'), x, y)
+        v = AxisArray(SVector{2}.(x, -y'), x, y)
         S = @inferred compute_singularities(v)
         @test length(S) == 1
         @test iszero(S[1].coords)
@@ -37,9 +36,9 @@ nx = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, 1.e-6)
-T = @inferred map(mCG_tensor, P)
+T = map(mCG_tensor, P)
 
 @testset "combine singularities" begin
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
@@ -84,7 +83,7 @@ end
     for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false)
         xspan = range(-1, stop=1, length=nx)
         yspan = range(-1, stop=1, length=ny)
-        P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+        P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine,false, 60, 0.5, 1.5, 1e-4)
 
