@@ -364,10 +364,7 @@ If `on_torus==true`, the triangulation is done on a torus.
 If `PC==true`, return a mesh with piecewise constant shape-functions, else P1 Lagrange.
 """
 function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
-    on_torus=false, on_cylinder=false, LL=nothing, UR=nothing,
-    PC=false,
-    kwargs...
-    )
+        on_torus=false, on_cylinder=false, LL=nothing, UR=nothing, PC=false, kwargs...)
     if on_torus || on_cylinder
         @assert !(LL == nothing || UR == nothing)
     end
@@ -376,14 +373,12 @@ function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
     else
         ip = JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
     end
-    ctx = CoherentStructures.gridContext{2}(JFM.Triangle,
-        nodes_in;on_torus=on_torus,on_cylinder=on_cylinder,LL=LL,UR=UR,ip=ip,
-        kwargs...
-        )
+    ctx = gridContext{2}(JFM.Triangle, nodes_in;
+            on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR, ip=ip, kwargs...)
     if on_torus
-        bdata = boundaryData(ctx,PEuclidean(UR .- LL))
+        bdata = boundaryData(ctx, PEuclidean(UR .- LL))
     elseif on_cylinder
-        bdata = boundaryData(ctx,PEuclidean([UR[1] - LL[1],Inf]))
+        bdata = boundaryData(ctx, PEuclidean([UR[1] - LL[1], Inf]))
     else
         bdata = boundaryData()
     end

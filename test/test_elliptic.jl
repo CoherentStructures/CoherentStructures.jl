@@ -1,5 +1,4 @@
-using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures
-using AxisArrays
+using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, AxisArrays
 const CS = CoherentStructures
 
 @testset "compute critical points" begin
@@ -30,7 +29,7 @@ const CS = CoherentStructures
 end
 
 q = 3
-tspan = range(0., stop=1., length=q)
+const tspan = range(0., stop=1., length=q)
 ny = 52
 nx = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
