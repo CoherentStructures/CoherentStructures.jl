@@ -676,19 +676,17 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
     	    if retcode == 0
-        		closed = norm(orbit[1] - orbit[end]) <= rdist
-        		predicate = qs -> cache isa LCScache ?
-        	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
-        	            # λ⁰ <= l2itp(qs[1], qs[2]) :
-    		            nitp(qs[1], qs[2]) >= λ⁰^2
-        		uniform = only_uniform ? all(predicate, orbit) : true
+		closed = norm(orbit[1] - orbit[end]) <= rdist
                 if cache isa LCScache
-                    in_well_defined_squares = only_smooth ? in_defined_squares(orbit, cache) : true
+                    in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache) 
+		    uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache) 
                 else
+		    predicate = qs -> nitp(qs[1], qs[2]) >= λ⁰^2
                     in_well_defined_squares = true
+		    uniform = !only_uniform || all(predicate, orbit) 
                 end
 
-                contains_singularity = only_enclosing ? contains_point(orbit,ps[1]) : true
+                contains_singularity = !only_enclosing || contains_point(orbit,ps[1])
 
         		if (closed && uniform && in_well_defined_squares && contains_singularity)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
@@ -965,7 +963,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 end
 
 #TODO: Document this more etc...
-function makeVortexListUnique(vortices,indexradius)
+function makeVortexListUnique(vortices::Vector{EllipticVortex{T}},indexradius)  where T <: Real
     N = length(vortices)
     if N == 0
         return vortices
@@ -979,8 +977,9 @@ function makeVortexListUnique(vortices,indexradius)
         idxs2 = NN.inrange(vortexcenters_tree,vortexcenters[i], 2*indexradius)
         for j in idxs2
             j == i && continue
-
-            if contains_point(vortices[j].barriers[1],vortexcenters[i]) || contains_point(vortices[i].barriers[1],vortexcenters[j])
+	    c1 = [(@SVector T[p[1],p[2]]) for p in vortices[j].barriers[1].curve]
+	    c2 = [(@SVector T[p[1],p[2]]) for p in vortices[i].barriers[1].curve]
+            if contains_point(c1,vortexcenters[i]) || contains_point(c2,vortexcenters[j])
                 which_not_to_add[j] = true
             end
         end
@@ -1179,14 +1178,14 @@ end
 
 
 function in_defined_squares(xs, cache)
-    xspan = cache.η.axes[1]
-    yspan = cache.η.axes[2]
+    xspan = cache.η.axes[1].val
+    yspan = cache.η.axes[2].val
     nx = length(xspan)
     ny = length(yspan)
 
     for x in xs
-        xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1]), 1.0)
-        yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1]), 1.0)
+	xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)), 1.0)
+	yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(xspan)), 1.0)
 
         xid = xid == nx ? nx - 1 : xid
         yid = yid == ny ? ny - 1 : yid
@@ -1203,6 +1202,32 @@ function in_defined_squares(xs, cache)
     end
     return true
 end
+
+function in_uniform_squares(xs, λ⁰,cache)
+    xspan = cache.η.axes[1].val
+    yspan = cache.η.axes[2].val
+    nx = length(xspan)
+    ny = length(yspan)
+
+    for x in xs
+	xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)), 1.0)
+	yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(yspan)), 1.0)
+
+        xid = xid == nx ? nx - 1 : xid
+        yid = yid == ny ? ny - 1 : yid
+
+        l1s = [cache.λ₁[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
+        l2s = [cache.λ₂[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
+
+        for i in 1:4
+	if ! (l1s[i] <= λ⁰ <= l2s[i])
+		return false
+	    end
+	end
+    end
+    return true
+end
+
 
 function contains_point(xs, point_to_check)
     points_to_center = [x - point_to_check for x in xs]
