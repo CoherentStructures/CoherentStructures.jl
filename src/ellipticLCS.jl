@@ -1273,3 +1273,43 @@ function materialBarriers(odefun,xspan,yspan, tspan,lcsp;
     vortices, singularities = ellipticLCS(T, lcsp; singularity_predicate=predicate, kwargs...)
     return vortices,singularities, tensor_invariants(T0)[5]
 end
+
+### Some convenience functions
+
+function flow(odefun, u::EllipticBarrier{T}, tspan; kwargs...) where {T <: Real}
+    nt = length(tspan)
+    nc = length(u.curve)
+    newcurves = map(x->flow(odefun,(@SVector [x[1],x[2]]),tspan; kwargs...),u.curve)
+    newcurves2 = Vector{Tuple{T,T}}[]
+    for i in 1:nt
+        curcurve = Tuple{T,T}[]
+        for j in 1:nc
+            push!(curcurve, (newcurves[j][i][1], newcurves[j][i][2]))
+        end
+        push!(newcurves2,curcurve)
+    end
+    newcores = flow(odefun,u.core, tspan; kwargs...)
+    return [EllipticBarrier{T}(newcurves2[i],newcores[i],u.p,u.s) for i in 1:nt]
+end
+
+function flow(odefun,u::Singularity{T},tspan; kwargs...) where {T <: Real}
+    nt = length(tspan)
+    newcoords = flow(odefun,u.coords,tspan; kwargs...)
+    return [Singuarity{T}(newcoords[i],u.index) for i in 1:nt]
+end
+
+function flow(odefun, u::EllipticVortex{T},tspan;kwargs...) where {T <: Real}
+    newbarriers = [flow(odefun,b,tspan; kwargs...) for b in u.barriers]
+    newbarriers2 = Vector{EllipticBarrier{T}}[]
+    nt = length(tspan)
+    nb = length(u.barriers)
+    for i in 1:nt
+        curbarriers = EllipticBarrier{T}[]
+        for j in 1:nb
+            push!(curbarriers,newbarriers[j][i])
+        end
+        push!(newbarriers2,curbarriers)
+    end
+    newcenters = flow(odefun,u.center,tspan; kwargs...)
+    return [EllipticVortex{T}(newcenters[i],newbarriers2[i]) for i in 1:nt]
+end
