@@ -676,19 +676,17 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
     	    if retcode == 0
-        		closed = norm(orbit[1] - orbit[end]) <= rdist
-        		predicate = qs -> cache isa LCScache ?
-        	            l1itp(qs[1], qs[2]) <= λ⁰ <= l2itp(qs[1], qs[2]) :
-        	            # λ⁰ <= l2itp(qs[1], qs[2]) :
-    		            nitp(qs[1], qs[2]) >= λ⁰^2
-        		uniform = only_uniform ? all(predicate, orbit) : true
+		closed = norm(orbit[1] - orbit[end]) <= rdist
                 if cache isa LCScache
-                    in_well_defined_squares = only_smooth ? in_defined_squares(orbit, cache) : true
+                    in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache) 
+		    uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache) 
                 else
+		    predicate = qs -> nitp(qs[1], qs[2]) >= λ⁰^2
                     in_well_defined_squares = true
+		    uniform = !only_uniform || all(predicate, orbit) 
                 end
 
-                contains_singularity = only_enclosing ? contains_point(orbit,ps[1]) : true
+                contains_singularity = !only_enclosing || contains_point(orbit,ps[1])
 
         		if (closed && uniform && in_well_defined_squares && contains_singularity)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
@@ -792,21 +790,6 @@ function debugAt(
         bisection(λ -> prd(λ, false, startwhere, cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step )
         )
     return result,result2,result3
-end
-
-@inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
-	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
-	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
-
-    itp = ITP.LinearInterpolation(c.η)
-
-	function unit_length_itp(u,p,t)
-	    result = itp(u[1],u[2])
-        normresult = sqrt(result[1]^2 + result[2]^2)
-	    return normresult == 0 ? result :  result / normresult
-	end
-	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
 end
 
 # vector field constructor function
@@ -1192,14 +1175,14 @@ end
 
 
 function in_defined_squares(xs, cache)
-    xspan = cache.η.axes[1]
-    yspan = cache.η.axes[2]
+    xspan = cache.η.axes[1].val
+    yspan = cache.η.axes[2].val
     nx = length(xspan)
     ny = length(yspan)
 
     for x in xs
-        xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1]), 1.0)
-        yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1]), 1.0)
+	xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)), 1.0)
+	yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(xspan)), 1.0)
 
         xid = xid == nx ? nx - 1 : xid
         yid = yid == ny ? ny - 1 : yid
@@ -1216,6 +1199,32 @@ function in_defined_squares(xs, cache)
     end
     return true
 end
+
+function in_uniform_squares(xs, λ⁰,cache)
+    xspan = cache.η.axes[1].val
+    yspan = cache.η.axes[2].val
+    nx = length(xspan)
+    ny = length(yspan)
+
+    for x in xs
+	xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)), 1.0)
+	yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(yspan)), 1.0)
+
+        xid = xid == nx ? nx - 1 : xid
+        yid = yid == ny ? ny - 1 : yid
+
+        l1s = [cache.λ₁[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
+        l2s = [cache.λ₂[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
+
+        for i in 1:4
+	if ! (l1s[i] <= λ⁰ <= l2s[i])
+		return false
+	    end
+	end
+    end
+    return true
+end
+
 
 function contains_point(xs, point_to_check)
     points_to_center = [x - point_to_check for x in xs]
