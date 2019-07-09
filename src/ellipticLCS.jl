@@ -794,21 +794,6 @@ function debugAt(
     return result,result2,result3
 end
 
-@inline ηfield(λ::Float64, σ::Bool, c::LCScache) = begin
-	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
-	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
-	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
-
-    itp = ITP.LinearInterpolation(c.η)
-
-	function unit_length_itp(u,p,t)
-	    result = itp(u[1],u[2])
-        normresult = sqrt(result[1]^2 + result[2]^2)
-	    return normresult == 0 ? result :  result / normresult
-	end
-	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
-end
-
 # vector field constructor function
 @inline function ηfield(λ::Float64, σ::Bool, c::LCScache)
     	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
@@ -982,6 +967,9 @@ end
 #TODO: Document this more etc...
 function makeVortexListUnique(vortices,indexradius)
     N = length(vortices)
+    if N == 0
+        return vortices
+    end
     which_not_to_add = falses(N)
     vortexcenters  = [v.center for v in vortices]
     vortexcenters_tree = NN.KDTree(vortexcenters, Dists.Euclidean())
