@@ -22,7 +22,7 @@ export
 	compute_closed_orbits,
 	ellipticLCS,
 	constrainedLCS,
-	materialBarriers,
+	materialbarriers,
     combine_20,
     combine_31,
     combine_20_aggressive,
