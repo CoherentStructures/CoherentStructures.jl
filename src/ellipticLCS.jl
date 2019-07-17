@@ -401,11 +401,11 @@ function combine_31_configuration(singularities::Vector{Singularity{T}}) where {
     return new_singularities
 end
 
-```
+"""
     combine_20_aggressive(singularities)
 
 A heuristic for combining singularities which is likely to have a lot of false positives.
-```
+"""
 function combine_20_aggressive(singularities::Vector{Singularity{T}}) where {T}
     N = length(singularities)
     N == 1 && return singularities
@@ -1245,11 +1245,11 @@ function contains_point(xs, point_to_check)
 end
 
 """
-    materialBarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false]
+    materialbarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false]
 
 Calculates material barriers to diffusive and stochastic transport.
 """
-function materialBarriers(odefun,xspan,yspan, tspan,lcsp;
+function materialbarriers(odefun,xspan,yspan, tspan,lcsp;
         δ=1e-6,tolerance=1e-6, p=nothing,on_torus=false,kwargs...
         )
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
