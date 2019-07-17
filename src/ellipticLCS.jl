@@ -208,7 +208,8 @@ Computes critical points and singularities of vector and line fields `v`,
 respectively. The argument `dist` is a signed distance function for angles.
 Choose `s1dist` (default) for vector fields, and `p1dist` for line fields.
 """
-function compute_singularities(v::AxisArray{<: SVector{2,<:Real},2}, dist::Function=s1dist)
+function compute_singularities(v::AxisArray{<: SVector{2,T},2}, dist::Function=s1dist
+            )::Vector{Singularity{T}} where T <: Real
     xspan, yspan = v.axes
     α = map(u -> atan(u[2], u[1]), v)
     singularities = Singularity{typeof(step(xspan.val) / 2)}[]
@@ -223,7 +224,7 @@ function compute_singularities(v::AxisArray{<: SVector{2,<:Real},2}, dist::Funct
         temp += dist(α[i,j], α[i,j+1]) # to the bottom
         index = round(Int, temp/π) // 2
         if index != 0
-            push!(singularities, Singularity(SVector{2}(x + xstephalf, y + ystephalf), index))
+            push!(singularities, Singularity(SVector{2,T}(x + xstephalf, y + ystephalf), index))
         end
     end
     return singularities
@@ -238,7 +239,9 @@ an edge iff the coordinates of the corresponding vertices (given by `sing_coordi
 have a distance leq `combine_distance`. Find all connected components of this graph,
 and return a list of their mean coordinate and sum of `sing_indices`.
 """
-function combine_singularities(singularities::Vector{Singularity{T}}, combine_distance::Real) where {T<:Real}
+function combine_singularities(
+        singularities::Vector{Singularity{T}}, combine_distance::S
+    )::Vector{Singularity{T}} where {T<:Real, S<:Real}
 
     # Do a breath-first search of all singularities that are "connected" in the
     # sense that there is a path of singularities with each segment less than
@@ -489,11 +492,11 @@ Heuristics listed in `merge_heuristics` cf. [`LCSParams`](@ref) are applied to c
 
 Returns a vector of [`Singularity`](@ref)s.
 """
-function critical_point_detection(vs::AxisArray{<: SVector{2,<:Real},2},
+function critical_point_detection(vs::AxisArray{<: SVector{2,T},2},
                                     combine_distance::Real,
                                     dist::Function=s1dist;
                                     merge_heuristics=[combine_20]
-                                    )
+                                    )::Vector{Singularity{T}} where T <: Real
     singularities = compute_singularities(vs, dist)
     new_singularities = combine_singularities(singularities, combine_distance)
     for f in merge_heuristics
