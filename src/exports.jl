@@ -23,6 +23,9 @@ export
 	ellipticLCS,
 	constrainedLCS,
 	materialBarriers,
+    combine_20,
+    combine_31,
+    combine_20_aggressive,
 
 	#diffusion_operators.jl
 	gaussian,

@@ -11,7 +11,7 @@ const CS = CoherentStructures
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            S = @inferred critical_point_detection(v, 0.1; combine_pairs=false)
+            S = @inferred critical_point_detection(v, 0.1; merge_heuristics=[])
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
@@ -21,7 +21,7 @@ const CS = CoherentStructures
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = critical_point_detection(v, 0.1; combine_pairs=false)
+        S = critical_point_detection(v, 0.1; merge_heuristics=[])
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
@@ -43,7 +43,7 @@ T = map(mCG_tensor, P)
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
-    @inferred CoherentStructures.combine_isolated_wedges(new_singularities)
+    @inferred CoherentStructures.combine_20(new_singularities)
     r₁ , r₂ = 2rand(2)
     @test sum(getindices(combine_singularities(singularities, r₁))) ==
         sum(getindices(combine_singularities(singularities, r₂))) ==
@@ -84,7 +84,12 @@ end
         yspan = range(-1, stop=1, length=ny)
         P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
-        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine,false, 60, 0.5, 1.5, 1e-4)
+        if combine
+            merge_heuristics=[combine_20]
+        else
+            merge_heuristics=Any[]
+        end
+        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), merge_heuristics, 60, 0.5, 1.5, 1e-4)
 
         vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false,debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
