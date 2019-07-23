@@ -47,7 +47,7 @@ ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)</code></pre><p>Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs. As there tend to be many 3 wedge + trisector-type singularity combinations with OECSs, we enable the combine_31 heuristic</p><pre><code class="language-julia">S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,combine_31=true)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20,combine_31])
 vortices, singularities = ellipticLCS(S, p, outermost=true)</code></pre><p>Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges</p><pre><code class="language-julia">λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
 fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax],bg=λ₁,
     logBg=false,title=&quot;Minor rate-of-strain field and OECSs&quot;

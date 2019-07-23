@@ -58,7 +58,7 @@ yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
 S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1,combine_31=true)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20,combine_31])
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
