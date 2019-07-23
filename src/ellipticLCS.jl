@@ -355,7 +355,7 @@ is common for OECS, applying to material barriers on a large
 turbulet example yielded only about an additional 1% material barriers.
 """
 
-function combine_31_configuration(singularities::Vector{Singularity{T}}) where {T}
+function combine_31(singularities::Vector{Singularity{T}}) where {T}
     N = length(singularities)
     N <= 2 && return singularities
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
