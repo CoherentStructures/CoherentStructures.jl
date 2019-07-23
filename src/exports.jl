@@ -22,18 +22,22 @@ export
 	compute_closed_orbits,
 	ellipticLCS,
 	constrainedLCS,
+	materialbarriers,
+    combine_20,
+    combine_31,
+    combine_20_aggressive,
 
 	#diffusion_operators.jl
+	gaussian,
+	gaussiancutoff,
 	KNN,
-	mutualKNN,
-	neighborhood,
+	MutualKNN,
+	Neighborhood,
 	DM_heatflow,
-	diff_op,
 	sparse_diff_op_family,
 	sparse_diff_op,
-	sparseaffinitykernel,
 	kde_normalize!,
-	wlap_normalize!,
+	row_normalize!,
 	sparse_adjacency_family,
 	sparse_adjacency,
 	stationary_distribution,
@@ -45,6 +49,7 @@ export
 	peuclidean,
 	STmetric,
 	stmetric,
+	spdist,
 
 	#FEMassembly.jl
 	assembleStiffnessMatrix,
@@ -101,6 +106,12 @@ export
 	plot_ftle,
 	eulerian_videos,
 	eulerian_video,
+	plot_barrier,
+	plot_barrier!,
+	plot_singularities,
+	plot_singularities!,
+	plot_vortices,
+	plot_vortices!,
 
 	#pullbacktensors.jl
 	flow,
@@ -152,4 +163,11 @@ export
 	standardMapInv,
 	DstandardMap,
 	abcFlow,
-	cylinder_flow
+	cylinder_flow,
+
+	#seba.jl
+	SEBA,
+
+	#odesolvers.jl
+	LinearImplicitEuler,
+	LinearMEBDF2

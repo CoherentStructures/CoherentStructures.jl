@@ -235,10 +235,10 @@ function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
     new_n = length(unique(correspondsTo_row))
     new_m = length(unique(correspondsTo_col))
 
-    if 0 ∈ correspondsTo_col
+    if 0 ∈ correspondsTo_row
         new_n -= 1
     end
-    if 0 ∈ correspondsTo_row
+    if 0 ∈ correspondsTo_col
         new_m -= 1
     end
 
@@ -346,4 +346,19 @@ end
 
 function isEmptyBC(bdata::boundaryData)
     return isempty(bdata.dbc_dofs) && isempty(bdata.periodic_dofs_from)
+end
+
+function get_full_dofvals(ctx,dof_vals; bdata=nothing)
+    if (bdata==nothing) && (ctx.n != length(dof_vals))
+        dbcs = getHomDBCS(ctx)
+        if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
+            error("Input u has wrong length")
+        end
+        dof_values = undoBCS(ctx,dof_vals,dbcs)
+    elseif (bdata != nothing)
+        dof_values = undoBCS(ctx,dof_vals,bdata)
+    else
+        dof_values = dof_vals
+    end
+    return dof_values
 end

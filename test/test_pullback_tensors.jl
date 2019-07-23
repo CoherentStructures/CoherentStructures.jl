@@ -1,4 +1,4 @@
-using Test, StaticArrays, OrdinaryDiffEq, Tensors, LinearAlgebra, Distributed
+using Test, StaticArrays, OrdinaryDiffEq, Tensors, LinearAlgebra
 using CoherentStructures
 
 @testset "flow" begin

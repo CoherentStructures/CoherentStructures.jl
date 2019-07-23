@@ -19,7 +19,7 @@ using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 import DiffEqBase
 import OrdinaryDiffEq
-import Contour
+import DiffEqOperators
 import Distances
 const Dists = Distances
 import NearestNeighbors
@@ -42,13 +42,20 @@ import ForwardDiff
 
 import JuAFEM
 const JFM = JuAFEM
-import RecipesBase
+using RecipesBase
 import SymEngine
 
 # contains a list of exported functions
 include("exports.jl")
 
 # diffusion operator-related functions
+"""
+    abstract type SparsificationMethod
+
+Abstract type for sparsification methods.
+Concrete subtypes are [`KNN`](@ref), [`MutualKNN`](@ref),
+and [`Neighborhood`](@ref).
+"""
 abstract type SparsificationMethod end
 include("diffusion_operators.jl")
 
@@ -77,7 +84,6 @@ include("seba.jl")
 #Functions related to isoperimetry
 include("isoperimetry.jl")
 
-
 ##Extensions to JuAFEM dealing with non-curved grids
 ##Support for evaluating functions at grid points, delaunay Triangulations
 
@@ -95,6 +101,9 @@ include("FEMassembly.jl")
 
 # solving advection-diffusion equation
 include("advection_diffusion.jl")
+
+# odesolvers
+include("odesolvers.jl")
 
 # transfer operator-based methods
 include("TO.jl")

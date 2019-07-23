@@ -104,25 +104,19 @@ yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
 # Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.
+# As there tend to be many 3 wedge + trisector-type singularity combinations
+# with OECSs, we enable the combine_31 heuristic
 
 S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20,combine_31])
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
-# Finally, the result is visualized as follows.
+# Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges
 
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
-fig = Plots.heatmap(xspan, yspan, permutedims((λ₁));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title="Minor rate-of-strain field and OECSs",
-            xlims=(xmin, xmax), ylims=(ymin, ymax)
-            )
-scatter!([s.coords.data for s in singularities if s.index == 1//2], color=:yellow, label="wedge")
-scatter!([s.coords.data for s in singularities if s.index == -1//2], color=:purple, label="trisector")
-scatter!([s.coords.data for s in singularities if s.index == 1], color=:white, label="elliptic")
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, color=:red, label="")
-end
+fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax],bg=λ₁,
+    logBg=false,title="Minor rate-of-strain field and OECSs"
+    )
 DISPLAY_PLOT(fig, ocean_flow_oecs)
 
 # ## FEM-based methods

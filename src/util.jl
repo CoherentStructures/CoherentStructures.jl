@@ -177,23 +177,22 @@ end
 """
     kmeansresult2LCS(kmeansresult)
 
-Takes the result-object from kmeans(),
-and returns a coefficient vector (in dof order)
+Takes the result of `kmeans`, and returns a coefficient vector (in dof order),
 corresponding to (interpolated) indicator functions.
 
 # Example
 ```
-v, λ = eigs(K,M)
+v, λ = eigs(K, M)
 numclusters = 5
-res = kmeans(permutedims(v[:,1:numclusters]),numclusters+1)
+res = kmeans(permutedims(v[:, 1:numclusters]), numclusters+1)
 u = kmeansresult2LCS(res)
-plot_u(ctx,u)
+plot_u(ctx, u)
 ```
 """
 function kmeansresult2LCS(kmeansresult)
     n = length(kmeansresult.assignments)
     numclusters = size(kmeansresult.centers)[2]
-    u = zeros(n,numclusters)
+    u = zeros(n, numclusters)
     for j in 1:n
         for i in 1:numclusters
             u[j,i] = kmeansresult.assignments[j] == i ? 1.0 : 0.0
@@ -296,4 +295,19 @@ end
         end
     end
     res
+end
+
+function in_triangle(p, v1,v2,v3)
+    #See https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+    function getside(a,b,c)
+        signedarea = (a[1] - c[1])*(b[2] - c[2]) - (b[1] - c[1])*(a[2] - c[2])
+        return sign(signedarea)
+    end
+    d1 = getside(p,v1,v2)
+    d2 = getside(p,v2,v3)
+    d3 = getside(p,v3,v1)
+
+    has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(has_neg && has_pos);
 end

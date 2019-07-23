@@ -6,8 +6,8 @@ page.
 
 ## List of examples
 
-* [Rotating double gyre](@Rotating Double Gyre)
-* [Standard map](@The standard map)
-* [Bickley jet flow](@Bickley Jet)
-* [Geostrophic ocean surface flow](@Geostrophic Ocean Flow)
-* [Working with trajectories](@Working with trajectories)
+* [Rotating double gyre](@ref)
+* [The standard map](@ref)
+* [Bickley Jet](@ref)
+* [Geostrophic Ocean Flow](@ref)
+* [Working with trajectories](@ref)

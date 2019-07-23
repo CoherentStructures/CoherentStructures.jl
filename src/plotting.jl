@@ -7,7 +7,7 @@ The domain to be plotted on is given by `ctx.spatialBounds`.
 The function is evaluated on a regular `nx` by `ny` grid, the resulting plot is a heatmap.
 Keyword arguments are passed down to `plot_u_eulerian`, which this function calls internally.
 """
-function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100,
+function plot_u(ctx::gridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100,
                 LL=ctx.spatialBounds[1],UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...
                 ) where dim
     id = x -> x
@@ -20,11 +20,11 @@ function plot_u(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100
     end
 end
 
-function plot_u(ctx,dof_vals::Vector{Complex{Float64}},args...;kwargs...)
+function plot_u(ctx,dof_vals::Vector{Complex{<:Real}},args...;kwargs...)
     return plot_u(ctx,real.(dof_vals),args...; title="Plotting real part!", kwargs...)
 end
 
-function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=100; bdata=nothing, kwargs...) where dim
+function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100; bdata=nothing, kwargs...) where dim
     id = x -> x
     if dim == 1
         plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
@@ -35,22 +35,6 @@ function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{Float64}, nx=100, ny=10
     end
 end
 
-
-
-function get_full_dofvals(ctx,dof_vals; bdata=nothing)
-    if (bdata==nothing) && (ctx.n != length(dof_vals))
-        dbcs = getHomDBCS(ctx)
-        if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
-            error("Input u has wrong length")
-        end
-        dof_values = undoBCS(ctx,dof_vals,dbcs)
-    elseif (bdata != nothing)
-        dof_values = undoBCS(ctx,dof_vals,bdata)
-    else
-        dof_values = dof_vals
-    end
-    return dof_values
-end
 
 RecipesBase.@userplot Plot_U_Eulerian
 RecipesBase.@recipe function f(
@@ -83,14 +67,14 @@ RecipesBase.@recipe function f(
         # x1 = Float64[]
         # x2 = Float64[]
         # values = Float64[]
-        u_values = get_full_dofvals(ctx,dof_vals;bdata=bdata)
-        x1 = range(LL[1],stop=UR[1],length=nx)
-        x2 = range(LL[2],stop=UR[2],length=ny)
+        u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
+        x1 = range(LL[1], stop=UR[1], length=nx)
+        x2 = range(LL[2], stop=UR[2], length=ny)
         if euler_to_lagrange_points == nothing
-            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1,x2],throw_errors=throw_errors)
+            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1, x2], throw_errors=throw_errors)
             euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
             for i in 1:nx, j in 1:ny
-                euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1],euler_to_lagrange_points_raw[j,i,2]])
+                euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1], euler_to_lagrange_points_raw[j,i,2]])
     	    end
     	end
 
@@ -102,7 +86,7 @@ RecipesBase.@recipe function f(
                             throw_errors=throw_errors
                             )
 
-            z = reshape(z_raw.nzval,size(euler_to_lagrange_points))
+            z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -121,11 +105,11 @@ RecipesBase.@recipe function f(
         else
             nx = 100
         end
-        u_values = get_full_dofvals(ctx,dof_vals;bdata=bdata)
-        x1 = range(LL[1],UR[1],length=nx)
+        u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
+        x1 = range(LL[1], stop=UR[1], length=nx)
 
         if euler_to_lagrange_points == nothing
-            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map,[x1])
+            euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1])
             euler_to_lagrange_points = [zero(Vec{1}) for x in x1]
             for i in 1:nx
                 euler_to_lagrange_points[i] = Vec{1}([euler_to_lagrange_points_raw[i]])
@@ -138,7 +122,7 @@ RecipesBase.@recipe function f(
                             vec(euler_to_lagrange_points),
                             outside_value=NaN
                             )
-            z = reshape(z_raw.nzval,size(euler_to_lagrange_points))
+            z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
         if postprocessor != nothing
@@ -146,8 +130,8 @@ RecipesBase.@recipe function f(
         end
 
         seriestype --> :line
-        xlim --> (LL[1],UR[1])
-        x1,z
+        xlim --> (LL[1], UR[1])
+        x1, z
     end
 end
 
@@ -515,3 +499,114 @@ Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. trans
 Unless `pass_on_errors` is set to `true`, errors from calculating FTLE values are caught and ignored.
 """
 plot_ftle
+
+
+RecipesBase.@userplot Plot_Singularities
+RecipesBase.@recipe function f(
+            as::Plot_Singularities;
+           )
+    singularities = as.args[1]
+    seriestype --> :scatter
+    function getcolor(ind)
+        if ind == 1//1
+            return :white
+        end
+        if ind == 1//2
+            return :orange
+        end
+        if ind == -1//2
+            return :blue
+        end
+        if ind == 3//2
+            return :purple
+        end
+        if ind > 3//2
+            return :brown
+        end
+        if ind == -3//2
+            return :green
+        end
+        if ind < -3//2
+            return :black
+        end
+    end
+    singularity_colors = [getcolor(s.index) for s in singularities]
+    points = [s.coords.data for s in singularities]
+    color --> singularity_colors
+    label --> ""
+    points
+end
+
+
+
+RecipesBase.@userplot Plot_Barrier
+RecipesBase.@recipe function f(
+            as::Plot_Barrier;barrier_width=3,barrier_color=:red
+           )
+    barrier = as.args[1].curve
+    label --> ""
+    aspect_ratio --> 1
+    w --> barrier_width
+    color --> barrier_color
+    barrier
+end
+
+RecipesBase.@userplot Plot_DBS
+RecipesBase.@recipe function f(
+            as::Plot_DBS;logBg=true
+           )
+    bg = as.args[1]
+    LL = as.args[2]
+    UR = as.args[3]
+    xspan = bg.axes[1].val
+    aspect_ratio --> 1
+    yspan = bg.axes[2].val
+    xlims --> (LL[1],UR[1])
+    ylims --> (LL[2],UR[2])
+    color --> :viridis
+    seriestype --> :heatmap
+    xspan,yspan, logBg ? permutedims(log10.(bg)) : permutedims(bg)
+end
+
+RecipesBase.@userplot Empty_Heatmap
+RecipesBase.@recipe function f(
+            as::Empty_Heatmap;
+           )
+    LL = as.args[1]
+    UR = as.args[2]
+    xspan = range(LL[1],stop=UR[1],length=2)
+    yspan = range(LL[2],stop=UR[2],length=2)
+    xlims --> (LL[1],UR[1])
+    ylims --> (LL[2],UR[2])
+    bg = [NaN for x in xspan, y in yspan]
+    colorbar --> :none
+    seriestype --> :heatmap
+    xspan,yspan, bg
+end
+
+
+
+"""
+    plot_vortices(vortices,singularities,[LL,UR ;bg])
+
+Makes a plot from the output of ellipticLCS
+"""
+function plot_vortices(vortices,singularities,LL,UR;bg=nothing,logBg=true,
+    barrier_width=3,barrier_color=:red,
+    include_singularities=true, kwargs...
+    )
+    if bg != nothing
+       fig =  plot_dbs(bg,LL,UR;logBg=logBg, kwargs...)
+    else
+        fig = empty_heatmap(LL,UR; kwargs...)
+    end
+    for v in vortices
+        for b in v.barriers
+            plot_barrier!( b;barrier_width=barrier_width,barrier_color=barrier_color, kwargs...)
+        end
+    end
+    if include_singularities
+        plot_singularities!(singularities; kwargs...)
+    end
+    fig
+end

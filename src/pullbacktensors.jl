@@ -14,12 +14,22 @@ end
 
 
 """
-    flow(odefun,  u0, tspan; tolerance, p, solver) -> Vector{Vector}
+    flow(odefun,  u0, tspan; p, solver, tolerance, force_dtmin) -> Vector{Vector}
 
-Solve the ODE with right hand side given by `odefun` and initial value `u0`.
-`p` is a parameter passed to `odefun`.
-`tolerance` is passed as both relative and absolute tolerance to the solver,
-which is determined by `solver`.
+Solve the ODE with right hand side given by `odefun` and initial value `u0` over
+the time interval `tspan`, evaluated at each element of `tspan`.
+
+## Keyword arguments
+   * `p`: parameter that is passed to `odefun`, e.g., in [`interp_rhs`](@ref);
+   * `solver=OrdinaryDiffEq.BS5()`: ODE solver;
+   * `tolerance=1e-3`: relative and absolute tolerance for ODE integration;
+   * `force_dtmin=false`: force the ODE solver to step forward with `dtmin`, even
+     if the adaptive scheme would reject the step.
+
+# Example
+```
+julia> f = u -> flow(bickleyJet, u, range(0., stop=100, length=21))
+```
 """
 @inline function flow(odefun, u0::AbstractVector{T}, tspan::AbstractVector{S}; kwargs...) where {T <: Real, S <: Real}
     flow(OrdinaryDiffEq.ODEFunction(odefun), u0, tspan; kwargs...)
@@ -43,9 +53,9 @@ end
     _flow(odefun, u0, tspan; kwargs...)
 end
 @inline function _flow(odefun, u0::T, tspan;
-                tolerance=default_tolerance,
                 p=nothing,
                 solver=default_solver,
+                tolerance=default_tolerance,
                 #ctx_for_boundscheck=nothing,
                 force_dtmin=false)::Vector{T} where {T}
 

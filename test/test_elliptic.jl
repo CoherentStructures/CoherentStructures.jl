@@ -1,29 +1,27 @@
-using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, Interpolations
-import AxisArrays
-const AA = AxisArrays
+using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, AxisArrays
 const CS = CoherentStructures
 
 @testset "compute critical points" begin
     for x in (range(-1, stop=1, length=50), range(-1, stop=1, length=50)),
         y in (range(-1, stop=1, length=50), range(-1, stop=1, length=50))
-        for v in (AA.AxisArray(SVector{2}.(x, y'), x, y),
-                AA.AxisArray(SVector{2}.(-x, -y'), x, y),
-                AA.AxisArray(SVector{2}.(-y', x), x, y))
+        for v in (AxisArray(SVector{2}.(x, y'), x, y),
+                AxisArray(SVector{2}.(-x, -y'), x, y),
+                AxisArray(SVector{2}.(-y', x), x, y))
             S = @inferred compute_singularities(v)
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            S = @inferred critical_point_detection(v, 0.1; combine_pairs=false)
+            S = @inferred critical_point_detection(v, 0.1; merge_heuristics=[])
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
         end
-        v = AA.AxisArray(SVector{2}.(x, -y'), x, y)
+        v = AxisArray(SVector{2}.(x, -y'), x, y)
         S = @inferred compute_singularities(v)
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = critical_point_detection(v, 0.1; combine_pairs=false)
+        S = critical_point_detection(v, 0.1; merge_heuristics=[])
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
@@ -31,21 +29,21 @@ const CS = CoherentStructures
 end
 
 q = 3
-tspan = range(0., stop=1., length=q)
+const tspan = range(0., stop=1., length=q)
 ny = 52
 nx = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, 1.e-6)
-T = @inferred map(mCG_tensor, P)
+T = map(mCG_tensor, P)
 
 @testset "combine singularities" begin
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
-    @inferred CoherentStructures.combine_isolated_wedges(new_singularities)
+    @inferred CoherentStructures.combine_20(new_singularities)
     r₁ , r₂ = 2rand(2)
     @test sum(getindices(combine_singularities(singularities, r₁))) ==
         sum(getindices(combine_singularities(singularities, r₂))) ==
@@ -84,9 +82,14 @@ end
     for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false)
         xspan = range(-1, stop=1, length=nx)
         yspan = range(-1, stop=1, length=ny)
-        P = AA.AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+        P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
-        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), combine, 60, 0.5, 1.5, 1e-4)
+        if combine
+            merge_heuristics=[combine_20]
+        else
+            merge_heuristics=Any[]
+        end
+        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), merge_heuristics, 60, 0.5, 1.5, 1e-4)
 
         vortices, singularities = constrainedLCS(q, p; outermost=true, verbose=false,debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
