@@ -336,14 +336,12 @@ function spdist(data::AbstractVector{<:SVector}, sp_method::Union{KNN,MutualKNN}
 	Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
 	Ds = vcat(dists...)
 	D = sparse(Is, Js, Ds, N, N)
-	Dvals = nonzeros(D)
-	Dtvals = nonzeros(permutedims(D))
-    if sp_method isa KNN
-        Dvals .= max.(Dvals, Dtvals)
+    SparseArrays.dropzeros!(D)
+	if sp_method isa KNN
+        return max.(D, permutedims(D))
     else # sp_method isa MutualKNN
-        Dvals .= min.(Dvals, Dtvals)
+        return min.(D, permutedims(D))
     end
-	return D
 end
 function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Neighborhood, metric::STmetric)
 	N = length(data) # number of trajectories
@@ -391,14 +389,12 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Un
         Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
     end
 	D = sparse(Is, Js, Ds, N, N)
-	Dvals = D.nzval
-	Dtvals = permutedims(D).nzval
-    if sp_method isa KNN
-        Dvals .= max.(Dvals, Dtvals)
+    SparseArrays.dropzeros!(D)
+	if sp_method isa KNN
+        return max.(D, permutedims(D))
     else # sp_method isa MutualKNN
-        Dvals .= min.(Dvals, Dtvals)
+        return min.(D, permutedims(D))
     end
-	return SparseArrays.dropzeros!(D)
 end
 
 ########### parallel pairwise computation #################
