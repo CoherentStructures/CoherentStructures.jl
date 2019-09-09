@@ -17,14 +17,13 @@ end
 
 using Plots
 gr(aspect_ratio=1, legend=:none)
-fig = scatter([x[1] for x in X], [x[2] for x in X], markersize=1)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/standard_map_orbits.png" alt/></p><p>Approximating the Dynamic Laplacian by FEM methods is straightforward:</p><pre><code class="language-julia">using Arpack, CoherentStructures, Tensors
+fig = scatter([x[1] for x in X], [x[2] for x in X], markersize=1)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/standard_map_orbits.png" alt/></p><p>Approximating the Dynamic Laplacian by FEM methods is straightforward:</p><pre><code class="language-julia">using Arpack, CoherentStructures, Distances, Tensors
 
 Df(a,x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
 
-n, ll, ur = 100, [0.0,0.0], [2π,2π]               # grid size, domain corners
-ctx, _ = regularTriangularGrid((n,n), ll, ur)
-pred(x,y) = peuclidean(x[1], y[1], 2π) &lt; 1e-9 &amp;&amp;
-            peuclidean(x[2], y[2], 2π) &lt; 1e-9
+n, ll, ur = 100, [0.0, 0.0], [2π, 2π]               # grid size, domain corners
+ctx, _ = regularTriangularGrid((n, n), ll, ur)
+pred(x,y) = peuclidean(x, y, ur) &lt; 1e-9
 bd = boundaryData(ctx, pred)                      # periodic boundary
 
 I = one(Tensor{2,2})                              # identity matrix
@@ -36,7 +35,7 @@ M = assembleMassMatrix(ctx, bdata=bd)
 λ, v = eigs(K, M, which=:SM)
 
 using Printf
-title = [ @sprintf(&quot;\\lambda = %.3f&quot;,λ[i]) for i = 1:4 ]
+title = [ @sprintf(&quot;\\lambda = %.3f&quot;, λ[i]) for i = 1:4 ]
 p = [ plot_u(ctx, v[:,i], bdata=bd, title=title[i],
-             clim=(-0.25,0.25), cb=false) for i in 1:4 ]
-fig = plot(p...)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/standard_map_result.png" alt/></p><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../rot_double_gyre/"><span class="direction">Previous</span><span class="title">Rotating double gyre</span></a><a class="next" href="../bickley/"><span class="direction">Next</span><span class="title">Bickley jet</span></a></footer></article></body></html>
+             clim=(-0.25, 0.25), cb=false) for i in 1:4 ]
+fig = plot(p...)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ standard_map_result.png" alt/></p><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><footer><hr/><a class="previous" href="../rot_double_gyre/"><span class="direction">Previous</span><span class="title">Rotating double gyre</span></a><a class="next" href="../bickley/"><span class="direction">Next</span><span class="title">Bickley jet</span></a></footer></article></body></html>

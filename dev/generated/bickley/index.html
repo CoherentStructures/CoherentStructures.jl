@@ -48,7 +48,8 @@ scatter!([s.coords.data for s in singularities], color=:red, label=&quot;singula
 scatter!([vortex.center.data for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
 for vortex in vortices, barrier in vortex.barriers
     plot!(barrier.curve, w=2, label=&quot;T = $(round(barrier.p, digits=2))&quot;)
-end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ bickley_geodesic_vortices.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">LL = [0.0, -3.0]; UR = [6.371π, 3.0]
+end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ bickley_geodesic_vortices.png" alt/></p><h2><a class="nav-anchor" id="FEM-based-Methods-1" href="#FEM-based-Methods-1">FEM-based Methods</a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">using Distances
+LL = [0.0, -3.0]; UR = [6.371π, 3.0]
 ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
 predicate = (p1,p2) -&gt; abs(p1[2] - p2[2]) &lt; 1e-10 &amp;&amp; peuclidean(p1[1], p2[1], 6.371π) &lt; 1e-10
 bdata = CoherentStructures.boundaryData(ctx, predicate, []);</code></pre><p>Using a FEM-based method to compute coherent structures:</p><pre><code class="language-julia">using Arpack

@@ -13,7 +13,7 @@ particles = vec(SVector{2}.(x, y'))
 trajectories = pmap(f, particles; batch_size=m)
 
 periods = [6.371π, Inf]
-metric = PEuclidean(periods)
+metric = PeriodicEuclidean(periods)
 
 n_coords = 6
 
