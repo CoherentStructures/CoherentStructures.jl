@@ -1,113 +1,8 @@
 # (c) 2018-19 Daniel Karrasch & Alvaro de Diego
 
-import Distances: evaluate, eval_reduce, eval_end
-import Distances: pairwise, pairwise!, colwise, colwise!
-
-###### should be deleted once Distances.jl with PeriodicEuclidean is tagged ####
-import Distances: result_type, evaluate, eval_start, eval_op
-import Distances: eval_reduce, eval_end, pairwise, pairwise!
-
-"""
-    PEuclidean(L)
-Create a Euclidean metric on a rectangular periodic domain.
-Periods per dimension are contained in the vector `L`.
-For dimensions without periodicity put `Inf` in the respective component.
-
-## Example
-```
-julia> using Distances
-
-julia> x, y, L = [0.0, 0.0], [0.7, 0.0], [0.5, Inf]
-([0.0, 0.0], [0.7, 0.0], [0.5, Inf])
-
-julia> evaluate(PEuclidean(L), x, y)
-0.19999999999999996
-```
-"""
-struct PEuclidean{W <: Union{Dists.RealAbstractArray,Real}} <: Dists.Metric
-    periods::W
-end
-
-# Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function Dists.evaluate(d::PEuclidean, a::Union{Array, Dists.ArraySlice}, b::Union{Array, Dists.ArraySlice})
-    @boundscheck if length(a) != length(b)
-        throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
-    end
-    @boundscheck if length(a) != length(d.periods)
-        throw(DimensionMismatch("arrays have length $(length(a)) but periods have length $(length(d.periods))."))
-    end
-    if length(a) == 0
-        return zero(result_type(d, a, b))
-    end
-    @inbounds begin
-        s = eval_start(d, a, b)
-        @simd for I in 1:length(a)
-            ai = a[I]
-            bi = b[I]
-            li = d.periods[I]
-            s = eval_reduce(d, s, eval_op(d, ai, bi, li))
-        end
-        return eval_end(d, s)
-    end
-end
-
-@inline function Dists.evaluate(d::PEuclidean, a::AbstractArray, b::AbstractArray)
-    @boundscheck if length(a) != length(b)
-        throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
-    end
-    @boundscheck if length(a) != length(d.periods)
-        throw(DimensionMismatch("arrays have length $(length(a)) but periods have length $(length(d.periods))."))
-    end
-    if length(a) == 0
-        return zero(result_type(d, a, b))
-    end
-    @inbounds begin
-        s = eval_start(d, a, b)
-        if size(a) == size(b)
-            @simd for I in eachindex(a, b, d.periods)
-                ai = a[I]
-                bi = b[I]
-                li = d.periods[I]
-                s = eval_reduce(d, s, eval_op(d, ai, bi, li))
-            end
-        else
-            for (Ia, Ib, Ip) in zip(eachindex(a), eachindex(b), eachindex(d.periods))
-                ai = a[Ia]
-                bi = b[Ib]
-                li = d.periods[Ip]
-                s = eval_reduce(d, s, eval_op(d, ai, bi, li))
-            end
-        end
-    end
-    return eval_end(d, s)
-end
-
-function Dists.evaluate(dist::PEuclidean, a::T, b::T) where {T <: Number}
-    # eval_end(dist, eval_op(dist, a, b, dist.periods[1]))
-    peuclidean(a, b, dist.periods[1])
-end
-# function result_type(dist::PEuclidean, ::AbstractArray{T1}, ::AbstractArray{T2}) where {T1, T2}
-#     typeof(evaluate(dist, one(T1), one(T2)))
-# end
-@inline function Dists.eval_start(d::PEuclidean, a::AbstractArray, b::AbstractArray)
-    zero(result_type(d, a, b))
-end
-@inline function Dists.eval_op(d::PEuclidean, ai, bi, p)
-    s1 = abs(ai - bi)
-    s2 = mod(s1, p)
-    s3 = min(s2, p - s2)
-    abs2(s3)
-end
-@inline Dists.eval_reduce(::PEuclidean, s1, s2) = s1 + s2
-@inline Dists.eval_end(::PEuclidean, s) = sqrt(s)
-
-peuclidean(a::AbstractArray, b::AbstractArray, p::AbstractArray) = evaluate(PEuclidean(p), a, b)
-peuclidean(a::AbstractArray, b::AbstractArray) = euclidean(a, b)
-peuclidean(a::Number, b::Number, p::Number) = begin d = mod(abs(a - b), p); d = min(d, p - d) end
-####### delete until here ####################
-
-########## spatiotemporal, time averaged metrics ##############
-
+##############
+# spatiotemporal, time averaged metrics
+##############
 """
     STmetric(metric, p)
 
@@ -125,8 +20,8 @@ The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
       * `p = -Inf`: minimum (does not yield a metric!)
 
 ## Example
-```
-julia> using Distances, StaticArrays; x = [@SVector rand(2) for _ in 1:10];
+```jldoctest; setup=(using Distances, StaticArrays)
+julia> x = [@SVector rand(2) for _ in 1:10];
 
 julia> STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
 STmetric{Euclidean,Int64}(Euclidean(0.0), 1)
@@ -154,7 +49,7 @@ STmetric(d::Dists.PreMetric=Dists.Euclidean()) = STmetric(d, 1)
         return zero(Float64)
     end
 	@inbounds begin
-		s = zero(result_type(d, a, b))
+		s = zero(Dists.result_type(d, a, b))
     	if IndexStyle(a, b) === IndexLinear()
 			@simd for I in 1:length(a)
                 ai = a[I]
@@ -181,7 +76,7 @@ STmetric(d::Dists.PreMetric=Dists.Euclidean()) = STmetric(d, 1)
 end
 
 function Dists.result_type(d::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector})
-	T = result_type(d.metric, zero(eltype(a)), zero(eltype(b)))
+	T = Dists.result_type(d.metric, zero(eltype(a)), zero(eltype(b)))
 	return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)) / 2))
 end
 
@@ -224,9 +119,9 @@ end
 
 stmetric(a::AbstractVector{<:SVector}, b::AbstractVector{<:SVector},
 			d::Dists.SemiMetric=Dists.Euclidean(), p::Real=1) =
-    evaluate(STmetric(d, p), a, b)
+    Dists.evaluate(STmetric(d, p), a, b)
 
-function pairwise!(r::AbstractMatrix, metric::STmetric,
+function Dists.pairwise!(r::AbstractMatrix, metric::STmetric,
                    a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:AbstractVector{<:SVector}};
                    dims::Union{Nothing,Integer}=nothing)
     la, lb = length.((a, b))
@@ -234,19 +129,19 @@ function pairwise!(r::AbstractMatrix, metric::STmetric,
 	@inbounds for j = 1:lb
         bj = b[j]
         for i = 1:la
-            r[i, j] = evaluate(metric, a[i], bj)
+            r[i, j] = Dists.evaluate(metric, a[i], bj)
         end
     end
     r
 end
-function pairwise!(r::AbstractMatrix, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
+function Dists.pairwise!(r::AbstractMatrix, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
                    dims::Union{Nothing,Integer}=nothing)
 	la = length(a)
     size(r) == (la, la) || throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((n, n)))."))
 	@inbounds for j = 1:la
         aj = a[j]
         for i = (j + 1):la
-            r[i, j] = evaluate(metric, a[i], aj)
+            r[i, j] = Dists.evaluate(metric, a[i], aj)
         end
         r[j, j] = 0
         for i = 1:(j - 1)
@@ -256,58 +151,58 @@ function pairwise!(r::AbstractMatrix, metric::STmetric, a::AbstractVector{<:Abst
     r
 end
 
-function pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:AbstractVector{<:SVector}};
+function Dists.pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:AbstractVector{<:SVector}};
                   dims::Union{Nothing,Integer}=nothing)
     la = length(a)
     lb = length(b)
 	(la == 0 || lb == 0) && return reshape(Float64[], 0, 0)
-    r = Matrix{result_type(metric, a[1], b[1])}(undef, la, lb)
-    pairwise!(r, metric, a, b)
+    r = Matrix{Dists.result_type(metric, a[1], b[1])}(undef, la, lb)
+    Dists.pairwise!(r, metric, a, b)
 end
-function pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
+function Dists.pairwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}};
                   dims::Union{Nothing,Integer}=nothing)
     la = length(a)
 	la == 0 && return reshape(Float64[], 0, 0)
-    r = Matrix{result_type(metric, a[1], a[1])}(undef, la, la)
-    pairwise!(r, metric, a)
+    r = Matrix{Dists.result_type(metric, a[1], a[1])}(undef, la, la)
+    Dists.pairwise!(r, metric, a)
 end
 
-function colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
+function Dists.colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
 	lb = length(b)
     length(r) == lb || throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
 	@inbounds for i = 1:lb
-        r[i] = evaluate(metric, a, b[i])
+        r[i] = Dists.evaluate(metric, a, b[i])
     end
     r
 end
-function colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
-	colwise!(r, metric, b, a)
+function Dists.colwise!(r::AbstractVector, metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
+	Dists.colwise!(r, metric, b, a)
 end
-function colwise!(r::AbstractVector, metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
+function Dists.colwise!(r::AbstractVector, metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
 	la = length(a)
 	lb = length(b)
 	la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
 	la == length(r) || throw(DimensionMismatch("incorrect size of r, got $(length(r)), but expected $la"))
 	@inbounds for i = 1:la
-        r[i] = evaluate(metric, a[i], b[i])
+        r[i] = Dists.evaluate(metric, a[i], b[i])
     end
     r
 end
 
-function colwise(metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
+function Dists.colwise(metric::STmetric, a::AbstractVector{<:SVector}, b::AbstractVector{<:AbstractVector{<:SVector}})
 	lb = length(b)
-	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), lb), metric, a, b)
+	Dists.colwise!(zeros(Dists.result_type(metric, a[1], b[1]), lb), metric, a, b)
 end
-function colwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
+function Dists.colwise(metric::STmetric, a::AbstractVector{<:AbstractVector{<:SVector}}, b::AbstractVector{<:SVector})
 	la = length(a)
-	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, b, a)
+	Dists.colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, b, a)
 end
-function colwise(metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
+function Dists.colwise(metric::STmetric, a::T, b::T) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
 	la = length(a)
 	lb = length(b)
     la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
 	la == 0 && return reshape(Float64[], 0, 0)
-	colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, a, b)
+	Dists.colwise!(zeros(Dists.result_type(metric, a[1], b[1]), la), metric, a, b)
 end
 
 ################## sparse pairwise distance computation ###################
@@ -376,14 +271,14 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Un
 	N, k = length(data), sp_method.k
     Is = SharedArray{Int}(N*(k+1))
     Js = SharedArray{Int}(N*(k+1))
-	T = typeof(evaluate(metric, data[1], data[1]))
+	T = typeof(Dists.evaluate(metric, data[1], data[1]))
     Ds = SharedArray{T}(N*(k+1))
-    # index = Vector{Int}(undef, k+1)
+    perm = Vector{Int}(undef, N)
 	ds = Vector{T}(undef, N)
     # Distributed.@everywhere index = Vector{Int}(undef, k+1)
     @inbounds @sync Distributed.@distributed for i=1:N
-		colwise!(ds, metric, data[i], data)
-        index = partialsortperm(ds, 1:(k+1))
+		Dists.colwise!(ds, metric, data[i], data)
+        index = partialsortperm!(perm, ds, 1:(k+1))
         Is[(i-1)*(k+1)+1:i*(k+1)] .= i
         Js[(i-1)*(k+1)+1:i*(k+1)] = index
         Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
@@ -446,14 +341,14 @@ end
 # function Dists.pairwise(metric::STmetric, a::AbstractMatrix, b::AbstractMatrix)
 #     m = size(a, 2)
 #     n = size(b, 2)
-#     r = SharedArray{result_type(metric, a, b)}(m, n)
-#     pairwise!(r, metric, a, b)
+#     r = SharedArray{Dists.result_type(metric, a, b)}(m, n)
+#     Dists.pairwise!(r, metric, a, b)
 # end
 #
 # function Dists.pairwise(metric::STmetric, a::AbstractMatrix)
 #     n = size(a, 2)
-#     r = SharedArray{result_type(metric, a, a)}(n, n)
-#     pairwise!(r, metric, a)
+#     r = SharedArray{Dists.result_type(metric, a, a)}(n, n)
+#     Dists.pairwise!(r, metric, a)
 # end
 
 @inline function tri_indices!(i::Int, j::Int, n::Int)

@@ -12,7 +12,7 @@ using Arpack
 
     ctx, bdata = randomDelaunayGrid(npoints; on_torus=true, LL=LL, UR=UR)
     #ctx, _ = regularP2TriangularGrid((50,50),LL,UR)
-    #bdata = boundaryData(ctx,PEuclidean([2π,2π]))
+    #bdata = boundaryData(ctx, PeriodicEuclidean([2π,2π]))
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     S = assembleStiffnessMatrix(ctx, bdata=bdata)

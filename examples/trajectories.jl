@@ -46,7 +46,7 @@ trajectories = pmap(f, particles; batch_size=m)
 # variable `metric` defines the (spatial) distance metric.
 
 periods = [6.371π, Inf]
-metric = PEuclidean(periods)
+metric = PeriodicEuclidean(periods)
 
 # We would like calculate 6 diffusion coordinates for each example.
 
