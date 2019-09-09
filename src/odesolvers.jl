@@ -1,8 +1,5 @@
 # (c) 2018-2019 Philipp Rohrmüller
 
-import DiffEqBase: initialize!
-import OrdinaryDiffEq: perform_step!, alg_cache, alg_order, OrdinaryDiffEqMutableCache
-
 ################################################################################
 ### LinearImplicitEuler:
 ################################################################################
@@ -14,7 +11,7 @@ end
 LinearImplicitEuler(;chunk_size=0,autodiff=false,linsolve=DEFAULT_LINSOLVE) = LinearImplicitEuler{chunk_size,autodiff,typeof(linsolve)}(linsolve)
 OrdinaryDiffEq.alg_order(alg::LinearImplicitEuler) = 1
 
-mutable struct LinearImplicitEulerCache{uType,rateType,J,F} <: OrdinaryDiffEqMutableCache  # removed: @cache
+mutable struct LinearImplicitEulerCache{uType,rateType,J,F} <: OrdinaryDiffEq.OrdinaryDiffEqMutableCache  # removed: @cache
     u::uType
     uprev::uType
     k::rateType
@@ -24,7 +21,7 @@ mutable struct LinearImplicitEulerCache{uType,rateType,J,F} <: OrdinaryDiffEqMut
 end
 
 function OrdinaryDiffEq.alg_cache(alg::LinearImplicitEuler,u,rate_prototype,uEltypeNoUnits,uBottomEltypeNoUnits,
-    tTypeNoUnits,uprev,uprev2,f,t,dt,reltol,p,calck,::Type{Val{true}})
+    tTypeNoUnits,uprev,uprev2,f,t,dt,reltol,p,calck,::Val{true})
 
     k = zero(rate_prototype)
     W = similar(f.f*1)
@@ -32,7 +29,7 @@ function OrdinaryDiffEq.alg_cache(alg::LinearImplicitEuler,u,rate_prototype,uElt
     LinearImplicitEulerCache(u,uprev,k,W,true,linsolve)
 end
 
-function OrdinaryDiffEq.initialize!(integrator, cache::LinearImplicitEulerCache)
+function DiffEqBase.initialize!(integrator, cache::LinearImplicitEulerCache)
     integrator.fsalfirst = zero(cache.k)
     integrator.f(integrator.fsalfirst, integrator.uprev, integrator.p, integrator.t)
     integrator.fsallast = zero(integrator.fsalfirst)
@@ -75,7 +72,7 @@ end
 LinearMEBDF2(;chunk_size=0,autodiff=false,linsolve=DEFAULT_LINSOLVE) = LinearMEBDF2{chunk_size,autodiff,typeof(linsolve)}(linsolve)
 OrdinaryDiffEq.alg_order(alg::LinearMEBDF2) = 2
 
-mutable struct LinearMEBDF2Cache{uType,rateType,J,F} <: OrdinaryDiffEqMutableCache #removed: @cache
+mutable struct LinearMEBDF2Cache{uType,rateType,J,F} <: OrdinaryDiffEq.OrdinaryDiffEqMutableCache #removed: @cache
     u::uType
     uprev::uType
     z₁::rateType
@@ -92,7 +89,7 @@ mutable struct LinearMEBDF2Cache{uType,rateType,J,F} <: OrdinaryDiffEqMutableCac
 end
 
 function OrdinaryDiffEq.alg_cache(alg::LinearMEBDF2,u,rate_prototype,uEltypeNoUnits,uBottomEltypeNoUnits,
-    tTypeNoUnits,uprev,uprev2,f,t,dt,reltol,p,calck,::Type{Val{true}})
+    tTypeNoUnits,uprev,uprev2,f,t,dt,reltol,p,calck,::Val{true})
 
     k = zero(rate_prototype)
     fsalfirst = zero(rate_prototype)

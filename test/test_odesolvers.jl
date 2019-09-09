@@ -55,7 +55,6 @@ using OrdinaryDiffEq, DiffEqOperators, DiffEqDevTools, SparseArrays, LinearAlgeb
 
         f = DiffEqArrayOperator(A; update_func=update_coeffs!)
         u0 = nodal_interpolation(ctx, circleFun)
-        tspan = (0.0, 1.0)
 
         prob = ODEProblem(ODEFunction(f; mass_matrix=M), u0, tspan)
 
