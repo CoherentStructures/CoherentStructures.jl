@@ -273,12 +273,12 @@ function spdist(data::AbstractVector{<:AbstractVector{<:SVector}}, sp_method::Un
     Js = SharedArray{Int}(N*(k+1))
 	T = typeof(Dists.evaluate(metric, data[1], data[1]))
     Ds = SharedArray{T}(N*(k+1))
-    perm = Vector{Int}(undef, N)
+    perm = collect(1:N)
 	ds = Vector{T}(undef, N)
     # Distributed.@everywhere index = Vector{Int}(undef, k+1)
     @inbounds @sync Distributed.@distributed for i=1:N
 		Dists.colwise!(ds, metric, data[i], data)
-        index = partialsortperm!(perm, ds, 1:(k+1))
+        index = partialsortperm!(perm, ds, 1:(k+1), initialized=true)
         Is[(i-1)*(k+1)+1:i*(k+1)] .= i
         Js[(i-1)*(k+1)+1:i*(k+1)] = index
         Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
