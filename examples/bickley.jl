@@ -108,7 +108,7 @@ M = assembleMassMatrix(ctx, bdata=bdata)
 λ, v = eigs(K, M, which=:SM, nev= 10)
 
 import Plots
-fig_spectrum = plot_real_spectrum(λ);
+fig_spectrum = plot_real_spectrum(λ)
 
 DISPLAY_PLOT(fig_spectrum, bickley_fem_spectrum)
 
