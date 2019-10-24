@@ -91,6 +91,7 @@ DISPLAY_PLOT(fig, bickley_geodesic_vortices)
 # Assume we have setup the `bickley` function using the `@velo_from_stream` macro
 # as described above. We are working on a periodic domain in one direction:
 
+using Distances
 LL = [0.0, -3.0]; UR = [6.371π, 3.0]
 ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
 predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 6.371π) < 1e-10
@@ -107,7 +108,7 @@ M = assembleMassMatrix(ctx, bdata=bdata)
 λ, v = eigs(K, M, which=:SM, nev= 10)
 
 import Plots
-fig_spectrum = plot_real_spectrum(λ);
+fig_spectrum = plot_real_spectrum(λ)
 
 DISPLAY_PLOT(fig_spectrum, bickley_fem_spectrum)
 

@@ -148,7 +148,7 @@ function sparse_diff_op(data::Union{T, AbstractVector{T}},
         if kernel != Base.one # otherwise no need to change entries
             rows = SparseArrays.rowvals(P)
             vals = SparseArrays.nonzeros(P)
-            for i = 1:N
+            for i in 1:N
                for j in SparseArrays.nzrange(P, i)
                   vals[j] = kernel(Dists.evaluate(metric, data[rows[j]], data[i]))
                end
@@ -176,7 +176,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
         return A
     end
     n = LinearAlgebra.checksquare(A)
-    qₑ = A * ones(eltype(A), size(A, 2))
+    qₑ = sum(A, dims=1)
     if α == 1
         qₑ .= inv.(qₑ)
     elseif α == 1/2
@@ -214,11 +214,20 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function row_normalize!(A::AbstractMatrix)
-    # this should be once Julia PR #30208 is backported:
-    # ldiv!(Diagonal(A * ones(eltype(A), size(A, 2))), A)
-    dᵅ = Diagonal(inv.(A * ones(eltype(A), size(A, 2))))
-    lmul!(dᵅ, A)
+@inline function row_normalize!(A::SparseMatrixCSC{<:Real})
+    d = sum(A, dims=1)
+    # the following could be replaced by
+    # ldiv!(Diagonal(vec(sum(A, dims=1))), A)
+    # once Julia PR #30208 is backported, or we support Julia ≧v1.2
+    nonz = nonzeros(A)
+    Arowval = rowvals(A)
+    @inbounds for col in 1:A.n, p in nzrange(A, col)
+        nonz[p] = d[Arowval[p]] \ nonz[p]
+    end
+    return A
+end
+@inline function row_normalize!(A::AbstractMatrix{<:Real})
+    ldiv!(Diagonal(A * ones(eltype(A), size(A, 2))), A)
     return A
 end
 

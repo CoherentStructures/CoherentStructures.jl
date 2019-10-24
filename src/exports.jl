@@ -45,8 +45,6 @@ export
 	diffusion_distance,
 
 	#dynamicmetrics
-	PEuclidean,
-	peuclidean,
 	STmetric,
 	stmetric,
 	spdist,

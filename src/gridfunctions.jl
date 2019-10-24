@@ -376,9 +376,9 @@ function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
     ctx = gridContext{2}(JFM.Triangle, nodes_in;
             on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR, ip=ip, kwargs...)
     if on_torus
-        bdata = boundaryData(ctx, PEuclidean(UR .- LL))
+        bdata = boundaryData(ctx, Dists.PeriodicEuclidean(UR .- LL))
     elseif on_cylinder
-        bdata = boundaryData(ctx, PEuclidean([UR[1] - LL[1], Inf]))
+        bdata = boundaryData(ctx, Dists.PeriodicEuclidean([UR[1] - LL[1], Inf]))
     else
         bdata = boundaryData()
     end
@@ -459,7 +459,7 @@ function regularDelaunayGrid(
         result.gridType = "regular PC Delaunay grid"
     end
     if !PC
-        bdata = boundaryData(result,PEuclidean(UR .- LL))
+        bdata = boundaryData(result, Dists.PeriodicEuclidean(UR .- LL))
     else
         bdata = boundaryData()
     end

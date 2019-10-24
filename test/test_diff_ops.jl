@@ -9,7 +9,7 @@ m = 50
 n = 31
 N = m*n
 p0 = vec(SVector{2}.(range(xmin, stop=xmax, length=m), range(ymin, stop=ymax, length=n)'))
-metric = PEuclidean([xmax, Inf])
+metric = PeriodicEuclidean([xmax, Inf])
 dist = STmetric(metric, 1)
 f = u -> flow(bickleyJet, u, tspan)
 

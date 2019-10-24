@@ -29,7 +29,7 @@ const CS = CoherentStructures
 end
 
 q = 3
-const tspan = range(0., stop=1., length=q)
+tspan = range(0., stop=1., length=q)
 ny = 52
 nx = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0

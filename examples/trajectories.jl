@@ -46,7 +46,7 @@ trajectories = pmap(f, particles; batch_size=m)
 # variable `metric` defines the (spatial) distance metric.
 
 periods = [6.371π, Inf]
-metric = PEuclidean(periods)
+metric = PeriodicEuclidean(periods)
 
 # We would like calculate 6 diffusion coordinates for each example.
 
@@ -72,9 +72,9 @@ field = permutedims(reshape(Ψ[:, 3], m, n))
 fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 DISPLAY_PLOT(fig, ha16ev3)
 
-# For time-averaged metrics, the KNN-type sparsification currently works much
-# faster than the ε-neighborhood sparsification. Compare the runtime of the
-# above code to the following.
+# Another sparsification option is k-nearest neighbors. The following is a
+# demonstration for 400 nearest, non-mutual neighbors. For the mutual nearest neighbors
+# sparsification, choose `MutualKNN()`.
 
 P = sparse_diff_op(trajectories, KNN(400), kernel; metric=STmetric(metric, Inf))
 λ, Ψ = diffusion_coordinates(P, n_coords)

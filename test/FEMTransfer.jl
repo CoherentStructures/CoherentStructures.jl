@@ -49,7 +49,7 @@ for resolution in gridResolutions
         else
             ctx = regularP2TriangularGrid(resolution, [0.0,0.0],[1.,1.],quadrature_order=5)
         end
-        pred  = (x,y) -> (peuclidean(x,y,[1,1]) < 1e-9)
+        pred  = (x,y) -> peuclidean(x, y, [1, 1]) < 1e-9
         bdata = boundaryData(ctx,pred) #Periodic boundary
         ALPHApreBC = L2GalerkinTOFromInverse(ctx,sminv,ϵ,periodic_directions=(true,true) ,n_stencil_points=n_stencil_points )
         gc()
