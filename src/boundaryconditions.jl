@@ -209,7 +209,8 @@ end
 
 Apply the boundary conditions from `bdata_row` and `bdata_col` to the sparse matrix `K`.
 Only applies boundary conditions accross columns (rows) if `bdata_row==nothing` (`bdata_col==nothing`)
-If `add_vals==true`, then
+If `add_vals==true` (the default), then values in rows that should be cominbed are added.
+Otherwise on of the rows is discarded and the values of the other are used.
 """
 function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
         ctx_col::gridContext{dim}=ctx_row, bdata_col=bdata_row,
