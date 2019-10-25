@@ -44,7 +44,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
     OrdinaryDiffEq.@unpack k = cache
     alg = OrdinaryDiffEq.unwrap_alg(integrator, true)
 
-    if DiffEqOperators.is_constant(f.f)
+    if DiffEqOperators.isconstant(f.f)
         if cache.step
             cache.W = f.mass_matrix - dt*f.f
             cache.linsolve(vec(u), cache.W, vec(f.mass_matrix*k), true)
@@ -119,7 +119,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
     OrdinaryDiffEq.@unpack k,z₁,z₂,tmp = cache
     alg = OrdinaryDiffEq.unwrap_alg(integrator, true)
 
-    if DiffEqOperators.is_constant(f.f)
+    if DiffEqOperators.isconstant(f.f)
         if cache.step
             cache.W = f.mass_matrix - dt*f.f
             z₁ = f.mass_matrix*uprev
