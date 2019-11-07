@@ -955,9 +955,9 @@ function evaluate_function_from_node_or_cellvalsFDiff(
 end
 
 """
-    evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=NaN,project_in=fals)
+    evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=NaN,project_in=false)
 
-Evaluate the function at point x_in with coefficients of dofs given by `dofvals` (in dof-order).
+Evaluate the function at point `x_in` with coefficients of dofs given by `dofvals` (in dof-order).
 Return `outside_value` if point is out of bounds.
 Project the point into the domain if `project_in==true`.
 For evaluation at many points, or for many dofvals, the function `evaluate_function_from_dofvals_multiple`
