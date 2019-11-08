@@ -44,7 +44,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
     OrdinaryDiffEq.@unpack k = cache
     alg = OrdinaryDiffEq.unwrap_alg(integrator, true)
 
-    if DiffEqOperators.is_constant(f.f)
+    if DiffEqBase.isconstant(f.f)
         if cache.step
             cache.W = f.mass_matrix - dt*f.f
             cache.linsolve(vec(u), cache.W, vec(f.mass_matrix*k), true)
@@ -53,7 +53,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
         cache.linsolve(vec(u), cache.W, vec(f.mass_matrix*uprev), false)
     else
         L = f.f
-        DiffEqOperators.update_coefficients!(L,u,p,t+dt)
+        DiffEqBase.update_coefficients!(L,u,p,t+dt)
         cache.W = f.mass_matrix - dt*L
         cache.linsolve(vec(u), cache.W, vec(f.mass_matrix*uprev), true)
     end
@@ -119,7 +119,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
     OrdinaryDiffEq.@unpack k,z₁,z₂,tmp = cache
     alg = OrdinaryDiffEq.unwrap_alg(integrator, true)
 
-    if DiffEqOperators.is_constant(f.f)
+    if DiffEqBase.isconstant(f.f)
         if cache.step
             cache.W = f.mass_matrix - dt*f.f
             z₁ = f.mass_matrix*uprev
@@ -133,7 +133,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
             ##### STEP 2:
             cache.linsolve(vec(z₂), cache.W, vec(z₁), false)
             ### precalculation for STEP 3:
-            OrdinaryDiffEq.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
+            DiffEqBase.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
             z₁ .= tmp
             ### M ≠ I:
         else
@@ -144,7 +144,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
             mul!(tmp,f.mass_matrix,z₁)
             cache.linsolve(vec(z₂), cache.W, vec(tmp), false)
             # precalculation for STEP 3:
-            OrdinaryDiffEq.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
+            DiffEqBase.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
             mul!(z₁,f.mass_matrix,tmp)
         end
         ##### STEP 3:
@@ -154,7 +154,7 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
     else  # time-dependent case
         L = f.f
         if cache.step
-            DiffEqOperators.update_coefficients!(L,u,p,t+dt)
+            DiffEqBase.update_coefficients!(L,u,p,t+dt)
             cache.W = f.mass_matrix - dt*L
             cache.step = false
         end
@@ -163,23 +163,23 @@ OrdinaryDiffEq.@muladd function OrdinaryDiffEq.perform_step!(integrator, cache::
             ##### STEP 1:
             cache.linsolve(vec(z₁), cache.W, vec(uprev), true)
             ##### STEP 2:
-            DiffEqOperators.update_coefficients!(L,u,p,t+2dt)
+            DiffEqBase.update_coefficients!(L,u,p,t+2dt)
             cache.W₂ = f.mass_matrix - dt*L
             cache.linsolve2(vec(z₂), cache.W₂, vec(z₁), true)
             # precalculation for STEP 3:
-            OrdinaryDiffEq.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
+            DiffEqBase.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
             z₁ .= tmp
         else ### M ≠ I
             ##### STEP 1:
             mul!(tmp,f.mass_matrix,uprev)
             cache.linsolve(vec(z₁), cache.W, vec(tmp), true)
             ##### STEP 2:
-            DiffEqOperators.update_coefficients!(L,u,p,t+2dt)
+            DiffEqBase.update_coefficients!(L,u,p,t+2dt)
             cache.W₂ = f.mass_matrix - dt*L
             mul!(tmp,f.mass_matrix,z₁)
             cache.linsolve2(vec(z₂), cache.W₂, vec(tmp), true)
             # precalculation for STEP 3:
-            OrdinaryDiffEq.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
+            DiffEqBase.@.. tmp = -0.5z₂ + z₁ + 0.5uprev
             mul!(z₁,f.mass_matrix,tmp)
         end
         ##### STEP 3:
