@@ -1,6 +1,8 @@
 #(c) 2017 Nathanael Schilling & Daniel Karrasch
 #Various utility functions
 
+const PEuclidean = Distances.PeriodicEuclidean
+
 @enum BisectionStatus::Int zero_found=0 maxiters_exceeded=1 nans_between=2 no_real_root=3
 
 # bisection is used in closed orbit detection in ellipticLCS.jl

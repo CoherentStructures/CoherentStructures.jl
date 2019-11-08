@@ -7,9 +7,17 @@
     mutable struct boundaryData
 
 Represent (a combination of) homogeneous Dirichlet and periodic boundary conditions.
-Fields:
- - `dbc_dofs` list of dofs that should have homogeneous Dirichlet boundary conditions. Must be sorted.
- - `periodic_dofs_from` and `periodic_dofs_to` are both `Vector{Int}`. The former *must* be strictly increasing, both must be the same length. `periodic_dofs_from[i]` is identified with `periodic_dofs_to[i]`. `periodic_dofs_from[i]` must be strictly larger than `periodic_dofs_to[i]`. Multiple dofs can be identified with the same dof. If some dof is identified with another dof and one of them is in `dbc_dofs`, both points *must* be in `dbc_dofs`
+
+## Fields
+   * `dbc_dofs`: list of dofs that should have homogeneous Dirichlet boundary
+   conditions. Must be sorted.
+   * `periodic_dofs_from` and `periodic_dofs_to` are both `Vector{Int}`. The
+   former *must* be strictly increasing, both must have the same length.
+   `periodic_dofs_from[i]` is identified with `periodic_dofs_to[i]`.
+   `periodic_dofs_from[i]` must be strictly larger than `periodic_dofs_to[i]`.
+   Multiple dofs can be identified with the same dof. If some dof is identified
+   with another dof and one of them is in `dbc_dofs`, both points *must* be in
+   `dbc_dofs`.
 """
 mutable struct boundaryData
     dbc_dofs::Vector{Int}
@@ -82,8 +90,8 @@ end
 """
     undoBCS(ctx, u, bdata)
 
-Given a vector `u` in dof order with boundary conditions applied, return the corresponding
-`u` in dof order without the boundary conditions.
+Given a vector `u` in dof order with boundary conditions applied, return the
+corresponding `u` in dof order without the boundary conditions.
 """
 function undoBCS(ctx, u, bdata)
         n = ctx.n
@@ -106,7 +114,7 @@ end
 """
     getDofCoordinates(ctx,dofindex)
 
-Return the coordinates of the node corresponding to the dof with index `dofindex`
+Return the coordinates of the node corresponding to the dof with index `dofindex`.
 """
 function getDofCoordinates(ctx::gridContext{dim}, dofindex::Int) where dim
     return ctx.grid.nodes[ctx.dof_to_node[dofindex]].x
@@ -115,8 +123,9 @@ end
 """
     BCTable(ctx,bdata)
 
-Return a vector `res` so that `res[i] = j` means that dof `i` should be identified with bcdof `j` if
-`j` != 0 and if `j = 0` that dof `i` is part of zero Dirichlet boundary conditions.
+Return a vector `res` so that `res[i] = j` means that dof `i` should be identified
+with bcdof `j` if `j != 0`. If `j = 0` dof `i` is part of a homogeneous Dirichlet
+boundary condition.
 """
 function BCTable(ctx::gridContext{dim},bdata::boundaryData) where dim
     dbcs_prescribed_dofs = bdata.dbc_dofs
@@ -175,7 +184,8 @@ end
 """
     nBCDofs(ctx, bdata)
 
-Get the number of dofs that are left after the boundary conditions in `bdata` have been applied.
+Get the number of dofs that are left after the boundary conditions in `bdata`
+have been applied.
 """
 function nBCDofs(ctx::gridContext{dim}, bdata::boundaryData) where dim
     return length(unique(BCTable(ctx, bdata)))
@@ -184,8 +194,8 @@ end
 """
     doBCS(ctx, u, bdata)
 
-Take a vector `u` in dof order and throw away uneccessary dofs.
-This is a left-inverse to undoBCS
+Take a vector `u` in dof order and throw away unneccessary dofs.
+This is a left-inverse to undoBCS.
 """
 function doBCS(ctx, u::AbstractVector{T}, bdata) where T
     @assert length(u) == ctx.n
@@ -207,14 +217,15 @@ end
 """
     applyBCS(ctx_row, K, bdata_row; [ctx_col, bdata_col, bdata_row, add_vals=true])
 
-Apply the boundary conditions from `bdata_row` and `bdata_col` to the sparse matrix `K`.
-Only applies boundary conditions accross columns (rows) if `bdata_row==nothing` (`bdata_col==nothing`)
-If `add_vals==true`, then
+Apply the boundary conditions from `bdata_row` and `bdata_col` to the sparse
+matrix `K`. Only applies boundary conditions accross columns (rows) if
+`bdata_row==nothing` (`bdata_col==nothing`). If `add_vals==true` (the default),
+then values in rows that should be cominbed are added. Otherwise, one of the rows
+is discarded and the values of the other are used.
 """
 function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
-        ctx_col::gridContext{dim}=ctx_row, bdata_col=bdata_row,
-        add_vals = true
-        ) where dim
+                    ctx_col::gridContext{dim}=ctx_row, bdata_col=bdata_row,
+                    add_vals=true) where {dim}
 
     n, m = size(K)
 
