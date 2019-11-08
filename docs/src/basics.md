@@ -92,8 +92,8 @@ of each dimension, `Inf` for non-periodic dimensions.
 ```@docs
 Distances.Euclidean
 Distances.Haversine
+Distances.PeriodicEuclidean
 ```
-<!-- to be included once tagged: Distances.PeriodicEuclidean -->
 In `CoherentStructures.jl`, there is one more metric type implemented:
 ```@docs
 STmetric

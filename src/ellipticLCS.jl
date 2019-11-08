@@ -184,6 +184,7 @@ julia> s1dist(π/2, 0)
 
 julia> s1dist(0, π/2)
 -1.5707963267948966
+```
 """
 @inline s1dist(x::Real, y::Real) = rem2pi(float(x - y), RoundNearest)
 
@@ -197,6 +198,7 @@ from angle `β` to angle `α [± π]`, as computed on the half circle.
 ```jldoctest
 julia> p1dist(π, 0)
 0.0
+```
 """
 @inline p1dist(x::Real, y::Real) = rem(float(x - y), float(π), RoundNearest)
 
@@ -488,7 +490,8 @@ Critical points with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices. The
 argument `dist` is a signed distance function for angles: choose [`s1dist`](@ref)
 for vector fields, and [`p1dist`](@ref) for line fields; cf. [`compute_singularities`](@ref).
-Heuristics listed in `merge_heuristics` cf. [`LCSParams`](@ref) are applied to combine singularities.
+Heuristics listed as functions in `merge_heuristics`, cf. [`LCSParameters`](@ref),
+are applied to combine singularities.
 
 Returns a vector of [`Singularity`](@ref)s.
 """
@@ -512,8 +515,8 @@ Calculates line-field singularities of the first eigenvector of `T` by taking
 a discrete differential-geometric approach. Singularities are calculated on each
 cell. Singularities with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices.
-The heuristics listed in `merge_heuristics` are used to merge singularities, cf. [`LCSParams`](@ref).
-
+The heuristics listed in `merge_heuristics` are used to merge singularities,
+cf. [`LCSParameters`](@ref).
 
 Returns a vector of [`Singularity`](@ref)s.
 """
@@ -679,14 +682,14 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
     	    if retcode == 0
-		closed = norm(orbit[1] - orbit[end]) <= rdist
+                closed = norm(orbit[1] - orbit[end]) <= rdist
                 if cache isa LCScache
-                    in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache) 
-		    uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache) 
+                    in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache)
+                    uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache)
                 else
-		    predicate = qs -> nitp(qs[1], qs[2]) >= λ⁰^2
+                    predicate = qs -> nitp(qs[1], qs[2]) >= λ⁰^2
                     in_well_defined_squares = true
-		    uniform = !only_uniform || all(predicate, orbit) 
+	                uniform = !only_uniform || all(predicate, orbit)
                 end
 
                 contains_singularity = !only_enclosing || contains_point(orbit,ps[1])
@@ -797,18 +800,18 @@ end
 
 # vector field constructor function
 @inline function ηfield(λ::Float64, σ::Bool, c::LCScache)
-    	@. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
-    	@. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
-    	@. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
+    @. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
+    @. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
+    @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
 
-        itp = ITP.LinearInterpolation(c.η)
+    itp = ITP.LinearInterpolation(c.η)
 
-    	function unit_length_itp(u,p,t)
-    	    result = itp(u[1],u[2])
-            normresult = sqrt(result[1]^2 + result[2]^2)
-    	    return normresult == 0 ? result :  result / normresult
-    	end
-    	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
+    function unit_length_itp(u,p,t)
+	    result = itp(u[1],u[2])
+        normresult = sqrt(result[1]^2 + result[2]^2)
+	    return normresult == 0 ? result :  result / normresult
+	end
+	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
@@ -1245,7 +1248,7 @@ function contains_point(xs, point_to_check)
 end
 
 """
-    materialbarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false]
+    materialbarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false])
 
 Calculates material barriers to diffusive and stochastic transport.
 """
