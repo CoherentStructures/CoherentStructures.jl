@@ -18,7 +18,7 @@ for the flow at time $t$ (in volume-preserving flows).
 The resulting operator is both symmetric and uniformly elliptic. Eigenfunctions
 of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 
-See the [Examples](@ref) section for examples of how these methods can be used.
+See the [Examples](@ref examples_section) section for examples of how these methods can be used.
 
 ## Features
 ### CG and TO methods

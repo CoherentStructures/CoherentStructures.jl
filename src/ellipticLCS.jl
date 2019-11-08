@@ -356,7 +356,6 @@ is in the triangle spanned by the wedges. This configuration
 is common for OECS, applying to material barriers on a large
 turbulet example yielded only about an additional 1% material barriers.
 """
-
 function combine_31(singularities::Vector{Singularity{T}}) where {T}
     N = length(singularities)
     N <= 2 && return singularities
