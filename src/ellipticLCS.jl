@@ -681,12 +681,12 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     	    if retcode == 0
 		closed = norm(orbit[1] - orbit[end]) <= rdist
                 if cache isa LCScache
-                    in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache) 
-		    uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache) 
+                    in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache)
+		    uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache)
                 else
 		    predicate = qs -> nitp(qs[1], qs[2]) >= λ⁰^2
                     in_well_defined_squares = true
-		    uniform = !only_uniform || all(predicate, orbit) 
+		    uniform = !only_uniform || all(predicate, orbit)
                 end
 
                 contains_singularity = !only_enclosing || contains_point(orbit,ps[1])
@@ -730,9 +730,10 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         verbose::Bool=true,
                         unique_vortices=true,
                         singularity_predicate=nothing,
+                        suggested_centers = [],
                         kwargs...) where S <: Real
     # detect centers of elliptic (in the index sense) regions
-    singularities = singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics)
+    singularities = append!(suggested_centers,singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics))
     if singularity_predicate !== nothing
         singularities = filter(singularity_predicate,singularities)
     end
@@ -759,10 +760,10 @@ function debugAt(
     l2itp = ITP.LinearInterpolation(cache.λ₂)
     result = []
     for σ ∈ [true,false]
-        for λ ∈ range(p.pmin,stop=p.pmax,length=10)
+        for λ ∈ range(p.pmin,stop=p.pmax,length=50)
             sol, retcode = compute_returning_orbit(
                 ηfield(λ, σ, cache),
-                startwhere, true, p.maxiters_ode,p.tolerance_ode,
+                (@SVector Float64[startwhere[1],startwhere[2]]), true, p.maxiters_ode,p.tolerance_ode,
                 p.max_orbit_length
             )
             push!(result,sol)
@@ -779,7 +780,7 @@ function debugAt(
     for σ ∈ [true,false]
         lamrange = range(p.pmin,stop=p.pmax,length=30)
         push!(result2,
-            (lamrange, map(x->prd(x,σ,startwhere,cache), lamrange))
+            (lamrange, map(x->prd(x,σ,(@SVector Float64[startwhere[1],startwhere[2]]),cache), lamrange))
             )
     end
 
@@ -789,8 +790,8 @@ function debugAt(
     margin_step = (pmax_local - pmin_local)/20
 
     result3 = (
-        bisection(λ -> prd(λ, true, startwhere, cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step ),
-        bisection(λ -> prd(λ, false, startwhere, cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step )
+        bisection(λ -> prd(λ, true, (@SVector Float64[startwhere[1],startwhere[2]]), cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step ),
+        bisection(λ -> prd(λ, false, (@SVector Float64[startwhere[1],startwhere[2]]), cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step )
         )
     return result,result2,result3
 end
@@ -1245,11 +1246,8 @@ function contains_point(xs, point_to_check)
 end
 
 """
-    materialbarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false]
-
-Calculates material barriers to diffusive and stochastic transport.
 """
-function materialbarriers(odefun,xspan,yspan, tspan,lcsp;
+function materialbarriersTensors(odefun,xspan,yspan, tspan,lcsp;
         δ=1e-6,tolerance=1e-6, p=nothing,on_torus=false,kwargs...
         )
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
@@ -1257,7 +1255,6 @@ function materialbarriers(odefun,xspan,yspan, tspan,lcsp;
             p=p, tolerance=tolerance),P0; batch_size=div(length(xspan)*length(yspan),Distributed.nprocs()))
     if !on_torus
         T = T0
-        predicate = x->true
     else
         xmin = xspan[1]
         xmax = xspan[end] + step(xspan)
@@ -1271,6 +1268,29 @@ function materialbarriers(odefun,xspan,yspan, tspan,lcsp;
         yrange = range(ymin - ydiff, stop = ymax + ydiff, length=3*ny+1)[1:end-1]
         T3 =  hcat(T0,T0,T0)
         T = AxisArray(vcat(T3,T3,T3),xrange,yrange)
+        predicate = x-> (xmin <=  x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
+    end
+    return T,T0
+end
+
+"""
+    materialbarriers(odefun,xspan,yspan, tspan,lcsp; [on_torus=false]
+
+Calculates material barriers to diffusive and stochastic transport.
+"""
+function materialbarriers(odefun,xspan,yspan, tspan,lcsp;
+        δ=1e-6,tolerance=1e-6, p=nothing,on_torus=false,kwargs...
+        )
+    T,T0 = materialbarriersTensors(odefun,xspan,yspan,tspan,lcsp;
+        δ=δ, tolerance=tolerance, p=p,on_torus=on_torus,kwargs...
+        )
+    if !on_torus
+        predicate = x->true
+    else
+        xmin = xspan[1]
+        xmax = xspan[end] + step(xspan)
+        ymin =  yspan[1]
+        ymax = yspan[end] + step(yspan)
         predicate = x-> (xmin <=  x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
     end
     vortices, singularities = ellipticLCS(T, lcsp; singularity_predicate=predicate, kwargs...)
