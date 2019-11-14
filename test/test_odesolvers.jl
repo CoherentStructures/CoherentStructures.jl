@@ -1,5 +1,5 @@
 using CoherentStructures, Test
-using OrdinaryDiffEq, DiffEqOperators, DiffEqDevTools, SparseArrays, LinearAlgebra
+using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
 @testset "odesolvers" begin
     dts = 0.5 .^(12:-1:7)

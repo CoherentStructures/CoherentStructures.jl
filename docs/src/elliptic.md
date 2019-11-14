@@ -93,11 +93,17 @@ This is performed by [`singularity_detection`](@ref) for line fields
 singularity_detection
 critical_point_detection
 ```
-This function takes three steps.
+This function takes three steps. The first two are:
 ```@docs
 compute_singularities
 combine_singularities
-combine_isolated_wedges
+```
+The third step is a postprocessing step, in which detected singularities are
+merged according to different heuristics.
+```@docs
+combine_20
+combine_20_aggressive
+combine_31
 ```
 The function [`compute_singularities`](@ref) requires one of two signed distance
 functions for angles. These are [`s1dist`](@ref) for vector fields, and

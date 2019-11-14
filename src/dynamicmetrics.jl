@@ -11,8 +11,10 @@ distance between two states `a` and `b` is computed via `evaluate(metric, a, b)`
 The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 
 ## Fields
-   * `metric=Euclidean()`: a `SemiMetric` as defined in the `Distances.jl` package, e.g.,
-     [`Euclidean`](@ref), [`PeriodicEuclidean`](@ref), or [`Haversine`](ref);
+   * `metric=Euclidean()`: a `SemiMetric` as defined in the `Distances.jl` package,
+   e.g., [`Euclidean`](@ref Distances.Euclidean),
+   [`PeriodicEuclidean`](@ref Distances.PeriodicEuclidean), or
+   [`Haversine`](@ref Distances.Haversine);
       * `p = Inf`: maximum
       * `p = 2`: mean squared average
       * `p = 1`: arithmetic mean

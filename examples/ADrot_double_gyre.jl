@@ -11,7 +11,7 @@ plot_u(ctx, V[:,4], 200, 200)
 
 ###BEGIN EXAMPLE
 
-using CoherentStructures, OrdinaryDiffEq, DiffEqOperators
+using CoherentStructures, OrdinaryDiffEq#, DiffEqOperators
 
 
 function rot_double_gyre!(du,u,p,t)

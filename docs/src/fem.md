@@ -18,7 +18,7 @@ for the flow at time $t$ (in volume-preserving flows).
 The resulting operator is both symmetric and uniformly elliptic. Eigenfunctions
 of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 
-See the [Examples](@ref) section for examples of how these methods can be used.
+See the [Examples](@ref examples_section) section for examples of how these methods can be used.
 
 ## Features
 ### CG and TO methods
@@ -142,9 +142,9 @@ For details, see [`boundaryData`](@ref).
 
 Here we apply homogeneous DBC to top and bottom, and identify the left and right side:
 ```@example 6
-using CoherentStructures
+using CoherentStructures, Distances, Plots
 ctx, _ = regularQuadrilateralGrid((10, 10))
-predicate = (p1, p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 1.0) < 1e-10
+predicate = (p1, p2) -> peuclidean(p1, p2, [1.0, Inf]) < 2e-10
 bdata = boundaryData(ctx, predicate, ["top", "bottom"])
 u = ones(nBCDofs(ctx, bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0

@@ -366,7 +366,7 @@ If `PC==true`, return a mesh with piecewise constant shape-functions, else P1 La
 function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
         on_torus=false, on_cylinder=false, LL=nothing, UR=nothing, PC=false, kwargs...)
     if on_torus || on_cylinder
-        @assert !(LL == nothing || UR == nothing)
+        @assert (LL !== nothing && UR !== nothing)
     end
     if !PC
         ip = JFM.Lagrange{2,JFM.RefTetrahedron,1}()
@@ -391,17 +391,11 @@ Create a delaunay grid in 2d from `npoints` random points on the box with lower
 left corner `LL` and upper right corner `UR`.
 Extra keyword arguments are passed down to `irregularDelaunayGrid`.
 """
-function randomDelaunayGrid(
-                    npoints::Int;
-                    LL=[0.0,0.0],
-                    UR=[1.0,1.0],
-                    kwargs...
-    )
-
+function randomDelaunayGrid(npoints::Int;
+                            LL=[0.0,0.0], UR=[1.0,1.0], kwargs...)
     nodes_in::Vector{Vec{2,Float64}} = Vec{2}.(zip(rand(npoints).*(UR[1]-LL[1]) .+ LL[1],rand(npoints).*(UR[2]-LL[2]) .+ LL[2]))
     return irregularDelaunayGrid(nodes_in; LL=LL,UR=UR,kwargs...)
 end
-
 
 """
     regularDelaunayGrid(numnodes=(25,25), LL, UR; [quadrature_order,on_torus=false,on_cylinder=false, nudge_epsilon=1e-5,PC=false])
@@ -955,9 +949,9 @@ function evaluate_function_from_node_or_cellvalsFDiff(
 end
 
 """
-    evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=NaN,project_in=fals)
+    evaluate_function_from_dofvals(ctx, dofvals, x_in; outside_value=NaN,project_in=false)
 
-Evaluate the function at point x_in with coefficients of dofs given by `dofvals` (in dof-order).
+Evaluate the function at point `x_in` with coefficients of dofs given by `dofvals` (in dof-order).
 Return `outside_value` if point is out of bounds.
 Project the point into the domain if `project_in==true`.
 For evaluation at many points, or for many dofvals, the function `evaluate_function_from_dofvals_multiple`
