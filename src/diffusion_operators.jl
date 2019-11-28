@@ -186,15 +186,15 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     return A
 end
 
-@inline function lrmul!(A::SparseMatrixCSC, qₑ::AbstractVecOrMat)
+@inline function lrmul!(A::SparseMatrixCSC, qₑ::AbstractVector)
     nzv = SparseArrays.nzvalview(A)
     rv = rowvals(A)
-    @inbounds for col = 1:n, p = nzrange(A, col)
+    @inbounds for col = 1:size(A, 2), p = nzrange(A, col)
         nzv[p] = qₑ[rv[p]] * nzv[p] * qₑ[col]
     end
     return A
 end
-@inline function lrmul!(A::AbstractMatrix, qₑ::AbstractVecOrMat)
+@inline function lrmul!(A::AbstractMatrix, qₑ::AbstractVector)
     A .= qₑ .* A .* permutedims(qₑ)
     return A
 end
@@ -209,7 +209,7 @@ if VERSION < v"1.2.0"
         nonz = SparseArrays.nzvalview(A)
         Arowval = rowvals(A)
         d = D.diag
-        @inbounds for col in 1:A.n, p in A.nzrange(A, col)
+        @inbounds for col in 1:size(A, 2), p in nzrange(A, col)
             nonz[p] = d[Arowval[p]] \ nonz[p]
         end
         A
@@ -222,7 +222,7 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline row_normalize!(A::AbstractMatrix) = ldiv!(Diagonal(dropdims(reduce(+, A, dims=2)); dims=2), A)
+@inline row_normalize!(A::AbstractMatrix) = ldiv!(Diagonal(dropdims(reduce(+, A, dims=2); dims=2)), A)
 
 # spectral clustering/diffusion map related functions
 

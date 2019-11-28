@@ -691,7 +691,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
 	                uniform = !only_uniform || all(predicate, orbit)
                 end
 
-                contains_singularity = !only_enclosing || contains_point(orbit,ps[1])
+                contains_singularity = !only_enclosing || contains_point(orbit, ps[1])
 
         		if (closed && uniform && in_well_defined_squares && contains_singularity)
         		    push!(vortices, EllipticBarrier([qs.data for qs in orbit], ps[1], λ⁰, σ))
@@ -732,15 +732,15 @@ function ellipticLCS(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         verbose::Bool=true,
                         unique_vortices=true,
                         singularity_predicate=nothing,
-                        suggested_centers = [],
+                        suggested_centers=Singularity{S}[],
                         kwargs...) where S <: Real
     # detect centers of elliptic (in the index sense) regions
-    singularities = append!(suggested_centers,singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics))
+    singularities = append!(suggested_centers, singularity_detection(T, p.indexradius; merge_heuristics=p.merge_heuristics))
     if singularity_predicate !== nothing
-        singularities = filter(singularity_predicate,singularities)
+        singularities = filter(singularity_predicate, singularities)
     end
     verbose && @info "Found $(length(singularities)) singularities..."
-    vortexcenters = singularities[getindices(singularities) .== 1]
+    vortexcenters = filter(s -> s.index == 1, singularities)
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
     vortices = findVortices(T, vortexcenters, p; verbose=verbose, kwargs...)
@@ -757,12 +757,12 @@ function debugAt(
         p::LCSParameters=LCSParameters()
     ) where S
 
-    cache = orient(T[:,:], @SVector [orientaround[1],orientaround[2]])
+    cache = orient(T[:,:], @SVector [orientaround[1], orientaround[2]])
     l1itp = ITP.LinearInterpolation(cache.λ₁)
     l2itp = ITP.LinearInterpolation(cache.λ₂)
     result = []
     for σ ∈ [true,false]
-        for λ ∈ range(p.pmin,stop=p.pmax,length=50)
+        for λ ∈ range(p.pmin, stop=p.pmax, length=50)
             sol, retcode = compute_returning_orbit(
                 ηfield(λ, σ, cache),
                 (@SVector Float64[startwhere[1],startwhere[2]]), true, p.maxiters_ode,p.tolerance_ode,
@@ -779,15 +779,15 @@ function debugAt(
                 max_orbit_length=p.max_orbit_length
                 )
     result2 = []
-    for σ ∈ [true,false]
-        lamrange = range(p.pmin,stop=p.pmax,length=30)
+    for σ in (true, false)
+        lamrange = range(p.pmin, stop=p.pmax, length=30)
         push!(result2,
-            (lamrange, map(x->prd(x,σ,(@SVector Float64[startwhere[1],startwhere[2]]),cache), lamrange))
+            (lamrange, map(x->prd(x, σ, (@SVector Float64[startwhere[1], startwhere[2]]), cache), lamrange))
             )
     end
 
-    pmin_local = max(p.pmin, l1itp(startwhere[1],startwhere[2]))
-    pmax_local = min(p.pmax, l2itp(startwhere[1],startwhere[2]))
+    pmin_local = max(p.pmin, l1itp(startwhere[1], startwhere[2]))
+    pmax_local = min(p.pmax, l2itp(startwhere[1], startwhere[2]))
     println("pmin_local is $pmin_local and pmax_local is $pmax_local")
     margin_step = (pmax_local - pmin_local)/20
 
@@ -795,7 +795,7 @@ function debugAt(
         bisection(λ -> prd(λ, true, (@SVector Float64[startwhere[1],startwhere[2]]), cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step ),
         bisection(λ -> prd(λ, false, (@SVector Float64[startwhere[1],startwhere[2]]), cache), pmin_local, pmax_local, p.rdist, p.maxiters_bisection, margin_step )
         )
-    return result,result2,result3
+    return result, result2, result3
 end
 
 # vector field constructor function
@@ -806,7 +806,7 @@ end
 
     itp = ITP.LinearInterpolation(c.η)
 
-    function unit_length_itp(u,p,t)
+    function unit_length_itp(u, p, t)
 	    result = itp(u[1],u[2])
         normresult = sqrt(result[1]^2 + result[2]^2)
 	    return normresult == 0 ? result :  result / normresult
@@ -829,10 +829,10 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 
     #Type of restricted field is quite complex, therefore make a variable for it here
     Ttype = AxisArrays.AxisArray{
-     SymmetricTensor{2,2,S,3}, 2,
-     Array{SymmetricTensor{2,2,S,3},2},
-     Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
-           AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}}
+        SymmetricTensor{2,2,S,3}, 2,
+        Array{SymmetricTensor{2,2,S,3},2},
+        Tuple{AxisArrays.Axis{:row,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}},
+              AxisArrays.Axis{:col,StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}}}}
        }
 
     # We make two remote channels. The master process pushes to jobs_rc in order
@@ -1083,7 +1083,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
                 close(results_rc)
         end
     else
-        map(makejob,vortexcenters)
+        map(makejob, vortexcenters)
         close(jobs_rc)
     end
 
