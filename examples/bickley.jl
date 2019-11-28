@@ -1,7 +1,7 @@
 #md # ```@meta
 #md #   EditURL = "../../../examples/bickley.jl"
 #md # ```
-# # Bickley Jet
+# # Bickley jet
 #
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:

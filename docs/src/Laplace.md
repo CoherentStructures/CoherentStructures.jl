@@ -21,7 +21,7 @@ For demonstrations on example cases, please consult the page on
 
 ## Function documentation
 
-### Sparsification methods
+### [Sparsification methods](@id sparsification_methods)
 
 Three commonly used sparsification methods are implemented for use with various
 graph Laplacian methods.
@@ -43,7 +43,7 @@ gaussian
 gaussiancutoff
 ```
 To compute a sparse distance matrix (or adjacency matrix, depending on the
-[sparsification method](@ref Sparsification methods)), use [`spdist`](@ref).
+[sparsification method](@ref sparsification_methods)), use [`spdist`](@ref).
 ```@docs
 spdist
 ```

@@ -1,7 +1,7 @@
 #md # ```@meta
 #md #   EditURL = "../../../examples/ocean_flow.jl"
 #md # ```
-# # Geostrophic Ocean Flow
+# # Geostrophic ocean flow
 #
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:
