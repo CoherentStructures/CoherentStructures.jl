@@ -146,20 +146,20 @@ function sparse_diff_op(data::Union{T, AbstractVector{T}},
     N = LinearAlgebra.checksquare(P)
     if sp_method isa Neighborhood # P corresponds to the adjacency matrix
         if kernel != Base.one # otherwise no need to change entries
-            rows = SparseArrays.rowvals(P)
-            vals = SparseArrays.nonzeros(P)
+            rows = rowvals(P)
+            vals = nonzeros(P)
             for i in 1:N
-               for j in SparseArrays.nzrange(P, i)
+               for j in nzrange(P, i)
                   vals[j] = kernel(Dists.evaluate(metric, data[rows[j]], data[i]))
                end
             end
         end
     else # sp_method isa *KNN (P already contains the distances), need to apply kernel
-        vals = SparseArrays.nonzeros(P)
+        vals = nonzeros(P)
         vals .= kernel.(vals)
     end
     droptol!(P, eps(eltype(P)))
-    @inbounds kde_normalize!(P, α)
+    kde_normalize!(P, α)
     kernel != Base.one && row_normalize!(P)
     return P
 end
@@ -171,41 +171,49 @@ Normalize rows and columns of `A` in-place with the respective row-sum to the α
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is `1`.
 """
-@inline function kde_normalize!(A::SparseMatrixCSC{<:Real}, α::Real=1)
-    if α == 0
-        return A
-    end
-    n = LinearAlgebra.checksquare(A)
-    qₑ = sum(A, dims=1)
+@inline function kde_normalize!(A::AbstractMatrix, α::Real=1)
+    iszero(α) && return A
+
+    qₑ = dropdims(reduce(+, A, dims=2); dims=2)
     if α == 1
         qₑ .= inv.(qₑ)
-    elseif α == 1/2
+    elseif α == 0.5
         qₑ .= inv.(sqrt.(qₑ))
     else
         qₑ .= inv.(qₑ.^α)
     end
-    Anzval = A.nzval
-    Arowval = A.rowval
-    @inbounds for col = 1:n, p = SparseArrays.nzrange(A, col)
-        Anzval[p] = qₑ[Arowval[p]] * Anzval[p] * qₑ[col]
+    lrmul!(A, qₑ)
+    return A
+end
+
+@inline function lrmul!(A::SparseMatrixCSC, qₑ::AbstractVecOrMat)
+    nzv = SparseArrays.nzvalview(A)
+    rv = rowvals(A)
+    @inbounds for col = 1:n, p = nzrange(A, col)
+        nzv[p] = qₑ[rv[p]] * nzv[p] * qₑ[col]
     end
     return A
 end
-@inline function kde_normalize!(A::AbstractMatrix{<:Real}, α::Real=1)
-    if α == 0
-        return A
-    end
-    @boundscheck LinearAlgebra.checksquare(A)
-    qₑ = A * ones(eltype(A), size(A, 2))
-    if α == 1
-        qₑ .= inv.(qₑ)
-    elseif α == 1/2
-        qₑ .= inv.(sqrt.(qₑ))
-    else
-        qₑ .= inv.(qₑ.^α)
-    end
+@inline function lrmul!(A::AbstractMatrix, qₑ::AbstractVecOrMat)
     A .= qₑ .* A .* permutedims(qₑ)
     return A
+end
+
+# compat
+if VERSION < v"1.2.0"
+    function LinearAlgebra.ldiv!(D::Diagonal, A::SparseMatrixCSC)
+        # @assert !has_offset_axes(A)
+        if A.m != length(D.diag)
+            throw(DimensionMismatch("diagonal matrix is $(length(D.diag)) by $(length(D.diag)) but right hand side has $(A.m) rows"))
+        end
+        nonz = SparseArrays.nzvalview(A)
+        Arowval = rowvals(A)
+        d = D.diag
+        @inbounds for col in 1:A.n, p in A.nzrange(A, col)
+            nonz[p] = d[Arowval[p]] \ nonz[p]
+        end
+        A
+    end
 end
 
 """
@@ -214,22 +222,7 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline function row_normalize!(A::SparseMatrixCSC{<:Real})
-    d = sum(A, dims=1)
-    # the following could be replaced by
-    # ldiv!(Diagonal(vec(sum(A, dims=1))), A)
-    # once Julia PR #30208 is backported, or we support Julia ≧v1.2
-    nonz = nonzeros(A)
-    Arowval = rowvals(A)
-    @inbounds for col in 1:A.n, p in nzrange(A, col)
-        nonz[p] = d[Arowval[p]] \ nonz[p]
-    end
-    return A
-end
-@inline function row_normalize!(A::AbstractMatrix{<:Real})
-    ldiv!(Diagonal(A * ones(eltype(A), size(A, 2))), A)
-    return A
-end
+@inline row_normalize!(A::AbstractMatrix) = ldiv!(Diagonal(dropdims(reduce(+, A, dims=2)); dims=2), A)
 
 # spectral clustering/diffusion map related functions
 

@@ -7,7 +7,7 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
     tspan = (0.0, 1.0)
 
     @testset "autonomous ODEs, no mass matrix" begin
-        A = spdiagm(-1 => ones(99) , 0 => fill(-2, 100) , 1 => ones(99))
+        A = spdiagm(-1 => ones(99) , 0 => fill(-2.0, 100) , 1 => ones(99))
         f = DiffEqArrayOperator(A)
         sol_analytic = (u0,p,t) -> exp(t*Matrix(A)) * u0
         prob = ODEProblem(ODEFunction(f; analytic=sol_analytic), u0, tspan)
@@ -33,6 +33,15 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
         sim2 = test_convergence(dts, prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)))
         @test sim2.𝒪est[:final] ≈ 2 atol = 0.2
+
+        # solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
+        # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
+        # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
     end
 
     @testset "ADE in rotating double gyre" begin
@@ -60,6 +69,13 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
         sol1 = solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
         sol2 = solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        #
+        # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
 
         @test sol1.retcode == :Success
         @test sol2.retcode == :Success

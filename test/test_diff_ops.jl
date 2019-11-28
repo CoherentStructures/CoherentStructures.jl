@@ -1,4 +1,4 @@
-using Test, Distributed, CoherentStructures, Statistics, StaticArrays
+using Test, Distributed, CoherentStructures, Statistics, StaticArrays, Distances
 
 t_initial = 0.0
 t_final = 3600.0
@@ -21,12 +21,12 @@ n_coords = 7
 
 @testset "sparse_diff_op_family" begin
     ε = 1e-3
-    @everywhere @eval kernel = x -> exp(-abs2(x) / $(float(4ε)))
+    kernel = gaussian(ε)
     sparsify = Neighborhood(gaussiancutoff(ε))
     P = sparse_diff_op_family(sol, sparsify, kernel; metric=metric)
     @test P isa CoherentStructures.LinMaps
 
-    P = sparse_diff_op_family(sol, sparsify, kernel, Statistics.mean; metric=metric)
+    P = sparse_diff_op_family(sol, sparsify, kernel, mean; metric=metric)
     @test P isa CoherentStructures.LinMaps
 
     ε = 0.2
