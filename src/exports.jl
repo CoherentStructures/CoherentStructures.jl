@@ -139,6 +139,7 @@ export
 	adaptiveTOCollocation,
 
 	#util.jl
+    PEuclidean,
 	tensor_invariants,
 	dof2node,
 	kmeansresult2LCS,
