@@ -261,12 +261,6 @@ function gooddivrem(x, y)
         a, b = divrem(x, y)
         return Int(a), b
 end
-
-function goodmod(a, b)
-    return Base.mod(a, b)
-end
-
-
 function gooddivrem(x::ForwardDiff.Dual, y)
         a, b = divrem(x, y)
         if !iszero(b)
@@ -277,9 +271,9 @@ function gooddivrem(x::ForwardDiff.Dual, y)
         end
 end
 
-
+goodmod(a, b) = Base.mod(a, b)
 function goodmod(x::ForwardDiff.Dual, y)
-    a,b = gooddivrem(x, y)
+    a, b = gooddivrem(x, y)
     if b < 0
         return b + y
     else
@@ -288,7 +282,7 @@ function goodmod(x::ForwardDiff.Dual, y)
 end
 
 #TODO: Document this
- function unzip(A::Array{T}) where T
+function unzip(A::Array{T}) where {T}
     res = map(x -> x[], T.parameters)
     res_len = length(res)
     for t in A
@@ -299,17 +293,15 @@ end
     res
 end
 
-function in_triangle(p, v1,v2,v3)
-    #See https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
-    function getside(a,b,c)
-        signedarea = (a[1] - c[1])*(b[2] - c[2]) - (b[1] - c[1])*(a[2] - c[2])
-        return sign(signedarea)
-    end
-    d1 = getside(p,v1,v2)
-    d2 = getside(p,v2,v3)
-    d3 = getside(p,v3,v1)
+_getside(a, b, c) = sign((a[1] - c[1])*(b[2] - c[2]) - (b[1] - c[1])*(a[2] - c[2]))
 
-    has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-    has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+function in_triangle(p, v1, v2, v3)
+    #See https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+    d1 = _getside(p, v1, v2)
+    d2 = _getside(p, v2, v3)
+    d3 = _getside(p, v3, v1)
+
+    has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0)
+    has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0)
     return !(has_neg && has_pos);
 end

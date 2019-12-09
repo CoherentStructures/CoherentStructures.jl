@@ -92,43 +92,29 @@ julia> mCG_tensor = u -> CG_tensor(interp_rhs!, u, tspan, δ; p=UI)
 interp_rhs! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= p(u[1], u[2], t))
 
 # standard map
-function standardMap(u)
-    a = 0.971635
-    return SVector{2,Float64}((
-        mod2pi(u[1] + u[2] + a*sin(u[1])),
-        mod2pi(u[2] + a*sin(u[1]))
+const standard_a = 0.971635
+standardMap(u) = SVector{2,Float64}((
+        rem2pi(u[1] + u[2] + standard_a*sin(u[1]), RoundDown),
+        rem2pi(u[2] + standard_a*sin(u[1]), RoundDown)
         ))
-end
+
 function standardMapInv(Tu::AbstractArray{T}) where T <: Number
-    a = 0.971635
     return SVector{2,T}((
         goodmod(Tu[1] - Tu[2]               , 2π),
-        goodmod(Tu[2] - a*sin(Tu[1]-Tu[2])  , 2π)
+        goodmod(Tu[2] - standard_a*sin(Tu[1]-Tu[2])  , 2π)
         ))
 end
-function DstandardMap(u)
-    a = 0.971635
-    return Tensor{2,2}((
-        1.0 + a*cos(u[1])   , a*cos(u[1]), 1.0                 , 1.0
-        ))
-end
-function standardMap8(u)
-    return SVector{2,Float64}((
-        mod2pi(u[1] + u[2]),
-        mod2pi(u[2] + 8*sin(u[1] + u[2]))
-        ))
-end
-function DstandardMap8(u)
-    return Tensor{2,2}((
-        1., 8*cos(u[1] + u[2]), 1., 1. + 8*cos(u[1] + u[2])
-    ))
-end
-function standardMap8Inv(Tu)
-    return SVector{2,Float64}((
-    mod2pi(Tu[1]  - Tu[2] + 8*sin(Tu[1])),
-    mod2pi(Tu[2] - 8*sin(Tu[1]))
-    ))
-end
+DstandardMap(u) = Tensor{2,2}((1.0 + a*cos(u[1]), standard_a*cos(u[1]), 1.0, 1.0))
+
+standardMap8(u) = SVector{2,Float64}((rem2pi(u[1] + u[2], RoundDown),
+                                      rem2pi(u[2] + 8sin(u[1] + u[2]), RoundDown)))
+
+DstandardMap8(u) = Tensor{2,2}((1.0, 8cos(u[1] + u[2]), 1.0, 1.0 + 8cos(u[1] + u[2])))
+
+standardMap8Inv(Tu) = SVector{2,Float64}((
+                            rem2pi(Tu[1]  - Tu[2] + 8sin(Tu[1]), RoundDown),
+                            rem2pi(Tu[2] - 8sin(Tu[1]), RoundDown)
+                            ))
 
 # ABC flow
 function ABC_flow(u, p, t)
