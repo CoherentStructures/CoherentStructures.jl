@@ -56,7 +56,8 @@ export
 	#gridfunctions.jl
 	regular1dGridTypes,
 	regular2dGridTypes,
-	regular1dGrid,
+	regular1dPCGrid,
+	regular1dP1Grid,
 	regular1dP2Grid,
 	regularTriangularGrid,
 	regularDelaunayGrid,
@@ -80,7 +81,7 @@ export
 	doBCS,
 	applyBCS,
 	getHomDBCS,
-	boundaryData,
+	BoundaryData,
 	nBCDofs,
 	getDofCoordinates,
 	getCellMidpoint,

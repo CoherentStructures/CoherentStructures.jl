@@ -23,24 +23,24 @@
 
 using Random
 
-a = 0.971635
-f(a,x) = (mod2pi(x[1] + x[2] + a*sin(x[1])),
-          mod2pi(x[2] + a*sin(x[1])))
+const a = 0.971635
+f(x) = (rem2pi(x[1] + x[2] + a*sin(x[1]), RoundDown),
+          rem2pi(x[2] + a*sin(x[1]), RoundDown))
 
-X = []
+X = Tuple{Float64,Float64}[]
 for i in 1:50
     Random.seed!(i)
-    x = 2π*rand(2)
+    x = 2π .* (rand(), rand())
     for i in 1:500
-        x = f(a,x)
+        x = f(x)
         push!(X,x)
     end
 end
 
 using Plots
 gr(aspect_ratio=1, legend=:none)
-fig = scatter([x[1] for x in X], [x[2] for x in X], markersize=1)
-DISPLAY_PLOT(fig,standard_map_orbits)
+fig = scatter(X, markersize=1)
+DISPLAY_PLOT(fig, standard_map_orbits)
 
 # Approximating the Dynamic Laplacian by FEM methods is straightforward:
 
@@ -48,10 +48,10 @@ using Arpack, CoherentStructures, Distances, Tensors
 
 Df(a,x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
 
-n, ll, ur = 100, [0.0, 0.0], [2π, 2π]               # grid size, domain corners
+n, ll, ur = 100, (0.0, 0.0), (2π, 2π)               # grid size, domain corners
 ctx, _ = regularTriangularGrid((n, n), ll, ur)
-pred(x,y) = peuclidean(x, y, ur) < 1e-9
-bd = boundaryData(ctx, pred)                      # periodic boundary
+pred(x,y) = peuclidean(x, y, [2π, 2π]) < 1e-9
+bd = BoundaryData(ctx, pred)                      # periodic boundary
 
 I = one(Tensor{2,2})                              # identity matrix
 Df2(x) = Df(a,f(a,x))⋅Df(a,x)                     # consider 2. iterate

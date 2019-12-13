@@ -558,7 +558,7 @@ function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
         end
         return (sol.u, retcode)
     catch e
-        if isa(e, BoundsError)
+        if e isa BoundsError
     	    return (SArray{Tuple{2},T,1,2}[@SVector [NaN,NaN] ], 2)
         end
         rethrow(e)

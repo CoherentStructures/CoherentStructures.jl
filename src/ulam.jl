@@ -2,7 +2,7 @@
 #ulam.jl
 #Implements Ulam's method within CoherentStructures.jl
 
-function ulam(ctx::gridContext{2}, f, nx, ny)
+function ulam(ctx::GridContext{2}, f, nx, ny)
     n = ctx.n
     npoints = nx * ny
     area = prod(ctx.spatialBounds[2][:] - ctx.spatialBounds[1][:])

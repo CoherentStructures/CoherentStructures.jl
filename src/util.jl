@@ -166,7 +166,7 @@ end
 Interprets `u` as an array of coefficients ordered in dof order,
 and reorders them to be in node order.
 """
-function dof2node(ctx::abstractGridContext{dim}, u::Vector) where {dim}
+function dof2node(ctx::AbstractGridContext{dim}, u::Vector) where {dim}
    # n = ctx.n
    # res = fill(0.0, JuAFEM.getnnodes(ctx.grid))
    # for node in 1:n
@@ -229,7 +229,7 @@ end
 
 Return the mesh width of a regular grid.
 """
-function getH(ctx::abstractGridContext)
+function getH(ctx::AbstractGridContext)
     supportedRegularGridTypes = ["regular triangular grid",
                     "regular P2 triangular grid",
                     "regular Delaunay grid",

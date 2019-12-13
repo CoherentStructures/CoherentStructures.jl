@@ -38,7 +38,7 @@ Plots.savefig(res2,"docs/buildimg/rotdgev1.png")
 
 ctx = regularQuadrilateralGrid((10,10))
 predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && (abs((p1[1] - p2[1])%1.0) < 1e-10)
-bdata = boundaryData(ctx,predicate,[])
+bdata = BoundaryData(ctx,predicate,[])
 u = ones(nDofs(ctx,bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
 plot_u(ctx,u,200,200,bdata=bdata)
@@ -47,7 +47,7 @@ plot_u(ctx,u,200,200,bdata=bdata)
 using CoherentStructures,Tensors
 ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
 pred  = (x,y) -> ((x[1] - y[1]) % 2π) < 1e-9 && ((x[2] - y[2]) % 2π) < 1e-9
-bdata = boundaryData(ctx,pred)
+bdata = BoundaryData(ctx,pred)
 
 id2 = one(Tensors.Tensor{2,2}) # 2D identity tensor
 cgfun = x -> 0.5*(id2 +  dott(inv(CoherentStructures.DstandardMap(x))))

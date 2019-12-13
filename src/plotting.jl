@@ -7,14 +7,13 @@ The domain to be plotted on is given by `ctx.spatialBounds`.
 The function is evaluated on a regular `nx` by `ny` grid, the resulting plot is a heatmap.
 Keyword arguments are passed down to `plot_u_eulerian`, which this function calls internally.
 """
-function plot_u(ctx::gridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100,
-                LL=ctx.spatialBounds[1],UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...
-                ) where dim
-    id = x -> x
+function plot_u(ctx::GridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100,
+                LL=ctx.spatialBounds[1], UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...
+                ) where {dim}
     if dim == 1
-        plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx, bdata=bdata; kwargs...)
+        plot_u_eulerian(ctx, dof_vals, identity, LL, UR, nx, bdata=bdata; kwargs...)
     elseif dim==2
-        plot_u_eulerian(ctx, dof_vals, id, LL, UR, nx, ny, bdata=bdata; kwargs...)
+        plot_u_eulerian(ctx, dof_vals, identity, LL, UR, nx, ny, bdata=bdata; kwargs...)
     else
         throw(AssertionError("Not yet implemented"))
     end
@@ -24,12 +23,11 @@ function plot_u(ctx,dof_vals::Vector{Complex{<:Real}},args...;kwargs...)
     return plot_u(ctx,real.(dof_vals),args...; title="Plotting real part!", kwargs...)
 end
 
-function plot_u!(ctx::gridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100; bdata=nothing, kwargs...) where dim
-    id = x -> x
+function plot_u!(ctx::GridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100; bdata=nothing, kwargs...) where {dim}
     if dim == 1
-        plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
+        plot_u_eulerian!(ctx, dof_vals, identity, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
     elseif dim==2
-        plot_u_eulerian!(ctx, dof_vals, id, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, bdata=bdata; kwargs...)
+        plot_u_eulerian!(ctx, dof_vals, identity, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, bdata=bdata; kwargs...)
     else
         throw(AssertionError("Not yet implemented"))
     end
@@ -46,12 +44,12 @@ RecipesBase.@recipe function f(
         return_scalar_field=false,
         throw_errors=false
     )
-    ctx::gridContext = as.args[1]
+    ctx::GridContext = as.args[1]
     dof_vals::Vector{Float64} = as.args[2]
     inverse_flow_map::Function = as.args[3]
-    LL::AbstractVector{Float64} = as.args[4]
-    UR::AbstractVector{Float64} = as.args[5]
-    if typeof(ctx) == gridContext{2}
+    LL::Tuple{Float64,Float64} = as.args[4]
+    UR::Tuple{Float64,Float64} = as.args[5]
+    if ctx isa GridContext{2}
         if length(as.args) >= 6
             nx=as.args[6]
         else
@@ -70,18 +68,18 @@ RecipesBase.@recipe function f(
         u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
         x1 = range(LL[1], stop=UR[1], length=nx)
         x2 = range(LL[2], stop=UR[2], length=ny)
-        if euler_to_lagrange_points == nothing
+        if euler_to_lagrange_points === nothing
             euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1, x2], throw_errors=throw_errors)
             euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
             for i in 1:nx, j in 1:ny
-                euler_to_lagrange_points[j,i] = Vec{2}([euler_to_lagrange_points_raw[j,i,1], euler_to_lagrange_points_raw[j,i,2]])
+                euler_to_lagrange_points[j,i] = Vec{2}((euler_to_lagrange_points_raw[j,i,1], euler_to_lagrange_points_raw[j,i,2]))
     	    end
     	end
 
-        if z == nothing
+        if z === nothing
             z_raw = evaluate_function_from_dofvals_multiple(
-                            ctx,u_values[:,:],
-                            vec(euler_to_lagrange_points),
+                            ctx, u_values[:,:],
+                            vec(euler_to_lagrange_points);
                             outside_value=NaN,
                             throw_errors=throw_errors
                             )
@@ -89,17 +87,17 @@ RecipesBase.@recipe function f(
             z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
-        if postprocessor != nothing
+        if postprocessor !== nothing
            z =  postprocessor(z)
         end
 
         seriestype --> :heatmap
         fill --> true
         aspect_ratio --> 1
-        xlim --> (LL[1],UR[1])
-        ylim --> (LL[2],UR[2])
-        x1,x2,z
-    elseif typeof(ctx) == gridContext{1}
+        xlim --> (LL[1], UR[1])
+        ylim --> (LL[2], UR[2])
+        x1, x2, z
+    elseif ctx isa GridContext{1}
         if length(as.args) >= 6
             nx=as.args[6]
         else
@@ -108,7 +106,7 @@ RecipesBase.@recipe function f(
         u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
         x1 = range(LL[1], stop=UR[1], length=nx)
 
-        if euler_to_lagrange_points == nothing
+        if euler_to_lagrange_points === nothing
             euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1])
             euler_to_lagrange_points = [zero(Vec{1}) for x in x1]
             for i in 1:nx
@@ -116,7 +114,7 @@ RecipesBase.@recipe function f(
     	    end
     	end
 
-        if z == nothing
+        if z === nothing
             z_raw = evaluate_function_from_dofvals_multiple(
                             ctx,u_values[:,:],
                             vec(euler_to_lagrange_points),
@@ -125,7 +123,7 @@ RecipesBase.@recipe function f(
             z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
-        if postprocessor != nothing
+        if postprocessor !== nothing
            z =  postprocessor(z)
         end
 
@@ -160,7 +158,7 @@ Inverse flow maps are computed in parallel if there are multiple workers.
 plot_u_eulerian
 
 
-function compute_euler_to_lagrange_points_raw(inv_flow_map,xi; throw_errors=false)
+function compute_euler_to_lagrange_points_raw(inv_flow_map, xi; throw_errors=false)
     @assert length(xi) ∈ [1,2]
     if length(xi) == 1
         x1 = xi[1]
@@ -177,11 +175,11 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map,xi; throw_errors=fals
         return euler_to_lagrange_points_raw
 
     elseif length(xi) == 2
-        x1,x2 = xi
-        euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2),length(x1),2)
+        x1, x2 = xi
+        euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2), length(x1), 2)
         @sync @distributed for i in eachindex(x1)
             for j in eachindex(x2)
-                point = SVector{2}(x1[i],x2[j])
+                point = SVector{2}(x1[i], x2[j])
                 try
                     back = inv_flow_map(point)
                     euler_to_lagrange_points_raw[j,i,1] = back[1]
@@ -217,12 +215,12 @@ RecipesBase.@recipe function  f(as::Plot_Real_Spectrum)
     (1:length(λ),real.(λ))
 end
 
-struct frameCollection
+struct FrameCollection
     frames::Vector{Any}
 end
 
 
-function Base.iterate(col::frameCollection, state=0 )
+function Base.iterate(col::FrameCollection, state=0 )
     if state == length(col.frames)
         return nothing
     end
@@ -240,7 +238,7 @@ function eulerian_videos(ctx,
                          bdata=nothing,
                          extra_kwargs_fun=nothing,
                          throw_errors=false,kwargs...)
-    allvideos = [frameCollection([]) for i in 1:num_videos]
+    allvideos = [FrameCollection([]) for i in 1:num_videos]
 
     for (index, t) in enumerate(range(t0, stop=tf, length=nt))
     	print("Processing frame $index")
@@ -478,7 +476,7 @@ RecipesBase.@recipe function f(
     x1,x2,FTLE
 
     #= TODO
-    if existing_plot == nothing
+    if existing_plot === nothing
         return Plots.heatmap(x1,x2,FTLE; kwargs...)
     else
         return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)

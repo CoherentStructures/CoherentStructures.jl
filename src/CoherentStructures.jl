@@ -60,7 +60,7 @@ include("diffusion_operators.jl")
 include("dynamicmetrics.jl")
 
 # some utility functions that are used throughout
-abstract type abstractGridContext{dim} end
+abstract type AbstractGridContext{dim} end
 include("util.jl")
 
 # functions related to pulling back tensors under flow maps
@@ -84,11 +84,11 @@ include("isoperimetry.jl")
 ##Extensions to JuAFEM dealing with non-curved grids
 ##Support for evaluating functions at grid points, delaunay Triangulations
 
-#The pointLocator provides an abstract basis class for classes for locating points on grids.
-#A pointLocator should implement a locatePoint function (see below)
+#The PointLocator provides an abstract basis class for classes for locating points on grids.
+#A PointLocator should implement a locatePoint function (see below)
 #TODO: Find out the existence of such a function can be enforced by julia
 
-abstract type pointLocator end
+abstract type PointLocator end
 include("gridfunctions.jl")
 include("pointlocation.jl")
 include("boundaryconditions.jl")

@@ -15,7 +15,7 @@ The CoherentStructures.jl package is liscensed under the GPL liscense version 3.
 >You should have received a copy of the GNU General Public License
 >along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-The `nodeToDHTable` and `gridContext{3}(::Type{JuAFEM.QuadraticTetrahedron}...)` are modifications
+The `nodeToDHTable` and `GridContext{3}(::Type{JuAFEM.QuadraticTetrahedron}...)` are modifications
 of functions from the JuAFEM.jl package, these are liscensed under the MIT "Expat" liscense. 
 
 > Copyright (c) 2015-2016: Kristoffer Carlsson.
