@@ -36,7 +36,6 @@ import GeometricalPredicates
 const GP = GeometricalPredicates
 import VoronoiDelaunay
 const VD = VoronoiDelaunay
-import ForwardDiff
 
 import JuAFEM
 const JFM = JuAFEM

@@ -126,7 +126,7 @@ Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
 Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), "/tmp/";
     preprocess=preprocess_script2
     )
-1
+
 run(`julia --project=docs/ /tmp/standard_map.jl`)
 
 

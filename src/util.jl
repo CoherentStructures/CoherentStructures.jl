@@ -261,25 +261,25 @@ function gooddivrem(x, y)
         a, b = divrem(x, y)
         return Int(a), b
 end
-function gooddivrem(x::ForwardDiff.Dual, y)
-        a, b = divrem(x, y)
-        if !iszero(b)
-            return Int(ForwardDiff.value(a)), b
-        else
-            aret = Int(ForwardDiff.value(a))
-            return aret, x - aret * y
-        end
-end
+# function gooddivrem(x::ForwardDiff.Dual, y)
+#         a, b = divrem(x, y)
+#         if !iszero(b)
+#             return Int(ForwardDiff.value(a)), b
+#         else
+#             aret = Int(ForwardDiff.value(a))
+#             return aret, x - aret * y
+#         end
+# end
 
 goodmod(a, b) = Base.mod(a, b)
-function goodmod(x::ForwardDiff.Dual, y)
-    a, b = gooddivrem(x, y)
-    if b < 0
-        return b + y
-    else
-        return b
-    end
-end
+# function goodmod(x::ForwardDiff.Dual, y)
+#     a, b = gooddivrem(x, y)
+#     if b < 0
+#         return b + y
+#     else
+#         return b
+#     end
+# end
 
 #TODO: Document this
 function unzip(A::Array{T}) where {T}
