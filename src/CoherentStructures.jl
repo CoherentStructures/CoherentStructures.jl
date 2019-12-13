@@ -6,7 +6,6 @@ using ProgressMeter
 using SparseArrays
 using Distributed
 using SharedArrays: SharedArray
-using Markdown
 using Statistics: mean
 
 # import data type packages
