@@ -42,7 +42,7 @@ gridResolutions
 ϵ=0.02
 n_stencil_points = 10
 for resolution in gridResolutions
-    for j in [1,2]
+    for j in (1, 2)
         print("P$j elements on $resolution\n")
         if j == 1
             ctx = regularTriangularGrid(resolution, [0.0,0.0],[1.,1.],quadrature_order=5)

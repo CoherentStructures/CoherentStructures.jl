@@ -1190,47 +1190,41 @@ function in_defined_squares(xs, cache)
     ny = length(yspan)
 
     for x in xs
-	xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)), 1.0)
-	yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(xspan)), 1.0)
+    	xid = floor(Int, (nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)))
+    	yid = floor(Int, (ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(xspan)))
 
         xid = xid == nx ? nx - 1 : xid
         yid = yid == ny ? ny - 1 : yid
 
-        ps = [cache.η[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
+        ps = [cache.η[xid + di + 1,yid + dj + 1] for di in (0, 1), dj in (0, 1)]
 
-        for i in 1:4
-    	    for j in (i+1):4
-                if ps[i] ⋅ ps[j]  < 0
-                    return false
-                end
-            end
+        for i in 1:4, j in (i+1):4
+            ps[i] ⋅ ps[j]  < 0 && return false
         end
     end
     return true
 end
 
-function in_uniform_squares(xs, λ⁰,cache)
+function in_uniform_squares(xs, λ⁰, cache)
     xspan = cache.η.axes[1].val
     yspan = cache.η.axes[2].val
     nx = length(xspan)
     ny = length(yspan)
 
     for x in xs
-	xid, _ = gooddivrem((nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)), 1.0)
-	yid, _ = gooddivrem((ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(yspan)), 1.0)
+    	xid = floor(Int, (nx-1)*(x[1] - xspan[1])/(xspan[end] - xspan[1] + step(xspan)))
+    	yid = floor(Int, (ny-1)*(x[2] - yspan[1])/(yspan[end] - yspan[1] + step(yspan)))
 
         xid = xid == nx ? nx - 1 : xid
         yid = yid == ny ? ny - 1 : yid
 
-        l1s = [cache.λ₁[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
-        l2s = [cache.λ₂[xid + di + 1,yid + dj + 1] for di in [0,1], dj in [0,1]]
+        l1s = [cache.λ₁[xid + di + 1, yid + dj + 1] for di in (0, 1), dj in (0, 1)]
+        l2s = [cache.λ₂[xid + di + 1, yid + dj + 1] for di in (0, 1), dj in (0, 1)]
 
         for i in 1:4
-	if ! (l1s[i] <= λ⁰ <= l2s[i])
-		return false
+            !(l1s[i] <= λ⁰ <= l2s[i]) && return false
 	    end
 	end
-    end
     return true
 end
 
@@ -1244,7 +1238,7 @@ function contains_point(xs, point_to_check)
         res += s1dist(angles[i+1], angles[((i+1) % lx) + 1])
     end
     res /= 2π
-    return (round(Int,res) != 0)
+    return !iszero(round(res))
 end
 
 function materialbarriersTensors(odefun,xspan,yspan, tspan,lcsp;

@@ -1282,19 +1282,17 @@ function JuAFEM.generate_grid(::Type{JFM.Triangle},
     if on_torus
         dx = UR[1] - LL[1]
         dy = UR[2] - LL[2]
-        for i in [0,1,-1]
-            for j in [0,1,-1]
-                for (index,node) in enumerate(nodes_in)
-                    new_point = node .+ (i*dx,j*dy)
-                    push!(nodes_to_triangulate,Vec{2}((new_point[1],new_point[2])))
-                    push!(points_mapping,index)
-                end
+        for i in (0, 1, -1), j in (0, 1, -1)
+            for (index,node) in enumerate(nodes_in)
+                new_point = node .+ (i*dx,j*dy)
+                push!(nodes_to_triangulate,Vec{2}((new_point[1],new_point[2])))
+                push!(points_mapping,index)
             end
         end
     elseif on_cylinder
         dx = UR[1] - LL[1]
         dy = UR[2] - LL[2]
-        for i in [0,1,-1]
+        for i in (0, 1, -1)
             j = 0
             for (index,node) in enumerate(nodes_in)
                 new_point = node .+ (i*dx,j*dy)

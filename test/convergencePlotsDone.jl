@@ -63,7 +63,7 @@ function genericTestCasePlots(name;eigenspace=1:1)
   reference_index = 1
   results = readGenericTestCase(name)
 
-  for j in [1,2]
+  for j in (1, 2)
     if j == 1
       indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
     else
@@ -212,7 +212,7 @@ function standardMapPlots()
   results=open(Serialization.deserialize,"SM")
   GC.gc()
 
-  for j in [1,2]
+  for j in (1, 2)
     if j == 1
       indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
     else
@@ -289,7 +289,7 @@ function standardMap8Plots()
   results=open(Serialization.deserialize,"SM8")
   GC.gc()
 
-  for j in [1,2]
+  for j in (1, 2)
     if j == 1
       indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
     else
@@ -504,7 +504,7 @@ function doubleGyrePlots()
   resultsdg=open(deserialize,"DG25")
   reference_indexdg = 1
 
-  for j in [1,2]
+  for j in (1, 2)
     if j == 1
       indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
     else
@@ -597,7 +597,7 @@ function doubleGyreEqVariPlots()
   resultsdg=open(deserialize,"DGEqVari25")
   reference_indexdg = 1
 
-  for j in [1]
+  for j in (1,)
     if j == 1
       indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
     else
@@ -687,7 +687,7 @@ function doubleGyre1EqVariPlots()
   resultsdg=open(deserialize,"DG1EqVari25")
   reference_indexdg = 1
 
-  for j in [1]
+  for j in (1,)
     if j == 1
       indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
     else
@@ -861,7 +861,7 @@ makeDoubleGyre1Results()
 function plotDoubleGyre1Results()
   reference_indexdg1 = 1
   resultsdg1=open(deserialize,"DG10")
-  for j in [1,2]
+  for j in (1, 2)
     #indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && getH(resultsdg1[i].ctx) < 10^(-1.)]
     if j == 1
       indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && resultsdg1[i].mode == :CG]
@@ -1052,7 +1052,7 @@ plot_u(ctx,u_combined,200,200)
 
 
 bickleyPlots = []
-for j in [1,2]
+for j in (1, 2)
   LL = [0.0,-3.0]; UR=[6.371π,3.0]
   if j == 1
     ctx = regularTriangularGrid((50,40),LL,UR,quadrature_order=2)
