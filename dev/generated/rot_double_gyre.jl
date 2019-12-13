@@ -25,7 +25,7 @@ v_upsampled = sample_to(v, ctx, ctx2)
 numclusters=2
 res = kmeans(permutedims(v_upsampled[:,2:numclusters+1]), numclusters + 1)
 u = kmeansresult2LCS(res)
-res = Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in [1,2,3]]...)
+res = Plots.plot([plot_u(ctx2, u[:,i], 200, 200, color=:viridis, colorbar=:none) for i in 1:3]...)
 
 Plots.plot(res)
 
