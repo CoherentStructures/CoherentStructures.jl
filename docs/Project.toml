@@ -18,5 +18,5 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 
 [compat]
+CoherentStructures = "0"
 Documenter = "0.24"
-JuAFEM = "0.2"
