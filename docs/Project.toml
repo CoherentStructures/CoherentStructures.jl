@@ -19,3 +19,4 @@ Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 
 [compat]
 Documenter = "0.24"
+JuAFEM = "0.2"
