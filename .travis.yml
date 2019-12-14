@@ -29,6 +29,6 @@ jobs:
       julia: 1.3
       os: linux
       script:
-        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate(); Pkg.add("Clustering"); Pkg.add("Documenter"); Pkg.add("JLD2"); Pkg.add("Literate"); Pkg.add("Plots"); Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git")); Pkg.clone(pwd()); Pkg.build("Plots"); Pkg.resolve(); Pkg.instantiate()'
+        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.add(pwd()); Pkg.instantiate()'
         - julia --color=yes --project=docs/ docs/make.jl
       after_success: skip
