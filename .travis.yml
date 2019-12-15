@@ -19,8 +19,8 @@ notifications:
 git:
   depth: 99999
 
-# before_install:
-#   - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git"));'
+before_install:
+  - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));'
 
 jobs:
   include:
