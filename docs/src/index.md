@@ -44,6 +44,6 @@ page.
 
 * [Rotating double gyre](@ref)
 * [The standard map](@ref)
-* [Bickley Jet](@ref)
-* [Geostrophic Ocean Flow](@ref)
+* [Bickley jet](@ref)
+* [Geostrophic ocean flow](@ref)
 * [Working with trajectories](@ref)
