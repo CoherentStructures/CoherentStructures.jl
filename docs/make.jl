@@ -31,18 +31,18 @@ function mypreprocess(content,whatkind)
         args = content[(current_location[end]+2): (closing_bracket[1]-1)]
         @assert findfirst(",",args) != nothing
         figname = args[1:(findfirst(",",args)[1]-1)]
-        filename = args[(findfirst(",",args)[1]+1):end]
+        file_name = args[(findfirst(",",args)[1]+1):end]
 
-        @assert length(filename) > 1
+        @assert length(file_name) > 1
         @assert length(figname) > 1
 
         if whatkind == :markdown
-            linkloc="https://raw.githubusercontent.com/natschil/misc/master/autogen/" * filename *".png"
+            linkloc="https://raw.githubusercontent.com/natschil/misc/master/autogen/" * file_name *".png"
             inner_text = "# ![]($linkloc)"
         elseif whatkind == :notebook || whatkind == :julia_norun
             inner_text = "Plots.plot($figname)"
         elseif whatkind == :julia_run
-            inner_text = "Plots.png($figname,\"/tmp/natschil_misc/autogen/$filename.png\")"
+            inner_text = "Plots.png($figname,\"/tmp/natschil_misc/autogen/$file_name.png\")"
         end
 
         content = content[1:(current_location[1]-1)] * inner_text * content[(closing_bracket[1]+1):end]
@@ -126,7 +126,7 @@ Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
 Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), "/tmp/";
     preprocess=preprocess_script2
     )
-1
+
 run(`julia --project=docs/ /tmp/standard_map.jl`)
 
 
@@ -136,9 +136,9 @@ run(`julia --project=docs/ /tmp/standard_map.jl`)
 # folder = isempty(travis_tag) ? "latest" : travis_tag
 # url = "https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/$(folder)/"
 # if get(ENV, "HAS_JOSH_K_SEAL_OF_APPROVAL", "") == "true"
-#     str = read(joinpath(@__DIR__, "src/filename.md"), String)
+#     str = read(joinpath(@__DIR__, "src/file_name.md"), String)
 #     str = replace(str, "[notebook.ipynb](generated/notebook.ipynb)." => "[notebook.ipynb]($(url)generated/notebook.ipynb).")
-#     write(joinpath(@__DIR__, "src/filename.md"), str)
+#     write(joinpath(@__DIR__, "src/file_name.md"), str)
 # end
 
 

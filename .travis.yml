@@ -6,7 +6,6 @@ language: julia
 
 julia:
   - 1.0
-  - 1.2
   - 1.3
   - nightly
 
@@ -21,15 +20,33 @@ git:
   depth: 99999
 
 before_install:
-  - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git"));'
+  - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));'
 
 jobs:
   include:
     - stage: deploy
-      if: branch = master
-      julia: 1.0
+      # if: branch = master
+      julia: 1.3
       os: linux
       script:
-        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate(); Pkg.add("Documenter"); Pkg.add("Literate"); Pkg.add("AxisArrays"); Pkg.add("BenchmarkTools"); Pkg.add("Interpolations"); Pkg.add("Distances"); Pkg.add("JLD2"); Pkg.add("OrdinaryDiffEq"); Pkg.add("Clustering"); Pkg.add("Arpack"); Pkg.add("Plots"); Pkg.add("StaticArrays"); Pkg.add("LinearMaps"); Pkg.add("Tensors"); Pkg.add(PackageSpec(url = "https://github.com/KristofferC/JuAFEM.jl.git")); Pkg.clone(pwd()); Pkg.build("Plots"); Pkg.resolve(); Pkg.instantiate(); using Plots'
+        # these packages should ideally only occur in a docs/Project.toml file
+        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate();
+                                                Pkg.add("Arpack");
+                                                Pkg.add("AxisArrays");
+                                                Pkg.add("Clustering");
+                                                Pkg.add("Distances");
+                                                Pkg.add("Documenter");
+                                                Pkg.add("Interpolations");
+                                                Pkg.add("JLD2");
+                                                Pkg.add("Literate");
+                                                Pkg.add("OrdinaryDiffEq");
+                                                Pkg.add("Plots");
+                                                Pkg.add("StaticArrays");
+                                                Pkg.add("Tensors");
+                                                Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
+                                                Pkg.add(PackageSpec(path=pwd()));
+                                                Pkg.build("Plots");
+                                                Pkg.instantiate()'
+        # - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.add(pwd()); Pkg.instantiate()'
         - julia --color=yes --project=docs/ docs/make.jl
       after_success: skip
