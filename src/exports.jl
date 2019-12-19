@@ -113,7 +113,6 @@ export
 
 	#pullbacktensors.jl
 	flow,
-	parallel_flow,
 	linearized_flow,
 	mean_diff_tensor,
 	CG_tensor,
