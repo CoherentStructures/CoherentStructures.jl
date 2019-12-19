@@ -1,7 +1,7 @@
 # (c) 2018-2019 Daniel Karrasch & Alvaro de Diego
 
 """
-    gaussian(σ)
+    gaussian(σ=1.0)
 
 Returns the Euclidean heat kernel as a callable function
 ```math
@@ -25,8 +25,7 @@ end
 """
     gaussiancutoff(σ, θ)
 
-Computes the positive value at which [`gaussian`](@ref)
-equals `θ`, i.e.,
+Computes the positive value at which [`gaussian(σ)`](@ref) equals `θ`, i.e.,
 ```math
 \\sqrt{-4\\sigma\\log(\\theta)}
 ```
@@ -90,7 +89,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `kernel=gaussian()`: diffusion kernel, e.g., [`gaussian`](@ref);
    * `op_reduce=P -> prod(LinearMaps.LinearMap, reverse(P))`: time-reduction of
      diffusion operators, e.g. `Statistics.mean` (space-time diffusion maps),
-     `P -> row_normalize!(max.(sum(P), 1))` (network-based coherence) or the
+     `P -> row_normalize!(min.(sum(P), 1))` (network-based coherence) or the
      default `P -> prod(LinearMaps.LinearMap, reverse(P))` (time coupled diffusion maps)
 
 ## Keyword arguments
@@ -233,7 +232,7 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
  `P` may be dense or sparse, or a `LinearMap` whose matrix-vector multiplication
  is given by a function. `maxiter` is passed to `Arpack.eigs`.
  """
-function stationary_distribution(P::LinMaps{T}; maxiter=3000) where T <: Real
+function stationary_distribution(P::LinMaps{<:Real}; maxiter=3000)
      E = Arpack.eigs(P; nev=1, ncv=50, maxiter=maxiter)
      Π = dropdims(real(E[2]), dims=2) # stationary distribution
      ext = extrema(Π)
@@ -244,28 +243,26 @@ function stationary_distribution(P::LinMaps{T}; maxiter=3000) where T <: Real
      return Π
  end
 
- @inline function L_mul_Lt(L::LMs.LinearMap{T},
-                            Π::Vector{T})::LMs.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::LMs.LinearMap, Π::AbstractVector)
      Πsqrt = Diagonal(sqrt.(Π))
      Πinv  = Diagonal(inv.(Π))
      return LMs.LinearMap(Πsqrt * L * Πinv * transpose(L) * Πsqrt;
                     issymmetric=true, ishermitian=true, isposdef=true)
  end
- @inline function L_mul_Lt(L::AbstractMatrix{T},
-                            Π::Vector{T})::LMs.LinearMap{T} where T <: Real
+ @inline function L_mul_Lt(L::AbstractMatrix, Π::AbstractVector)
      L .= sqrt.(Π) .* L .* permutedims(inv.(sqrt.(Π)))
      LMap = LMs.LinearMap(L)
-     return LMs.LinearMap(LMap * transpose(LMap); issymmetric=true,
-                ishermitian=true, isposdef=true)
+     return LMs.LinearMap(LMap * transpose(LMap);
+                            issymmetric=true, ishermitian=true, isposdef=true)
  end
 
- """
-     diffusion_coordinates(P, n_coords; maxiter=3000) -> (Σ::Vector, Ψ::Matrix)
+"""
+    diffusion_coordinates(P, n_coords; maxiter=3000) -> (Σ, Ψ)
 
- Compute the (time-coupled) diffusion coordinates `Ψ` and the coordinate weights
- `Σ` for a diffusion operator `P`. `n_coords` determines the number of diffusion
- coordinates to be computed, `maxiter` is passed to `Arpack.eigs`.
- """
+Compute the (time-coupled) diffusion coordinate matrix `Ψ` and the coordinate weight vector
+`Σ` for a diffusion operator `P`. The argument `n_coords` determines the number of
+diffusion  coordinates to be computed, `maxiter` is passed to `Arpack.eigs`.
+"""
 function diffusion_coordinates(P::LinMaps, n_coords::Int; maxiter=3000)
     N = LinearAlgebra.checksquare(P)
     n_coords <= N || throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
@@ -295,13 +292,10 @@ function diffusion_coordinates(P::LinMaps, n_coords::Int; maxiter=3000)
     return Σ, Ψ
 end
 
- """
-     diffusion_distance(diff_coord) -> SymmetricMatrix
+"""
+    diffusion_distance(Ψ)
 
- Returns the distance matrix of pairs of points whose diffusion distances
- correspond to the diffusion coordinates given by `diff_coord`.
- """
- function diffusion_distance(Ψ::AbstractMatrix)
-     D = Dists.pairwise(Dists.Euclidean(), Ψ)
-     return D
- end
+Returns the symmetric pairwise diffusion distance matrix corresponding to points whose
+diffusion coordinates are given by `Ψ`.
+"""
+diffusion_distance(Ψ::AbstractMatrix) = Dists.pairwise(Dists.Euclidean(), Ψ)
