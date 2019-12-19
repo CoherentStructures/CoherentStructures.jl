@@ -46,16 +46,16 @@ DISPLAY_PLOT(fig, standard_map_orbits)
 
 using Arpack, CoherentStructures, Distances, Tensors
 
-Df(a,x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
+Df(x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
 
-n, ll, ur = 100, (0.0, 0.0), (2π, 2π)               # grid size, domain corners
+n, ll, ur = 100, (0.0, 0.0), (2π, 2π)       # grid size, domain corners
 ctx, _ = regularTriangularGrid((n, n), ll, ur)
 pred(x,y) = peuclidean(x, y, [2π, 2π]) < 1e-9
-bd = BoundaryData(ctx, pred)                      # periodic boundary
+bd = BoundaryData(ctx, pred)                # periodic boundary
 
-I = one(Tensor{2,2})                              # identity matrix
-Df2(x) = Df(a,f(a,x))⋅Df(a,x)                     # consider 2. iterate
-cg(x) = 0.5*(I + dott(inv(Df2(x))))               # avg. inv. Cauchy-Green tensor
+I = one(Tensor{2,2})                        # identity matrix
+Df2(x) = Df(f(x))⋅Df(x)                     # consider 2. iterate
+cg(x) = 0.5*(I + dott(inv(Df2(x))))         # avg. inv. Cauchy-Green tensor
 
 K = assembleStiffnessMatrix(ctx, cg, bdata=bd)
 M = assembleMassMatrix(ctx, bdata=bd)
