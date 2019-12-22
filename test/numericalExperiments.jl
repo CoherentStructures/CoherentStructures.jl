@@ -8,7 +8,7 @@ include("testCase.jl")
 mutable struct experimentResult
     experiment::testCase
     ctx::CoherentStructures.GridContext
-    bdata::CoherentStructures.BoundaryData
+    bdata::BoundaryData
     mode::Symbol #One of :naTO, :aTO, :CG, :L2GTOf : L2GTOb, etc..
     done::Bool
     runtime::Float64

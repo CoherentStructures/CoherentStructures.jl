@@ -32,12 +32,15 @@ mutable struct BoundaryData
         @assert issorted(periodic_dofs_from)
         return new(dbc_dofs, periodic_dofs_from, periodic_dofs_to)
     end
+    # TODO: should this be an outer constructor?
     function BoundaryData(ctx::GridContext, predicate, which_dbc=[])
         dbcs = getHomDBCS(ctx, which_dbc).dbc_dofs
         from, to = identifyPoints(ctx, predicate)
         return BoundaryData(dbcs, from, to)
     end
 end
+
+@deprecate boundaryData(args...; kwargs...) BoundaryData(args...; kwargs...)
 
 """
     getHomDBCS(ctx, which="all")

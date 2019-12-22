@@ -6,7 +6,7 @@ include("numericalExperiments.jl")
 
 mutable struct FEMTransferExperimentResult
     ctx::CoherentStructures.GridContext
-    bdata::CoherentStructures.BoundaryData
+    bdata::BoundaryData
     ϵ::Float64
     n_stencil_points::Int
     λ::Vector{Complex128}

@@ -1004,13 +1004,13 @@ begin
   for j in  [1,2]
     LL = [0.0,-3.0]; UR=[6.371π,3.0]
     if j == 1
-      ctx = regularTriangularGrid((60,20),LL,UR,quadrature_order=2)
+      ctx = regularTriangularGrid((60,20), LL, UR, quadrature_order=2)
     else
-      ctx = regularP2TriangularGrid((30,10),LL,UR,quadrature_order=2)
+      ctx = regularP2TriangularGrid((30,10), LL, UR, quadrature_order=2)
     end
 
-    predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], UR[1]) < 1e-10
-    bdata = CoherentStructures.BoundaryData(ctx,predicate,[]);
+    predicate = (p1, p2) -> peuclidean(p1, p2, [6.371π, Inf]) < 1e-10
+    bdata = BoundaryData(ctx, predicate, []);
 
     tf = 40*3600*24.0
     t0 = 0.0
@@ -1059,8 +1059,8 @@ for j in (1, 2)
   else
     ctx = regularP2TriangularGrid((10,8),LL,UR,quadrature_order=2)
   end
-  predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 6.371π) < 1e-10
-  bdata = CoherentStructures.BoundaryData(ctx,predicate,[]);
+  predicate = (p1, p2) -> peuclidean(p1, p2, [6.371π, Inf]) < 1e-10
+  bdata = BoundaryData(ctx, predicate, []);
 
   cgfun = (x -> mean(pullback_diffusion_tensor(bickleyJet, x,linspace(0.0,40*3600*24,81),
        1.e-8,tolerance=1.e-5)))

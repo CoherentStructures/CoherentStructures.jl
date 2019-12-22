@@ -19,9 +19,8 @@ inverse_flow_map_t = (t,u0) -> flow(rot_double_gyre,u0,[t,0.0])[end]
 @everywhere u2 = nodal_interpolation(ctx2,checkerboard)
 @everywhere uf(t) = u2
 extra_kwargs_fun = t->  [(:title, @sprintf("Rotating Double Gyre, t=%.2f", t))]
-res = CoherentStructures.eulerian_video(ctx2,uf,inverse_flow_map_t,
-    0.0,1.0, 500,500,100, [0.0,0.0],[1.0,1.0],colorbar=false,
-    extra_kwargs_fun=extra_kwargs_fun)
+res = eulerian_video(ctx2, uf, inverse_flow_map_t, 0.0, 1.0, 500, 500, 100, [0.0,0.0], [1.0,1.0],
+    colorbar=false, extra_kwargs_fun=extra_kwargs_fun)
 Plots.mp4(res ,"docs/buildimg/rotdoublegyre.mp4")
 
 LL = [0.0,0.0]; UR = [1.0,1.0];
@@ -50,7 +49,7 @@ pred  = (x,y) -> ((x[1] - y[1]) % 2π) < 1e-9 && ((x[2] - y[2]) % 2π) < 1e-9
 bdata = BoundaryData(ctx,pred)
 
 id2 = one(Tensors.Tensor{2,2}) # 2D identity tensor
-cgfun = x -> 0.5*(id2 +  dott(inv(CoherentStructures.DstandardMap(x))))
+cgfun = x -> 0.5*(id2 +  dott(inv(DstandardMap(x))))
 
 K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)
 M = assembleMassMatrix(ctx,lumped=false,bdata=bdata)
@@ -65,7 +64,7 @@ for i in 1:50
     srand(i)
     x = rand(2)*2π
     for i in 1:500
-        x = CoherentStructures.standardMap(x)
+        x = standardMap(x)
         push!(orbits,x)
     end
 end

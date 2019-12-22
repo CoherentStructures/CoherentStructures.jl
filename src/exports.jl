@@ -70,7 +70,6 @@ export
 	regularTetrahedralGrid,
 	regularP2TetrahedralGrid,
 	regularGrid,
-	randomDelaunayGrid,
 	evaluate_function_from_dofvals,
 	evaluate_function_from_node_or_cellvals,
 	evaluate_function_from_node_or_cellvals_multiple,

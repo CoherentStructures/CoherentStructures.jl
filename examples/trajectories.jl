@@ -176,10 +176,10 @@ M = assembleMassMatrix(ctx)
 using Arpack
 λ, V = eigs(S, M; which=:SM, nev=6)
 
-# We can plot the spectrum obtained.
+# We can plot the computed spectrum.
 
 using Plots
-fig = plot_real_spectrum(λ)
+fig = plot_real_spectrum(λ, label="")
 DISPLAY_PLOT(fig, spectrum_to_laplace)
 
 # We may extract coherent vortices with k-means clustering.

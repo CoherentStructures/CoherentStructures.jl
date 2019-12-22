@@ -34,14 +34,14 @@ end
     LL = (0.0, 0.0)
     UR = (2π, 2π)
 
-    ctx, bdata = randomDelaunayGrid(npoints; on_torus=true, LL=LL, UR=UR)
+    ctx, bdata = randomDelaunayGrid(npoints, LL, UR; on_torus=true)
     #ctx, _ = regularP2TriangularGrid((50,50),LL,UR)
     #bdata = BoundaryData(ctx, PeriodicEuclidean([2π,2π]))
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     S = assembleStiffnessMatrix(ctx, bdata=bdata)
     T = adaptiveTOCollocationStiffnessMatrix(
-            ctx, CoherentStructures.standardMap;
+            ctx, standardMap;
             on_torus=true, bdata=bdata,
             volume_preserving=false)
     D = 0.5 * (S + T)

@@ -107,7 +107,7 @@ function.
 ## Boundary Conditions
 
 To use something other than the natural homogeneous von Neumann boundary
-conditions, the `CoherentStructures.BoundaryData` type can be used. This currently
+conditions, the `BoundaryData` type can be used. This currently
 supports combinations of homogeneous Dirichlet and periodic boundary conditions.
  - Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass
    matrices to be deleted
@@ -193,7 +193,7 @@ regular2dGrid
 Supported values for the `gridType` argument are:
 ```@example
 using CoherentStructures #hide
-CoherentStructures.regular2dGridTypes
+regular2dGridTypes
 ```
 The following functions are conceptually similar:
 ```@docs

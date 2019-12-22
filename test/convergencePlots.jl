@@ -1,12 +1,12 @@
 #(c) 2018 Nathanael Schilling
 
-using CoherentStructures
+using CoherentStructures, Distances
 include("numericalExperiments.jl")
 
 
 LL = Vec{2}([0.0,0.0])
 UR=Vec{2}([2π,2π])
-bdata_predicate = (x,y) -> (CoherentStructures.distmod(x[1],y[1],2π) < 1e-9 && CoherentStructures.distmod(x[2],y[2],2π)<1e-9)
+bdata_predicate = (x, y) -> peuclidean(x, y, [2π, 2π]) < 1e-9
 tC = makeStandardMapTestCase()
 
 
@@ -14,7 +14,7 @@ tC = makeStandardMapTestCase()
 tC = makeDoubleGyreTestCase(0.25)
 
 tC = makeCylinderFlowTestCase()
-ctx = regularTriangularGrid((10,10),tC.LL,tC.UR,quadrature_order=2)
+ctx = regularTriangularGrid((10, 10), tC.LL, tC.UR, quadrature_order=2)
 eR = experimentResult(tC, ctx, :naTO)
 runExperiment!(eR)
 plotExperiment(eR)
@@ -46,12 +46,10 @@ eR = experimentResult(tC, ctx, :naTO)
 runExperiment!(eR)
 plotExperiment(eR)
 
-plot_u(ctx,ones(ctx.n),400,400,color=:rainbow,colorbar=true,clim=(1-1e-16,1))
+plot_u(ctx, ones(ctx.n), 400, 400, color=:rainbow, colorbar=true, clim=(1-1e-16,1))
 Plots.savefig("/tmp/output.svg")
-inv_flow_map = CoherentStructures.standardMapInv
-plot_u_eulerian(ctx, -1*eR.V[:,3],inv_flow_map,
-   LL,UR,300,300,
-   bdata=eR.bdata,color=:rainbow)
+inv_flow_map = standardMapInv
+plot_u_eulerian(ctx, -1*eR.V[:,3], inv_flow_map, LL, UR, 300, 300, bdata=eR.bdata, color=:rainbow)
 
 
 
@@ -62,7 +60,7 @@ tC = makeStandardMapTestCase()
 referenceCtx = regularP2TriangularGrid((200,200),tC.LL,tC.UR)
 reference = experimentResult(tC,referenceCtx, :CG)
 runExperiment!(reference)
-inv_flow_map = CoherentStructures.standardMapInv
+inv_flow_map = standardMapInv
 
 
 results[1].ctx.numberOfPointsInEachDirection
