@@ -2,11 +2,6 @@ name = "CoherentStructures"
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
 version = "0.0.0"
 
-[compat]
-Distances = ">=0.8.1"
-OrdinaryDiffEq = "5.18"
-julia = "1"
-
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -30,6 +25,25 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 VoronoiDelaunay = "72f80fcb-8c52-57d9-aff0-40c1a3526986"
+
+[compat]
+julia = "1"
+Arpack = "0.3, 0.4"
+AxisArrays = "0.3.3, 0.4"
+DiffEqBase = "6"
+Distances = "0.8.1"
+GeometricalPredicates = "0.3, 0.4"
+Interpolations = "0.11, 0.12"
+IterativeSolvers = "0.7, 0.8"
+LinearMaps = "2"
+NearestNeighbors = "0.4.4"
+OrdinaryDiffEq = "5.18"
+ProgressMeter = "1"
+RecipesBase = "0.7"
+StaticArrays = "0.10, 0.11, 0.12"
+SymEngine = "0.6, 0.7"
+Tensors = "1.0.1"
+VoronoiDelaunay = "0.4"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
