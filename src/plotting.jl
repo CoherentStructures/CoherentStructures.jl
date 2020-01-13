@@ -1,6 +1,6 @@
 
 """
-    plot_u(ctx, dof_vals, nx, ny; bdata=nothing, kwargs...)
+    plot_u(ctx, dof_vals, nx=100, ny=100, LL, UR; bdata=nothing, kwargs...)
 
 Plot the function with coefficients (in dof order, possible boundary conditions in `bdata`) given by `dof_vals` on the grid `ctx`.
 The domain to be plotted on is given by `ctx.spatialBounds`.
@@ -11,23 +11,22 @@ function plot_u(ctx::GridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100,
                 LL=ctx.spatialBounds[1], UR=ctx.spatialBounds[2]; bdata=nothing, kwargs...
                 ) where {dim}
     if dim == 1
-        plot_u_eulerian(ctx, dof_vals, identity, LL, UR, nx, bdata=bdata; kwargs...)
+        plot_u_eulerian(ctx, dof_vals, identity, LL, UR, nx; bdata=bdata, kwargs...)
     elseif dim==2
-        plot_u_eulerian(ctx, dof_vals, identity, LL, UR, nx, ny, bdata=bdata; kwargs...)
+        plot_u_eulerian(ctx, dof_vals, identity, LL, UR, nx, ny; bdata=bdata, kwargs...)
     else
         throw(AssertionError("Not yet implemented"))
     end
 end
-
 function plot_u(ctx,dof_vals::Vector{Complex{<:Real}},args...;kwargs...)
-    return plot_u(ctx,real.(dof_vals),args...; title="Plotting real part!", kwargs...)
+    return plot_u(ctx, real.(dof_vals), args...; title="Plotting real part!", kwargs...)
 end
 
 function plot_u!(ctx::GridContext{dim}, dof_vals::Vector{<:Real}, nx=100, ny=100; bdata=nothing, kwargs...) where {dim}
     if dim == 1
-        plot_u_eulerian!(ctx, dof_vals, identity, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny, bdata=bdata; kwargs...)
+        plot_u_eulerian!(ctx, dof_vals, identity, ctx.spatialBounds[1], ctx.spatialBounds[2], nx; bdata=bdata, kwargs...)
     elseif dim==2
-        plot_u_eulerian!(ctx, dof_vals, identity, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, bdata=bdata; kwargs...)
+        plot_u_eulerian!(ctx, dof_vals, identity, ctx.spatialBounds[1], ctx.spatialBounds[2], nx, ny; bdata=bdata, kwargs...)
     else
         throw(AssertionError("Not yet implemented"))
     end
@@ -35,36 +34,26 @@ end
 
 
 RecipesBase.@userplot Plot_U_Eulerian
-RecipesBase.@recipe function f(
-        as::Plot_U_Eulerian;
+RecipesBase.@recipe function f(as::Plot_U_Eulerian;
         bdata=nothing,
         euler_to_lagrange_points=nothing,
         z=nothing,
         postprocessor=nothing,
         return_scalar_field=false,
-        throw_errors=false
-    )
+        throw_errors=false)
     ctx::GridContext = as.args[1]
     dof_vals::Vector{Float64} = as.args[2]
     inverse_flow_map::Function = as.args[3]
-    LL::Tuple{Float64,Float64} = as.args[4]
-    UR::Tuple{Float64,Float64} = as.args[5]
+    LL = as.args[4]
+    LL isa AbstractVector &&
+        @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
+    UR = as.args[5]
+    UR isa AbstractVector &&
+        @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     if ctx isa GridContext{2}
-        if length(as.args) >= 6
-            nx=as.args[6]
-        else
-            nx = 100
-        end
-        if length(as.args) >= 7
-            ny = as.args[7]
-        else
-            ny = 100
-        end
+        nx = length(as.args) >= 6 ? as.args[6] : 100
+        ny = length(as.args) >= 7 ? as.args[7] : 100
 
-        #
-        # x1 = Float64[]
-        # x2 = Float64[]
-        # values = Float64[]
         u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
         x1 = range(LL[1], stop=UR[1], length=nx)
         x2 = range(LL[2], stop=UR[2], length=ny)
@@ -98,11 +87,7 @@ RecipesBase.@recipe function f(
         ylim --> (LL[2], UR[2])
         x1, x2, z
     elseif ctx isa GridContext{1}
-        if length(as.args) >= 6
-            nx=as.args[6]
-        else
-            nx = 100
-        end
+        nx = length(as.args) >= 6 ? as.args[6] : 100
         u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
         x1 = range(LL[1], stop=UR[1], length=nx)
 
@@ -133,14 +118,15 @@ RecipesBase.@recipe function f(
     end
 end
 
-
 """
-    plot_u_eulerian(ctx,dof_vals,inverse_flow_map,
-        LL,UR,nx,ny,
-        euler_to_lagrange_points=nothing, only_get_lagrange_points=false,
+    plot_u_eulerian(ctx, dof_vals, inverse_flow_map, LL, UR[, nx, ny];
+        euler_to_lagrange_points=nothing,
+        only_get_lagrange_points=false,
         z=nothing,
         postprocessor=nothing,
-        bdata=nothing, ....)
+        bdata=nothing,
+        kwargs...)
+
 Plot a heatmap of a function in eulerian coordinates, i.e. the pushforward of \$f\$. This is given by
 \$f \\circ \\Phi^{-1}\$, \$f\$ is a function defined on the grid `ctx`, represented by coefficients given by `dof_vals` (with possible boundary conditions given in `bdata`)
 
@@ -173,7 +159,6 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map, xi; throw_errors=fal
             end
         end
         return euler_to_lagrange_points_raw
-
     elseif length(xi) == 2
         x1, x2 = xi
         euler_to_lagrange_points_raw = SharedArray{Float64}(length(x2), length(x1), 2)
@@ -199,20 +184,18 @@ function compute_euler_to_lagrange_points_raw(inv_flow_map, xi; throw_errors=fal
     end
 end
 
-
 RecipesBase.@userplot Plot_Spectrum
-RecipesBase.@recipe function  f(as::Plot_Spectrum)
+RecipesBase.@recipe function f(as::Plot_Spectrum)
     λ = as.args[1]
     seriestype --> :scatter
-    (real.(λ),imag.(λ))
+    (real.(λ), imag.(λ))
 end
 
-
 RecipesBase.@userplot Plot_Real_Spectrum
-RecipesBase.@recipe function  f(as::Plot_Real_Spectrum)
+RecipesBase.@recipe function f(as::Plot_Real_Spectrum)
     λ = as.args[1]
     seriestype --> :scatter
-    (1:length(λ),real.(λ))
+    (1:length(λ), real.(λ))
 end
 
 struct FrameCollection
@@ -220,11 +203,11 @@ struct FrameCollection
 end
 
 
-function Base.iterate(col::FrameCollection, state=0 )
+function Base.iterate(col::FrameCollection, state=0)
     if state == length(col.frames)
         return nothing
     end
-    return col.frames[state+1] , state+1
+    return col.frames[state+1], state+1
 end
 
 
@@ -285,7 +268,7 @@ function eulerian_videos(ctx,
     	    end
             push!(allvideos[i].frames, curframe)
         end
-    end;
+    end
     return allvideos
 end
 
@@ -325,7 +308,7 @@ Returns only one result, on which `Plots.animate()` can be applied.
 """
 function eulerian_video(ctx, u::Function, inverse_flow_map_t,t0,tf, nx, ny, nt, LL, UR;extra_kwargs_fun=nothing,kwargs...)
     usfun = (index, t) -> u(t)
-    if (extra_kwargs_fun != nothing)
+    if (extra_kwargs_fun !== nothing)
         extra_kwargs_fun_out = (i, t) -> extra_kwargs_fun(t)
     else
         extra_kwargs_fun_out = nothing
@@ -398,36 +381,24 @@ end
 
 
 RecipesBase.@userplot Plot_FTLE
-RecipesBase.@recipe function f(
-            as::Plot_FTLE;
-    	   tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
+RecipesBase.@recipe function f(as::Plot_FTLE;
+    	   tolerance=1e-4,
+           solver=OrdinaryDiffEq.BS5(),
 		   #existing_plot=nothing, TODO 1.0
-           flip_y=false, check_inbounds=always_true,
-           pass_on_errors=false
-           )
-   odefun=as.args[1]
-   p = as.args[2]
-   tspan = as.args[3]
-   LL = as.args[4]
-   UR = as.args[5]
-   if length(as.args) >= 6
-       nx = as.args[6]
-   else
-       nx = 100
-   end
-   if length(as.args) >= 7
-       ny = as.args[7]
-   else
-       ny = 100
-   end
-   if length(as.args) >= 8
-       δ = as.args[8]
-   else
-       δ = 1e-9
-   end
+           flip_y=false,
+           check_inbounds=always_true,
+           pass_on_errors=false)
+    odefun=as.args[1]
+    p = as.args[2]
+    tspan = as.args[3]
+    LL = as.args[4]
+    UR = as.args[5]
+    nx = length(as.args) >= 6 ? as.args[6] : 100
+    ny = length(as.args) >= 7 ? as.args[7] : 100
+    δ = length(as.args) >= 8 ? as.args[8] : 1e-9
 
-    x1 = collect(range(LL[1] + 1.e-8,stop= UR[1] - 1.e-8,length=nx))
-    x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8,length=ny))
+    x1 = collect(range(LL[1] + 1.e-8, stop=UR[1] - 1.e-8, length=nx))
+    x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8, length=ny))
     if flip_y
         x2 = reverse(x2)
     end
@@ -473,7 +444,7 @@ RecipesBase.@recipe function f(
         x2 *= -1
     end
 
-    x1,x2,FTLE
+    x1, x2, FTLE
 
     #= TODO
     if existing_plot === nothing
@@ -484,11 +455,10 @@ RecipesBase.@recipe function f(
     =#
 end
 
-
 """
-    plot_ftle(odefun,p,tspan,LL,UR,nx,ny;
-        δ=1e-9,tolerance=1e-4,solver=OrdinaryDiffEq.BS5(),
-        existing_plot=nothing,flip_y=false, check_inbounds=always_true, pass_on_errors=false)
+    plot_ftle(odefun, p, tspan, LL, UR, nx, ny;
+        δ=1e-9, tolerance=1e-4, solver=OrdinaryDiffEq.BS5(),
+        existing_plot=nothing, flip_y=false, check_inbounds=always_true, pass_on_errors=false)
 
 Make a heatmap of a FTLE field using finite differences.
 If `existing_plot` is given a value, plot using `heatmap!` on top of it.
@@ -498,11 +468,8 @@ Unless `pass_on_errors` is set to `true`, errors from calculating FTLE values ar
 """
 plot_ftle
 
-
 RecipesBase.@userplot Plot_Singularities
-RecipesBase.@recipe function f(
-            as::Plot_Singularities;
-           )
+RecipesBase.@recipe function f(as::Plot_Singularities)
     singularities = as.args[1]
     seriestype --> :scatter
     function getcolor(ind)
@@ -538,9 +505,7 @@ end
 
 
 RecipesBase.@userplot Plot_Barrier
-RecipesBase.@recipe function f(
-            as::Plot_Barrier;barrier_width=3,barrier_color=:red
-           )
+RecipesBase.@recipe function f(as::Plot_Barrier; barrier_width=3, barrier_color=:red)
     barrier = as.args[1].curve
     label --> ""
     aspect_ratio --> 1
@@ -550,61 +515,59 @@ RecipesBase.@recipe function f(
 end
 
 RecipesBase.@userplot Plot_DBS
-RecipesBase.@recipe function f(
-            as::Plot_DBS;logBg=true
-           )
+RecipesBase.@recipe function f(as::Plot_DBS; logBg=true)
     bg = as.args[1]
     LL = as.args[2]
     UR = as.args[3]
     xspan = bg.axes[1].val
     aspect_ratio --> 1
     yspan = bg.axes[2].val
-    xlims --> (LL[1],UR[1])
-    ylims --> (LL[2],UR[2])
+    xlims --> (LL[1], UR[1])
+    ylims --> (LL[2], UR[2])
     color --> :viridis
     seriestype --> :heatmap
-    xspan,yspan, logBg ? permutedims(log10.(bg)) : permutedims(bg)
+    xspan, yspan, logBg ? permutedims(log10.(bg)) : permutedims(bg)
 end
 
 RecipesBase.@userplot Empty_Heatmap
-RecipesBase.@recipe function f(
-            as::Empty_Heatmap;
-           )
+RecipesBase.@recipe function f(as::Empty_Heatmap)
     LL = as.args[1]
     UR = as.args[2]
-    xspan = range(LL[1],stop=UR[1],length=2)
-    yspan = range(LL[2],stop=UR[2],length=2)
-    xlims --> (LL[1],UR[1])
-    ylims --> (LL[2],UR[2])
+    xspan = range(LL[1], stop=UR[1], length=2)
+    yspan = range(LL[2], stop=UR[2], length=2)
+    xlims --> (LL[1], UR[1])
+    ylims --> (LL[2], UR[2])
     bg = [NaN for x in xspan, y in yspan]
     colorbar --> :none
     seriestype --> :heatmap
-    xspan,yspan, bg
+    xspan, yspan, bg
 end
 
 
 
 """
-    plot_vortices(vortices,singularities,[LL,UR ;bg])
+    plot_vortices(vortices, singularities, [LL, UR ; bg])
 
-Makes a plot from the output of ellipticLCS
+Plots the output of [`ellipticLCS`](@ref).
 """
-function plot_vortices(vortices,singularities,LL,UR;bg=nothing,logBg=true,
-    barrier_width=3,barrier_color=:red,
-    include_singularities=true, kwargs...
-    )
-    if bg != nothing
-       fig =  plot_dbs(bg,LL,UR;logBg=logBg, kwargs...)
+function plot_vortices(vortices, singularities, LL, UR;
+    bg=nothing,
+    logBg=true,
+    barrier_width=3,
+    barrier_color=:red,
+    include_singularities=true,
+    kwargs...)
+
+    if bg !== nothing
+        fig = plot_dbs(bg, LL, UR; logBg=logBg, kwargs...)
     else
-        fig = empty_heatmap(LL,UR; kwargs...)
+        fig = empty_heatmap(LL, UR; kwargs...)
     end
-    for v in vortices
-        for b in v.barriers
-            plot_barrier!( b;barrier_width=barrier_width,barrier_color=barrier_color, kwargs...)
-        end
+    for v in vortices, b in v.barriers
+        plot_barrier!(b; barrier_width=barrier_width, barrier_color=barrier_color, kwargs...)
     end
     if include_singularities
         plot_singularities!(singularities; kwargs...)
     end
-    fig
+    return fig
 end
