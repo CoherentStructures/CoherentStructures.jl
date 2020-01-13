@@ -5,8 +5,8 @@ using CoherentStructures
 include("numericalExperiments.jl")
 
 mutable struct FEMTransferExperimentResult
-    ctx::CoherentStructures.gridContext
-    bdata::CoherentStructures.boundaryData
+    ctx::CoherentStructures.GridContext
+    bdata::BoundaryData
     ϵ::Float64
     n_stencil_points::Int
     λ::Vector{Complex128}
@@ -50,7 +50,7 @@ for resolution in gridResolutions
             ctx = regularP2TriangularGrid(resolution, [0.0,0.0],[1.,1.],quadrature_order=5)
         end
         pred  = (x,y) -> peuclidean(x, y, [1, 1]) < 1e-9
-        bdata = boundaryData(ctx,pred) #Periodic boundary
+        bdata = BoundaryData(ctx,pred) #Periodic boundary
         ALPHApreBC = L2GalerkinTOFromInverse(ctx,sminv,ϵ,periodic_directions=(true,true) ,n_stencil_points=n_stencil_points )
         gc()
         ALPHA = applyBCS(ctx,ALPHApreBC,bdata)

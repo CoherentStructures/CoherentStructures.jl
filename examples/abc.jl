@@ -7,7 +7,7 @@ abcctx = CoherentStructures.regularP2TetrahedralGrid((5, 5, 5), [0.0, 0.0, 0.0],
     [2π, 2π, 2π], quadrature_order=2)
 bdata_predicate = (x,y) -> peuclidean(x, y, [2π, 2π, 2π]) < 1e-8
 
-bdata = boundaryData(abcctx, bdata_predicate)
+bdata = BoundaryData(abcctx, bdata_predicate)
 
 cgfun = x-> mean_diff_tensor(abcFlow, x, [0.0,1.0], 1.e-10, p=(√3,√2,1), tolerance=1.e-3)
 @time M = assembleMassMatrix(abcctx, bdata=bdata);

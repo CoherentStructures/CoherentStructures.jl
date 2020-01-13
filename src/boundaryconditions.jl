@@ -4,26 +4,26 @@
 
 
 """
-    mutable struct boundaryData
+    mutable struct BoundaryData
 
 Represent (a combination of) homogeneous Dirichlet and periodic boundary conditions.
 
 ## Fields
-   * `dbc_dofs`: list of dofs that should have homogeneous Dirichlet boundary
-   conditions. Must be sorted.
+   * `dbc_dofs`: list of dofs that should have homogeneous Dirichlet boundary conditions.
+     Must be sorted.
    * `periodic_dofs_from` and `periodic_dofs_to` are both `Vector{Int}`. The
-   former *must* be strictly increasing, both must have the same length.
-   `periodic_dofs_from[i]` is identified with `periodic_dofs_to[i]`.
-   `periodic_dofs_from[i]` must be strictly larger than `periodic_dofs_to[i]`.
-   Multiple dofs can be identified with the same dof. If some dof is identified
-   with another dof and one of them is in `dbc_dofs`, both points *must* be in
-   `dbc_dofs`.
+     former *must* be strictly increasing, both must have the same length.
+     `periodic_dofs_from[i]` is identified with `periodic_dofs_to[i]`.
+     `periodic_dofs_from[i]` must be strictly larger than `periodic_dofs_to[i]`.
+     Multiple dofs can be identified with the same dof. If some dof is identified
+     with another dof and one of them is in `dbc_dofs`, both points *must* be in
+     `dbc_dofs`.
 """
-mutable struct boundaryData
+mutable struct BoundaryData
     dbc_dofs::Vector{Int}
     periodic_dofs_from::Vector{Int}
     periodic_dofs_to::Vector{Int}
-    function boundaryData(dbc_dofs::Vector{Int}=Vector{Int}(),
+    function BoundaryData(dbc_dofs::Vector{Int}=Vector{Int}(),
                             periodic_dofs_from::Vector{Int}=Vector{Int}(),
                             periodic_dofs_to::Vector{Int}=Vector{Int}()
                          )
@@ -32,20 +32,23 @@ mutable struct boundaryData
         @assert issorted(periodic_dofs_from)
         return new(dbc_dofs, periodic_dofs_from, periodic_dofs_to)
     end
-    function boundaryData(ctx::gridContext{dim}, predicate::T, which_dbc=[]) where {dim, T <: Union{Function,Distances.Metric}}
+    # TODO: should this be an outer constructor?
+    function BoundaryData(ctx::GridContext, predicate, which_dbc=[])
         dbcs = getHomDBCS(ctx, which_dbc).dbc_dofs
         from, to = identifyPoints(ctx, predicate)
-        return boundaryData(dbcs, from, to)
+        return BoundaryData(dbcs, from, to)
     end
 end
 
-"""
-    getHomDBCS(ctx,which="all")
+@deprecate boundaryData(args...; kwargs...) BoundaryData(args...; kwargs...)
 
-Return `boundaryData` object corresponding to homogeneous Dirichlet Boundary Conditions for a set of facesets.
-`which="all"` is shorthand for `["left","right","top","bottom"]`.
 """
-function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
+    getHomDBCS(ctx, which="all")
+
+Return `BoundaryData` object corresponding to homogeneous Dirichlet boundary conditions for
+a set of facesets. `which="all"` is shorthand for `["left", "right", "top", "bottom"]`.
+"""
+function getHomDBCS(ctx::GridContext{dim}, which="all") where {dim}
     dbcs = JFM.ConstraintHandler(ctx.dh)
     #TODO: See if newer version of JuAFEM export a "boundary" nodeset
     if which == "all"
@@ -61,30 +64,25 @@ function getHomDBCS(ctx::gridContext{dim}, which="all") where dim
                      JFM.getfaceset(ctx.grid, "top"),
                      JFM.getfaceset(ctx.grid, "bottom"),
                        ), (x, t) -> 0)
-       elseif dim == 3
-            dbc = JFM.Dirichlet(:T,
-                    union(JFM.getfaceset(ctx.grid, "left"),
-                     JFM.getfaceset(ctx.grid, "right"),
-                     JFM.getfaceset(ctx.grid, "top"),
-                     JFM.getfaceset(ctx.grid, "bottom"),
-                     JFM.getfaceset(ctx.grid, "front"),
-                     JFM.getfaceset(ctx.grid, "back"),
-                       ), (x, t) -> 0)
-       else
-           throw(AssertionError("dim ∉ [1,2,3]"))
-       end
-   elseif isempty(which)
-       return boundaryData(Vector{Int}())
-   else
-       dbc = JFM.Dirichlet(:T,
-               union([JFM.getfaceset(ctx.grid, str) for str in which]...),
-               (x, t) -> 0
-               )
-   end
+        elseif dim == 3
+            dbc = JFM.Dirichlet(:T, union(JFM.getfaceset(ctx.grid, "left"),
+                                             JFM.getfaceset(ctx.grid, "right"),
+                                             JFM.getfaceset(ctx.grid, "top"),
+                                             JFM.getfaceset(ctx.grid, "bottom"),
+                                             JFM.getfaceset(ctx.grid, "front"),
+                                             JFM.getfaceset(ctx.grid, "back")), (x, t) -> 0)
+        else
+            throw(AssertionError("dim ∉ [1,2,3]"))
+        end
+    elseif isempty(which)
+        return BoundaryData(Vector{Int}())
+    else
+        dbc = JFM.Dirichlet(:T, union([JFM.getfaceset(ctx.grid, str) for str in which]...), (x, t) -> 0)
+    end
     JFM.add!(dbcs, dbc)
     JFM.close!(dbcs)
     JFM.update!(dbcs, 0.0)
-    return boundaryData(dbcs.prescribed_dofs)
+    return BoundaryData(dbcs.prescribed_dofs)
 end
 
 """
@@ -94,21 +92,21 @@ Given a vector `u` in dof order with boundary conditions applied, return the
 corresponding `u` in dof order without the boundary conditions.
 """
 function undoBCS(ctx, u, bdata)
-        n = ctx.n
-        if length(bdata.dbc_dofs) == 0 && length(bdata.periodic_dofs_from) == 0
-            return copy(u)
+    n = ctx.n
+    if length(bdata.dbc_dofs) == 0 && length(bdata.periodic_dofs_from) == 0
+        return copy(u)
+    end
+    if n == length(u)
+        error("u is already of length n, no need for undoBCS")
+    end
+    correspondsTo = BCTable(ctx, bdata)
+    result = zeros(n)
+    for i in 1:n
+        if correspondsTo[i] != 0
+            result[i] = u[correspondsTo[i]]
         end
-        if n == length(u)
-            error("u is already of length n, no need for undoBCS")
-        end
-        correspondsTo = BCTable(ctx, bdata)
-        result = zeros(n)
-        for i in 1:n
-            if correspondsTo[i] != 0
-                result[i] = u[correspondsTo[i]]
-            end
-        end
-        return result
+    end
+    return result
 end
 
 """
@@ -116,18 +114,18 @@ end
 
 Return the coordinates of the node corresponding to the dof with index `dofindex`.
 """
-function getDofCoordinates(ctx::gridContext{dim}, dofindex::Int) where dim
+function getDofCoordinates(ctx::GridContext, dofindex::Int)
     return ctx.grid.nodes[ctx.dof_to_node[dofindex]].x
 end
 
 """
-    BCTable(ctx,bdata)
+    BCTable(ctx, bdata)
 
 Return a vector `res` so that `res[i] = j` means that dof `i` should be identified
 with bcdof `j` if `j != 0`. If `j = 0` dof `i` is part of a homogeneous Dirichlet
 boundary condition.
 """
-function BCTable(ctx::gridContext{dim},bdata::boundaryData) where dim
+function BCTable(ctx::GridContext, bdata::BoundaryData)
     dbcs_prescribed_dofs = bdata.dbc_dofs
     periodic_dofs_from   = bdata.periodic_dofs_from
     periodic_dofs_to     = bdata.periodic_dofs_to
@@ -187,9 +185,7 @@ end
 Get the number of dofs that are left after the boundary conditions in `bdata`
 have been applied.
 """
-function nBCDofs(ctx::gridContext{dim}, bdata::boundaryData) where dim
-    return length(unique(BCTable(ctx, bdata)))
-end
+nBCDofs(ctx::GridContext, bdata::BoundaryData) = length(unique(BCTable(ctx, bdata)))
 
 """
     doBCS(ctx, u, bdata)
@@ -197,7 +193,7 @@ end
 Take a vector `u` in dof order and throw away unneccessary dofs.
 This is a left-inverse to undoBCS.
 """
-function doBCS(ctx, u::AbstractVector{T}, bdata) where T
+function doBCS(ctx, u::AbstractVector{T}, bdata) where {T}
     @assert length(u) == ctx.n
     #Is = findall(i -> ∉(i,bdata.dbc_dofs) && ∉(i,bdata.periodic_dofs_from), 1:ctx.n)
     #return u[Is]
@@ -223,8 +219,8 @@ matrix `K`. Only applies boundary conditions accross columns (rows) if
 then values in rows that should be cominbed are added. Otherwise, one of the rows
 is discarded and the values of the other are used.
 """
-function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
-                    ctx_col::gridContext{dim}=ctx_row, bdata_col=bdata_row,
+function applyBCS(ctx_row::GridContext{dim}, K, bdata_row;
+                    ctx_col::GridContext{dim}=ctx_row, bdata_col=bdata_row,
                     add_vals=true) where {dim}
 
     n, m = size(K)
@@ -314,7 +310,7 @@ function applyBCS(ctx_row::gridContext{dim}, K, bdata_row;
     end
 end
 
-function identifyPoints(ctx::gridContext{dim}, predicate::Function) where dim
+function identifyPoints(ctx::GridContext, predicate)
     boundary_dofs = getHomDBCS(ctx).dbc_dofs
     identify_from = Int[]
     identify_to = Int[]
@@ -331,7 +327,7 @@ function identifyPoints(ctx::gridContext{dim}, predicate::Function) where dim
 end
 
 
-function identifyPoints(ctx::gridContext{dim}, predicate::Distances.Metric) where dim
+function identifyPoints(ctx::GridContext{dim}, predicate::Distances.Metric) where {dim}
 
     identify_from = Int[]
     identify_to = Int[]
@@ -355,19 +351,17 @@ function identifyPoints(ctx::gridContext{dim}, predicate::Distances.Metric) wher
     return identify_from, identify_to
 end
 
-function isEmptyBC(bdata::boundaryData)
-    return isempty(bdata.dbc_dofs) && isempty(bdata.periodic_dofs_from)
-end
+isEmptyBC(bdata::BoundaryData) = all(isempty, (bdata.dbc_dofs, bdata.periodic_dofs_from))
 
-function get_full_dofvals(ctx,dof_vals; bdata=nothing)
+function get_full_dofvals(ctx, dof_vals; bdata=nothing)
     if (bdata==nothing) && (ctx.n != length(dof_vals))
         dbcs = getHomDBCS(ctx)
         if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
             error("Input u has wrong length")
         end
-        dof_values = undoBCS(ctx,dof_vals,dbcs)
+        dof_values = undoBCS(ctx, dof_vals, dbcs)
     elseif (bdata != nothing)
-        dof_values = undoBCS(ctx,dof_vals,bdata)
+        dof_values = undoBCS(ctx, dof_vals, bdata)
     else
         dof_values = dof_vals
     end

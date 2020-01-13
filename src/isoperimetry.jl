@@ -12,7 +12,7 @@ function getLength(curve, tensorfield)
         curpoint = curve[j]
         nextpoint = curve[j+1]
         approxTangentVector = nextpoint - curpoint
-        result += sqrt(approxTangentVector ⋅ (tensorfield(curpoint[1],curpoint[2]) * approxTangentVector))
+        result += sqrt(approxTangentVector ⋅ (tensorfield(curpoint[1], curpoint[2]) * approxTangentVector))
     end
     return result
 end
@@ -39,26 +39,21 @@ function getEuclideanArea(curve)
     return result
 end
 
-function get_best_levelset(ctx, u,
-    ncontours,nx,ny,tensorfield,scaling=2.0;
-    bdata=bdata
-    )
+function get_best_levelset(ctx, u, ncontours, nx, ny, tensorfield, scaling=2.0; bdata=bdata)
+    xs = range(ctx.spatialBounds[1][1], stop=ctx.spatialBounds[2][1], length=nx)
+    ys = range(ctx.spatialBounds[1][2], stop=ctx.spatialBounds[2][2], length=ny)
 
-    xs = range(ctx.spatialBounds[1][1],stop=ctx.spatialBounds[2][1],length=nx)
-    ys = range(ctx.spatialBounds[1][2],stop=ctx.spatialBounds[2][2],length=ny)
-
-    u_dofvals = undoBCS(ctx,u,bdata)
+    u_dofvals = undoBCS(ctx, u, bdata)
     u_nodevals = u_dofvals[ctx.node_to_dof]
 
     fs = [evaluate_function_from_node_or_cellvals(ctx, u_nodevals, Vec{2}((x,y)))
-        for x in xs, y in ys
-            ]
-    cl = contours(xs,ys,fs,ncontours)
+        for x in xs, y in ys]
+    cl = contours(xs, ys, fs, ncontours)
 
     currentmin = Inf
     result = nothing
 
-    for cl in lines(contours(xs,ys,fs))
+    for cl in lines(contours(xs, ys, fs))
         area = getEuclideanArea(cl)
         len = getLength(cl, tensorfield)
         isoperim = len^scaling / area

@@ -55,13 +55,13 @@ Various types of regular and irregular meshes (with Delaunay triangulation using
  - triangular and quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
  - tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)
 
-## The `gridContext` Type
+## The `GridContext` Type
 
 The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
 This package is very low-level and does not provide point-location/plotting functionality.
-To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a `gridContext` structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.
+To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a `GridContext` structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.
 
-In this documentation, the variable name `ctx` is exclusively used for `gridContext` objects.
+In this documentation, the variable name `ctx` is exclusively used for `GridContext` objects.
 
 See also [Constructing Grids](@ref) in the [FEM-API](@ref) section.
 
@@ -74,7 +74,7 @@ The nodes of the grid can be obtained in the following way `[n.x for n in ctx.gr
 However, most of the methods of this package do _not_ return results in this order, but instead
 use `JuAFEM.jl`'s dof-ordering.
 
-See also the documentation in [`dof2node`](@ref) and [`CoherentStructures.gridContext`](@ref)
+See also the documentation in [`dof2node`](@ref) and [`CoherentStructures.GridContext`](@ref)
 
 When working with (non-natural) [Boundary Conditions](@ref), the ordering is further changed, due to there being fewer degrees of freedom in total.
 
@@ -107,7 +107,7 @@ function.
 ## Boundary Conditions
 
 To use something other than the natural homogeneous von Neumann boundary
-conditions, the `CoherentStructures.boundaryData` type can be used. This currently
+conditions, the `BoundaryData` type can be used. This currently
 supports combinations of homogeneous Dirichlet and periodic boundary conditions.
  - Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass
    matrices to be deleted
@@ -122,21 +122,21 @@ account.
 ### Constructing Boundary Conditions
 
 Natural von-Neumann boundary conditions can be constructed with:
-`boundaryData()` and are generally the default
+`BoundaryData()` and are generally the default
 
 Homogeneous Dirichlet boundary conditions can be constructed with the
 `getHomDBCS(ctx[, which="all"])` function. The optional `which` parameter is a
 vector of strings, corresponding to `JuAFEM` face-sets, e.g.
 `getHomDBCS(ctx, which=["left", "right"])`
 
-Periodic boundary conditions are constructed by calling `boundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a
+Periodic boundary conditions are constructed by calling `BoundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a
 function that should return `true` if and only if two points should be identified.
 Due to floating-point rounding errors, note that using exact comparisons (`==`)
 should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are
 considered. If this is too restrictive, use the
-`boundaryData(dbc_dofs, periodic_dofs_from, periodic_dofs_to)` constructor.
+`BoundaryData(dbc_dofs, periodic_dofs_from, periodic_dofs_to)` constructor.
 
-For details, see [`boundaryData`](@ref).
+For details, see [`BoundaryData`](@ref).
 
 ### Example
 
@@ -145,7 +145,7 @@ Here we apply homogeneous DBC to top and bottom, and identify the left and right
 using CoherentStructures, Distances, Plots
 ctx, _ = regularQuadrilateralGrid((10, 10))
 predicate = (p1, p2) -> peuclidean(p1, p2, [1.0, Inf]) < 2e-10
-bdata = boundaryData(ctx, predicate, ["top", "bottom"])
+bdata = BoundaryData(ctx, predicate, ["top", "bottom"])
 u = ones(nBCDofs(ctx, bdata))
 u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
 plot_u(ctx, u, 200, 200, bdata=bdata, colorbar=:none)
@@ -183,7 +183,7 @@ adaptiveTOCollocationStiffnessMatrix
 There are several helper functions available for constructing grids. The simplest is:
 #### In 1D
 ```@docs
-regular1dGrid
+regular1dP1Grid
 regular1dP2Grid
 ```
 ### In 2D
@@ -193,7 +193,7 @@ regular2dGrid
 Supported values for the `gridType` argument are:
 ```@example
 using CoherentStructures #hide
-CoherentStructures.regular2dGridTypes
+regular2dGridTypes
 ```
 The following functions are conceptually similar:
 ```@docs
@@ -210,15 +210,15 @@ In 3D we have
 regularTetrahedralGrid
 regularP2TetrahedralGrid
 ```
-All of these methods return a `gridContext` object and a `boundaryData` object. The latter is only relevant when using
+All of these methods return a `GridContext` object and a `BoundaryData` object. The latter is only relevant when using
 a Delaunay grid with `on_torus==true`.
 ```@docs
-CoherentStructures.gridContext
+CoherentStructures.GridContext
 ```
 
 ### Boundary Conditions API
 ```@docs
-boundaryData
+BoundaryData
 getHomDBCS
 undoBCS
 applyBCS

@@ -160,7 +160,7 @@ n = 500
 tspan = range(0, stop=1.0, length=20)
 xs, ys = rand(n), rand(n)
 particles = SVector{2}.(xs, ys)
-trajectories = [flow(rot_double_gyre, particles[i], tspan) for i in 1:n]
+trajectories = [flow(rot_double_gyre, p, tspan) for p in particles]
 
 # Based on the initial particle positions we generate a triangulation.
 # If this call fails or does not return, the initial positions may not be unique.
@@ -168,8 +168,7 @@ trajectories = [flow(rot_double_gyre, particles[i], tspan) for i in 1:n]
 
 ctx, _ = irregularDelaunayGrid(Vec{2}.(particles))
 
-# Next, we generate the stiffness and mass matrices and solve the generalized
-# eigenproblem.
+# Next, we generate the stiffness and mass matrices and solve the generalized eigenproblem.
 
 S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], tspan; flow_map_mode=1)
 M = assembleMassMatrix(ctx)
@@ -177,10 +176,10 @@ M = assembleMassMatrix(ctx)
 using Arpack
 λ, V = eigs(S, M; which=:SM, nev=6)
 
-# We can plot the spectrum obtained.
+# We can plot the computed spectrum.
 
 using Plots
-fig = plot_real_spectrum(λ)
+fig = plot_real_spectrum(λ, label="")
 DISPLAY_PLOT(fig, spectrum_to_laplace)
 
 # We may extract coherent vortices with k-means clustering.
@@ -202,12 +201,14 @@ clusters = iterated_kmeans(20, permutedims(V[:, 2:partitions]), partitions)
 
 # A simple scatter plot visualization looks as follows.
 
-fig = scatter(xs, ys, zcolor=clusters[ctx.node_to_dof], markersize=8)
+fig = scatter(xs, ys, zcolor=clusters[ctx.node_to_dof], markersize=8, labels="")
 DISPLAY_PLOT(fig, trajectories_fem_scatter)
 
 # Alternatively, we may also plot the cluster assignments on the whole irregular
 # grid.
 
 fig = plot_u(ctx, float(clusters), 400, 400;
-    color=:viridis, colorbar=:none, title="$partitions-partition of rotating double gyre")
+                color=:viridis,
+                colorbar=:none,
+                title="$partitions-partition of rotating double gyre")
 DISPLAY_PLOT(fig, trajectories_fem)

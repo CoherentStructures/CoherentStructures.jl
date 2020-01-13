@@ -4,7 +4,7 @@
 
 # meta function
 """
-    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=boundaryData();
+    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=BoundaryData();
     factor=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
 Compute the heat flow operator for the time-dependent heat equation, which
@@ -25,21 +25,20 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
    * `solver`, `tolerance`: are passed to `advect_serialized_quadpoints`.
 """
 # TODO: Restrict tspan to be of Range/linspace type
-function FEM_heatflow(odefun!, ctx::gridContext, tspan, κ::Real, p=nothing, bdata=boundaryData();
+function FEM_heatflow(odefun!, ctx::GridContext, tspan, κ::Real, p=nothing, bdata=BoundaryData();
                         factor::Bool=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
     sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p, δ; solver=solver, tolerance=tolerance)
     return implicitEulerStepFamily(ctx, sol, tspan, κ, δ; factor=factor, bdata=bdata)
 end
 
-function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=true, bdata=boundaryData())
+function implicitEulerStepFamily(ctx::GridContext, sol, tspan, κ, δ; factor=true, bdata=BoundaryData())
 
     M = assembleMassMatrix(ctx, bdata=bdata)
     nnzM = nonzeros(M)
     n = size(M)[1]
     scale = -step(tspan) * κ
     # TODO: think about pmap-parallelization
-    # Distributed.@everywhere @eval ctx, sol, Δτ, n, M, bdata, κ, decomp = $ctx, $sol, $Δτ, $n, $M, $bdata, $κ, $decomp
     P = map(tspan[2:end]) do t
         K = stiffnessMatrixTimeT(ctx, sol, t, δ; bdata=bdata)
         lmul!(scale, K)
@@ -47,8 +46,8 @@ function implicitEulerStepFamily(ctx::gridContext, sol, tspan, κ, δ; factor=tr
         nnzK .+= nnzM
         # K .= M + K
         if factor
-            ΔM = factorize(K)
-            matmul = v -> ΔM \ v
+            ΔM = cholesky(K)
+            matmul = (u, v) -> copyto!(u, ΔM \ v)
         else
             matmul = (u, v) -> copyto!(u, IterativeSolvers.cg(K, v))
         end
@@ -62,11 +61,11 @@ end
 
 Single step with implicit Euler method.
 """
-function ADimplicitEulerStep(ctx::gridContext, u::AbstractVector, edt::Real; Afun=nothing, q=nothing, M=nothing, K=nothing)
-    if M == nothing
+function ADimplicitEulerStep(ctx::GridContext, u::AbstractVector, edt::Real; Afun=nothing, q=nothing, M=nothing, K=nothing)
+    if M === nothing
         M = assembleMassMatrix(ctx)
     end
-    if K == nothing
+    if K === nothing
         K = assembleStiffnessMatrix(ctx, Afun, q)
     end
     return (M - edt * K) \ (M * u)
@@ -81,7 +80,7 @@ Advect all quadrature points + finite difference stencils of size `δ`,
 from `tspan[1]` to `tspan[end]` with ODE rhs given by `odefun!`, whose parameters
 are contained in `p`. Returns an ODE solution object.
 """
-function advect_serialized_quadpoints(ctx::gridContext, tspan, odefun!, p=nothing, δ=1e-9;
+function advect_serialized_quadpoints(ctx::GridContext, tspan, odefun!, p=nothing, δ=1e-9;
                     solver=default_solver, tolerance=default_tolerance)
 
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
@@ -96,7 +95,7 @@ function advect_serialized_quadpoints(ctx::gridContext, tspan, odefun!, p=nothin
 end
 
 
-function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=boundaryData())
+function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=BoundaryData())
     if t < 0
         return assembleStiffnessMatrix(ctx, bdata=bdata)
     end

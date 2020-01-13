@@ -21,17 +21,17 @@ The parameter `volume_preserving` determines whether to attempt to correct for
 non-volume-preserving maps.
 """
 function nonAdaptiveTOCollocation(
-        ctx_domain::gridContext{dim},
-        inverse_flow_map::Function,
-        ctx_codomain::gridContext{dim}=ctx_domain;
-        bdata_domain=boundaryData(),
+        ctx_domain::GridContext{dim},
+        inverse_flow_map,
+        ctx_codomain::GridContext{dim}=ctx_domain;
+        bdata_domain=BoundaryData(),
         bdata_codomain=bdata_domain,
         project_in=false,
         outside_value=NaN,
         volume_preserving=true
-    ) where dim
+    ) where {dim}
 
-    @assert isa(ctx_codomain.ip, JuAFEM.Lagrange)
+    @assert isa(ctx_codomain.ip, JFM.Lagrange)
 
     n_codomain = ctx_codomain.n
     n_domain = ctx_domain.n
@@ -102,7 +102,7 @@ function nonAdaptiveTOCollocation(
 end
 
 """
-    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus,on_cylinder, LL,UR, bdata, volume_preserving=true,flow_map_mode=0] )
+    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus,on_cylinder, LL, UR, bdata, volume_preserving=true,flow_map_mode=0] )
 
 Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)`` where
 ``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay triangulation on images of grid points from ctx
@@ -120,26 +120,22 @@ If `volume_preserving == false`, add a volume_correction term to ``a_1`` (See pa
 If `flow_map_mode==0`, apply flow map to nodal basis function coordinates.
 If `flow_map_mode==1`, apply flow map to nodal basis function index number (allows for precomputed trajectories).
 """
-function adaptiveTOCollocationStiffnessMatrix(
-        ctx::gridContext{2},
-        flow_maps::Function,
-        times=nothing
-        ;
-        quadrature_order=default_quadrature_order,
-        on_torus::Bool=false,
-        on_cylinder::Bool=false,
-        LL_future::AbstractVector{Float64}=ctx.spatialBounds[1],
-        UR_future::AbstractVector{Float64}=ctx.spatialBounds[2],
-        bdata::boundaryData=boundaryData(),
-        volume_preserving=true,
-        flow_map_mode=0
-        )
+function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, times=nothing;
+                                        quadrature_order=default_quadrature_order,
+                                        on_torus::Bool=false,
+                                        on_cylinder::Bool=false,
+                                        LL_future::Tuple{<:Real,<:Real}=ctx.spatialBounds[1],
+                                        UR_future::Tuple{<:Real,<:Real}=ctx.spatialBounds[2],
+                                        bdata::BoundaryData=BoundaryData(),
+                                        volume_preserving=true,
+                                        flow_map_mode=0
+                                        )
     if !(on_torus || on_cylinder)  && length(bdata.periodic_dofs_from) != 0
         @warn "This function probably doesn't work for this case"
     end
 
 
-    if times==nothing
+    if times === nothing
         N = 1
     else
         N = length(times)
@@ -148,8 +144,8 @@ function adaptiveTOCollocationStiffnessMatrix(
     if on_torus || on_cylinder
         num_real_points = ctx.n - length(bdata.periodic_dofs_from)
     end
-    flow_map_images = zeros(Vec{2},(N,num_real_points))
-    if times == nothing
+    flow_map_images = zeros(Vec{2}, (N,num_real_points))
+    if times === nothing
         for i in 1:num_real_points
             if flow_map_mode == 0
                 flow_map_images[1,i] = Vec{2}(flow_maps(ctx.grid.nodes[i].x))
@@ -160,9 +156,9 @@ function adaptiveTOCollocationStiffnessMatrix(
     else
         for i in 1:num_real_points
             if flow_map_mode == 0
-                flow_map_images[:,i] = Vec{2}.(flow_maps(ctx.grid.nodes[i].x,times))
+                flow_map_images[:,i] = Vec{2}.(flow_maps(ctx.grid.nodes[i].x, times))
             else
-                flow_map_images[:,i] = Vec{2}.(flow_maps(i,times))
+                flow_map_images[:,i] = Vec{2}.(flow_maps(i, times))
             end
         end
     end
@@ -171,11 +167,13 @@ function adaptiveTOCollocationStiffnessMatrix(
     As = SparseMatrixCSC{Float64,Int64}[]
     for n in 1:N
         flow_map_t = j -> flow_map_images[n,j]
-        new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx,flow_map_t;
-                                on_torus=on_torus,on_cylinder=on_cylinder,LL_future=LL_future,UR_future=UR_future,bdata=bdata,
-                                flow_map_mode=1
-                                )
-
+        new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx, flow_map_t;
+                                                    on_torus=on_torus,
+                                                    on_cylinder=on_cylinder,
+                                                    LL_future=LL_future,
+                                                    UR_future=UR_future,
+                                                    bdata=bdata,
+                                                    flow_map_mode=1)
 
         translation_table = bcdof_to_node(new_ctx,new_bdata)
         #Assemble stiffness matrix
@@ -203,9 +201,9 @@ end
 
 #Reordering in the periodic case is slightly more tricky
 function bcdofNewToBcdofOld(
-        old_ctx::gridContext{dim},bdata::boundaryData,
-        new_ctx::gridContext{dim},new_bdata::boundaryData,K
-        ) where dim
+        old_ctx::GridContext{dim},bdata::BoundaryData,
+        new_ctx::GridContext{dim},new_bdata::BoundaryData,K
+        ) where {dim}
 
         I, J ,V = findnz(K)
 
@@ -221,13 +219,13 @@ function bcdofNewToBcdofOld(
         return sparse(I,J,V,old_pdof_n,old_pdof_n)
 end
 
-function node_to_bcdof(ctx::gridContext{dim},bdata::boundaryData) where dim
+function node_to_bcdof(ctx::GridContext{dim},bdata::BoundaryData) where {dim}
         n_nodes = ctx.n - length(bdata.periodic_dofs_from)
         bdata_table = BCTable(ctx,bdata)
         return bdata_table[ctx.node_to_dof]
 end
 
-function bcdof_to_node(ctx::gridContext{dim},bdata::boundaryData) where dim
+function bcdof_to_node(ctx::GridContext{dim},bdata::BoundaryData) where {dim}
         n_nodes = ctx.n - length(bdata.periodic_dofs_from)
         bdata_table = BCTable(ctx,bdata)
         result = zeros(Int,n_nodes)
@@ -241,20 +239,23 @@ end
 
 
 """
-    adaptiveTOFutureGrid(ctx, flow_map;[on_torus=false,bdata=nothing,LL,UR,quadrature_order,flow_map_mode=0])
+    adaptiveTOFutureGrid(ctx, flow_map; [on_torus=false, bdata=nothing, LL, UR, quadrature_order, flow_map_mode=0])
 
 Takes the (non-periodic) grid points from `ctx` (in bcdof order), applies `flow_map` to them,
-and (periodic) delaunay triangulates them and returns a P1-Delaunay `gridContext,bdata, volchange` tuple for that,
+and (periodic) delaunay triangulates them and returns a P1-Delaunay `GridContext,bdata, volchange` tuple for that,
 where `volchange` is a vector of relative volumes of the nodal basis functions.
 If `flow_map_mode==0` (default), apply `flow_map` to node coordinates. If `flow_map_mode==1`,
 apply `flow_map` to node index
 """
-function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
-        on_torus=false,on_cylinder=false,bdata=boundaryData(),LL_future=ctx.spatialBounds[1], UR_future=ctx.spatialBounds[2],
-        quadrature_order=default_quadrature_order,
-        flow_map_mode=0
-        ) where dim
-
+function adaptiveTOFutureGrid(ctx::GridContext{dim}, flow_map;
+                                on_torus=false,
+                                on_cylinder=false,
+                                bdata=BoundaryData(),
+                                LL_future=ctx.spatialBounds[1],
+                                UR_future=ctx.spatialBounds[2],
+                                quadrature_order=default_quadrature_order,
+                                flow_map_mode=0
+                                ) where {dim}
     if isEmptyBC(bdata) && (on_torus || on_cylinder)
         throw(AssertionError("Require bdata parameter if on_torus==true or on_cylinder==true"))
     end
@@ -262,35 +263,26 @@ function adaptiveTOFutureGrid(ctx::gridContext{dim},flow_map;
     #Push forward "original" nodes
 
     if flow_map_mode == 0
-        new_nodes_in_bcdof_order = [
-            Vec{2}(flow_map(ctx.grid.nodes[j].x))
-            for j in bcdof_to_node(ctx,bdata)
-                ]
+        new_nodes_in_bcdof_order = [Vec{2}(flow_map(ctx.grid.nodes[j].x)) for j in bcdof_to_node(ctx, bdata)]
     else
-        new_nodes_in_bcdof_order = [
-            Vec{2}(flow_map(j))
-            for j in bcdof_to_node(ctx,bdata)
-                ]
+        new_nodes_in_bcdof_order = [Vec{2}(flow_map(j)) for j in bcdof_to_node(ctx, bdata)]
     end
-    new_ctx, new_bdata = irregularDelaunayGrid(
-                            new_nodes_in_bcdof_order;
-                            on_torus=on_torus,on_cylinder=on_cylinder,LL=LL_future,UR=UR_future,
-                            quadrature_order=quadrature_order
-                            )
+    new_ctx, new_bdata = irregularDelaunayGrid(new_nodes_in_bcdof_order;
+                            on_torus=on_torus, on_cylinder=on_cylinder,
+                            LL=LL_future, UR=UR_future, quadrature_order=quadrature_order)
 
     #Do volume corrections
     #All values are in node order for new_ctx, which is the same as bcdof order for ctx2
     n_nodes = length(new_nodes_in_bcdof_order)
-    vols_new = sum(assembleMassMatrix(new_ctx,bdata=new_bdata),dims=1)[1,node_to_bcdof(new_ctx,new_bdata)[1:n_nodes]]
-    vols_old = sum(assembleMassMatrix(ctx,bdata=bdata),dims=1)[1,1:n_nodes]
+    vols_new = sum(assembleMassMatrix(new_ctx, bdata=new_bdata), dims=1)[1, node_to_bcdof(new_ctx, new_bdata)[1:n_nodes]]
+    vols_old = sum(assembleMassMatrix(ctx, bdata=bdata), dims=1)[1, 1:n_nodes]
 
-    return new_ctx,new_bdata, vols_new ./ vols_old
-
+    return new_ctx, new_bdata, vols_new ./ vols_old
 end
 
 
 """
-    adaptiveTOCollocation(ctx,flow_map; [on_torus=false,on_cylinder=false, bdata,LL,UR, volume_preserving=true])
+    adaptiveTOCollocation(ctx, flow_map; [on_torus=false, on_cylinder=false, bdata, LL, UR, volume_preserving=true])
 
 Calculate the represenation matrix for ``J_h I_h T`` where ``T`` is the Transfer-Operator
 for `flow_map` and ``J_h`` is the nodal interpolation operator for `ctx` and ``I_h`` is the
@@ -301,11 +293,12 @@ If `on_torus==true`, then everything is done with periodic boundary conditions.
 For `on_cylinder==true`, periodic only in x-direction.
 If `volume_preserving==false`, a correction is made for non-volume-preserving maps.
 """
-function adaptiveTOCollocation(ctx::gridContext{dim}, flow_map::Function;
-     on_torus::Bool=false,on_cylinder::Bool=false,  bdata=nothing, LL=[0.0,0.0],UR=[1.0,1.0],
-     volume_preserving=true,projection_method=:naTO
-     ) where dim
-
+function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
+                                 on_torus::Bool=false,
+                                 on_cylinder::Bool=false,
+                                 bdata=nothing,
+                                 LL=(0.0,0.0), UR=(1.0,1.0),
+                                 volume_preserving=true, projection_method=:naTO) where {dim}
     if on_torus || on_cylinder
         if bdata === nothing
             throw(AssertionError("bdata == nothing"))
@@ -366,14 +359,14 @@ It should be noted that (perhaps counter-intuitively) `inverse_flow_map` should 
 grid described by `ctx_codomain` to that described by `ctx_domain`
 """
 function L2GalerkinTOFromInverse(
-                ctx_domain::gridContext{dim},
-                inverse_flow_map::Function,
-                ctx_codomain::gridContext{dim}=ctx_domain;
+                ctx_domain::GridContext{dim},
+                inverse_flow_map,
+                ctx_codomain::GridContext{dim}=ctx_domain;
                 ϵ::Float64=0.0, n_stencil_points::Int=10,
                 periodic_directions=(false,false),
-                bdata_domain=boundaryData(),
+                bdata_domain=BoundaryData(),
                 bdata_codomain=bdata_domain,
-                ) where dim
+                ) where {dim}
 
     #See http://blog.marmakoide.org/?p=1
     stencil::Vector{Vec{2,Float64}} = Vec{dim,Float64}[]
@@ -396,45 +389,45 @@ function L2GalerkinTOFromInverse(
     LL_domain::Vec{dim,Float64} = Vec{dim}(ctx_domain.spatialBounds[1])
     UR_domain::Vec{dim,Float64} = Vec{dim}(ctx_domain.spatialBounds[2])
 
-    cv::JuAFEM.CellScalarValues{dim} = JuAFEM.CellScalarValues(ctx_codomain.qr, ctx_codomain.ip,ctx_codomain.ip_geom)
-    nshapefuncs::Int = JuAFEM.getnbasefunctions(cv)         # number of basis functions
+    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx_codomain.qr, ctx_codomain.ip,ctx_codomain.ip_geom)
+    nshapefuncs::Int = JFM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nshapefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
     DL2I = Vector{Int}()
     DL2J = Vector{Int}()
     DL2V = Vector{Float64}()
 
-    @inbounds for (cellnumber, cell) in enumerate(JuAFEM.CellIterator(ctx_codomain.dh))
-        JuAFEM.reinit!(cv,cell)
-        JuAFEM.celldofs!(dofs,ctx_codomain.dh,cellnumber)
+    @inbounds for (cellnumber, cell) in enumerate(JFM.CellIterator(ctx_codomain.dh))
+        JFM.reinit!(cv,cell)
+        JFM.celldofs!(dofs,ctx_codomain.dh,cellnumber)
         #Iterate over all quadrature points in the cell
-        for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
-            dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
-            TQ::Vec{dim,Float64} = Vec{dim}(inverse_flow_map(ctx_codomain.quadrature_points[index]))
+        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
+            dΩ = JFM.getdetJdV(cv,q)
+            TQ = Vec{dim}(inverse_flow_map(ctx_codomain.quadrature_points[index]))
             for s in stencil
-                current_point::Vec{dim,Float64} = TQ + s
+                current_point = TQ + s
                 current_point = Vec{dim,Float64}( i ->
                     periodic_directions[i] ? LL_domain[i] + (mod(current_point[i] - LL_domain[i],UR_domain[i] - LL_domain[i])) : current_point[i]
                     )
                 try
-                    local_coords::Vec{dim,Float64}, nodes::Vector{Int},TQinvCellNumber = locatePoint(ctx_domain,current_point)
-                    if isa(ctx_domain.ip, JuAFEM.Lagrange)
+                    local_coords::Vec{dim,Float64}, nodes::Vector{Int}, TQinvCellNumber = locatePoint(ctx_domain,current_point)
+                    if ctx_domain.ip isa JFM.Lagrange
                         for (shape_fun_num,j) in enumerate(nodes)
-                                for i in 1:nshapefuncs
-                                    φ::Float64 = JuAFEM.shape_value(cv,q,i)
-                                    ψ::Float64 = JuAFEM.value(ctx_domain.ip,shape_fun_num,local_coords)
-                                    push!(DL2I, dofs[i])
-                                    push!(DL2J,ctx_domain.node_to_dof[j])
-                                    push!(DL2V, dΩ*φ*ψ*stencil_density)
-                                end
-                         end
+                            for i in 1:nshapefuncs
+                                φ = JFM.shape_value(cv,q,i)
+                                ψ = JFM.value(ctx_domain.ip,shape_fun_num,local_coords)
+                                push!(DL2I, dofs[i])
+                                push!(DL2J,ctx_domain.node_to_dof[j])
+                                push!(DL2V, dΩ*φ*ψ*stencil_density)
+                            end
+                        end
                     else
-                            push!(DL2I, ctx_codomain.cell_to_dof[cellnumber])
-                            push!(DL2J,ctx_domain.cell_to_dof[TQinvCellNumber])
-                            push!(DL2V, dΩ*stencil_density)
+                        push!(DL2I, ctx_codomain.cell_to_dof[cellnumber])
+                        push!(DL2J,ctx_domain.cell_to_dof[TQinvCellNumber])
+                        push!(DL2V, dΩ*stencil_density)
                     end
                 catch y
-                    if !isa(y,DomainError)
+                    if !isa(y, DomainError)
                         rethrow(y)
                     end
                     print("Got result $current_point outside of domain!")
@@ -444,10 +437,9 @@ function L2GalerkinTOFromInverse(
         end
     end
 
-    DL2::SparseMatrixCSC{Float64,Int64} = sparse(DL2I,DL2J, DL2V,ctx_codomain.n,ctx_domain.n)
-    return applyBCS(ctx_codomain,DL2,bdata_codomain;
-                    ctx_col=ctx_domain,bdata_col=bdata_domain,
-                    add_vals=true)
+    DL2 = sparse(DL2I, DL2J, DL2V, ctx_codomain.n, ctx_domain.n)
+    return applyBCS(ctx_codomain, DL2, bdata_codomain;
+                    ctx_col=ctx_domain, bdata_col=bdata_domain, add_vals=true)
 end
 
 """
@@ -458,73 +450,69 @@ Approximate the Transfer-Operator (for volume preserving maps) by calculating
 T_{i,j} = \\int φ_i ∘ F φ_j dx
 ```
 """
-function L2GalerkinTO(
-    ctx_domain::gridContext{dim},
-    flow_map::Function,
-    ctx_codomain::gridContext{dim}=ctx_domain;
-    bdata_domain=boundaryData(),
-    bdata_codomain=bdata_domain,
-    verbosity=1
-    ) where dim
-    DL2 = spzeros(ctx_codomain.n,ctx_domain.n)
-    cv::JuAFEM.CellScalarValues{dim} = JuAFEM.CellScalarValues(ctx_domain.qr,ctx_domain.ip, ctx_domain.ip_geom)
-    nbasefuncs = JuAFEM.getnbasefunctions(cv)         # number of basis functions
-    dofs::Vector{Int} = zeros(nbasefuncs)
-    index::Int = 1 #Counter to know the number of the current quadrature point
+function L2GalerkinTO(ctx_domain::GridContext{dim}, flow_map, ctx_codomain::GridContext{dim}=ctx_domain;
+                        bdata_domain=BoundaryData(),
+                        bdata_codomain=bdata_domain,
+                        verbosity=1) where {dim}
+    DL2 = spzeros(ctx_codomain.n, ctx_domain.n)
+    cv = JFM.CellScalarValues(ctx_domain.qr, ctx_domain.ip, ctx_domain.ip_geom)
+    nbasefuncs = JFM.getnbasefunctions(cv)         # number of basis functions
+    dofs = zeros(nbasefuncs)
+    index = 1 #Counter to know the number of the current quadrature point
     badcounter = 0
 
     #TODO: Make this more efficient
-    @inbounds for (cellnumber, cell) in enumerate(JuAFEM.CellIterator(ctx_domain.dh))
-        JuAFEM.reinit!(cv,cell)
-        JuAFEM.celldofs!(dofs,ctx_domain.dh,cellnumber)
+    @inbounds for (cellnumber, cell) in enumerate(JFM.CellIterator(ctx_domain.dh))
+        JFM.reinit!(cv,cell)
+        JFM.celldofs!(dofs,ctx_domain.dh,cellnumber)
         #Iterate over all quadrature points in the cell
-        for q in 1:JuAFEM.getnquadpoints(cv) # loop over quadrature points
-            dΩ::Float64 = JuAFEM.getdetJdV(cv,q)
-            TQ::Vec{2,Float64} = Vec{2}(flow_map(ctx_domain.quadrature_points[index]))
-            local_coordsTQ::Vec{2,Float64}, nodesTQ::Vector{Int},cellIndexTQ = try
+        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
+            dΩ = JFM.getdetJdV(cv,q)
+            TQ = Vec{2}(flow_map(ctx_domain.quadrature_points[index]))
+            local_coordsTQ::Vec{2,Float64}, nodesTQ::Vector{Int}, cellIndexTQ = try
                     locatePoint(ctx_codomain,TQ)
             catch y
-                if !isa(y,DomainError)
+                if !isa(y, DomainError)
                     rethrow(y)
                 end
                 (verbosity >= 2) && @warn("Flow map gave result $TQ outside of domain!")
                 badcounter += 1
                 continue
             end
-            if isa(ctx_codomain.ip,JuAFEM.Lagrange)
-                    for (shape_fun_num,i) in enumerate(nodesTQ)
-                        ψ::Float64 = JuAFEM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)
-                        indexi = ctx_domain.node_to_dof[i]
-                        for j in 1:nbasefuncs
-                            indexj::Int64 = 0
-                            if isa(ctx_domain.ip,JuAFEM.Lagrange)
-                                indexj=dofs[j]
-                                φ::Float64 = JuAFEM.shape_value(cv,q,j)
-                            else
-                                indexj=ctx_domain.cell_to_dof[cellnumber]
-                                φ = 1.0
-                            end
-                            DL2[indexi,indexj] += dΩ*φ*ψ
-                        end
-                    end
-            else
-                    indexi = ctx_codomain.cell_to_dof[cellIndexTQ]
-                    ψ = 1.0
+            if ctx_codomain.ip isa JFM.Lagrange
+                for (shape_fun_num, i) in enumerate(nodesTQ)
+                    ψ = JFM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)
+                    indexi = ctx_domain.node_to_dof[i]
                     for j in 1:nbasefuncs
-                        indexj::Int64 = 0
-                        if isa(ctx_domain.ip,JuAFEM.Lagrange)
-                            indexj=dofs[j]
-                            φ::Float64 = JuAFEM.shape_value(cv,q,j)
+                        indexj = 0
+                        if ctx_domain.ip isa JFM.Lagrange
+                            indexj = dofs[j]
+                            φ = JFM.shape_value(cv,q,j)
                         else
-                            indexj=ctx_domain.cell_to_dof[cellnumber]
+                            indexj = ctx_domain.cell_to_dof[cellnumber]
                             φ = 1.0
                         end
-                        DL2[indexi, indexj] += dΩ*φ*ψ
+                        DL2[indexi,indexj] += dΩ*φ*ψ
                     end
+                end
+            else
+                indexi = ctx_codomain.cell_to_dof[cellIndexTQ]
+                ψ = 1.0
+                for j in 1:nbasefuncs
+                    indexj = 0
+                    if ctx_domain.ip isa JFM.Lagrange
+                        indexj = dofs[j]
+                        φ = JFM.shape_value(cv,q,j)
+                    else
+                        indexj = ctx_domain.cell_to_dof[cellnumber]
+                        φ = 1.0
+                    end
+                    DL2[indexi, indexj] += dΩ*φ*ψ
+                end
             end
         index += 1
         end
     end
     (verbosity >= 1 && badcounter > 0) && @warn "$badcounter results outside of domain"
-    return applyBCS(ctx_codomain,DL2,bdata_codomain; ctx_col=ctx_domain,bdata_col=bdata_domain)
+    return applyBCS(ctx_codomain, DL2, bdata_codomain; ctx_col=ctx_domain, bdata_col=bdata_domain)
 end

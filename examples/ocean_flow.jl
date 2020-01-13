@@ -142,8 +142,8 @@ flow_map = u0 -> flow(interp_rhs, u0, times;
 
 # Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.
 
-LL = [-4.0, -34.0]
-UR = [6.0, -28.0]
+LL = (-4.0, -34.0)
+UR = (6.0, -28.0)
 ctx, _  = regularTriangularGrid((150, 90), LL, UR)
 bdata = getHomDBCS(ctx, "all");
 

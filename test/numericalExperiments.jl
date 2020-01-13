@@ -7,8 +7,8 @@ include("testCase.jl")
 
 mutable struct experimentResult
     experiment::testCase
-    ctx::CoherentStructures.gridContext
-    bdata::CoherentStructures.boundaryData
+    ctx::CoherentStructures.GridContext
+    bdata::BoundaryData
     mode::Symbol #One of :naTO, :aTO, :CG, :L2GTOf : L2GTOb, etc..
     done::Bool
     runtime::Float64
@@ -20,21 +20,21 @@ mutable struct experimentResult
     δ::Float64
 
     #Like below, but make boundary data first
-    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,mode;tolerance=CoherentStructures.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
-        bdata = boundaryData(ctx,experiment.bdata_predicate, experiment.dbc_facesets)
+    function experimentResult(experiment::testCase,ctx::CoherentStructures.GridContext,mode;tolerance=CoherentStructures.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
+        bdata = BoundaryData(ctx,experiment.bdata_predicate, experiment.dbc_facesets)
         result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance,δ)
         return result
     end
 
-    #Constructor from general CoherentStructures.gridContext object
-    function experimentResult(experiment::testCase,ctx::CoherentStructures.gridContext,bdata::CoherentStructures.boundaryData,mode;tolerance=CoherentStructures.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
+    #Constructor from general CoherentStructures.GridContext object
+    function experimentResult(experiment::testCase,ctx::CoherentStructures.GridContext,bdata::CoherentStructures.BoundaryData,mode;tolerance=CoherentStructures.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
         result = new(experiment,ctx,bdata,mode,false,-1.0,Vector{Float64}([]),zeros(0,2),Dict{String,Any}(),solver,tolerance,δ)
         return result
     end
     #For regular Grids:
     function experimentResult(experiment::testCase, gridType::String, howmany , mode;tolerance=CoherentStructure.default_tolerance,δ=1e-8,solver=CoherentStructures.default_solver)
         ctx = regularGrid(gridType,howmany, experiment.LL, experiment.UR)
-        bdata = boundaryData(ctx,experiment.bdata_predicate,experiment.dbc_facesets)
+        bdata = BoundaryData(ctx,experiment.bdata_predicate,experiment.dbc_facesets)
         return experimentResult(experiment,ctx,bdata,mode;tolerance=tolerance, solver=solver,δ=δ)
     end
 
@@ -154,7 +154,7 @@ end
 
 #TODO: Think of moving helper functions like these to GridFunctions.jl
 
-function getnorm(u::Vector{T},ctx::CoherentStructures.gridContext,which="L∞", M=nothing) where {T}
+function getnorm(u::Vector{T},ctx::CoherentStructures.GridContext,which="L∞", M=nothing) where {T}
     if which == "L∞"
         return maximum(abs.(u))
     elseif which == "L2"
@@ -164,8 +164,8 @@ function getnorm(u::Vector{T},ctx::CoherentStructures.gridContext,which="L∞", 
     end
 end
 
-function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Float64},u2::Vector{Float64},Min=nothing)
-        if Min == nothing
+function getInnerProduct(ctx::CoherentStructures.GridContext, u1::Vector{Float64},u2::Vector{Float64},Min=nothing)
+        if Min === nothing
             M = assembleMassMatrix(ctx)
         else
             M = Min
@@ -174,8 +174,8 @@ function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Float64
         return  u2 ⋅ Mu1
 end
 
-function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{ComplexF64},u2::Vector{ComplexF64},Min=nothing)
-        if Min == nothing
+function getInnerProduct(ctx::CoherentStructures.GridContext, u1::Vector{ComplexF64},u2::Vector{ComplexF64},Min=nothing)
+        if Min === nothing
             M = assembleMassMatrix(ctx)
         else
             M = Min
@@ -184,7 +184,7 @@ function getInnerProduct(ctx::CoherentStructures.gridContext, u1::Vector{Complex
         return  conj(u2) ⋅ Mu1
 end
 
-function getDiscreteInnerProduct(ctx1::CoherentStructures.gridContext, u1::Vector{Float64}, ctx2::CoherentStructures.gridContext, u2::Vector{Float64},nx=400,ny=400)
+function getDiscreteInnerProduct(ctx1::CoherentStructures.GridContext, u1::Vector{Float64}, ctx2::CoherentStructures.GridContext, u2::Vector{Float64},nx=400,ny=400)
     res = 0.0
     for x in range(ctx1.spatialBounds[1][1],stop=ctx1.spatialBounds[2][1],length=nx)
         for y in range(ctx1.spatialBounds[1][2],stop=ctx1.spatialBounds[2][2],length=ny)
