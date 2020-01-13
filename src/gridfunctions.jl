@@ -221,7 +221,7 @@ function regular1dPCGrid(numnodes::Tuple{Int}, left::Real=0.0, right::Real=1.0;
 end
 
 """
-    regular1dGrid(numnodes, left=0.0, right=1.0; [quadrature_order])
+    regular1dP1Grid(numnodes, left=0.0, right=1.0; [quadrature_order])
 
 Create a regular grid with `numnodes` nodes on the interval `[left, right]` in 1d, with
 P1-Lagrange basis functions.
@@ -239,8 +239,8 @@ end
 """
     regular1dP2Grid(numnodes, left=0.0, right=1.0; [quadrature_order])
 
-Create a regular grid with `numnodes` non-interior nodes on the interval `[left,right]`.
-Uses P2-Lagrange elements.
+Create a regular grid with `numnodes` non-interior nodes on the interval `[left, right]`,
+with P2-Lagrange elements.
 """
 function regular1dP2Grid(numnodes::Int, args...; kwargs...)
     return regular1dP2Grid((numnodes,), args...; kwargs...)

@@ -183,7 +183,7 @@ adaptiveTOCollocationStiffnessMatrix
 There are several helper functions available for constructing grids. The simplest is:
 #### In 1D
 ```@docs
-regular1dGrid
+regular1dP1Grid
 regular1dP2Grid
 ```
 ### In 2D
