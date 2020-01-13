@@ -97,7 +97,7 @@ n = 500
 tspan = range(0, stop=1.0, length=20)
 xs, ys = rand(n), rand(n)
 particles = SVector{2}.(xs, ys)
-trajectories = [flow(rot_double_gyre, particles[i], tspan) for i in 1:n]
+trajectories = [flow(rot_double_gyre, p, tspan) for p in particles]
 
 ctx, _ = irregularDelaunayGrid(Vec{2}.(particles))
 
@@ -108,7 +108,7 @@ using Arpack
 λ, V = eigs(S, M; which=:SM, nev=6)
 
 using Plots
-fig = plot_real_spectrum(λ)
+fig = plot_real_spectrum(λ, label="")
 Plots.plot(fig)
 
 using Clustering
@@ -126,11 +126,13 @@ end
 partitions = 3
 clusters = iterated_kmeans(20, permutedims(V[:, 2:partitions]), partitions)
 
-fig = scatter(xs, ys, zcolor=clusters[ctx.node_to_dof], markersize=8)
+fig = scatter(xs, ys, zcolor=clusters[ctx.node_to_dof], markersize=8, labels="")
 Plots.plot(fig)
 
 fig = plot_u(ctx, float(clusters), 400, 400;
-    color=:viridis, colorbar=:none, title="$partitions-partition of rotating double gyre")
+                color=:viridis,
+                colorbar=:none,
+                title="$partitions-partition of rotating double gyre")
 Plots.plot(fig)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

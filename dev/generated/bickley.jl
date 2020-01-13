@@ -55,10 +55,10 @@ end
 Plots.plot(fig)
 
 using Distances
-LL = [0.0, -3.0]; UR = [6.371π, 3.0]
+LL = (0.0, -3.0); UR = (6.371π, 3.0)
 ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
-predicate = (p1,p2) -> abs(p1[2] - p2[2]) < 1e-10 && peuclidean(p1[1], p2[1], 6.371π) < 1e-10
-bdata = CoherentStructures.boundaryData(ctx, predicate, []);
+predicate = (p1, p2) -> peuclidean(p1, p2, [6.371π, Inf]) < 1e-10
+bdata = BoundaryData(ctx, predicate, []);
 
 using Arpack
 cgfun = (x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81),

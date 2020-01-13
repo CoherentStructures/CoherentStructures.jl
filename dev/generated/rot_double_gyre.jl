@@ -1,5 +1,5 @@
 using CoherentStructures, Arpack
-LL = [0.0, 0.0]; UR = [1.0, 1.0];
+LL, UR = (0.0, 0.0), (1.0, 1.0)
 ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 
 A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)

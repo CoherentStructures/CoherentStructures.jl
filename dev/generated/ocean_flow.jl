@@ -80,8 +80,8 @@ times = [t_initial, t_final]
 flow_map = u0 -> flow(interp_rhs, u0, times;
     p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
 
-LL = [-4.0, -34.0]
-UR = [6.0, -28.0]
+LL = (-4.0, -34.0)
+UR = (6.0, -28.0)
 ctx, _  = regularTriangularGrid((150, 90), LL, UR)
 bdata = getHomDBCS(ctx, "all");
 
