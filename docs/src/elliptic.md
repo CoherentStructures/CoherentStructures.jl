@@ -7,15 +7,15 @@ CurrentModule = CoherentStructures
 ## Background
 
 The following functions implement an LCS methodology developed in the following papers:
-   * [Haller & Beron-Vera, 2012](https://dx.doi.org/10.1016/j.physd.2012.06.012)
-   * [Haller & Beron-Vera, 2013](https://dx.doi.org/10.1017/jfm.2013.391)
-   * [Karrasch, Huhn, and Haller, 2015](https://dx.doi.org/10.1098/rspa.2014.0639)
-Our implementation here follows conceptually [Karrasch, Huhn, and Haller, 2015](https://dx.doi.org/10.1098/rspa.2014.0639),
+   * [Haller & Beron-Vera, 2012](https://doi.org/10.1016/j.physd.2012.06.012)
+   * [Haller & Beron-Vera, 2013](https://doi.org/10.1017/jfm.2013.391)
+   * [Karrasch, Huhn, and Haller, 2015](https://doi.org/10.1098/rspa.2014.0639)
+Our implementation here follows conceptually [Karrasch, Huhn, and Haller, 2015](https://doi.org/10.1098/rspa.2014.0639),
 and is described in detail in the preprint TBD.
 Depending on the indefinite metric tensor field used, the functions below yield
 the following types of coherent structures:
    * black-hole/Lagrangian coherent vortices ([Haller & Beron-Vera, 2012](https://doi.org/10.1017/jfm.2013.391))
-   * elliptic objective Eulerian coherent structures (OECSs) ([Serra & Haller, 2016](https://dx.doi.org/10.1063/1.4951720))
+   * elliptic objective Eulerian coherent structures (OECSs) ([Serra & Haller, 2016](https://doi.org/10.1063/1.4951720))
    * material diffusive transport barriers ([Haller, Karrasch, and Kogelbauer, 2018](https://doi.org/10.1073/pnas.1720177115))
 The general procedure is the following. Assume $T$ is the symmetric tensor field
 of interest, say, (i) the Cauchy-Green strain tensor field $C$, (ii) the
@@ -30,7 +30,7 @@ $\eta_{\lambda}^{\pm} := \sqrt{\frac{\lambda_2 - \lambda}{\lambda_2-\lambda_1}}\
 Tensor singularities are defined as points at which $\lambda_2=\lambda_1$, i.e.,
 at which the two characteristic directions $\xi_1$ and $\xi_2$ are not
 well-defined. As described and exploited in
-[Karrasch et al., 2015](https://dx.doi.org/10.1098/rspa.2014.0639),
+[Karrasch et al., 2015](https://doi.org/10.1098/rspa.2014.0639),
 non-negligible tensor singularities express themselves by an angle gap when
 tracking (the angle of) tensor eigenvector fields along closed paths surrounding
 the singularity. Our approach here avoids computing singularities directly, but

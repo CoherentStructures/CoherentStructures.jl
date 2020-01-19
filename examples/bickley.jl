@@ -11,7 +11,7 @@
 #md #
 # The Bickley jet flow is a kinematic idealized model of a meandering zonal jet
 # flanked above and below by counterrotating vortices. It was introduced by
-# [Rypina et al.](https://dx.doi.org/10.1175/JAS4036.1); cf. also [del‐Castillo‐Negrete and Morrison](https://doi.org/10.1063/1.858639).
+# [Rypina et al.](https://doi.org/10.1175/JAS4036.1); cf. also [del‐Castillo‐Negrete and Morrison](https://doi.org/10.1063/1.858639).
 #
 # The Bickley jet is described by a time-dependent velocity field arising from a
 # stream-function. The corresponding velocity field is provided by the package and

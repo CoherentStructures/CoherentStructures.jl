@@ -12,7 +12,7 @@
 # ## Description
 #
 # The rotating double gyre model was introduced by
-# [Mosovsky & Meiss](https://dx.doi.org/10.1137/100794110). It can be derived from
+# [Mosovsky & Meiss](https://doi.org/10.1137/100794110). It can be derived from
 # the stream function
 #
 # ```math
