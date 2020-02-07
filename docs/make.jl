@@ -5,7 +5,7 @@ using Dates
 ENV["GKSwstype"] = "100"
 using Plots # to not capture precompilation output
 
-if !isdir("/tmp/natschil_misc")
+if !isdir("/tmp/natschil_misc") && ("DEPLOY_KEY_2" ∈ keys(ENV))
     run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
     run(`chmod 0600 /tmp/mykey`)
     run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
@@ -151,14 +151,17 @@ makedocs(
     ]
     )
 
-run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
-curdate = Dates.now()
-run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
+if "DEPLOY_KEY_2" ∈ keys(ENV)
 
-run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
-run(`chmod 0600 /tmp/mykey`)
-run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
+    run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
+    curdate = Dates.now()
+    run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
 
-deploydocs(
-    repo = "github.com/CoherentStructures/CoherentStructures.jl.git"
-)
+    run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
+    run(`chmod 0600 /tmp/mykey`)
+    run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
+
+    deploydocs(
+        repo = "github.com/CoherentStructures/CoherentStructures.jl.git"
+    )
+end
