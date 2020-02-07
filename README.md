@@ -11,6 +11,7 @@ the documentation, and not via the `examples` folder.
 
 ## Documentation
 A documentation, which includes a number of examples, is avaiable via the link below.
+
 [![][docs-latest-img]][docs-latest-url]
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
