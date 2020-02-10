@@ -79,11 +79,11 @@ end
 @testset "constrainedLCS" begin
     Ω = SMatrix{2,2}(0, 1, -1, 0)
     Z = zeros(SVector{2})
-    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false)
+    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false), scaling in [-1,1]
         xspan = range(-1, stop=1, length=nx)
         yspan = range(-1, stop=1, length=ny)
         P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-        q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
+        q = map(p -> iszero(p) ? ones(typeof(p)) : scaling*(Ω + I) * normalize(p), P)
         if combine
             merge_heuristics=[combine_20]
         else

@@ -540,7 +540,12 @@ reached, `2` for out of bounds error, 3 for other error).
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
                 maxiters::Int64=2000, tolerance::Float64=1e-8,
                 max_orbit_length::Float64=20.0) where T <: Real
-    condition(u, t, integrator) = seed[2] - u[2]
+    direction = 1
+    if vf(seed,nothing,0.0)[2] >= 0 #If orbits are anti-clockwise
+        condition(u, t, integrator) = seed[2] - u[2]
+    else
+        condition(u, t, integrator) =  u[2] - seed[2]
+    end
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., max_orbit_length))
@@ -659,7 +664,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     vortices = EllipticBarrier{S1}[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
-        if cache isa LCScache
+        if cache isa LCScache && only_uniform
             pmin_local = max(pmin, l1itp(ps[i][1],ps[i][2]))
             pmax_local = min(pmax, l2itp(ps[i][1],ps[i][2]))
             margin_step = (pmax_local - pmin_local)/20
