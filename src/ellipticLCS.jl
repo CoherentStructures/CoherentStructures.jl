@@ -540,12 +540,8 @@ reached, `2` for out of bounds error, 3 for other error).
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
                 maxiters::Int64=2000, tolerance::Float64=1e-8,
                 max_orbit_length::Float64=20.0) where T <: Real
-    direction = 1
-    if vf(seed,nothing,0.0)[2] >= 0 #If orbits are anti-clockwise
-        condition(u, t, integrator) = seed[2] - u[2]
-    else
-        condition(u, t, integrator) =  u[2] - seed[2]
-    end
+    direction =  vf(seed,nothing,0.0)[2] >= 0 ? 1 : -1 # Whether orbits initially go upwards
+    condition(u, t, integrator) = direction*(seed[2] - u[2])
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., max_orbit_length))
@@ -804,7 +800,7 @@ function debugAt(
 end
 
 # vector field constructor function
-@inline function ηfield(λ::Float64, σ::Bool, c::LCScache)
+function ηfield(λ::Float64, σ::Bool, c::LCScache)
     @. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
     @. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
     @. c.η = c.α * c.ξ₁ + ((-1) ^ σ) * c.β * c.ξ₂
@@ -901,6 +897,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                 error_on_take=true
                 vx, vy, vr, p, outermost, T_local = take!(jobs_rc)
                 error_on_take=false
+                #Setup seed points, if we are close to the right boundary then fewer points are used.
                 vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
 
                 cache = orient(T_local[:,:], @SVector [vx,vy])
@@ -1108,6 +1105,7 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
                 vx, vy, vr, p, outermost, q_local = take!(jobs_rc)
                 error_on_take=false
 
+                #Setup seed points, if we are close to the right boundary then fewer points are used.
                 vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
                 ps = SVector{2}.(vs, vy)
 
@@ -1116,14 +1114,14 @@ function constrainedLCS(q::AxisArray{SVector{2,S},2},
                 normsqq = map(v -> norm(v)^2, q_local)
                 nitp = ITP.LinearInterpolation(normsqq)
                 invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
-                @inline function ηfield(λ, s, cache)
+                function constrainedLCSηfield(λ, s, cache)
                     cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
                                     ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
                     itp = ITP.LinearInterpolation(cache)
                     return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
                 end
 
-                result = compute_closed_orbits(ps, ηfield, cache;
+                result = compute_closed_orbits(ps, constrainedLCSηfield, cache;
                         rev=outermost, pmin=p.pmin, pmax=p.pmax, rdist=p.rdist,
                         tolerance_ode=p.tolerance_ode, maxiters_ode=p.maxiters_ode,
                         max_orbit_length=p.max_orbit_length,

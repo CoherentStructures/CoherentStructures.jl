@@ -36,15 +36,19 @@ xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, 1.e-6)
-T = map(mCG_tensor, P)
+
+function compute_double_gyre_tensors(tspan,tol,P)
+    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, tol)
+    return map(mCG_tensor, P)
+end
+T = compute_double_gyre_tensors(tspan,1e-6,P)
 
 @testset "combine singularities" begin
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
     @inferred CoherentStructures.combine_20(new_singularities)
-    r₁ , r₂ = 2rand(2)
+    r₁ , r₂ = 2*rand(2)
     @test sum(getindices(combine_singularities(singularities, r₁))) ==
         sum(getindices(combine_singularities(singularities, r₂))) ==
         sum(getindices(combine_singularities(singularities, 2)))
