@@ -21,7 +21,7 @@ const CS = CoherentStructures
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = critical_point_detection(v, 0.1; merge_heuristics=[])
+        S = @inferred critical_point_detection(v, 0.1; merge_heuristics=[])
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
@@ -36,15 +36,19 @@ xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, 1.e-6)
-T = map(mCG_tensor, P)
+
+function compute_double_gyre_tensors(tspan,tol,P)
+    mCG_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, tol)
+    return map(mCG_tensor, P)
+end
+T = compute_double_gyre_tensors(tspan,1e-6,P)
 
 @testset "combine singularities" begin
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
     @inferred CoherentStructures.combine_20(new_singularities)
-    r₁ , r₂ = 2rand(2)
+    r₁ , r₂ = 2*rand(2)
     @test sum(getindices(combine_singularities(singularities, r₁))) ==
         sum(getindices(combine_singularities(singularities, r₂))) ==
         sum(getindices(combine_singularities(singularities, 2)))
@@ -79,11 +83,11 @@ end
 @testset "constrainedLCS" begin
     Ω = SMatrix{2,2}(0, 1, -1, 0)
     Z = zeros(SVector{2})
-    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false)
+    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false), scaling in [-1,1]
         xspan = range(-1, stop=1, length=nx)
         yspan = range(-1, stop=1, length=ny)
         P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-        q = map(p -> iszero(p) ? ones(typeof(p)) : (Ω + I) * normalize(p), P)
+        q = map(p -> iszero(p) ? ones(typeof(p)) : scaling*(Ω + I) * normalize(p), P)
         if combine
             merge_heuristics=[combine_20]
         else

@@ -1,4 +1,4 @@
-#Functions for pulling back Tensors
+# Functions for pulling back tensors
 
 const default_tolerance = 1e-3
 const default_solver = OrdinaryDiffEq.BS5()
@@ -23,38 +23,27 @@ the time interval `tspan`, evaluated at each element of `tspan`.
      if the adaptive scheme would reject the step.
 
 # Example
-```
+```julia
 julia> f = u -> flow(bickleyJet, u, range(0., stop=100, length=21))
 ```
 """
 @inline function flow(odefun, u0::AbstractVector, tspan::AbstractVector; kwargs...)
-    flow(OrdinaryDiffEq.ODEFunction(odefun), u0, tspan; kwargs...)
+    return flow(OrdinaryDiffEq.ODEFunction(odefun), u0, tspan; kwargs...)
 end
-@inline function flow(odefun::OrdinaryDiffEq.ODEFunction{true}, u0::AbstractVector{T},
-                tspan::AbstractVector; kwargs...) where {T<:Real}
-    v0::Vector{T} = convert(Vector{T}, u0)
-    _flow(odefun, v0, tspan; kwargs...)
-end
-@inline function flow(odefun::OrdinaryDiffEq.ODEFunction{true}, u0::Vector,
+@inline function flow(odefun::OrdinaryDiffEq.ODEFunction{true}, u0::AbstractVector{<:Real},
                 tspan::AbstractVector; kwargs...)
-    _flow(odefun, u0, tspan; kwargs...)
+    return _flow(odefun, convert(Vector, u0), tspan; kwargs...)
 end
 @inline function flow(odefun::OrdinaryDiffEq.ODEFunction{false}, u0::AbstractVector{T},
                 tspan::AbstractVector; kwargs...) where {T<:Real}
-    v0 = convert(SVector{length(u0), T}, u0)
-    _flow(odefun, v0, tspan; kwargs...)
-end
-@inline function flow(odefun::OrdinaryDiffEq.ODEFunction{false}, u0::SVector{dim},
-                tspan::AbstractVector; kwargs...) where {dim}
-    _flow(odefun, u0, tspan; kwargs...)
+    return _flow(odefun, convert(SVector{length(u0),T}, u0), tspan; kwargs...)
 end
 @inline function _flow(odefun, u0::T, tspan;
                 p=nothing,
                 solver=default_solver,
                 tolerance=default_tolerance,
                 #ctx_for_boundscheck=nothing,
-                force_dtmin=false)::Vector{T} where {T}
-
+                force_dtmin=false)::Vector{T} where {T} # type assertion is necessary
     # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing
@@ -74,9 +63,8 @@ end
     #       [leftSide,rightSide,topSide,bottomSide])...)
     #end
     prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1], tspan[end]), p)
-    sol = OrdinaryDiffEq.solve(prob, solver, saveat=tspan,
-                          save_everystep=false, dense=false,
-                          reltol=tolerance, abstol=tolerance,force_dtmin=force_dtmin)
+    sol = OrdinaryDiffEq.solve(prob, solver; saveat=tspan, save_everystep=false, dense=false,
+                          reltol=tolerance, abstol=tolerance, force_dtmin=force_dtmin)
     return sol.u
 end
 
@@ -93,15 +81,13 @@ function linearized_flow(odefun, x::AbstractVector, tspan, δ; kwargs...)
     !(dim ∈ (2, 3)) && error("length(u) ∉ [2,3]")
     linearized_flow(OrdinaryDiffEq.ODEFunction(odefun), convert(SVector{dim}, x), tspan, δ; kwargs...)
 end
-function linearized_flow(
-            odefun::OrdinaryDiffEq.ODEFunction{iip},
-            x::SVector{2,T},
-            tspan::AbstractVector{Float64},
-            δ::Real;
-            tolerance=default_tolerance,
-            solver=default_solver,
-            p=nothing) where {iip,T}#::Tuple{Vector{SVector{2,T}}, Vector{Tensor{2,2,T,4}}} where {iip, T <: Real}
-
+function linearized_flow(odefun::OrdinaryDiffEq.ODEFunction{iip},
+                            x::SVector{2,T},
+                            tspan::AbstractVector{Float64},
+                            δ::Real;
+                            tolerance=default_tolerance,
+                            solver=default_solver,
+                            p=nothing) where {iip,T}
     if iip
         if δ != 0 # use finite differencing
             stencil = [x[1], x[2],
@@ -126,26 +112,24 @@ function linearized_flow(
             srhs = (u, p, t) -> arraymap2(u, p, t, odefun)
             ssol = _flow(srhs, sstencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{2}(s[1], s[2]), ssol),
-                    map(s -> Tensor{2,2}((s[3:6] - s[7:10]) / 2δ), ssol))
+                    map(s -> Tensor{2,2}((@views s[3:6] - s[7:10]) / 2δ), ssol))
         else
-            v0 = @SMatrix [x[1] one(T) zero(T);
-                           x[2] zero(T) one(T)]
+            zT = zero(T)
+            oT = one(T)
+            v0 = SMatrix{2,3,T}(x[1], x[2], oT, zT, zT, oT)
             eqvsol = _flow(odefun, v0, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{2}(s[1,1], s[2,1]), eqvsol),
                     map(s -> Tensor{2,2}((s[1,2], s[2,2], s[1,3], s[2,3])), eqvsol))
         end # δ
     end # iip
 end
-function linearized_flow(
-            odefun::OrdinaryDiffEq.ODEFunction{iip},
-            x::SVector{3,T},
-            tspan::AbstractVector{Float64},
-            δ::Real;
-            tolerance=default_tolerance,
-            solver=default_solver,
-            p=nothing
-        ) where {iip,T}#::Tuple{Vector{SVector{3,T}}, Vector{Tensor{2,3,T,9}}} where {iip, T <: Real}
-
+function linearized_flow(odefun::OrdinaryDiffEq.ODEFunction{iip},
+                            x::SVector{3,T},
+                            tspan::AbstractVector{Float64},
+                            δ::Real;
+                            tolerance=default_tolerance,
+                            solver=default_solver,
+                            p=nothing) where {iip,T}
     if iip
         if δ != 0 # use finite differencing
             stencil = [x[1], x[2], x[3],
@@ -158,7 +142,7 @@ function linearized_flow(
             rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3)
             sol = _flow(rhs, stencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{3}(s[1], s[2], s[3]), sol),
-                    map(s -> Tensor{2,3}((s[4:12] - s[13:21]) / 2δ), sol))
+                    map(s -> Tensor{2,3}((@views s[4:12] - s[13:21]) / 2δ), sol))
         else # δ = 0
             V0 = [x[1] one(T) zero(T) zero(T);
                   x[2] zero(T) one(T) zero(T);
@@ -181,11 +165,11 @@ function linearized_flow(
             srhs = (u, p, t) -> arraymap3(u, p, t, odefun)
             ssol = _flow(srhs, sstencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{3}(s[1], s[2], s[3]), ssol),
-                    map(s -> Tensor{2,3}((s[4:12] - s[13:21]) / 2δ), ssol))
+                    map(s -> Tensor{2,3}((@views s[4:12] - s[13:21]) / 2δ), ssol))
         else # δ = 0
-            u0 = @SMatrix [x[1] one(T) zero(T) zero(T);
-                           x[2] zero(T) one(T) zero(T);
-                           x[3] zero(T) zero(T) one(T)]
+            zT = zero(T)
+            oT = one(T)
+            u0 = SMatrix{3,4,T}(x[1], x[2], x[3], oT, zT, zT, zT, oT, zT, zT, zT, oT)
             evsol = _flow(odefun, u0, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{3}(s[1,1], s[2,1], s[3,1]), evsol),
                     map(s -> Tensor{2,3}((s[1,2], s[2,2], s[3,2],
