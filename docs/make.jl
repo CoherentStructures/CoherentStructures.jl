@@ -28,10 +28,10 @@ function mypreprocess(content, whatkind)
         @assert closing_bracket !== nothing
         closing_bracket  = closing_bracket .+ (current_location[end]-1)
 
-        args = content[(current_location[end]+2): (closing_bracket[1]-1)]
+        args = content[(current_location[end]+2):(closing_bracket[1]-1)]
         @assert findfirst(",",args) !== nothing
         figname = args[1:(findfirst(",",args)[1]-1)]
-        file_name = args[(findfirst(",",args)[1]+1):end]
+        file_name = args[(findfirst(",",args)[1]+2):end]
 
         @assert length(file_name) > 1
         @assert length(figname) > 1
