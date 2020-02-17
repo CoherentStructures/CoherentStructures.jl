@@ -22,31 +22,31 @@ git:
 before_install:
   - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));'
 
-jobs:
-  include:
-    - stage: deploy
-      if: branch = master
-      julia: 1
-      os: linux
-      script:
-        # these packages should ideally only occur in a docs/Project.toml file
-        - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate();
-                                                Pkg.add("Arpack");
-                                                Pkg.add("AxisArrays");
-                                                Pkg.add("Clustering");
-                                                Pkg.add("Distances");
-                                                Pkg.add("Documenter");
-                                                Pkg.add("Interpolations");
-                                                Pkg.add("JLD2");
-                                                Pkg.add("Literate");
-                                                Pkg.add("OrdinaryDiffEq");
-                                                Pkg.add("Plots");
-                                                Pkg.add("StaticArrays");
-                                                Pkg.add("Tensors");
-                                                Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
-                                                Pkg.add(PackageSpec(path=pwd()));
-                                                Pkg.build("Plots");
-                                                Pkg.instantiate()'
-        # - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.add(pwd()); Pkg.instantiate()'
-        - julia --color=yes --project=docs/ docs/make.jl
-      after_success: skip
+# jobs:
+#   include:
+#     - stage: "Documentation"
+#       if: branch = master
+#       julia: 1
+#       os: linux
+#       script:
+#         # these packages should ideally only occur in a docs/Project.toml file
+#         - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate();
+#                                                 Pkg.add("Arpack");
+#                                                 Pkg.add("AxisArrays");
+#                                                 Pkg.add("Clustering");
+#                                                 Pkg.add("Distances");
+#                                                 Pkg.add("Documenter");
+#                                                 Pkg.add("Interpolations");
+#                                                 Pkg.add("JLD2");
+#                                                 Pkg.add("Literate");
+#                                                 Pkg.add("OrdinaryDiffEq");
+#                                                 Pkg.add("Plots");
+#                                                 Pkg.add("StaticArrays");
+#                                                 Pkg.add("Tensors");
+#                                                 Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
+#                                                 Pkg.add(PackageSpec(path=pwd()));
+#                                                 Pkg.build("Plots");
+#                                                 Pkg.instantiate()'
+#         # - julia --color=yes --project=docs/ -e 'using Pkg; Pkg.add(pwd()); Pkg.instantiate()'
+#         - julia --color=yes --project=docs/ docs/make.jl
+#       after_success: skip

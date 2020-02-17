@@ -162,6 +162,7 @@ if "DEPLOY_KEY_2" ∈ keys(ENV)
     run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
 
     deploydocs(
-        repo = "github.com/CoherentStructures/CoherentStructures.jl.git"
+        repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
+        push_preview=true,
     )
 end
