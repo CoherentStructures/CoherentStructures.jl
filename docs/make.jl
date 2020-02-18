@@ -39,7 +39,7 @@ function mypreprocess(content, whatkind)
         if whatkind === :markdown
             linkloc="https://raw.githubusercontent.com/natschil/misc/master/autogen/" * file_name *".png"
             inner_text = "# ![]($linkloc)"
-        elseif whatkind === :notebook || whatkind == :julia_norun
+        elseif whatkind === :notebook || whatkind === :julia_norun
             inner_text = "Plots.plot($figname)"
         elseif whatkind === :julia_run
             inner_text = "Plots.png($figname,\"/tmp/natschil_misc/autogen/$file_name.png\")"
