@@ -27,7 +27,6 @@ Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 VoronoiDelaunay = "72f80fcb-8c52-57d9-aff0-40c1a3526986"
 
 [compat]
-julia = "1"
 Arpack = "0.3, 0.4"
 AxisArrays = "0.3.3, 0.4"
 DiffEqBase = "6"
@@ -39,11 +38,12 @@ LinearMaps = "2"
 NearestNeighbors = "0.4.4"
 OrdinaryDiffEq = "5.18"
 ProgressMeter = "1"
-RecipesBase = "0.7"
+RecipesBase = "0.7, 0.8"
 StaticArrays = "0.10, 0.11, 0.12"
 SymEngine = "0.6, 0.7"
 Tensors = "1.0.1"
 VoronoiDelaunay = "0.4"
+julia = "1"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
