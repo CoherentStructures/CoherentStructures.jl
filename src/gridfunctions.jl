@@ -213,7 +213,7 @@ function regular1dPCGrid(numnodes::Int, args...; kwargs...)
 end
 function regular1dPCGrid(numnodes::Tuple{Int}, left::Real=0.0, right::Real=1.0;
                     quadrature_order::Int=default_quadrature_order, kwargs...)
-    result = GridContext{1}(JFM.Line, (numnodes,), (left,), (right,);
+    result = GridContext{1}(JFM.Line, numnodes, (left,), (right,);
                             quadrature_order=quadrature_order,
                             ip=JFM.PiecewiseConstant{1,JFM.RefCube,1}(),
                             kwargs...)

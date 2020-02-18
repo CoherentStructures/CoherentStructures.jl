@@ -92,14 +92,18 @@ Given a vector `u` in dof order with boundary conditions applied, return the
 corresponding `u` in dof order without the boundary conditions.
 """
 function undoBCS(ctx, u, bdata)
+    correspondsTo = BCTable(ctx, bdata)
     n = ctx.n
+    return undoBCS(n,correspondsTo,u,bdata)
+end
+
+function undoBCS(n::Int, correspondsTo, u, bdata)
     if length(bdata.dbc_dofs) == 0 && length(bdata.periodic_dofs_from) == 0
         return copy(u)
     end
     if n == length(u)
         error("u is already of length n, no need for undoBCS")
     end
-    correspondsTo = BCTable(ctx, bdata)
     result = zeros(n)
     for i in 1:n
         if correspondsTo[i] != 0
@@ -125,17 +129,30 @@ Return a vector `res` so that `res[i] = j` means that dof `i` should be identifi
 with bcdof `j` if `j != 0`. If `j = 0` dof `i` is part of a homogeneous Dirichlet
 boundary condition.
 """
+
+
 function BCTable(ctx::GridContext, bdata::BoundaryData)
     dbcs_prescribed_dofs = bdata.dbc_dofs
     periodic_dofs_from   = bdata.periodic_dofs_from
     periodic_dofs_to     = bdata.periodic_dofs_to
-    n = ctx.n
-    k = length(dbcs_prescribed_dofs)
-    l = length(periodic_dofs_from)
 
     if dbcs_prescribed_dofs === nothing
         dbcs_prescribed_dofs = getHomDBCS(ctx).prescribed_dofs
     end
+    return BCTable(ctx.n,dbcs_prescribed_dofs, periodic_dofs_from, periodic_dofs_to)
+end
+
+function BCTable(n,bdata::BoundaryData)
+    dbcs_prescribed_dofs = bdata.dbc_dofs
+    periodic_dofs_from   = bdata.periodic_dofs_from
+    periodic_dofs_to     = bdata.periodic_dofs_to
+    return BCTable(n,dbcs_prescribed_dofs, periodic_dofs_from, periodic_dofs_to)
+end
+
+function BCTable(n::Int,dbcs_prescribed_dofs, periodic_dofs_from,periodic_dofs_to)
+    k = length(dbcs_prescribed_dofs)
+    l = length(periodic_dofs_from)
+
     if !issorted(dbcs_prescribed_dofs)
         error("DBCS are not sorted")
     end
@@ -194,11 +211,15 @@ Take a vector `u` in dof order and throw away unneccessary dofs.
 This is a left-inverse to undoBCS.
 """
 function doBCS(ctx, u::AbstractVector{T}, bdata) where {T}
-    @assert length(u) == ctx.n
+    return doBCS(ctx.n,u,bdata)
+end
+
+function doBCS(n::Int, u::AbstractVector{T}, bdata) where {T}
+    @assert length(u) == n
     #Is = findall(i -> ∉(i,bdata.dbc_dofs) && ∉(i,bdata.periodic_dofs_from), 1:ctx.n)
     #return u[Is]
     result = T[]
-    for i in 1:ctx.n
+    for i in 1:n
         if i in bdata.dbc_dofs
             continue
         end
