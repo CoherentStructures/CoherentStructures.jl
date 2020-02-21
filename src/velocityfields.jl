@@ -37,7 +37,7 @@ rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction{true}((DU, U, p, t) -> DU .=
 
 # interpolated vector field components
 """
-    interpolateVF(xspan, yspan, tspan, u, v, interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> VI
+    interpolateVF(xspan, yspan, tspan, u, v, itp_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> VI
 
 `xspan`, `yspan` and `tspan` span the space-time domain on which the
 velocity-components `u` and `v` are given. `u` corresponds to the ``x``- or
@@ -60,10 +60,10 @@ function interpolateVF(X::AbstractRange{S1},
                        T::AbstractRange{S1},
                        U::AbstractArray{S2,3},
                        V::AbstractArray{S2,3},
-                       interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
+                       itp_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
                        ) where {S1 <: Real, S2 <: Real}
     UV = map(SVector{2,S2}, U, V)::Array{SVector{2,S2},3}
-    return ITP.scale(ITP.interpolate(UV, interpolation_type), X, Y, T)
+    return ITP.scale(ITP.interpolate(UV, itp_type), X, Y, T)
 end
 
 """
