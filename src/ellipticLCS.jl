@@ -639,7 +639,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     #          ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
     #          ITP.BSpline(ITP.Linear()))),
     #                 xspan, yspan, λrange)
-    # ηfield(λ::Float64) = OrdinaryDiffEq.ODEFunction((u, p, t) -> ηitp(u[1], u[2], λ))
+    # ηfield(λ::Float64) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> ηitp(u[1], u[2], λ))
     # prd(λ::Float64, seed::SVector{2,S}) = Poincaré_return_distance(ηfield(λ), seed)
     # END OF VERSION 2
 
@@ -735,7 +735,7 @@ function ellipticLCS(T::AxisArray{<:SymmetricTensor{2,2,S},2},
     if unique_vortices
         vortices = makeVortexListUnique(vortices, p.indexradius)
     end
-    return vortices, singularities
+    return vortices::Vector{<:EllipticVortex}, singularities::Vector{<:Singularity}
 end
 
 function debugAt(
@@ -789,11 +789,11 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
     itp = ITP.LinearInterpolation(c.η)
 
     function unit_length_itp(u, p, t)
-	    result = itp(u[1],u[2])
+	    result = itp(u[1], u[2])
         normresult = sqrt(result[1]^2 + result[2]^2)
 	    return normresult == 0 ? result : result / normresult
 	end
-	return OrdinaryDiffEq.ODEFunction(unit_length_itp)
+	return OrdinaryDiffEq.ODEFunction{false}(unit_length_itp)
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
@@ -837,29 +837,29 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
 
     #Producer job
     function makejob(vc)
-            # set up Poincaré section
-            vx = vc.coords[1]
-            vy = vc.coords[2]
-            vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
-            # localize tensor field
-            T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
-            put!(jobs_rc, (vx, vy, vr, p, outermost, T_local))
+        # set up Poincaré section
+        vx = vc.coords[1]
+        vy = vc.coords[2]
+        vr = xspan[findlast(x -> x <= vx + p.boxradius, xspan.val)]
+        # localize tensor field
+        T_local = T[ClosedInterval(vx - p.boxradius, vx + p.boxradius), ClosedInterval(vy - p.boxradius, vy + p.boxradius)]
+        put!(jobs_rc, (vx, vy, vr, p, outermost, T_local))
     end
 
     #Start an asynchronous producer task that puts stuff onto jobs_rc
     if !debug
         producer_task = @async try
-                map(makejob,vortexcenters)
-		isopen(jobs_rc) && close(jobs_rc)
-            catch e
-                print("Error in producing jobs for workers: ")
-                println(e)
-                flush(stdout)
-		isopen(results_rc) && close(results_rc)
-		isopen(jobs_rc) && close(jobs_rc)
+            map(makejob, vortexcenters)
+            isopen(jobs_rc) && close(jobs_rc)
+        catch e
+            print("Error in producing jobs for workers: ")
+            println(e)
+            flush(stdout)
+    		isopen(results_rc) && close(results_rc)
+    		isopen(jobs_rc) && close(jobs_rc)
         end
     else
-        map(makejob,vortexcenters)
+        map(makejob, vortexcenters)
         close(jobs_rc)
     end
 
@@ -874,9 +874,9 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                     return 0
                 end
 
-                error_on_take=true
+                error_on_take = true
                 vx, vy, vr, p, outermost, T_local = take!(jobs_rc)
-                error_on_take=false
+                error_on_take = false
                 #Setup seed points, if we are close to the right boundary then fewer points are used.
                 vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
 
@@ -890,8 +890,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
                         maxiters_bisection=p.maxiters_bisection,
                         only_enclosing=p.only_enclosing,
                         only_smooth=p.only_smooth,
-                        only_uniform=p.only_uniform
-                        )
+                        only_uniform=p.only_uniform)
                 put!(results_rc, (vx, vy, result))
                 num_processed += 1
             end
@@ -901,7 +900,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
             end
 
             if error_on_take && !isopen(jobs_rc)
-		    return 0
+                return 0
             else
                 print("Worker: ")
                 println(e)
@@ -947,7 +946,7 @@ function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
     #Get rid of vortices without barriers
     vortexlist = filter(v -> !isempty(v.barriers), vortices)
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
-    return vortexlist
+    return vortexlist::Vector{<:EllipticVortex}
 end
 
 #TODO: Document this more etc...
@@ -973,7 +972,7 @@ function makeVortexListUnique(vortices::Vector{EllipticVortex{T}},indexradius)  
         end
         push!(result, vortices[i])
     end
-    return result
+    return result::Vector{<:EllipticVortex}
 end
 
 """
@@ -1055,14 +1054,14 @@ function constrainedLCS(q::AxisArray{<:SVector{2,S},2},
     #Start an asynchronous producer task that puts stuff onto jobs_rc
     if !debug
         producer_task = @async try
-                map(makejob,vortexcenters)
-                isopen(jobs_rc) && close(jobs_rc)
-            catch e
-                print("Error in producing jobs for workers: ")
-                println(e)
-                flush(stdout)
-                close(jobs_rc)
-                close(results_rc)
+            map(makejob,vortexcenters)
+            isopen(jobs_rc) && close(jobs_rc)
+        catch e
+            print("Error in producing jobs for workers: ")
+            println(e)
+            flush(stdout)
+            close(jobs_rc)
+            close(results_rc)
         end
     else
         map(makejob, vortexcenters)
@@ -1097,7 +1096,7 @@ function constrainedLCS(q::AxisArray{<:SVector{2,S},2},
                     cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
                                     ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
                     itp = ITP.LinearInterpolation(cache)
-                    return OrdinaryDiffEq.ODEFunction((u, p ,t) -> itp(u[1], u[2]))
+                    return OrdinaryDiffEq.ODEFunction{false}((u, p ,t) -> itp(u[1], u[2]))
                 end
 
                 result = compute_closed_orbits(ps, constrainedLCSηfield, cache;
@@ -1106,8 +1105,7 @@ function constrainedLCS(q::AxisArray{<:SVector{2,S},2},
                         max_orbit_length=p.max_orbit_length,
                         maxiters_bisection=p.maxiters_bisection,
                         only_enclosing=p.only_enclosing,
-                        only_smooth=p.only_smooth
-                        )
+                        only_smooth=p.only_smooth)
                 put!(results_rc, (vx, vy, result))
                 num_processed += 1
             end
@@ -1161,7 +1159,7 @@ function constrainedLCS(q::AxisArray{<:SVector{2,S},2},
     #Get rid of vortices without barriers
     vortexlist = filter(v -> !isempty(v.barriers), vortices)
     verbose && @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
-    return vortexlist, critpts
+    return vortexlist::Vector{<:EllipticVortex}, critpts::Vector{<:Singularity}
 end
 
 
@@ -1225,7 +1223,7 @@ end
 function materialbarriersTensors(odefun, xspan, yspan, tspan, lcsp;
         δ=1e-6, tolerance=1e-6, p=nothing, on_torus=false, kwargs...)
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-    T0 = pmap(u -> av_weighted_CG_tensor(odefun, u, tspan, δ; p=p, tolerance=tolerance), P0;
+    T0 = pmap(u -> av_weighted_CG_tensor(odefun, u, tspan, δ; p=p, tolerance=tolerance, kwargs...), P0;
                         batch_size=div(length(xspan)*length(yspan), Distributed.nprocs()))
     if !on_torus
         T = T0
@@ -1248,14 +1246,19 @@ function materialbarriersTensors(odefun, xspan, yspan, tspan, lcsp;
 end
 
 """
-    materialbarriers(odefun, xspan, yspan, tspan, lcsp; [on_torus=false]
+    materialbarriers(odefun, xspan, yspan, tspan, lcsp;
+        on_torus=false, δ=1e-6, tolerance=1e-6, p=nothing, kwargs...)
 
-Calculates material barriers to diffusive and stochastic transport.
+Calculate material barriers to diffusive and stochastic transport on the material domain
+spanned by `xspan` and `yspan`, where the averaged weighted CG tensor is computed at the
+time instance contained in `tspan`. The argument `lcsp` must be of type
+[`LCSParameters`](@ref), and contains parameters used for the elliptic vortex detection.
+
 """
 function materialbarriers(odefun, xspan, yspan, tspan, lcsp;
         δ=1e-6, tolerance=1e-6, p=nothing, on_torus=false, kwargs...)
     T, T0 = materialbarriersTensors(odefun, xspan, yspan, tspan, lcsp;
-        δ=δ, tolerance=tolerance, p=p, on_torus=on_torus, kwargs...)
+        δ=δ, tolerance=tolerance, p=p, on_torus=on_torus)
     if !on_torus
         predicate = x -> true
     else

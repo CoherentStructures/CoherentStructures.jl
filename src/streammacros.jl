@@ -84,13 +84,12 @@ julia> f2([1.0,1.0], nothing, 0.0)
  -2.0
   2.0
 ```
-
 """
 macro velo_from_stream(H::Symbol, formulas::Expr)
     V, _ = streamline_derivatives(H, formulas)
     V = sym_subst.(V, [[:x,:y,:p]], [[:(u[1]), :(u[2]),:(p[1])]])
     quote
-        OrdinaryDiffEq.ODEFunction((u, p, t) -> SVector{2}($(V[1]), $(V[2])))
+        OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> SVector{2}($(V[1]), $(V[2])))
     end
 end
 macro velo_from_stream(name::Symbol)
@@ -131,7 +130,7 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     DV = sym_subst.(DV, [[:x,:y,:p]], [[:(u[1,1]), :(u[2,1]),:(p[1])]])
 
     quote
-        OrdinaryDiffEq.ODEFunction((u, p, t) -> begin
+        OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> begin
             # take as input a  2x3 matrix which is interpreted the following way:
             # [ x[1] X[1,1] X[1,2]
             #   x[2] X[2,1] X[2,2] ]
@@ -238,7 +237,6 @@ function expr_diff(expr::Expr, var::Symbol)
 end
 expr_diff(expr, var::Symbol) = expr == var ? 1 : 0
 
-
 function additional_derivatives(expr::Expr)
 # some functions like abs(x) are not treated by SymEngine and block the
 # expression. For example, diff(Basic(:(abs(x^2+1)),:x)) returns a SymEngine Object
@@ -278,7 +276,6 @@ function substitution_cleaner(expr::Expr)
     return Expr(expr.head, substitution_cleaner.(expr.args)...)
 end
 substitution_cleaner(expr) = expr
-
 
 # perform some basic simplifications like getting rid of ones and zeros
 function simple_simplifier(expr::Expr)
@@ -324,7 +321,8 @@ end
 #                      (mainly substitutions of function calls)                         #
 #########################################################################################
 
-""" substitutions(code::Expr, variable::Symbol, knowns = [])
+"""
+    substitutions(code::Expr, variable::Symbol, knowns = [])
 
 Perform all substitutions that are defined in `code` until
 the resulting expression does not contain free variables.
@@ -350,6 +348,7 @@ end
 
 """
     substitute_once(defns::Expr, target::Expr)
+
 Perform all substitutions that are defined in `code` once.
 """
 substitute_once(defns::Expr, target::Expr) = begin
@@ -369,6 +368,7 @@ substitute_once(defns, target) = target
 
 """
     call_subst(expr::Expr, f_sig, f_body)
+
 Substitute all function calls of `f` in `expr`.
 """
 call_subst(expr::Expr, f_sig, f_body) = begin
@@ -419,6 +419,7 @@ sym_subst(expr, sym::Symbol, s_expr) = expr
 
 """
     has_free_symb(ex::Expr, bound_vars)
+
 Does `ex` contain a symbol that is not bound by `bound_vars`?
 """
 has_free_symb(ex::Expr, bound_vars) = begin
@@ -431,6 +432,7 @@ has_free_symb(ex, bound_vars) = false
 
 """
     remove_blocks(ex::Expr)
+
 Clean up enclosing blocks to get to the core expression.
 """
 remove_blocks(ex::Expr) = begin
@@ -442,7 +444,9 @@ remove_blocks(ex::Expr) = begin
 end
 remove_blocks(ex) = ex
 
-""" get signature [<f_name> <arg1> <arg2> ...]
+"""
+    signature [<f_name> <arg1> <arg2> ...]
+
 A symbol is interpreted as a function without arguments.
 """
 signature(ex::Symbol) = [ex]

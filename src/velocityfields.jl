@@ -19,9 +19,9 @@
     U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
 end
 bickleyJet = @velo_from_stream Ψ_bickley
-bickleyJet! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= bickleyJet(u, p, t))
+bickleyJet! = OrdinaryDiffEq.ODEFunction{true}((du, u, p, t) -> du .= bickleyJet(u, p, t))
 bickleyJetEqVari = @var_velo_from_stream Ψ_bickley
-bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction((DU, U, p, t) -> DU .= bickleyJetEqVari(U, p, t))
+bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction{true}((DU, U, p, t) -> DU .= bickleyJetEqVari(U, p, t))
 
 # rotating double gyre flow  [Mosovsky & Meiss, 2011]
 @define_stream Ψ_rot_dgyre begin
@@ -31,9 +31,9 @@ bickleyJetEqVari! = OrdinaryDiffEq.ODEFunction((DU, U, p, t) -> DU .= bickleyJet
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
 rot_double_gyre = @velo_from_stream Ψ_rot_dgyre
-rot_double_gyre! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= rot_double_gyre(u, p, t))
+rot_double_gyre! = OrdinaryDiffEq.ODEFunction{true}((du, u, p, t) -> du .= rot_double_gyre(u, p, t))
 rot_double_gyreEqVari = @var_velo_from_stream Ψ_rot_dgyre
-rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction((DU, U, p, t) -> DU .= rot_double_gyreEqVari(U, p, t))
+rot_double_gyreEqVari! = OrdinaryDiffEq.ODEFunction{true}((DU, U, p, t) -> DU .= rot_double_gyreEqVari(U, p, t))
 
 # interpolated vector field components
 """
@@ -52,7 +52,8 @@ function interpolateVF(X::AbstractRange{S1},
                        V::AbstractArray{S2,3},
                        interpolation_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
                        ) where {S1 <: Real, S2 <: Real}
-    ITP.scale(ITP.interpolate(SVector{2}.(U, V), interpolation_type), X, Y, T)
+    UV = map(SVector{2,S2}, U, V)::Array{SVector{2,S2},3}
+    return ITP.scale(ITP.interpolate(UV, interpolation_type), X, Y, T)
 end
 
 """
@@ -71,7 +72,7 @@ julia> f = u -> flow(interp_rhs, u, tspan; p=UI)
 julia> mCG_tensor = u -> CG_tensor(interp_rhs, u, tspan, δ; p=UI)
 ```
 """
-interp_rhs = OrdinaryDiffEq.ODEFunction((u, p, t) -> p(u[1], u[2], t))
+interp_rhs = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> p(u[1], u[2], t))
 
 """
     interp_rhs!(du, u, p, t) -> Vector
@@ -89,7 +90,7 @@ julia> f = u -> flow(interp_rhs!, u, tspan; p=UI)
 julia> mCG_tensor = u -> CG_tensor(interp_rhs!, u, tspan, δ; p=UI)
 ```
 """
-interp_rhs! = OrdinaryDiffEq.ODEFunction((du, u, p, t) -> du .= p(u[1], u[2], t))
+interp_rhs! = OrdinaryDiffEq.ODEFunction{true}((du, u, p, t) -> du .= p(u[1], u[2], t))
 
 # standard map
 const standard_a = 0.971635
@@ -125,7 +126,7 @@ function ABC_flow(u, p, t)
         C * sin(u[2]) + B * cos(u[1])
         )
 end
-abcFlow = OrdinaryDiffEq.ODEFunction(ABC_flow)
+abcFlow = OrdinaryDiffEq.ODEFunction{false}(ABC_flow)
 
 # cylinder flow [Froyland, Lloyd, and Santitissadeekorn, 2010]
 function _cylinder_flow(u, p, t)
@@ -143,4 +144,4 @@ function _cylinder_flow(u, p, t)
         A(t) * cos(x - ν * t) * sin(y)
         )
 end
-cylinder_flow = OrdinaryDiffEq.ODEFunction(_cylinder_flow)
+cylinder_flow = OrdinaryDiffEq.ODEFunction{false}(_cylinder_flow)
