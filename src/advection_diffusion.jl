@@ -47,9 +47,13 @@ function implicitEulerStepFamily(ctx::GridContext, sol, tspan, κ, δ; factor=tr
         # K .= M + K
         if factor
             ΔM = cholesky(K)
-            matmul = (u, v) -> copyto!(u, ΔM \ v)
+            matmul = let A=ΔM
+                (u, v) -> copyto!(u, A \ v)
+            end
         else
-            matmul = (u, v) -> copyto!(u, IterativeSolvers.cg(K, v))
+            matmul = let A=K
+                (u, v) -> copyto!(u, IterativeSolvers.cg(A, v))
+            end
         end
         LMs.LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
     end
@@ -89,8 +93,11 @@ function advect_serialized_quadpoints(ctx::GridContext, tspan, odefun!, p=nothin
         "p"=>p,
         )
 
-    prob = OrdinaryDiffEq.ODEProblem((du, u, p, t) -> large_rhs(odefun!, du, u, p, t),
-                                        u0, (tspan[1], tspan[end]), p2)
+    prob = OrdinaryDiffEq.ODEProblem{true}(
+        (du, u, p, t) -> large_rhs(odefun!, du, u, p, t),
+        u0,
+        (tspan[1], tspan[end]),
+        p2)
     return OrdinaryDiffEq.solve(prob, solver, abstol=tolerance, reltol=tolerance)
 end
 

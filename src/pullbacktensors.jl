@@ -96,7 +96,7 @@ function linearized_flow(odefun::OrdinaryDiffEq.ODEFunction{iip},
             rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 5, 2)
             sol = _flow(rhs, stencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{2}(s[1], s[2]), sol),
-                    map(s -> Tensor{2,2}((s[3:6] - s[7:10]) / 2δ), sol))
+                    map(s -> Tensor{2,2}((s[3:6] .- s[7:10])./2δ), sol))
         else # δ = 0
             u0 = [x[1] one(T) zero(T);
                   x[2] zero(T) one(T)]
@@ -112,7 +112,7 @@ function linearized_flow(odefun::OrdinaryDiffEq.ODEFunction{iip},
             srhs = (u, p, t) -> arraymap2(u, p, t, odefun)
             ssol = _flow(srhs, sstencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{2}(s[1], s[2]), ssol),
-                    map(s -> Tensor{2,2}((@views s[3:6] - s[7:10]) / 2δ), ssol))
+                    map(s -> Tensor{2,2}((@views s[3:6] .- s[7:10])./2δ), ssol))
         else
             zT = zero(T)
             oT = one(T)
@@ -142,7 +142,7 @@ function linearized_flow(odefun::OrdinaryDiffEq.ODEFunction{iip},
             rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3)
             sol = _flow(rhs, stencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{3}(s[1], s[2], s[3]), sol),
-                    map(s -> Tensor{2,3}((@views s[4:12] - s[13:21]) / 2δ), sol))
+                    map(s -> Tensor{2,3}((@views s[4:12] .- s[13:21])./2δ), sol))
         else # δ = 0
             V0 = [x[1] one(T) zero(T) zero(T);
                   x[2] zero(T) one(T) zero(T);
@@ -165,7 +165,7 @@ function linearized_flow(odefun::OrdinaryDiffEq.ODEFunction{iip},
             srhs = (u, p, t) -> arraymap3(u, p, t, odefun)
             ssol = _flow(srhs, sstencil, tspan; tolerance=tolerance, solver=solver, p=p)
             return (map(s -> SVector{3}(s[1], s[2], s[3]), ssol),
-                    map(s -> Tensor{2,3}((@views s[4:12] - s[13:21]) / 2δ), ssol))
+                    map(s -> Tensor{2,3}((@views s[4:12] .- s[13:21])./2δ), ssol))
         else # δ = 0
             zT = zero(T)
             oT = one(T)
@@ -192,7 +192,7 @@ Derivatives are computed with finite differences.
    * `kwargs...`: are passed to `linearized_flow`
 """
 function mean_diff_tensor(odefun, u::AbstractVector, tspan::AbstractVector, δ::Float64; kwargs...)
-    return mean(Tensors.dott.(inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])))
+    mean(Tensors.dott.(inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])))
 end
 
 """
@@ -208,7 +208,7 @@ with finite differences.
    * `kwargs...`: are passed to `linearized_flow`
 """
 function CG_tensor(odefun, u::AbstractVector, tspan::AbstractVector, δ::Real; kwargs...)
-    return Tensors.tdot(linearized_flow(odefun, u, [tspan[1],tspan[end]], δ; kwargs...)[2][end])
+    Tensors.tdot(linearized_flow(odefun, u, [tspan[1],tspan[end]], δ; kwargs...)[2][end])
 end
 
 """
