@@ -684,7 +684,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                 else
                     predicate = let λ=λ⁰; qs -> nitp(qs[1], qs[2]) >= λ^2 end
                     in_well_defined_squares = true
-	                uniform = !only_uniform || all(predicate, orbit)
+                    uniform = !only_uniform || all(predicate, orbit)
                 end
 
                 contains_singularity = !only_enclosing || contains_point(orbit, ps[1])
@@ -796,11 +796,11 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
     itp = ITP.LinearInterpolation(c.η)
 
     function unit_length_itp(u, p, t)
-	    result = itp(u[1], u[2])
+        result = itp(u[1], u[2])
         normresult = sqrt(result[1]^2 + result[2]^2)
-	    return normresult == 0 ? result : result / normresult
-	end
-	return OrdinaryDiffEq.ODEFunction{false}(unit_length_itp)
+        return normresult == 0 ? result : result / normresult
+    end
+    return OrdinaryDiffEq.ODEFunction{false}(unit_length_itp)
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
@@ -1210,8 +1210,8 @@ function in_uniform_squares(xs, λ⁰, cache)
 
         for i in 1:4
             !(l1s[i] <= λ⁰ <= l2s[i]) && return false
-	    end
-	end
+        end
+    end
     return true
 end
 
