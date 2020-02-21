@@ -37,11 +37,10 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
-function compute_double_gyre_tensors(tspan, tol, P)
-    mCG_tensor(u) = av_weighted_CG_tensor(rot_double_gyre, u, tspan, tol)
-    return map(mCG_tensor, P)
+mCG_tensor = let ts=tspan
+    u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
 end
-T = @inferred compute_double_gyre_tensors(tspan, 1e-6, P)
+T = @inferred map(mCG_tensor, P)
 
 @testset "combine singularities" begin
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
@@ -95,14 +94,14 @@ end
         end
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), merge_heuristics, 60, 0.5, 1.5, 1e-4)
 
-        vortices, singularities = @inferred constrainedLCS(q, p; outermost=true, verbose=false,debug=false)
+        vortices, singularities = @inferred constrainedLCS(q, p; outermost=true, verbose=false, debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
         @test singularities isa Vector{Singularity{Float64}}
         @test vortices[1].center ≈ Z atol=max(step(xspan), step(yspan))
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
 
-        vortices, singularities = @inferred constrainedLCS(q, p; outermost=false, verbose=false,debug=false)
+        vortices, singularities = @inferred constrainedLCS(q, p; outermost=false, verbose=false, debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) > 1
         @test singularities isa Vector{Singularity{Float64}}
         @test length(singularities) == 1

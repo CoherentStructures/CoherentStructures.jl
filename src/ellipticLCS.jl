@@ -352,7 +352,7 @@ so that any -1/2 singularity whose three nearest neighbors are 1/2 singularities
 becomes an elliptic region, provided that the -1/2 singularity
 is in the triangle spanned by the wedges. This configuration
 is common for OECS, applying to material barriers on a large
-turbulet example yielded only about an additional 1% material barriers.
+turbulent example yielded only about an additional 1% material barriers.
 """
 function combine_31(singularities::Vector{Singularity{T}})::Vector{Singularity{T}} where {T}
     N = length(singularities)
@@ -513,10 +513,8 @@ merge singularities, cf. [`LCSParameters`](@ref).
 
 Return a vector of [`Singularity`](@ref)s.
 """
-function singularity_detection(T::AxisArray{S,2},
-                                combine_distance::Real;
-                                merge_heuristics=[combine_20]
-                                ) where {S <: SymmetricTensor{2,2}}
+function singularity_detection(T::AxisArray{S,2}, combine_distance::Real;
+                            merge_heuristics=[combine_20]) where {S<:SymmetricTensor{2,2}}
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     critical_point_detection(ξ, combine_distance, p1dist; merge_heuristics=merge_heuristics)
 end
@@ -534,8 +532,10 @@ reached, `2` for out of bounds error, 3 for other error).
 function compute_returning_orbit(vf, seed::SVector{2,T}, save::Bool=false,
                 maxiters::Int=2000, tolerance::Float64=1e-8,
                 max_orbit_length::Float64=20.0) where {T <: Real}
-    direction = vf(seed, nothing, 0.0)[2] >= 0 ? 1 : -1 # Whether orbits initially go upwards
-    condition(u, t, integrator) = direction*(seed[2] - u[2])
+    # direction = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
+    condition(u, t, integrator) = let dir=(-1)^(vf(seed, nothing, 0.0)[2] < 0)
+        dir*(seed[2] - u[2])
+    end
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0., max_orbit_length))
@@ -621,10 +621,10 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
     end
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     prd(λ::Float64, σ::Bool, seed::SVector{2}, cache) =
+        let tol=tolerance_ode, maxode=maxiters_ode, maxorbit=max_orbit_length
             Poincaré_return_distance(ηfield(λ, σ, cache), seed;
-                tolerance_ode=tolerance_ode,
-                maxiters_ode=maxiters_ode,
-                max_orbit_length=max_orbit_length)
+                tolerance_ode=tol, maxiters_ode=maxode, max_orbit_length=maxorbit)
+        end
 
     # VERSION 2: 3D-interpolant
     # η(λ::Float64, signum::Bool) = begin
@@ -661,10 +661,18 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
         end
 
         σ = false
-        bisection_retcode, λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step )
+        bisection_retcode, λ⁰ = bisection(
+            let σ=σ, ps=ps[i], cache=cache
+                λ -> prd(λ, σ, ps, cache)
+            end,
+            pmin_local, pmax_local, rdist, maxiters_bisection, margin_step)
         if bisection_retcode != zero_found
             σ = true
-            bisection_retcode, λ⁰ = bisection(λ -> prd(λ, σ, ps[i], cache), pmin_local, pmax_local, rdist, maxiters_bisection, margin_step)
+            bisection_retcode, λ⁰ = bisection(
+                let σ=σ, ps=ps[i], cache=cache
+                    λ -> prd(λ, σ, ps, cache)
+                end,
+                pmin_local, pmax_local, rdist, maxiters_bisection, margin_step)
         end
         if bisection_retcode == zero_found
             orbit, retcode = compute_returning_orbit(ηfield(λ⁰, σ, cache), ps[i], true, maxiters_ode, tolerance_ode, max_orbit_length)
@@ -674,7 +682,7 @@ function compute_closed_orbits(ps::AbstractVector{SVector{2,S1}},
                     in_well_defined_squares = !only_smooth || in_defined_squares(orbit, cache)
                     uniform = !only_uniform || in_uniform_squares(orbit,λ⁰, cache)
                 else
-                    predicate = qs -> nitp(qs[1], qs[2]) >= λ⁰^2
+                    predicate = let λ=λ⁰; qs -> nitp(qs[1], qs[2]) >= λ^2 end
                     in_well_defined_squares = true
 	                uniform = !only_uniform || all(predicate, orbit)
                 end
@@ -755,11 +763,10 @@ function debugAt(
         end
     end
 
-    prd(λ::Float64, σ::Bool, seed, cache) =
+    prd(λ::Float64, σ::Bool, seed, cache) = let tol=p.tolerance_ode, maxode=p.maxiters_ode, maxorbit=p.max_orbit_length
             Poincaré_return_distance(ηfield(λ, σ, cache), seed;
-                tolerance_ode=p.tolerance_ode,
-                maxiters_ode=p.maxiters_ode,
-                max_orbit_length=p.max_orbit_length)
+                tolerance_ode=tol, maxiters_ode=maxode, max_orbit_length=maxorbit)
+            end
     result2 = []
     for σ in (true, false)
         lamrange = range(p.pmin, stop=p.pmax, length=30)
@@ -1079,12 +1086,12 @@ function constrainedLCS(q::AxisArray{<:SVector{2,S},2},
                     return 0
                 end
 
-                error_on_take=true
+                error_on_take = true
                 vx, vy, vr, p, outermost, q_local = take!(jobs_rc)
-                error_on_take=false
+                error_on_take = false
 
                 #Setup seed points, if we are close to the right boundary then fewer points are used.
-                vs = range(vx, stop=vr, length=1+ceil(Int, (vr - vx) / p.boxradius * p.n_seeds))
+                vs = range(vx, stop=vr, length=1 + ceil(Int, (vr - vx)/p.boxradius*p.n_seeds))
                 ps = SVector{2}.(vs, vy)
 
                 Ω = SMatrix{2,2}(0., 1., -1., 0.)
@@ -1092,9 +1099,9 @@ function constrainedLCS(q::AxisArray{<:SVector{2,S},2},
                 normsqq = map(v -> norm(v)^2, q_local)
                 nitp = ITP.LinearInterpolation(normsqq)
                 invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
+                q1 = invnormsqq .* q_local
                 function constrainedLCSηfield(λ, s, cache)
-                    cache .= sqrt.(max.(normsqq .- (λ^2), 0)) .* invnormsqq .* q_local +
-                                    ((-1)^s * λ) .* invnormsqq .* [Ω] .* q_local
+                    cache .= sqrt.(max.(normsqq .- (λ^2), 0)).*q1 + ((-1)^s * λ).*[Ω].*q1
                     itp = ITP.LinearInterpolation(cache)
                     return OrdinaryDiffEq.ODEFunction{false}((u, p ,t) -> itp(u[1], u[2]))
                 end
@@ -1223,8 +1230,10 @@ end
 function materialbarriersTensors(odefun, xspan, yspan, tspan, lcsp;
         δ=1e-6, tolerance=1e-6, p=nothing, on_torus=false, kwargs...)
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-    T0 = pmap(u -> av_weighted_CG_tensor(odefun, u, tspan, δ; p=p, tolerance=tolerance, kwargs...), P0;
-                        batch_size=div(length(xspan)*length(yspan), Distributed.nprocs()))
+    Tfun = let tspan=tspan, δ=δ, p=p, tol=tolerance
+        u -> av_weighted_CG_tensor(odefun, u, tspan, δ; p=p, tolerance=tolerance)
+    end
+    T0 = pmap(Tfun, P0; batch_size=div(length(xspan)*length(yspan), Distributed.nprocs()))
     if !on_torus
         T = T0
     else
@@ -1238,9 +1247,7 @@ function materialbarriersTensors(odefun, xspan, yspan, tspan, lcsp;
         ny = length(yspan)
         xrange = range(xmin - xdiff, stop = xmax + xdiff, length=3*nx+1)[1:end-1]
         yrange = range(ymin - ydiff, stop = ymax + ydiff, length=3*ny+1)[1:end-1]
-        T3 =  hcat(T0, T0, T0)
-        T = AxisArray(vcat(T3, T3, T3), xrange, yrange)
-        predicate = x-> (xmin <=  x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
+        T = AxisArray(hvcat((3,3,3), T0, T0, T0, T0, T0, T0, T0, T0, T0), xrange, yrange)
     end
     return T, T0
 end
@@ -1264,9 +1271,9 @@ function materialbarriers(odefun, xspan, yspan, tspan, lcsp;
     else
         xmin = xspan[1]
         xmax = xspan[end] + step(xspan)
-        ymin =  yspan[1]
+        ymin = yspan[1]
         ymax = yspan[end] + step(yspan)
-        predicate = x-> (xmin <=  x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
+        predicate = x -> (xmin <=  x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
     end
     vortices, singularities = ellipticLCS(T, lcsp; singularity_predicate=predicate, kwargs...)
     return vortices, singularities, tensor_invariants(T0)[5]
@@ -1277,7 +1284,10 @@ end
 function flow(odefun, u::EllipticBarrier{T}, tspan; kwargs...) where {T <: Real}
     nt = length(tspan)
     nc = length(u.curve)
-    newcurves = map(x -> flow(odefun, SVector{2}(x[1], x[2]), tspan; kwargs...), u.curve)
+    newcurves = map(let odefun=odefun, tspan=tspan, kwargs=kwargs
+            x -> flow(odefun, SVector{2}(x[1], x[2]), tspan; kwargs...)
+        end,
+        u.curve)
     newcurves2 = Vector{Tuple{T,T}}[]
     for i in 1:nt
         curcurve = Tuple{T,T}[]
