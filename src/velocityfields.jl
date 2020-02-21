@@ -44,6 +44,16 @@ velocity-components `u` and `v` are given. `u` corresponds to the ``x``- or
 eastward component, `v` corresponds to the ``y``- or northward component.
 For interpolation, the `Interpolations.jl` package is used; see their
 documentation for how to declare other interpolation types.
+
+# Usage
+```julia
+julia> uv = interpolateVF(xs, ys, ts, u, v)
+
+julia> uv(x, y, t)
+2-element SArray{Tuple{2},Float64,1,2} with indices SOneTo(2):
+ -44.23554926984537
+  -4.964069022198859
+```
 """
 function interpolateVF(X::AbstractRange{S1},
                        Y::AbstractRange{S1},
