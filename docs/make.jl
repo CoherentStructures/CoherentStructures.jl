@@ -9,6 +9,8 @@ if !isdir("/tmp/natschil_misc")
     if ("DEPLOY_KEY_2" ∈ keys(ENV))
         run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d " " | base64 --decode > /tmp/mykey'`)
         run(`chmod 0600 /tmp/mykey`)
+        run(`git config --global user.email "autdeploy@example.com"`)
+        run(`git config --global user.name "Automatic Deploy"`)
         run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
     else
         mkdir("/tmp/natschil_misc")
