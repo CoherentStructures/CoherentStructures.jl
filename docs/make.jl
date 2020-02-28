@@ -164,9 +164,10 @@ if "DEPLOY_KEY_2" ∈ keys(ENV)
     curdate = Dates.now()
     run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
 
-    run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
-    run(`chmod 0600 /tmp/mykey`)
-    run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
+    #run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
+    #run(`chmod 0600 /tmp/mykey`)
+    #run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
+    run(`git -C /tmp/natschil_misc/ push'`)
 
     deploydocs(
         repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
