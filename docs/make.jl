@@ -7,7 +7,7 @@ using Plots # to not capture precompilation output
 
 if !isdir("/tmp/natschil_misc")
     if ("DEPLOY_KEY_2" ∈ keys(ENV))
-        run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d ' ' | base64 --decode > /tmp/mykey'`)
+        run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d " " | base64 --decode > /tmp/mykey'`)
         run(`chmod 0600 /tmp/mykey`)
         run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
     else
