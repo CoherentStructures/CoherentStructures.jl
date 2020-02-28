@@ -159,14 +159,15 @@ makedocs(
     )
 
 if "DEPLOY_KEY_2" ∈ keys(ENV)
+    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] == "master")
+        run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
+        curdate = Dates.now()
+        run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
 
-    run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
-    curdate = Dates.now()
-    run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
-
-    #run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d " " | base64 --decode > /tmp/mykey'`)
-    run(`chmod 0600 /tmp/mykey`)
-    run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
+        #run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d " " | base64 --decode > /tmp/mykey'`)
+        #run(`chmod 0600 /tmp/mykey`)
+        run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
+    end
 
     deploydocs(
         repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
