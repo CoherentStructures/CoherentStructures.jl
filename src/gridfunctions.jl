@@ -213,7 +213,7 @@ function regular1dPCGrid(numnodes::Int, args...; kwargs...)
 end
 function regular1dPCGrid(numnodes::Tuple{Int}, left::Real=0.0, right::Real=1.0;
                     quadrature_order::Int=default_quadrature_order, kwargs...)
-    result = GridContext{1}(JFM.Line, (numnodes,), (left,), (right,);
+    result = GridContext{1}(JFM.Line, numnodes, (left,), (right,);
                             quadrature_order=quadrature_order,
                             ip=JFM.PiecewiseConstant{1,JFM.RefCube,1}(),
                             kwargs...)
@@ -945,6 +945,8 @@ is more efficient.
 function evaluate_function_from_dofvals(
     ctx::GridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
     outside_value=NaN, project_in=false)::S where {dim,S,W}
+
+    @assert ctx.n == length(vals)
 
     if ctx.ip isa JFM.Lagrange
         vals_reorder = vals[ctx.node_to_dof]

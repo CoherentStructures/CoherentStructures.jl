@@ -5,10 +5,17 @@ using Dates
 ENV["GKSwstype"] = "100"
 using Plots # to not capture precompilation output
 
-if !isdir("/tmp/natschil_misc") && ("DEPLOY_KEY_2" ∈ keys(ENV))
-    run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
-    run(`chmod 0600 /tmp/mykey`)
-    run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
+if !isdir("/tmp/natschil_misc")
+    if ("DEPLOY_KEY_2" ∈ keys(ENV))
+        run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d " " | base64 --decode > /tmp/mykey'`)
+        run(`chmod 0600 /tmp/mykey`)
+        run(`git config --global user.email "autdeploy@example.com"`)
+        run(`git config --global user.name "Automatic Deploy"`)
+        run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git clone git@github.com:natschil/misc.git  /tmp/natschil_misc/'`)
+    else
+        mkdir("/tmp/natschil_misc")
+        mkdir("/tmp/natschil_misc/autogen")
+    end
 end
 
 
@@ -28,10 +35,10 @@ function mypreprocess(content, whatkind)
         @assert closing_bracket !== nothing
         closing_bracket  = closing_bracket .+ (current_location[end]-1)
 
-        args = content[(current_location[end]+2): (closing_bracket[1]-1)]
+        args = content[(current_location[end]+2):(closing_bracket[1]-1)]
         @assert findfirst(",",args) !== nothing
         figname = args[1:(findfirst(",",args)[1]-1)]
-        file_name = args[(findfirst(",",args)[1]+1):end]
+        file_name = args[(findfirst(",",args)[1]+2):end]
 
         @assert length(file_name) > 1
         @assert length(figname) > 1
@@ -39,7 +46,7 @@ function mypreprocess(content, whatkind)
         if whatkind === :markdown
             linkloc="https://raw.githubusercontent.com/natschil/misc/master/autogen/" * file_name *".png"
             inner_text = "# ![]($linkloc)"
-        elseif whatkind === :notebook || whatkind == :julia_norun
+        elseif whatkind === :notebook || whatkind === :julia_norun
             inner_text = "Plots.plot($figname)"
         elseif whatkind === :julia_run
             inner_text = "Plots.png($figname,\"/tmp/natschil_misc/autogen/$file_name.png\")"
@@ -157,11 +164,12 @@ if "DEPLOY_KEY_2" ∈ keys(ENV)
     curdate = Dates.now()
     run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
 
-    run(`bash -c 'echo $DEPLOY_KEY_2 | base64 --decode > /tmp/mykey'`)
+    #run(`bash -c 'echo $DEPLOY_KEY_2 | tr -d " " | base64 --decode > /tmp/mykey'`)
     run(`chmod 0600 /tmp/mykey`)
     run(`ssh-agent bash -c 'ssh-add /tmp/mykey; git -C /tmp/natschil_misc/ push'`)
 
     deploydocs(
-        repo = "github.com/CoherentStructures/CoherentStructures.jl.git"
+        repo = "github.com/CoherentStructures/CoherentStructures.jl.git",
+        push_preview=true,
     )
 end
