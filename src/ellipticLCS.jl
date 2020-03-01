@@ -7,17 +7,12 @@ Container type for critical points of vector fields or singularities of line fie
 * `coords::SVector{2}`: coordinates of the singularity
 * `index::Rational`: index of the singularity
 """
-struct Singularity{T <: Real}
+struct Singularity{T<:Real}
     coords::SVector{2,T}
     index::Rational{Int}
-
-    function Singularity{T}(coords::SVector{2,T}, index::Real) where {T <: Real}
-        new{T}(coords, convert(Rational{Int}, index))
-    end
 end
-function Singularity(coords::SVector{2,T}, index) where {T}
-    Singularity{T}(coords, index)
-end
+Singularity(coords::SVector{2}, index::Real) = Singularity(coords, convert(Rational, index))
+Singularity(coords::NTuple{2,Real}, index::Real) = Singularity(SVector{2}(coords), index)
 
 """
     getcoords(singularities)
@@ -25,7 +20,7 @@ end
 Extracts the coordinates of `singularities`, a vector of `Singularity`s. Returns
 a vector of `SVector`s.
 """
-function getcoords(singularities::Vector{Singularity{T}}) where T
+function getcoords(singularities::AbstractArray{<:Singularity})
     return [s.coords for s in singularities]
 end
 
@@ -34,7 +29,7 @@ end
 
 Extracts the indices of `singularities`, a vector of `Singularity`s.
 """
-function getindices(singularities::Vector{Singularity{T}}) where T
+function getindices(singularities::AbstractArray{<:Singularity})
     return [s.index for s in singularities]
 end
 
@@ -52,7 +47,7 @@ This is a container for coherent vortex boundaries. An object `vortex` of type
 * `s`: a `Bool` value, which encodes the sign in the formula of the direction
   field ``\\eta_{\\lambda}^{\\pm}`` via the formula ``(-1)^s``.
 """
-struct EllipticBarrier{T <: Real}
+struct EllipticBarrier{T<:Real}
     curve::Vector{Tuple{T,T}}
     core::SVector{2,T}
     p::Float64
@@ -67,7 +62,7 @@ and a list `barriers` of all computed [`EllipticBarrier`](@ref)s.
 * `center`: location of the vortex center;
 * `barriers`: vector of `EllipticBarrier`s.
 """
-struct EllipticVortex{T <: Real}
+struct EllipticVortex{T<:Real}
     center::SVector{2,T}
     barriers::Vector{EllipticBarrier{T}}
 end
@@ -804,11 +799,11 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
-                        vortexcenters::Vector{Singularity{U}},
+                        vortexcenters::Vector{Singularity,
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true,
-                        debug::Bool=false) where {S <: Real, U <: Real}
+                        debug::Bool=false) where {S<:Real}
     xspan = T.axes[1]
     xmax = xspan[end]
 
