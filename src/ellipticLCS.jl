@@ -799,7 +799,7 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
 end
 
 function findVortices(T::AxisArray{SymmetricTensor{2,2,S,3},2},
-                        vortexcenters::Vector{Singularity,
+                        vortexcenters::Vector{Singularity},
                         p::LCSParameters=LCSParameters();
                         outermost::Bool=true,
                         verbose::Bool=true,
