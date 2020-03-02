@@ -37,29 +37,31 @@ nprocs() == 1 && addprocs()
 
 using JLD2
 JLD2.@load(OCEAN_FLOW_FILE)
-const VI = interpolateVF(Lon, Lat, Time, UT, VT)
+VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Since we want to use parallel computing, we set up the integration LCSParameters
 # on all workers, i.e., `@everywhere`.
 
 using AxisArrays
 q = 91
-const t_initial = minimum(Time)
-const t_final = t_initial + 90
-const tspan = range(t_initial, stop=t_final, length=q)
+t_initial = minimum(Time)
+t_final = t_initial + 90
+tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
 nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-const δ = 1.e-5
-mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-    p=VI, tolerance=1e-6, solver=Tsit5())
+δ = 1.e-5
+mCG_tensor = let tspan=tspan, δ=δ, p=VI
+    u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+        p=p, tolerance=1e-6, solver=Tsit5())
+end
 
 # Now, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.
 
-C̅ = pmap(mCG_tensor, P; batch_size=ny)
+C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
 vortices, singularities = ellipticLCS(C̅, p)
 
@@ -85,9 +87,9 @@ DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 using Interpolations, Tensors
 
-const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
 
-function rate_of_strain_tensor(xin)
+rate_of_strain_tensor(xin) = let V=V
     x, y = xin
     grad = Interpolations.gradient(V, x, y)
     df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
@@ -105,16 +107,16 @@ P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
 # Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.
 # As there tend to be many 3 wedge + trisector-type singularity combinations
-# with OECSs, we enable the combine_31 heuristic
+# with OECSs, we enable the `combine_31` heuristic.
 
 S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20,combine_31])
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20, combine_31])
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
 # Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges
 
 λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
-fig = plot_vortices(vortices,singularities,[xmin,ymin],[xmax,ymax],bg=λ₁,
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax), bg=λ₁,
     logBg=false,title="Minor rate-of-strain field and OECSs"
     )
 DISPLAY_PLOT(fig, ocean_flow_oecs)
