@@ -20,6 +20,7 @@ export
 	combine_singularities,
 	compute_returning_orbit,
 	compute_closed_orbits,
+	getvortices,
 	ellipticLCS,
 	constrainedLCS,
 	materialbarriers,

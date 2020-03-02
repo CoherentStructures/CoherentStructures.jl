@@ -1,6 +1,24 @@
 using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, AxisArrays
 const CS = CoherentStructures
 
+@testset "singularities" begin
+    coords = (rand(), rand())
+    sing = @inferred Singularity(coords, 1)
+    @test sing.coords.data == coords
+    @test sing.index == 1
+    @test sing == Singularity(SVector{2}(coords), 1//1)
+    @test getcoords([sing])[1].data == coords
+    @test getindices([sing])[1] == 1
+end
+
+@testset "circle distances" begin
+    α = rand()
+    @test abs(s1dist(α, α + π)) ≈ π
+    @test p1dist(α, α + π) ≈ 0 atol=1e-15
+    @test s1dist(α, α + 2π) ≈ 0 atol=1e-15
+    @test p1dist(α, α + 2π) ≈ 0 atol=1e-15
+end
+
 @testset "compute critical points" begin
     for x in (range(-1, stop=1, length=50), range(-1, stop=1, length=50)),
         y in (range(-1, stop=1, length=50), range(-1, stop=1, length=50))
@@ -41,9 +59,9 @@ mCG_tensor = let ts=tspan
     u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
 end
 T = @inferred map(mCG_tensor, P)
-@inferred singularity_detection(T, 0.1; merge_heuristics=[])
 
 @testset "combine singularities" begin
+    @inferred singularity_detection(T, 0.1; merge_heuristics=[])
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
     new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
@@ -72,6 +90,7 @@ end
     @test p isa LCSParameters
     cache = @inferred CS.orient(T, SVector{2}(0.25, 0.5))
     @test cache isa CS.LCScache
+    vortices = @inferred getvortices(T, [Singularity((0.25, 0.5), 1)], p; verbose=false)
     vortices, singularities = @inferred ellipticLCS(T, p; outermost=true, verbose=false)
     @test sum(map(v -> length(v.barriers), vortices)) == 2
     @test singularities isa Vector{Singularity{Float64}}

@@ -891,7 +891,7 @@ function ellipticLCS(
     vortexcenters = filter(s -> s.index == 1, singularities)
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    vortices = findVortices(T, vortexcenters, p; verbose = verbose, kwargs...)
+    vortices = getvortices(T, vortexcenters, p; verbose = verbose, kwargs...)
     if unique_vortices
         vortices = makeVortexListUnique(vortices, p.indexradius)
     end
@@ -1008,7 +1008,23 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
     return OrdinaryDiffEq.ODEFunction{false}(unit_length_itp)
 end
 
-function findVortices(
+"""
+    getvortices(T, centers, p = LCSParameters(); outermost=true, verbose=true, debug=false)
+
+Compute [elliptic vortices](@ref EllipticVortex) from the symmetric tensor field
+`T` with Poincaré sections placed at locations listed in `centers`. The argument
+`p` is of type [`LCSParameters`](@ref) and contains parameters used in the
+vortex detection.
+
+## Keyword arguments
+* `outermost=true`: whether closed orbits should be computed from the outside
+  inwards until the first closed orbit is found; otherwise, closed orbits are
+  computed from the center outward.
+* `verbose=true`: whether feedback on the progress should be given.
+* `debug=true`: whether parallel computation should be used. Set to `false` to
+  turn off parallel computation and to obtain more useful error messages.
+"""
+function getvortices(
     T::AxisArray{SymmetricTensor{2,2,S,3},2},
     vortexcenters::Vector{<:Singularity},
     p::LCSParameters = LCSParameters();
