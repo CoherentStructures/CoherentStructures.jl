@@ -69,7 +69,7 @@ mCG_tensor = let tspan=tspan, δ=δ, D=D
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
-p = LCSParameters(1.0)
+p = LCSParameters(2.0)
 vortices, singularities = ellipticLCS(C̅, p)
 
 # The result is visualized as follows:
