@@ -1,5 +1,8 @@
 # CoherentStructures.jl
 [![Build Status](https://travis-ci.org/CoherentStructures/CoherentStructures.jl.svg?branch=master)](https://travis-ci.org/CoherentStructures/CoherentStructures.jl)
+[![Coverage Status](https://coveralls.io/repos/github/CoherentStructures/CoherentStructures.jl/badge.svg?branch=master)](https://coveralls.io/github/CoherentStructures/CoherentStructures.jl?branch=master)
+[![codecov.io](http://codecov.io/github/CoherentStructures/CoherentStructures.jl/coverage.svg?branch=master)](http://codecov.io/github/CoherentStructures/CoherentStructures.jl?branch=master)
+
 
 CoherentStructures.jl is a toolbox for computing Lagrangian Coherent Structures
 (LCSs) by objective, i.e., observer-independent, methods in aperiodic flows in
