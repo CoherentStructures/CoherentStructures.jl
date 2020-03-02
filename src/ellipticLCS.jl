@@ -1,4 +1,6 @@
-# (c) 2018 Daniel Karrasch & Nathanael Schilling
+# (c) 2018-2020 Daniel Karrasch & Nathanael Schilling
+
+const Ω = SMatrix{2,2}(0.0, 1.0, -1.0, 0.0)
 
 """
 Container type for critical points of vector fields or singularities of line fields.
@@ -253,7 +255,7 @@ function compute_singularities(
         temp += dist(α[i, j+1], α[i+1, j+1]) # to the left
         temp += dist(α[i, j], α[i, j+1]) # to the bottom
         index = round(Int, temp / π) // 2
-        if index != 0
+        if !iszero(index)
             push!(
                 singularities,
                 Singularity((x + xstephalf, y + ystephalf), index),
@@ -610,11 +612,8 @@ function compute_returning_orbit(
     tolerance::Float64 = 1e-8,
     max_orbit_length::Float64 = 20.0,
 ) where {T<:Real}
-    # direction = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
-    condition(u, t, integrator) =
-        let dir = (-1)^(vf(seed, nothing, 0.0)[2] < 0)
-            dir * (seed[2] - u[2])
-        end
+    dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
+    condition(u, t, integrator) = dir * (seed[2] - u[2])
     affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
     cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
     prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0.0, max_orbit_length))
@@ -674,7 +673,6 @@ function orient(T::AxisArray{<:SymmetricTensor{2,2},2}, center::SVector{2})
     xspan, yspan = T.axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
     Δλ = AxisArray(λ₂ .- λ₁, T.axes)
-    Ω = SMatrix{2,2}(0.0, 1.0, -1.0, 0.0)
     star = AxisArray(
         [SVector{2}(x, y) - center for x in xspan.val, y in yspan.val],
         T.axes,
@@ -1370,7 +1368,6 @@ function constrainedLCS(
                 )
                 ps = SVector{2}.(vs, vy)
 
-                Ω = SMatrix{2,2}(0.0, 1.0, -1.0, 0.0)
                 cache = deepcopy(q_local)
                 normsqq = map(v -> norm(v)^2, q_local)
                 nitp = ITP.LinearInterpolation(normsqq)
@@ -1379,7 +1376,7 @@ function constrainedLCS(
                 function constrainedLCSηfield(λ, s, cache)
                     cache .=
                         sqrt.(max.(normsqq .- (λ^2), 0)) .* q1 +
-                        ((-1)^s * λ) .* Ref(Ω) .* q1
+                        ((-1)^s * λ) .* [Ω] .* q1
                     itp = ITP.LinearInterpolation(cache)
                     return OrdinaryDiffEq.ODEFunction{false}(
                         (u, p, t) -> itp(u[1], u[2]),

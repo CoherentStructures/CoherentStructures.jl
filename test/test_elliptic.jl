@@ -41,6 +41,7 @@ mCG_tensor = let ts=tspan
     u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
 end
 T = @inferred map(mCG_tensor, P)
+@inferred singularity_detection(T, 0.1; merge_heuristics=[])
 
 @testset "combine singularities" begin
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
