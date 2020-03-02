@@ -1557,7 +1557,6 @@ function materialbarriersTensors(
     δ = 1e-6,
     tolerance = 1e-6,
     p = nothing,
-    on_torus = false,
     kwargs...,
 )
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
@@ -1568,36 +1567,15 @@ function materialbarriersTensors(
             tspan,
             δ;
             p = p,
-            tolerance = tolerance,
+            tolerance = tol,
+            kwargs...,
         )
     end
-    T0 = pmap(
+    return pmap(
         Tfun,
         P0;
-        batch_size = div(length(xspan) * length(yspan), Distributed.nprocs()),
+        batch_size = div(length(P0), Distributed.nprocs()^2),
     )
-    if !on_torus
-        T = T0
-    else
-        xmin = xspan[1]
-        xmax = xspan[end] + step(xspan)
-        xdiff = xmax - xmin
-        ymin = yspan[1]
-        ymax = yspan[end] + step(yspan)
-        ydiff = ymax - ymin
-        nx = length(xspan)
-        ny = length(yspan)
-        xrange =
-            range(xmin - xdiff, stop = xmax + xdiff, length = 3 * nx + 1)[1:end-1]
-        yrange =
-            range(ymin - ydiff, stop = ymax + ydiff, length = 3 * ny + 1)[1:end-1]
-        T = AxisArray(
-            hvcat((3, 3, 3), T0, T0, T0, T0, T0, T0, T0, T0, T0),
-            xrange,
-            yrange,
-        )
-    end
-    return T, T0
 end
 
 """
@@ -1622,7 +1600,7 @@ function materialbarriers(
     on_torus = false,
     kwargs...,
 )
-    T, T0 = materialbarriersTensors(
+    T0 = materialbarriersTensors(
         odefun,
         xspan,
         yspan,
@@ -1631,21 +1609,38 @@ function materialbarriers(
         δ = δ,
         tolerance = tolerance,
         p = p,
-        on_torus = on_torus,
     )
+    bg = map(tr, T0)
+
     if !on_torus
-        predicate = x -> true
+        vortices, singularities =
+            ellipticLCS(T0, lcsp; singularity_predicate = (_ -> true), kwargs...)
+        return vortices, singularities, bg
     else
         xmin = xspan[1]
         xmax = xspan[end] + step(xspan)
+        xdiff = xmax - xmin
         ymin = yspan[1]
         ymax = yspan[end] + step(yspan)
-        predicate =
+        ydiff = ymax - ymin
+        nx = length(xspan)
+        ny = length(yspan)
+        xrange =
+            range(xmin - xdiff, stop = xmax + xdiff, length = 3 * nx + 1)[1:end-1]
+        yrange =
+            range(ymin - ydiff, stop = ymax + ydiff, length = 3 * ny + 1)[1:end-1]
+        predicate = let xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
             x -> (xmin <= x.coords[1] < xmax) && (ymin <= x.coords[2] < ymax)
+        end
+        T = AxisArray(
+            hvcat((3, 3, 3), T0, T0, T0, T0, T0, T0, T0, T0, T0),
+            xrange,
+            yrange,
+        )
+        vortices, singularities =
+            ellipticLCS(T, lcsp; singularity_predicate = predicate, kwargs...)
+        return vortices, singularities, bg
     end
-    vortices, singularities =
-        ellipticLCS(T, lcsp; singularity_predicate = predicate, kwargs...)
-    return vortices, singularities, tensor_invariants(T0)[5]
 end
 
 ### Some convenience functions

@@ -29,20 +29,24 @@ end
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            S = @inferred critical_point_detection(v, 0.1; merge_heuristics=[])
-            @test length(S) == 1
-            @test iszero(S[1].coords)
-            @test S[1].index == 1
+            for mh in (Any[], [combine_20], [combine_20_aggressive], [combine_31])
+                S = @inferred critical_point_detection(v, 0.1; merge_heuristics=mh)
+                @test length(S) == 1
+                @test iszero(S[1].coords)
+                @test S[1].index == 1
+            end
         end
         v = AxisArray(SVector{2}.(x, -y'), x, y)
         S = @inferred compute_singularities(v)
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        S = @inferred critical_point_detection(v, 0.1; merge_heuristics=[])
-        @test length(S) == 1
-        @test iszero(S[1].coords)
-        @test S[1].index == -1
+        for mh in (Any[], [combine_20], [combine_20_aggressive], [combine_31])
+            S = @inferred critical_point_detection(v, 0.1; merge_heuristics=mh)
+            @test length(S) == 1
+            @test iszero(S[1].coords)
+            @test S[1].index == -1
+        end
     end
 end
 
@@ -97,22 +101,24 @@ end
     @test length(singularities) > 5
     vortices, _ = @inferred ellipticLCS(T, p; outermost=false, verbose=false)
     @test sum(map(v -> length(v.barriers), vortices)) > 20
+    vortices_auto, _, _ = materialbarriers(rot_double_gyre, xspan, yspan, tspan, p; verbose=false)
+    @test length(vortices) == length(vortices_auto)
 end
 
 @testset "constrainedLCS" begin
     Ω = SMatrix{2,2}(0, 1, -1, 0)
     Z = zeros(SVector{2})
-    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false), scaling in [-1,1]
+    for (nx, ny) in ((50, 50), (51, 51), (50, 51), (51, 50)), combine in (true, false), scaling in (-1, 1)
         xspan = range(-1, stop=1, length=nx)
         yspan = range(-1, stop=1, length=ny)
         P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : scaling*(Ω + I) * normalize(p), P)
         if combine
-            merge_heuristics=[combine_20]
+            mhs = [combine_20]
         else
-            merge_heuristics=Any[]
+            mhs = Any[]
         end
-        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), merge_heuristics, 60, 0.5, 1.5, 1e-4)
+        p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), mhs, 60, 0.5, 1.5, 1e-4)
 
         vortices, singularities = @inferred constrainedLCS(q, p; outermost=true, verbose=false, debug=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
