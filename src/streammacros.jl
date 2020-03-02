@@ -20,7 +20,10 @@ If you only use one, you might as well use `@velo_from_stream name code` or
 `@var_velo_from_stream` directly.
 """
 macro define_stream(name::Symbol, code::Expr)
-    haskey(stream_dict, name) && (@warn "overwriting definition of stream $name")
+    haskey(
+        stream_dict,
+        name,
+    ) && (@warn "overwriting definition of stream $name")
     stream_dict[name] = code
     quote
         # do nothing, the actual work is done when @velo_from_stream name
@@ -87,9 +90,11 @@ julia> f2([1.0,1.0], nothing, 0.0)
 """
 macro velo_from_stream(H::Symbol, formulas::Expr)
     V, _ = streamline_derivatives(H, formulas)
-    V = sym_subst.(V, [[:x,:y,:p]], [[:(u[1]), :(u[2]),:(p[1])]])
+    V = sym_subst.(V, [[:x, :y, :p]], [[:(u[1]), :(u[2]), :(p[1])]])
     quote
-        OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> SVector{2}($(V[1]), $(V[2])))
+        OrdinaryDiffEq.ODEFunction{false}(
+            (u, p, t) -> SVector{2}($(V[1]), $(V[2])),
+        )
     end
 end
 macro velo_from_stream(name::Symbol)
@@ -126,24 +131,34 @@ macro var_velo_from_stream(H::Symbol, formulas::Expr)
     V, DV = streamline_derivatives(H, formulas)
 
     # substitute :x and :y by access to the first column of a matrix u
-     V = sym_subst.( V, [[:x,:y,:p]], [[:(u[1,1]), :(u[2,1]),:(p[1])]])
-    DV = sym_subst.(DV, [[:x,:y,:p]], [[:(u[1,1]), :(u[2,1]),:(p[1])]])
+    V = sym_subst.(V, [[:x, :y, :p]], [[:(u[1, 1]), :(u[2, 1]), :(p[1])]])
+    DV = sym_subst.(DV, [[:x, :y, :p]], [[:(u[1, 1]), :(u[2, 1]), :(p[1])]])
 
     quote
-        OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> begin
-            # take as input a  2x3 matrix which is interpreted the following way:
-            # [ x[1] X[1,1] X[1,2]
-            #   x[2] X[2,1] X[2,2] ]
+        OrdinaryDiffEq.ODEFunction{false}(
+            (u, p, t) -> begin
+                # take as input a  2x3 matrix which is interpreted the following way:
+                # [ x[1] X[1,1] X[1,2]
+                #   x[2] X[2,1] X[2,2] ]
 
-            # current
-            X = @SMatrix [ u[1,2] u[1,3]
-                           u[2,2] u[2,3] ]
-            DV = @SMatrix [ $(DV[1,1]) $(DV[1,2])
-                            $(DV[2,1]) $(DV[2,2]) ]
-            DX = DV * X
-            return @SMatrix [ $(V[1]) DX[1,1] DX[1,2]
-                              $(V[2]) DX[2,1] DX[2,2] ]
-        end
+                # current
+                X = SMatrix{2,2}(u[1, 2], u[2, 2], u[1, 3], u[2, 3])
+                DV = SMatrix{2,2}(
+                    $(DV[1, 1]),
+                    $(DV[2, 1]),
+                    $(DV[1, 2]),
+                    $(DV[2, 2]),
+                )
+                DX = DV * X
+                return SMatrix{2,3}(
+                    $(V[1]),
+                    $(V[2]),
+                    DX[1, 1],
+                    DX[2, 1],
+                    DX[1, 2],
+                    DX[2, 2],
+                )
+            end,
         )
     end
 end
@@ -170,7 +185,7 @@ macro vorticity_from_stream(H::Symbol, formulas::Expr)
     _, DV = streamline_derivatives(H, formulas)
 
     quote
-        (x, y, t) -> $(DV[2,1]) - $(DV[1,2])
+        (x, y, t) -> $(DV[2, 1]) - $(DV[1, 2])
     end
 end
 macro vorticity_from_stream(name::Symbol)
@@ -183,20 +198,21 @@ end
 function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
     # (additional to symbols defined in Base)
-    bound_symbols = [:x, :y,:p, :t, keys(diff_dict)...]
+    bound_symbols = [:x, :y, :p, :t, keys(diff_dict)...]
     H = substitutions(H, formulas, bound_symbols)
 
-
     # symbolic gradient and hessian (note the broadcast)
-     ∇H = expr_diff.([H],  [:x,:y])
-    ∇²H = expr_diff.(∇H,   [:x :y])
+    ∇H = expr_diff.([H], [:x, :y])
+    ∇²H = expr_diff.(∇H, [:x :y])
 
     # formula for streamlines (perpendicular to gradient)
-    V  = [:(-$(∇H[2])), ∇H[1]]
+    V = [:(-$(∇H[2])), ∇H[1]]
 
     # equation of variation for streamlines
-    DV = [:(-$(∇²H[2,1])) :(-$(∇²H[2,2]))
-               ∇²H[1,1]        ∇²H[1,2]  ]
+    DV = [
+        :(-$(∇²H[2, 1])) :(-$(∇²H[2, 2]))
+        ∇²H[1, 1] ∇²H[1, 2]
+    ]
 
     return V, DV
 end
@@ -207,8 +223,7 @@ end
 
 sgn(x) = (x > 0) ? one(x) : (x < 0) ? -one(x) : zero(x)
 heaviside(x) = 0 < x ? one(x) : zero(x)
-window(x,a,b) = (a <= x < b) ? one(x) : zero(x)
-
+window(x, a, b) = (a <= x < b) ? one(x) : zero(x)
 
 # manually define  derivatives for functions that SymEngine cant differentiate
 diff_dict = Dict()
@@ -238,28 +253,28 @@ end
 expr_diff(expr, var::Symbol) = expr == var ? 1 : 0
 
 function additional_derivatives(expr::Expr)
-# some functions like abs(x) are not treated by SymEngine and block the
-# expression. For example, diff(Basic(:(abs(x^2+1)),:x)) returns a SymEngine Object
-# whose string representation is parsed to :(Derivative(abs(1 + x ^ 2), x)),
-# whose AST is:
-# Expr
-#  head: Symbol call
-#  args: Array{Any}((3,))
-#    1: Symbol Derivative
-#    2: Expr
-#           ... Body of expression ...
-#    3: Symbol x
-# typ: Any
+    # some functions like abs(x) are not treated by SymEngine and block the
+    # expression. For example, diff(Basic(:(abs(x^2+1)),:x)) returns a SymEngine Object
+    # whose string representation is parsed to :(Derivative(abs(1 + x ^ 2), x)),
+    # whose AST is:
+    # Expr
+    #  head: Symbol call
+    #  args: Array{Any}((3,))
+    #    1: Symbol Derivative
+    #    2: Expr
+    #           ... Body of expression ...
+    #    3: Symbol x
+    # typ: Any
 
-# detect expressions of this form
+    # detect expressions of this form
     if expr.head == :call && expr.args[1] == :Derivative
-        f =  expr.args[2].args[1]
+        f = expr.args[2].args[1]
         var = expr.args[3]
         f_arg = expr.args[2].args[2]
         if haskey(diff_dict, f)  # try if diff_dict provides a rescue
             df = diff_dict[f]
             inner_d = expr_diff(f_arg, var)
-            df_computed_manually = :($df($f_arg)*$inner_d)
+            df_computed_manually = :($df($f_arg) * $inner_d)
             return additional_derivatives(df_computed_manually)       # handle nested problems
         end
     end
@@ -271,7 +286,11 @@ additional_derivatives(expr) = expr
 # Subs(ex1, symb1, ex2). Resolve these substitutions
 function substitution_cleaner(expr::Expr)
     if expr.head == :call && expr.args[1] == :Subs
-        return substitution_cleaner(sym_subst(expr.args[2], expr.args[3], expr.args[4]))
+        return substitution_cleaner(sym_subst(
+            expr.args[2],
+            expr.args[3],
+            expr.args[4],
+        ))
     end
     return Expr(expr.head, substitution_cleaner.(expr.args)...)
 end
@@ -280,41 +299,50 @@ substitution_cleaner(expr) = expr
 # perform some basic simplifications like getting rid of ones and zeros
 function simple_simplifier(expr::Expr)
     args = simple_simplifier.(expr.args)
-    if expr.head!=:call
+    if expr.head != :call
         return Expr(expr.head, args...)
     end
-    if args[1] == :zero return 0 end
+    if args[1] == :zero
+        return 0
+    end
 
     if args[1] == :(+)
-        args = [arg for arg=args if arg != 0]
-        return  Expr(expr.head, args...)
+        args = [arg for arg = args if arg != 0]
+        return Expr(expr.head, args...)
     end
     if args[1] == :(*)
-        if any(args[2:end] .== 0) return 0 end
+        if any(args[2:end] .== 0)
+            return 0
+        end
     end
 
     if args[1] == :(/)
-        if args[2] == 0 return 0 end
+        if args[2] == 0
+            return 0
+        end
     end
 
     if args[1] == :(-)
-        if length(args) == 2 return args[2] == 0 ? 0 : Expr(expr.head, args...) end
-        if args[2] == 0 return :(-$(args[3])) end
-        if args[3] == 0 return :( $(args[2])) end
+        if length(args) == 2
+            return args[2] == 0 ? 0 : Expr(expr.head, args...)
+        end
+        if args[2] == 0
+            return :(-$(args[3]))
+        end
+        if args[3] == 0
+            return :($(args[2]))
+        end
     end
-    Expr(expr.head, args...)
+    return Expr(expr.head, args...)
 end
 
 simple_simplifier(expr) = expr
-function expr_grad(expr, coord_vars::Vector{Symbol})
-    return expr_diff.(expr, coord_vars)
-end
+expr_grad(expr, coord_vars::Vector{Symbol}) = expr_diff.(expr, coord_vars)
 
 function hessian(expr, coord_vars)
     ∇expr = expr_grad(expr, coord_vars)
     ∇²expr = expr_grad(expr)
 end
-
 
 ####t####################################################################################
 #                 Functions for symbolic manipulation of expressions                    #
@@ -328,10 +356,13 @@ Perform all substitutions that are defined in `code` until
 the resulting expression does not contain free variables.
 Variables can be bound by `knowns`.
 """
-substitutions(variable::Symbol, code::Expr, knowns = []) = begin
+function substitutions(variable::Symbol, code::Expr, knowns = [])
     Base.remove_linenums!(code)
-    ex = quote $variable end
-    maxit = 20; count = 0
+    ex = quote
+        $variable
+    end
+    maxit = 20
+    count = 0
 
     # dumb approach: keep blindly performing substitutions until there are no free
     # variables left
@@ -351,18 +382,22 @@ end
 
 Perform all substitutions that are defined in `code` once.
 """
-substitute_once(defns::Expr, target::Expr) = begin
+function substitute_once(defns::Expr, target::Expr)
     if defns.head == :(=)
         f_sig = signature(defns.args[1])
         f_body = defns.args[2]
-        ret  = call_subst(target, f_sig, f_body)
+        ret = call_subst(target, f_sig, f_body)
         return ret
     end
     performer(part_comp, ex) = substitute_once(ex, part_comp)
-    reduce(performer, defns.args,init=target)
+    return reduce(performer, defns.args, init = target)
 end
-substitute_once(defns::Expr, target::Symbol) = begin
-    substitute_once(defns, Base.remove_linenums!(quote begin $target end end))
+function substitute_once(defns::Expr, target::Symbol)
+    return substitute_once(defns, Base.remove_linenums!(quote
+        begin
+            $target
+        end
+    end))
 end
 substitute_once(defns, target) = target
 
@@ -371,23 +406,23 @@ substitute_once(defns, target) = target
 
 Substitute all function calls of `f` in `expr`.
 """
-call_subst(expr::Expr, f_sig, f_body) = begin
+function call_subst(expr::Expr, f_sig, f_body)
     if expr.head == :call && f_sig[1] == expr.args[1]
         @assert length(f_sig) == length(expr.args) "$(expr.args) has wrong number of args for $(f_sig)"
         re_expr = f_body
-        for (k,sym) = enumerate(f_sig[2:end])
+        for (k, sym) in enumerate(f_sig[2:end])
             re_expr = sym_subst(re_expr, sym, expr.args[k+1])
         end
         return re_expr
     end
-    Expr(expr.head, call_subst.(expr.args, [f_sig], [f_body])...)
+    return Expr(expr.head, call_subst.(expr.args, [f_sig], [f_body])...)
 end
-call_subst(expr, f_sign, f_body) =  begin
+function call_subst(expr, f_sign, f_body)
     if expr == f_sign[1]
         @assert length(f_sign) == 1 "wrong number of arguments"
         return f_body
     end
-    expr
+    return expr
 end
 
 """
@@ -395,25 +430,19 @@ end
 
 Replace all occurences of `sym` in `expr` by `s_expr`.
 """
-sym_subst(expr::Symbol, sym::Symbol, s_expr) =
-    begin
-        expr == sym ? s_expr : expr
+function sym_subst(expr::Symbol, sym::Symbol, s_expr)
+    expr == sym ? s_expr : expr
+end
+function sym_subst(expr::Expr, sym::Symbol, s_expr)
+    return Expr(expr.head, sym_subst.(expr.args, [sym], [s_expr])...)
+end
+function sym_subst(expr, symbols::Vector{Symbol}, bodies::Vector{Expr})
+    @assert length(symbols) == length(bodies) "lists have different lengths"
+    for (symb, s_expr) in zip(symbols, bodies)
+        expr = sym_subst(expr, symb, s_expr)
     end
-
-sym_subst(expr::Expr,   sym::Symbol, s_expr) =
-    begin
-        Expr(expr.head, sym_subst.(expr.args, [sym], [s_expr])...)
-    end
-
-sym_subst(expr, symbols::Array{Symbol, 1}, bodies::Array{Expr, 1}) =
-    begin
-        @assert length(symbols) == length(bodies) "lists have different lengths"
-        for (symb, s_expr) in zip(symbols, bodies)
-            expr = sym_subst(expr, symb, s_expr)
-        end
-        expr
-    end
-
+    return expr
+end
 # fallback
 sym_subst(expr, sym::Symbol, s_expr) = expr
 
@@ -422,11 +451,11 @@ sym_subst(expr, sym::Symbol, s_expr) = expr
 
 Does `ex` contain a symbol that is not bound by `bound_vars`?
 """
-has_free_symb(ex::Expr, bound_vars) = begin
-    !all((!).(has_free_symb.(ex.args, [bound_vars])))
+function has_free_symb(ex::Expr, bound_vars)
+    return !all((!).(has_free_symb.(ex.args, [bound_vars])))
 end
-has_free_symb(ex::Symbol, bound_vars) = begin
-    !(any(y -> (ex==y), bound_vars) | isdefined(Base, ex))
+function has_free_symb(ex::Symbol, bound_vars)
+    return !(any(y -> (ex == y), bound_vars) | isdefined(Base, ex))
 end
 has_free_symb(ex, bound_vars) = false
 
@@ -435,7 +464,7 @@ has_free_symb(ex, bound_vars) = false
 
 Clean up enclosing blocks to get to the core expression.
 """
-remove_blocks(ex::Expr) = begin
+function remove_blocks(ex::Expr)
     if ex.head == :block
         return remove_blocks(ex.args[1])
     else
