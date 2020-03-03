@@ -1,7 +1,7 @@
 using Test
 using CoherentStructures
 
-include("fem_tests.jl")
+include("test_fem.jl")
 
 include("test_pullback_tensors.jl")
 

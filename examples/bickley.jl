@@ -52,22 +52,23 @@ using Distributed
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
-using StaticArrays
-using AxisArrays
+using StaticArrays, AxisArrays
 q = 81
-const tspan = range(0., stop=3456000., length=q)
+tspan = range(0., stop=3456000., length=q)
 ny = 61
 nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
-const δ = 1.e-6
-const DiffTensor = SymmetricTensor{2,2}([2., 0., 1/2])
-mCG_tensor = u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
-          D=DiffTensor, tolerance=1e-6, solver=Tsit5())
+δ = 1.e-6
+D = SymmetricTensor{2,2}([2., 0., 1/2])
+mCG_tensor = let tspan=tspan, δ=δ, D=D
+    u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
+          D=D, tolerance=1e-6, solver=Tsit5())
+end
 
-C̅ = pmap(mCG_tensor, P; batch_size=ny)
+C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
 vortices, singularities = ellipticLCS(C̅, p)
 

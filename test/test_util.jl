@@ -5,7 +5,7 @@ const AA = AxisArrays
 
 @testset "tensor invariants" begin
     T = one(SymmetricTensor{2,2})
-    l1, l2, v1, v2, t, d = tensor_invariants(T)
+    l1, l2, v1, v2, t, d = @inferred tensor_invariants(T)
     @test l1 == 1
     @test l2 == 1
     @test v1 == [0, 1]
@@ -14,7 +14,7 @@ const AA = AxisArrays
     @test d == 1
 
     Ts = AA.AxisArray(fill(T, (10, 10)))
-    L1, L2, V1, V2, T, D = tensor_invariants(Ts)
+    L1, L2, V1, V2, T, D = @inferred tensor_invariants(Ts)
     @test all(L1 .== l1)
     @test all(L2 .== l1)
     @test all(V1 .== [v1])

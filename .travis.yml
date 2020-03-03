@@ -22,6 +22,9 @@ git:
 before_install:
   - julia --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));'
 
+after_success:
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+
 # jobs:
 #   include:
 #     - stage: "Documentation"
