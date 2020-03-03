@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Standard map · CoherentStructures.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">CoherentStructures.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../rot_double_gyre/">Rotating double gyre</a></li><li class="is-active"><a class="tocitem" href>Standard map</a></li><li><a class="tocitem" href="../bickley/">Bickley jet</a></li><li><a class="tocitem" href="../ocean_flow/">Geostrophic ocean flow</a></li><li><a class="tocitem" href="../trajectories/">Working with trajectories</a></li></ul></li><li><a class="tocitem" href="../../basics/">Basics</a></li><li><span class="tocitem">Methods</span><ul><li><a class="tocitem" href="../../fem/">FEM-based methods</a></li><li><a class="tocitem" href="../../elliptic/">Geodesic vortices</a></li><li><a class="tocitem" href="../../Laplace/">Graph Laplacian-based methods</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Standard map</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Standard map</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/examples/standard_map.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="The-standard-map-1"><a class="docs-heading-anchor" href="#The-standard-map-1">The standard map</a><a class="docs-heading-anchor-permalink" href="#The-standard-map-1" title="Permalink"></a></h1><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/dev/standard_map.ipynb"><code>standard_map.ipynb</code></a>, and as an executable julia file <a href="https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/standard_map.jl"><code>standard_map.jl</code></a>.</p></div></div><p>The standard map</p><div>\[f(x,y) = (x+y+a\sin(x),y+a\sin(x))\]</div><p>is an area-preserving map on the 2-torus <span>$[0,2\pi]^2$</span> resulting from a symplectic time-discretization of the planar pendulum.  For <span>$a = 0.971635$</span>, its phase space shows the characteristic mixture of regular (periodic or quasi-periodic) and chaotic motion.  Here, we repeat the experiment in <a href="https://arxiv.org/abs/1505.05056">Froyland &amp; Junge (2015)</a> and compute coherent structures.</p><p>We first visualize the phase space by plotting 500 iterates of 50 random seed points.</p><pre><code class="language-julia">using Random
+
+const a = 0.971635
+f(x) = (rem2pi(x[1] + x[2] + a*sin(x[1]), RoundDown),
+          rem2pi(x[2] + a*sin(x[1]), RoundDown))
+
+X = Tuple{Float64,Float64}[]
+for i in 1:50
+    Random.seed!(i)
+    x = 2π .* (rand(), rand())
+    for i in 1:500
+        x = f(x)
+        push!(X,x)
+    end
+end
+
+using Plots
+gr(aspect_ratio=1, legend=:none)
+fig = scatter(X, markersize=1)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/standard_map_orbits.png" alt/></p><p>Approximating the Dynamic Laplacian by FEM methods is straightforward:</p><pre><code class="language-julia">using Arpack, CoherentStructures, Distances, Tensors
+
+Df(x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
+
+n, ll, ur = 100, (0.0, 0.0), (2π, 2π)       # grid size, domain corners
+ctx, _ = regularTriangularGrid((n, n), ll, ur)
+pred(x,y) = peuclidean(x, y, [2π, 2π]) &lt; 1e-9
+bd = BoundaryData(ctx, pred)                # periodic boundary
+
+I = one(Tensor{2,2})                        # identity matrix
+Df2(x) = Df(f(x))⋅Df(x)                     # consider 2. iterate
+cg(x) = 0.5*(I + dott(inv(Df2(x))))         # avg. inv. Cauchy-Green tensor
+
+K = assembleStiffnessMatrix(ctx, cg, bdata=bd)
+M = assembleMassMatrix(ctx, bdata=bd)
+λ, v = eigs(K, M, which=:SM)
+
+using Printf
+title = [ @sprintf(&quot;\\lambda = %.3f&quot;, λ[i]) for i = 1:4 ]
+p = [ plot_u(ctx, v[:,i], bdata=bd, title=title[i],
+             clim=(-0.25, 0.25), cb=false) for i in 1:4 ]
+fig = plot(p...)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/standard_map_result.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../rot_double_gyre/">« Rotating double gyre</a><a class="docs-footer-nextpage" href="../bickley/">Bickley jet »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 3 March 2020 08:51">Tuesday 3 March 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
