@@ -306,13 +306,13 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
         npoints = ctx.n - length(bdata.periodic_dofs_from)
         ctx_new, bdata_new, volume_change = adaptiveTOFutureGrid(ctx, flow_map;
              on_torus=on_torus,on_cylinder=on_cylinder, LL=LL, UR=UR,bdata=bdata)
-        if projection_method == :naTO
+        if projection_method === :naTO
             ALPHA_bc, _ = nonAdaptiveTOCollocation(ctx_new,x->x,ctx;
                 volume_preserving=true,bdata_domain=bdata_new,bdata_codomain=bdata)
-        elseif projection_method == :L2Ginv
+        elseif projection_method === :L2Ginv
             ALPHA_bc  = L2GalerkinTOFromInverse(ctx_new, x->x, ctx;
                 bdata_domain=bdata_new, bdata_codomain=bdata)
-        elseif projection_method == :L2G
+        elseif projection_method === :L2G
             ALPHA_bc, _ = L2GalerkinTO(ctx_new, x->x, ctx;
                 volume_preserving=volume_preserving, bdata_domain=bdata_new, bdata_codomain=bdata)
         else

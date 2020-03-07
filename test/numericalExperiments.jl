@@ -46,7 +46,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         return
     end
     eR.runtime = 0.0
-    if eR.mode == :CG
+    if eR.mode === :CG
         times = [eR.experiment.t_initial,eR.experiment.t_final]
         if eR.experiment.is_ode
             ode_fun = eR.experiment.ode_fun
@@ -61,7 +61,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         eR.runtime +=  (@elapsed λ, v = eigs(-1*K,M,which=:SM,nev=nev))
         eR.λ = λ
         eR.V = v
-    elseif eR.mode == :aTO
+    elseif eR.mode === :aTO
         if ! isempty(eR.bdata.periodic_dofs_from)
             error("Periodic boundary conditions not yet implemented for adaptive TO")
         end
@@ -81,7 +81,7 @@ function runExperiment!(eR::experimentResult,nev=6)
         eR.runtime += (@elapsed λ, v = eigs(R,M,which=:SM,nev=nev))
         eR.λ = λ
         eR.V = v
-    elseif eR.mode == :naTO
+    elseif eR.mode === :naTO
         times = [eR.experiment.t_final,eR.experiment.t_initial]
         ode_fun = eR.experiment.ode_fun
         if eR.experiment.finv != nothing
@@ -100,7 +100,7 @@ function runExperiment!(eR::experimentResult,nev=6)
 
         eR.λ = λ
         eR.V = v
-    elseif eR.mode == :L2GTOb
+    elseif eR.mode === :L2GTOb
         times = [eR.experiment.t_final,eR.experiment.t_initial]
         ode_fun = eR.experiment.ode_fun
         if eR.experiment.finv != nothing
@@ -206,7 +206,7 @@ function accuracyTest(tC::testCase,whichgrids=20:20:200;quadrature_order=Coheren
         if mode ∈ [:aTO] && gCindex == 2
             continue
         end
-        if mode == :CG && gCindex == 2 && quadrature_order == 1
+        if mode === :CG && gCindex == 2 && quadrature_order == 1
             continue
         end
         for width in collect(whichgrids)

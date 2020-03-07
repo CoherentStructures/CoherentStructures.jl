@@ -26,9 +26,9 @@ reference_indexdgh = 1
 begin
   j = 1
   if j == 1
-    indexes_to_plotdgh = [i for i in 2:length(resultsdgh) if resultsdgh[i].mode == :CG]
+    indexes_to_plotdgh = [i for i in 2:length(resultsdgh) if resultsdgh[i].mode === :CG]
   else
-    indexes_to_plotdgh = [i for i in 2:length(resultsdgh) if resultsdgh[i].mode != :CG]
+    indexes_to_plotdgh = [i for i in 2:length(resultsdgh) if resultsdgh[i].mode !== :CG]
   end
   begin
     whichev = 2

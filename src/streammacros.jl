@@ -267,7 +267,7 @@ function additional_derivatives(expr::Expr)
     # typ: Any
 
     # detect expressions of this form
-    if expr.head == :call && expr.args[1] == :Derivative
+    if expr.head === :call && expr.args[1] === :Derivative
         f = expr.args[2].args[1]
         var = expr.args[3]
         f_arg = expr.args[2].args[2]
@@ -285,7 +285,7 @@ additional_derivatives(expr) = expr
 # A second thing that SymEngine does is returning expressions of the form
 # Subs(ex1, symb1, ex2). Resolve these substitutions
 function substitution_cleaner(expr::Expr)
-    if expr.head == :call && expr.args[1] == :Subs
+    if expr.head === :call && expr.args[1] === :Subs
         return substitution_cleaner(sym_subst(
             expr.args[2],
             expr.args[3],
@@ -299,30 +299,30 @@ substitution_cleaner(expr) = expr
 # perform some basic simplifications like getting rid of ones and zeros
 function simple_simplifier(expr::Expr)
     args = simple_simplifier.(expr.args)
-    if expr.head != :call
+    if expr.head !== :call
         return Expr(expr.head, args...)
     end
-    if args[1] == :zero
+    if args[1] === :zero
         return 0
     end
 
-    if args[1] == :(+)
+    if args[1] === :(+)
         args = [arg for arg = args if arg != 0]
         return Expr(expr.head, args...)
     end
-    if args[1] == :(*)
+    if args[1] === :(*)
         if any(args[2:end] .== 0)
             return 0
         end
     end
 
-    if args[1] == :(/)
+    if args[1] === :(/)
         if args[2] == 0
             return 0
         end
     end
 
-    if args[1] == :(-)
+    if args[1] === :(-)
         if length(args) == 2
             return args[2] == 0 ? 0 : Expr(expr.head, args...)
         end
@@ -383,7 +383,7 @@ end
 Perform all substitutions that are defined in `code` once.
 """
 function substitute_once(defns::Expr, target::Expr)
-    if defns.head == :(=)
+    if defns.head === :(=)
         f_sig = signature(defns.args[1])
         f_body = defns.args[2]
         ret = call_subst(target, f_sig, f_body)
@@ -407,7 +407,7 @@ substitute_once(defns, target) = target
 Substitute all function calls of `f` in `expr`.
 """
 function call_subst(expr::Expr, f_sig, f_body)
-    if expr.head == :call && f_sig[1] == expr.args[1]
+    if expr.head === :call && f_sig[1] == expr.args[1]
         @assert length(f_sig) == length(expr.args) "$(expr.args) has wrong number of args for $(f_sig)"
         re_expr = f_body
         for (k, sym) in enumerate(f_sig[2:end])
@@ -465,7 +465,7 @@ has_free_symb(ex, bound_vars) = false
 Clean up enclosing blocks to get to the core expression.
 """
 function remove_blocks(ex::Expr)
-    if ex.head == :block
+    if ex.head === :block
         return remove_blocks(ex.args[1])
     else
         return Expr(ex.head, remove_blocks.(ex.args)...)

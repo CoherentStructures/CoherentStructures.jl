@@ -77,8 +77,8 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
         # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
 
-        @test sol1.retcode == :Success
-        @test sol2.retcode == :Success
+        @test sol1.retcode === :Success
+        @test sol2.retcode === :Success
         @test sol1.u[end] ≈ sol2.u[end] atol=1e-1
     end
 end

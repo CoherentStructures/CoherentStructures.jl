@@ -65,9 +65,9 @@ function genericTestCasePlots(name;eigenspace=1:1)
 
   for j in (1, 2)
     if j == 1
-      indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode === :CG]
     else
-      indexes_to_plot = [i for i in 2:length(results) if results[i].mode != :CG]
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode !== :CG]
     end
     begin
       whichev = 2
@@ -86,7 +86,7 @@ function genericTestCasePlots(name;eigenspace=1:1)
         end
       end
       ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
-      colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
+      colors = [x.mode === :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
       Plots.scatter(x,y,group=gridtypes,label=legendlabels,color=colors,xlabel="Mesh width",ylabel="Relative error",m=ms,
         xscale=:log10,yscale=:log10,  legend=(0.40,0.20),
         )
@@ -214,9 +214,9 @@ function standardMapPlots()
 
   for j in (1, 2)
     if j == 1
-      indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode === :CG]
     else
-      indexes_to_plot = [i for i in 2:length(results) if results[i].mode != :CG]
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode !== :CG]
     end
     begin
       whichev = 2
@@ -235,7 +235,7 @@ function standardMapPlots()
         end
       end
       ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
-      colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
+      colors = [x.mode === :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
       Plots.scatter(x,y,group=gridtypes,label=legendlabels,color=colors,xlabel="Mesh width",ylabel="Relative error",m=ms,
         xscale=:log10,yscale=:log10,  legend=(0.40,0.20),
         ylim=(1e-10,1),xlim=(10^-1.8,1.03));
@@ -291,9 +291,9 @@ function standardMap8Plots()
 
   for j in (1, 2)
     if j == 1
-      indexes_to_plot = [i for i in 2:length(results) if results[i].mode == :CG]
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode === :CG]
     else
-      indexes_to_plot = [i for i in 2:length(results) if results[i].mode != :CG]
+      indexes_to_plot = [i for i in 2:length(results) if results[i].mode !== :CG]
     end
     begin
       whichev = 2
@@ -312,7 +312,7 @@ function standardMap8Plots()
         end
       end
       ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
-      colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
+      colors = [x.mode === :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
       Plots.scatter(x,y,group=gridtypes,label=legendlabels,color=colors,xlabel="Mesh width",ylabel="Relative error",m=ms,
         xscale=:log10,yscale=:log10,  legend=(0.40,0.20))
         #ylim=(1e-10,1),xlim=(10^-1.8,1.03));
@@ -388,7 +388,7 @@ function standardMapQuadraturePlots()
         end
       end
       ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in results[indexes_to_plot] ]
-      colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
+      colors = [x.mode === :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in results[indexes_to_plot]]
       res = Plots.scatter(x,y,group=gridtypes,label=legendlabels,color=colors,xlabel="Quadrature Order",ylabel="Relative error",m=ms,
         yscale=:log10,  legend=(0.40,0.20))
         #ylim=(1e-10,1),xlim=(10^-1.8,1.03));
@@ -506,9 +506,9 @@ function doubleGyrePlots()
 
   for j in (1, 2)
     if j == 1
-      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode === :CG]
     else
-      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode != :CG]
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode !== :CG]
     end
     begin
       whichev = 2
@@ -599,9 +599,9 @@ function doubleGyreEqVariPlots()
 
   for j in (1,)
     if j == 1
-      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode === :CG]
     else
-      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode != :CG]
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode !== :CG]
     end
     begin
       whichev = 2
@@ -689,9 +689,9 @@ function doubleGyre1EqVariPlots()
 
   for j in (1,)
     if j == 1
-      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode == :CG]
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode === :CG]
     else
-      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode != :CG]
+      indexes_to_plotdg = [i for i in 2:length(resultsdg) if resultsdg[i].mode !== :CG]
     end
     begin
       whichev = 2
@@ -798,7 +798,7 @@ function plotStaticLaplaceResults()
   reference_indexsl = 1
   resultssl=open(deserialize,"SL")
   indexes_to_plotsl = 2:length(resultssl)
-  indexes_to_plotsl = [i for i in 2:length(resultssl) if resultssl[i].mode == :CG]
+  indexes_to_plotsl = [i for i in 2:length(resultssl) if resultssl[i].mode === :CG]
 
 
   begin
@@ -809,7 +809,7 @@ function plotStaticLaplaceResults()
     gridtypes = [x.ctx.gridType * " $(x.mode)" for x in resultssl[indexes_to_plotsl]]
     legendlabels = [x * @sprintf("(%.1f)",ev_slopes[x] ) for x in gridtypes]
     ms = [x.ctx.gridType == "regular triangular grid" ? :utri : :s for x in resultssl[indexes_to_plotsl] ]
-    colors = [x.mode == :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in resultssl[indexes_to_plotsl]]
+    colors = [x.mode === :CG ? :green : ((x.mode==:naTO) ?  :blue : :orange ) for x in resultssl[indexes_to_plotsl]]
     Plots.scatter(x,y,group=gridtypes,xlabel="Mesh width",ylabel="Relative error",
       xscale=:log10,yscale=:log10,legend=:best,m=ms, color=colors,xlim=(1e-3,10),ylim=(1e-10,1),
       title="Errors in eigenvalue $whichev")
@@ -864,9 +864,9 @@ function plotDoubleGyre1Results()
   for j in (1, 2)
     #indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && getH(resultsdg1[i].ctx) < 10^(-1.)]
     if j == 1
-      indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && resultsdg1[i].mode == :CG]
+      indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && resultsdg1[i].mode === :CG]
     else
-      indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && resultsdg1[i].mode != :CG]
+      indexes_to_plotdg1 = [i for i in 1:length(resultsdg1) if i != reference_indexdg1 && resultsdg1[i].mode !== :CG]
     end
 
 

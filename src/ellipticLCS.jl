@@ -629,9 +629,9 @@ function compute_returning_orbit(
             callback = cb,
             verbose = false,
         )
-        if sol.retcode == :Terminated
+        if sol.retcode === :Terminated
             retcode = 0
-        elseif sol.retcode == :MaxIters
+        elseif sol.retcode === :MaxIters
             retcode = 1
         else
             retcode = 3
