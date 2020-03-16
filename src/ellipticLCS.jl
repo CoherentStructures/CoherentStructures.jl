@@ -611,7 +611,7 @@ function compute_returning_orbit(
     maxiters::Int = 2000,
     tolerance::Float64 = 1e-8,
     max_orbit_length::Float64 = 20.0,
-) where {T<:Real}
+)::Tuple{Vector{SVector{2,T}}, Int} where {T<:Real}
     dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
     condition(u, t, integrator) = dir * (seed[2] - u[2])
     affect!(integrator) = ODE.terminate!(integrator)
@@ -1184,7 +1184,7 @@ function getvortices(
     if verbose
         pm = Progress(num_jobs, desc = "Detecting vortices")
     end
-    map(1:num_jobs) do i
+    foreach(1:num_jobs) do i
         vx, vy, barriers = take!(results_rc)
         num_barriers += length(barriers)
         if verbose
@@ -1357,7 +1357,7 @@ function constrainedLCS(
             close(results_rc)
         end
     else
-        map(makejob, vortexcenters)
+        foreach(makejob, vortexcenters)
         close(jobs_rc)
     end
 
