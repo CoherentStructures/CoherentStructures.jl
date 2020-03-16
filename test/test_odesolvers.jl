@@ -36,12 +36,13 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
         solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
         solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
-        solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
-        @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+
+        # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
+        # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
+        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
     end
 
     @testset "ADE in rotating double gyre" begin

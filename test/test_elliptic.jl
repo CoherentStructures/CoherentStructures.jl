@@ -78,7 +78,7 @@ end
 
 @testset "closed orbit detection" begin
     Ω = SMatrix{2,2}(0, 1, -1, 0)
-    vf(λ) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> (Ω - (1 - λ) * I) * u)
+    vf(λ) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> (Ω - (1.0 - λ) * I) * u)
     seed = SVector{2}(rand(), 0)
     ret, info = @inferred compute_returning_orbit(vf(1.0), seed)
     @test info == 0

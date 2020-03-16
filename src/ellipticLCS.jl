@@ -611,7 +611,7 @@ function compute_returning_orbit(
     maxiters::Int = 2000,
     tolerance::Float64 = 1e-8,
     max_orbit_length::Float64 = 20.0,
-)::Tuple{Vector{SVector{2,T}}, Int} where {T<:Real}
+)::Tuple{Vector{SVector{2,T}},Int} where {T<:Real}
     dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
     condition(u, t, integrator) = dir * (seed[2] - u[2])
     affect!(integrator) = ODE.terminate!(integrator)
@@ -630,16 +630,15 @@ function compute_returning_orbit(
             verbose = false,
         )
         if sol.retcode === :Terminated
-            retcode = 0
+            return (sol.u, 0)
         elseif sol.retcode === :MaxIters
-            retcode = 1
+            return (sol.u, 1)
         else
-            retcode = 3
+            return (sol.u, 3)
         end
-        return (sol.u, retcode)
     catch e
         if e isa BoundsError
-            return (SVector{2,T}(NaN, NaN), 2)
+            return ([SVector{2,T}(NaN, NaN),], 2)
         end
         rethrow(e)
     end
