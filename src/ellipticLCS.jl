@@ -614,13 +614,13 @@ function compute_returning_orbit(
 ) where {T<:Real}
     dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
     condition(u, t, integrator) = dir * (seed[2] - u[2])
-    affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
-    cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
-    prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0.0, max_orbit_length))
+    affect!(integrator) = ODE.terminate!(integrator)
+    cb = ODE.ContinuousCallback(condition, nothing, affect!)
+    prob = ODE.ODEProblem(vf, seed, (0.0, max_orbit_length))
     try
-        sol = OrdinaryDiffEq.solve(
+        sol = ODE.solve(
             prob,
-            OrdinaryDiffEq.Tsit5(),
+            ODE.Tsit5(),
             maxiters = maxiters,
             dense = false,
             save_everystep = save,
@@ -747,7 +747,7 @@ function compute_closed_orbits(
     #          ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
     #          ITP.BSpline(ITP.Linear()))),
     #                 xspan, yspan, λrange)
-    # ηfield(λ::Float64) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> ηitp(u[1], u[2], λ))
+    # ηfield(λ::Float64) = ODE.ODEFunction{false}((u, p, t) -> ηitp(u[1], u[2], λ))
     # prd(λ::Float64, seed::SVector{2,S}) = Poincaré_return_distance(ηfield(λ), seed)
     # END OF VERSION 2
 
@@ -1005,7 +1005,7 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
         normresult = sqrt(result[1]^2 + result[2]^2)
         return normresult == 0 ? result : result / normresult
     end
-    return OrdinaryDiffEq.ODEFunction{false}(unit_length_itp)
+    return ODE.ODEFunction{false}(unit_length_itp)
 end
 
 """
@@ -1394,7 +1394,7 @@ function constrainedLCS(
                         sqrt.(max.(normsqq .- (λ^2), 0)) .* q1 +
                         ((-1)^s * λ) .* [Ω] .* q1
                     itp = ITP.LinearInterpolation(cache)
-                    return OrdinaryDiffEq.ODEFunction{false}(
+                    return ODE.ODEFunction{false}(
                         (u, p, t) -> itp(u[1], u[2]),
                     )
                 end

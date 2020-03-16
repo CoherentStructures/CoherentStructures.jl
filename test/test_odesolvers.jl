@@ -13,10 +13,10 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         prob = ODEProblem(ODEFunction(f; analytic=sol_analytic), u0, tspan)
 
         sim1 = test_convergence(dts, prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)))
-        @test sim1.𝒪est[:final] ≈ 1 atol = 0.2
+        @test sim1.𝒪est[:final] ≈ 1 rtol=1e-3
 
         sim2 = test_convergence(dts, prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)))
-        @test sim2.𝒪est[:final] ≈ 2 atol = 0.2
+        @test sim2.𝒪est[:final] ≈ 2 rtol=1e-2
     end
 
     @testset "nonautonomous ODEs with mass matrix" begin
@@ -25,23 +25,23 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         update_func = (_A, u, p, t) -> _A.nzval .= t
         f = DiffEqArrayOperator(A; update_func=update_func)
 
-        sol_analytic = (u0,p,t) -> exp(t^2/(2*0.5)) .* u0
+        sol_analytic = (u0, p, t) -> exp(t^2/(2*0.5)) .* u0
         prob = ODEProblem(ODEFunction(f; analytic=sol_analytic, mass_matrix=M), u0, tspan)
 
         sim1 = test_convergence(dts, prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)))
-        @test sim1.𝒪est[:final] ≈ 1 atol = 0.2
+        @test sim1.𝒪est[:final] ≈ 1 rtol=1e-2
 
         sim2 = test_convergence(dts, prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)))
-        @test sim2.𝒪est[:final] ≈ 2 atol = 0.2
+        @test sim2.𝒪est[:final] ≈ 2 rtol=1e-2
 
-        # solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
-        # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
-        # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
+        solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)))
+        @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
     end
 
     @testset "ADE in rotating double gyre" begin
@@ -71,10 +71,10 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         sol2 = solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
         # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
         # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        #
+
         # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
         # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
         # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
 
         @test sol1.retcode === :Success

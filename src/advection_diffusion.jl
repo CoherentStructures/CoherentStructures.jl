@@ -88,17 +88,14 @@ function advect_serialized_quadpoints(ctx::GridContext, tspan, odefun!, p=nothin
                     solver=default_solver, tolerance=default_tolerance)
 
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
-    p2 = Dict(
-        "ctx" => ctx,
-        "p"=>p,
-        )
+    p2 = Dict("ctx" => ctx, "p" => p)
 
-    prob = OrdinaryDiffEq.ODEProblem{true}(
+    prob = ODE.ODEProblem{true}(
         (du, u, p, t) -> large_rhs(odefun!, du, u, p, t),
         u0,
         (tspan[1], tspan[end]),
         p2)
-    return OrdinaryDiffEq.solve(prob, solver, abstol=tolerance, reltol=tolerance)
+    return ODE.solve(prob, solver, abstol=tolerance, reltol=tolerance)
 end
 
 
