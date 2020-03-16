@@ -78,9 +78,12 @@ end
 
 @testset "closed orbit detection" begin
     Ω = SMatrix{2,2}(0, 1, -1, 0)
-    vf(λ) = OrdinaryDiffEq.ODEFunction((u, p, t) -> (Ω - (1 - λ) * I) * u)
+    vf(λ) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> (Ω - (1.0 - λ) * I) * u)
     seed = SVector{2}(rand(), 0)
-    d = @inferred CS.Poincaré_return_distance(vf(1), seed)
+    ret, info = @inferred compute_returning_orbit(vf(1.0), seed)
+    @test info == 0
+    @test ret[1] ≈ seed
+    d = @inferred CS.Poincaré_return_distance(vf(1.0), seed)
     @test d ≈ 0 atol = 1e-5
     λ⁰ = (@inferred CS.bisection(λ -> CS.Poincaré_return_distance(vf(λ), seed), 0.7, 1.4, 1e-6, 40))[2]
     @test λ⁰ ≈ 1 rtol=1e-3

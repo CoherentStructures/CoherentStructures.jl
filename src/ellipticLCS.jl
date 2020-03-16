@@ -639,7 +639,7 @@ function compute_returning_orbit(
         return (sol.u, retcode)
     catch e
         if e isa BoundsError
-            return (SVector{2,T}(NaN, NaN), 2)
+            return ([SVector{2,T}(NaN, NaN),], 2)
         end
         rethrow(e)
     end
