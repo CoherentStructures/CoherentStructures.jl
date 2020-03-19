@@ -98,6 +98,8 @@ end
     cache = @inferred CS.orient(T, SVector{2}(0.25, 0.5))
     @test cache isa CS.LCScache
     vortices = @inferred getvortices(T, [Singularity((0.25, 0.5), 1)], p; verbose=false)
+    vortices32 = @inferred getvortices(T, [Singularity((Float32(0.25), Float32(0.5)), 1)], p; verbose=false)
+    @test length(vortices32) == length(vortices)
     vortices, singularities = @inferred ellipticLCS(T, p; outermost=true, verbose=false)
     @test sum(map(v -> length(v.barriers), vortices)) == 2
     @test singularities isa Vector{Singularity{Float64}}
