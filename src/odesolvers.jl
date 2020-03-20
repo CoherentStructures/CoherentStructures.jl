@@ -4,12 +4,6 @@
 ### LinearImplicitEuler:
 ################################################################################
 
-# RosenbrockAlgorithm instead of OrdinaryDiffEqAlgorithm (massmatrix issues)
-# options
-# OrdinaryDiffEqImplicitAlgorithm
-# OrdinaryDiffEqRosenbrockAlgorithm
-# OrdinaryDiffEqNewtonAlgorithm
-#
 struct LinearImplicitEuler{CS,AD,F} <: ODE.OrdinaryDiffEqNewtonAlgorithm{CS,AD}
     linsolve::F
 end
@@ -18,7 +12,8 @@ LinearImplicitEuler(;
     autodiff = false,
     linsolve = ODE.DEFAULT_LINSOLVE,
 ) = LinearImplicitEuler{chunk_size,autodiff,typeof(linsolve)}(linsolve)
-ODE.alg_order(alg::LinearImplicitEuler) = 1
+ODE.alg_order(::LinearImplicitEuler) = 1
+ODE.is_mass_matrix_alg(::LinearImplicitEuler) = true
 
 mutable struct LinearImplicitEulerCache{uType,rateType,J,F} <:
                ODE.OrdinaryDiffEqMutableCache  # removed: @cache
@@ -97,13 +92,13 @@ end
 ### LinearMEBDF2:
 ################################################################################
 
-# RosenbrockAlgorithm instead of OrdinaryDiffEqAlgorithm (massmatrix issues)
-struct LinearMEBDF2{CS,AD,F} <: ODE.OrdinaryDiffEqRosenbrockAlgorithm{CS,AD}
+struct LinearMEBDF2{CS,AD,F} <: ODE.OrdinaryDiffEqNewtonAlgorithm{CS,AD}
     linsolve::F
 end
 LinearMEBDF2(; chunk_size=0, autodiff=false, linsolve=ODE.DEFAULT_LINSOLVE) =
     LinearMEBDF2{chunk_size,autodiff,typeof(linsolve)}(linsolve)
 ODE.alg_order(::LinearMEBDF2) = 2
+ODE.is_mass_matrix_alg(::LinearMEBDF2) = true
 
 mutable struct LinearMEBDF2Cache{uType,rateType,J,F} <: ODE.OrdinaryDiffEqMutableCache
     u::uType
