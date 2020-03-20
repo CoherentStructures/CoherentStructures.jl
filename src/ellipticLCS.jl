@@ -1038,21 +1038,7 @@ function getvortices(
     vortices = EllipticVortex{S}[]
 
     #Type of restricted field is quite complex, therefore make a variable for it here
-    Ttype = typeof(T)# AxisArrays.AxisArray{
-    #     SymmetricTensor{2,2,S,3},
-    #     2,
-    #     Array{SymmetricTensor{2,2,S,3},2},
-    #     Tuple{
-    #         AxisArrays.Axis{
-    #             :row,
-    #             StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}},
-    #         },
-    #         AxisArrays.Axis{
-    #             :col,
-    #             StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}},
-    #         },
-    #     },
-    # }
+    Ttype = typeof(T)
 
     # We make two remote channels. The master process pushes to jobs_rc in order
     # (vx, vy, vr, p, outermost, T_local):
