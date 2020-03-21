@@ -26,7 +26,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
       - name: Install dependencies
-        run: julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate();
+        run: julia --color=yes --project -e 'using Pkg; Pkg.activate();
                                                 Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
                                                 Pkg.develop(PackageSpec(path=pwd()));
                                                 Pkg.instantiate()'
