@@ -26,9 +26,8 @@ jobs:
         with:
           version: ${{ matrix.version }}
       - name: Install dependencies
-        run: julia --color=yes --project -e 'using Pkg; 
-                                                Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
-                                                if VERSION >= v\"1.1.0-rc1\"; Pkg.build(verbose=true); else Pkg.build(); end'
+        run: julia --color=yes --project -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))'
+      - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
       - uses: julia-actions/julia-uploadcodecov@latest
         env:
