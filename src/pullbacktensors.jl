@@ -1,7 +1,7 @@
 # Functions for pulling back tensors
 
 const default_tolerance = 1e-3
-const default_solver = OrdinaryDiffEq.BS5()
+const default_solver = ODE.BS5()
 
 # TODO: exploit throughout
 struct Trajectory{dim,ts,T,N}
@@ -28,10 +28,10 @@ julia> f = u -> flow(bickleyJet, u, range(0., stop=100, length=21))
 ```
 """
 @inline function flow(odefun, u0::AbstractVector, tspan::AbstractVector; kwargs...)
-    return flow(OrdinaryDiffEq.ODEFunction(odefun), u0, tspan; kwargs...)
+    return flow(ODE.ODEFunction(odefun), u0, tspan; kwargs...)
 end
 @inline function flow(
-    odefun::OrdinaryDiffEq.ODEFunction{true},
+    odefun::ODE.ODEFunction{true},
     u0::AbstractVector{<:Real},
     tspan::AbstractVector;
     kwargs...,
@@ -39,7 +39,7 @@ end
     return _flow(odefun, convert(Vector, u0), tspan; kwargs...)
 end
 @inline function flow(
-    odefun::OrdinaryDiffEq.ODEFunction{false},
+    odefun::ODE.ODEFunction{false},
     u0::AbstractVector{T},
     tspan::AbstractVector;
     kwargs...,
@@ -70,12 +70,12 @@ end
     #   function affect!(integrator)
     #           return terminate!(integrator)#
     #   end
-    #   callback = OrdinaryDiffEq.CallbackSet(
-    #           map(x-> OrdinaryDiffEq.DiscreteCallback(x,affect!),
+    #   callback = ODE.CallbackSet(
+    #           map(x-> ODE.DiscreteCallback(x,affect!),
     #       [leftSide,rightSide,topSide,bottomSide])...)
     #end
-    prob = OrdinaryDiffEq.ODEProblem(odefun, u0, (tspan[1], tspan[end]), p)
-    sol = OrdinaryDiffEq.solve(
+    prob = ODE.ODEProblem(odefun, u0, (tspan[1], tspan[end]), p)
+    sol = ODE.solve(
         prob,
         solver;
         saveat = tspan,
@@ -100,7 +100,7 @@ function linearized_flow(odefun, x::AbstractVector, tspan, δ; kwargs...)
     dim = length(x)
     !(dim ∈ (2, 3)) && error("length(u) ∉ [2,3]")
     linearized_flow(
-        OrdinaryDiffEq.ODEFunction(odefun),
+        ODE.ODEFunction(odefun),
         convert(SVector{dim}, x),
         tspan,
         δ;
@@ -108,7 +108,7 @@ function linearized_flow(odefun, x::AbstractVector, tspan, δ; kwargs...)
     )
 end
 function linearized_flow(
-    odefun::OrdinaryDiffEq.ODEFunction{iip},
+    odefun::ODE.ODEFunction{iip},
     x::SVector{2,T},
     tspan::AbstractVector{Float64},
     δ::Real;
@@ -171,7 +171,7 @@ function linearized_flow(
     end # iip
 end
 function linearized_flow(
-    odefun::OrdinaryDiffEq.ODEFunction{iip},
+    odefun::ODE.ODEFunction{iip},
     x::SVector{3,T},
     tspan::AbstractVector{Float64},
     δ::Real;
@@ -420,7 +420,7 @@ function pullback_diffusion_tensor_function(
     Dfun;
     p=nothing,
     tolerance=1.e-3,
-    solver=OrdinaryDiffEq.BS5(),
+    solver=ODE.BS5(),
 ) where {T<:Real,S<:Real}
 
     DF, pos = iszero(δ) ?

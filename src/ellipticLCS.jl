@@ -611,16 +611,16 @@ function compute_returning_orbit(
     maxiters::Int = 2000,
     tolerance::Float64 = 1e-8,
     max_orbit_length::Float64 = 20.0,
-) where {T<:Real}
+)::Tuple{Vector{SVector{2,T}},Int} where {T<:Real}
     dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
     condition(u, t, integrator) = dir * (seed[2] - u[2])
-    affect!(integrator) = OrdinaryDiffEq.terminate!(integrator)
-    cb = OrdinaryDiffEq.ContinuousCallback(condition, nothing, affect!)
-    prob = OrdinaryDiffEq.ODEProblem(vf, seed, (0.0, max_orbit_length))
+    affect!(integrator) = ODE.terminate!(integrator)
+    cb = ODE.ContinuousCallback(condition, nothing, affect!)
+    prob = ODE.ODEProblem(vf, seed, (0.0, max_orbit_length))
     try
-        sol = OrdinaryDiffEq.solve(
+        sol = ODE.solve(
             prob,
-            OrdinaryDiffEq.Tsit5(),
+            ODE.Tsit5(),
             maxiters = maxiters,
             dense = false,
             save_everystep = save,
@@ -630,16 +630,15 @@ function compute_returning_orbit(
             verbose = false,
         )
         if sol.retcode === :Terminated
-            retcode = 0
+            return (sol.u, 0)
         elseif sol.retcode === :MaxIters
-            retcode = 1
+            return (sol.u, 1)
         else
-            retcode = 3
+            return (sol.u, 3)
         end
-        return (sol.u, retcode)
     catch e
         if e isa BoundsError
-            return (SVector{2,T}(NaN, NaN), 2)
+            return ([SVector{2,T}(NaN, NaN),], 2)
         end
         rethrow(e)
     end
@@ -747,7 +746,7 @@ function compute_closed_orbits(
     #          ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid()))),
     #          ITP.BSpline(ITP.Linear()))),
     #                 xspan, yspan, λrange)
-    # ηfield(λ::Float64) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> ηitp(u[1], u[2], λ))
+    # ηfield(λ::Float64) = ODE.ODEFunction{false}((u, p, t) -> ηitp(u[1], u[2], λ))
     # prd(λ::Float64, seed::SVector{2,S}) = Poincaré_return_distance(ηfield(λ), seed)
     # END OF VERSION 2
 
@@ -1005,7 +1004,7 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
         normresult = sqrt(result[1]^2 + result[2]^2)
         return normresult == 0 ? result : result / normresult
     end
-    return OrdinaryDiffEq.ODEFunction{false}(unit_length_itp)
+    return ODE.ODEFunction{false}(unit_length_itp)
 end
 
 """
@@ -1021,7 +1020,7 @@ vortex detection.
   inwards until the first closed orbit is found; otherwise, closed orbits are
   computed from the center outward.
 * `verbose=true`: whether feedback on the progress should be given.
-* `debug=true`: whether parallel computation should be used. Set to `false` to
+* `debug=false`: whether parallel computation should be used. Set to `true` to
   turn off parallel computation and to obtain more useful error messages.
 """
 function getvortices(
@@ -1039,21 +1038,7 @@ function getvortices(
     vortices = EllipticVortex{S}[]
 
     #Type of restricted field is quite complex, therefore make a variable for it here
-    Ttype = AxisArrays.AxisArray{
-        SymmetricTensor{2,2,S,3},
-        2,
-        Array{SymmetricTensor{2,2,S,3},2},
-        Tuple{
-            AxisArrays.Axis{
-                :row,
-                StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}},
-            },
-            AxisArrays.Axis{
-                :col,
-                StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}},
-            },
-        },
-    }
+    Ttype = typeof(T)
 
     # We make two remote channels. The master process pushes to jobs_rc in order
     # (vx, vy, vr, p, outermost, T_local):
@@ -1184,7 +1169,7 @@ function getvortices(
     if verbose
         pm = Progress(num_jobs, desc = "Detecting vortices")
     end
-    map(1:num_jobs) do i
+    foreach(1:num_jobs) do i
         vx, vy, barriers = take!(results_rc)
         num_barriers += length(barriers)
         if verbose
@@ -1357,7 +1342,7 @@ function constrainedLCS(
             close(results_rc)
         end
     else
-        map(makejob, vortexcenters)
+        foreach(makejob, vortexcenters)
         close(jobs_rc)
     end
 
@@ -1394,7 +1379,7 @@ function constrainedLCS(
                         sqrt.(max.(normsqq .- (λ^2), 0)) .* q1 +
                         ((-1)^s * λ) .* [Ω] .* q1
                     itp = ITP.LinearInterpolation(cache)
-                    return OrdinaryDiffEq.ODEFunction{false}(
+                    return ODE.ODEFunction{false}(
                         (u, p, t) -> itp(u[1], u[2]),
                     )
                 end

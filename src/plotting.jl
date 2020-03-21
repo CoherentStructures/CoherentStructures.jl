@@ -383,7 +383,7 @@ end
 RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(as::Plot_FTLE;
     	   tolerance=1e-4,
-           solver=OrdinaryDiffEq.BS5(),
+           solver=ODE.BS5(),
 		   #existing_plot=nothing, TODO 1.0
            flip_y=false,
            check_inbounds=always_true,

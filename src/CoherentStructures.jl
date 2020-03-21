@@ -18,6 +18,7 @@ using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 import DiffEqBase
 import OrdinaryDiffEq
+const ODE = OrdinaryDiffEq
 import Distances
 const Dists = Distances
 import NearestNeighbors
