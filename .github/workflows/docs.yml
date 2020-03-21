@@ -20,23 +20,6 @@ jobs:
           Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
           Pkg.develop(PackageSpec(; path=pwd()));
           Pkg.instantiate();'
-        # run: julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate();
-        #                                         Pkg.add("Arpack");
-        #                                         Pkg.add("AxisArrays");
-        #                                         Pkg.add("Clustering");
-        #                                         Pkg.add("Distances");
-        #                                         Pkg.add("Documenter");
-        #                                         Pkg.add("Interpolations");
-        #                                         Pkg.add("JLD2");
-        #                                         Pkg.add("Literate");
-        #                                         Pkg.add("OrdinaryDiffEq");
-        #                                         Pkg.add("Plots");
-        #                                         Pkg.build("Plots");
-        #                                         Pkg.add("StaticArrays");
-        #                                         Pkg.add("Tensors");
-        #                                         Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
-        #                                         Pkg.develop(PackageSpec(path=pwd()));
-        #                                         Pkg.instantiate()'
       - name: Build and deploy documentation
         run: julia --project=docs --color=yes docs/make.jl
         env:
