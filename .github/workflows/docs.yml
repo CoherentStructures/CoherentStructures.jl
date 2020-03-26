@@ -1,4 +1,4 @@
-name: CI
+name: Documentation
 
 on:
   push:
@@ -8,58 +8,17 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        version:
-#           - '1.0'
-          - '1'
-          - 'nightly'
-        os:
-          - ubuntu-latest
-          - macOS-latest
-    steps:
-      - uses: actions/checkout@v1
-      - uses: julia-actions/setup-julia@latest
-        with:
-          version: ${{ matrix.version }}
-      - name: Install dependencies
-        run: julia --color=yes --project -e '
-          using Pkg;
-          Pkg.add(PackageSpec(; url="https://github.com/KristofferC/JuAFEM.jl.git"));'
-      - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
-      - uses: julia-actions/julia-uploadcodecov@latest
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   docs:
-    name: Documentation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - uses: julia-actions/setup-julia@latest
-        with:
-          version: '1.3'
-      - name: Install dependencies and build package
-        run: julia --color=yes --project=docs/ -e 'using Pkg; Pkg.activate();
-                                                Pkg.add("Arpack");
-                                                Pkg.add("AxisArrays");
-                                                Pkg.add("Clustering");
-                                                Pkg.add("Distances");
-                                                Pkg.add("Documenter");
-                                                Pkg.add("Interpolations");
-                                                Pkg.add("JLD2");
-                                                Pkg.add("Literate");
-                                                Pkg.add("OrdinaryDiffEq");
-                                                Pkg.add("Plots");
-                                                Pkg.build("Plots");
-                                                Pkg.add("StaticArrays");
-                                                Pkg.add("Tensors");
-                                                Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
-                                                Pkg.develop(PackageSpec(path=pwd()));
-                                                Pkg.instantiate()'
+      - name: Install dependencies
+        run: julia --project=docs/ -e '
+          using Pkg;
+          Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
+          Pkg.develop(PackageSpec(; path=pwd()));
+          Pkg.instantiate();'
       - name: Build and deploy documentation
         run: julia --project=docs --color=yes docs/make.jl
         env:
