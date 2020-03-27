@@ -1,5 +1,5 @@
 #md # ```@meta
-#md #   EditURL = "../../../examples/bickley.jl"
+#md #   EditURL = "../../examples/bickley.jl"
 #md # ```
 # # Bickley jet
 #

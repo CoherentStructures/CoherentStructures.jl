@@ -1,5 +1,5 @@
 #md # ```@meta
-#md #   EditURL = "../../../examples/standard_map.jl"
+#md #   EditURL = "../../examples/standard_map.jl"
 #md # ```
 # # The standard map
 #
