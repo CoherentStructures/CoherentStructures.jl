@@ -1,11 +1,11 @@
 #md # ```@meta
-#md #   EditURL = "../../../examples/standard_map.jl"
+#md #   EditURL = "../../examples/standard_map.jl"
 #md # ```
 # # The standard map
 #
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:
-#md #     [`standard_map.ipynb`](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/latest/dev/standard_map.ipynb),
+#md #     [`standard_map.ipynb`](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/standard_map.ipynb),
 #md #     and as an executable julia file
 #md #     [`standard_map.jl`](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/standard_map.jl).
 #md #

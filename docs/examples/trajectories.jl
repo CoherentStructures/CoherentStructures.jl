@@ -1,5 +1,5 @@
 #md # ```@meta
-#md #   EditURL = "../../../examples/trajectories.jl"
+#md #   EditURL = "../../examples/trajectories.jl"
 #md # ```
 # # Working with trajectories
 #

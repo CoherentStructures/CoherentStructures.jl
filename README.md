@@ -10,5 +10,5 @@
 Julia.
 
 For an introduction to LCS methods, usage examples, and implementation details,
-see the documentation. In particular, please access the code examples also via
-the documentation, and not via the `examples` folder.
+see the documentation. There, you will also find links to executable source
+files for some examples.

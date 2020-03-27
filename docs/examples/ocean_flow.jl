@@ -1,5 +1,5 @@
 #md # ```@meta
-#md #   EditURL = "../../../examples/ocean_flow.jl"
+#md #   EditURL = "../../examples/ocean_flow.jl"
 #md # ```
 # # Geostrophic ocean flow
 #

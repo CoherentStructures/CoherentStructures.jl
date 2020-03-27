@@ -1,5 +1,5 @@
 #md # ```@meta
-#md #   EditURL = "../../../examples/rot_double_gyre.jl"
+#md #   EditURL = "../../examples/rot_double_gyre.jl"
 #md # ```
 # # Rotating double gyre
 #

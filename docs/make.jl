@@ -18,8 +18,6 @@ if !isdir("/tmp/natschil_misc")
     end
 end
 
-
-
 # generate the example notebooks for the documentation
 OUTPUT = joinpath(@__DIR__, "src/generated")
 
@@ -56,7 +54,7 @@ function mypreprocess(content, whatkind)
     end
     if whatkind === :julia_run
         content = replace(content,"addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
-        content = replace(content, "OCEAN_FLOW_FILE" => "\"examples/Ocean_geostrophic_velocity.jld2\"")
+        content = replace(content, "OCEAN_FLOW_FILE" => "\"docs/examples/Ocean_geostrophic_velocity.jld2\"")
     else
         content = replace(content, "OCEAN_FLOW_FILE" => "\"Ocean_geostrophic_velocity.jld2\"")
     end
@@ -68,57 +66,57 @@ preprocess_notebook = x -> mypreprocess(x, :notebook)
 preprocess_script = x -> mypreprocess(x, :julia_norun)
 preprocess_script2 = x -> mypreprocess(x, :julia_run)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT;
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/bickley.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT;
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/bickley.jl"), OUTPUT;
     execute=false, preprocess=preprocess_notebook)
-Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), OUTPUT;
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/bickley.jl"), OUTPUT;
     preprocess=preprocess_script)
-Literate.script(joinpath(@__DIR__, "..", "examples/bickley.jl"), "/tmp/";
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/bickley.jl"), "/tmp/";
     preprocess=preprocess_script2)
 
 run(`julia --project=docs/ /tmp/bickley.jl`)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/trajectories.jl"), OUTPUT;
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/trajectories.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/trajectories.jl"), OUTPUT;
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/trajectories.jl"), OUTPUT;
     execute=false, preprocess=preprocess_notebook)
-Literate.script(joinpath(@__DIR__, "..", "examples/trajectories.jl"), OUTPUT;
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/trajectories.jl"), OUTPUT;
     preprocess=preprocess_script)
-Literate.script(joinpath(@__DIR__, "..", "examples/trajectories.jl"), "/tmp/";
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/trajectories.jl"), "/tmp/";
     preprocess=preprocess_script2)
 
 run(`julia --project=docs/ /tmp/trajectories.jl`)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/ocean_flow.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/ocean_flow.jl"), OUTPUT;
     execute=false, preprocess=preprocess_notebook)
-Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), OUTPUT;
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/ocean_flow.jl"), OUTPUT;
     preprocess=preprocess_script)
-Literate.script(joinpath(@__DIR__, "..", "examples/ocean_flow.jl"), "/tmp/";
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/ocean_flow.jl"), "/tmp/";
     preprocess=preprocess_script2)
 
 run(`julia --project=docs/ /tmp/ocean_flow.jl`)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/rot_double_gyre.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/rot_double_gyre.jl"), OUTPUT;
     execute=false, preprocess=preprocess_notebook)
-Literate.script(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), OUTPUT;
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/rot_double_gyre.jl"), OUTPUT;
     preprocess=preprocess_script)
-Literate.script(joinpath(@__DIR__, "..", "examples/rot_double_gyre.jl"), "/tmp/";
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/rot_double_gyre.jl"), "/tmp/";
     preprocess=preprocess_script2)
 
 run(`julia --project=docs/ /tmp/rot_double_gyre.jl`)
 
-Literate.markdown(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
-Literate.notebook(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), OUTPUT;
     execute=false, preprocess=preprocess_notebook)
-Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), OUTPUT;
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), OUTPUT;
     preprocess=preprocess_script)
-Literate.script(joinpath(@__DIR__, "..", "examples/standard_map.jl"), "/tmp/";
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), "/tmp/";
     preprocess=preprocess_script2)
 
 run(`julia --project=docs/ /tmp/standard_map.jl`)
