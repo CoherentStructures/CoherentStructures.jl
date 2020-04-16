@@ -468,50 +468,52 @@ Unless `pass_on_errors` is set to `true`, errors from calculating FTLE values ar
 """
 plot_ftle
 
+function index2color(ind)
+    if ind == 1//1
+        return :white
+    end
+    if ind == 1//2
+        return :orange
+    end
+    if ind == -1//2
+        return :blue
+    end
+    if ind == 3//2
+        return :purple
+    end
+    if ind > 3//2
+        return :brown
+    end
+    if ind == -3//2
+        return :green
+    end
+    if ind < -3//2
+        return :black
+    end
+end
+
 RecipesBase.@userplot Plot_Singularities
 RecipesBase.@recipe function f(as::Plot_Singularities)
     singularities = as.args[1]
     seriestype --> :scatter
-    function getcolor(ind)
-        if ind == 1//1
-            return :white
-        end
-        if ind == 1//2
-            return :orange
-        end
-        if ind == -1//2
-            return :blue
-        end
-        if ind == 3//2
-            return :purple
-        end
-        if ind > 3//2
-            return :brown
-        end
-        if ind == -3//2
-            return :green
-        end
-        if ind < -3//2
-            return :black
-        end
-    end
-    singularity_colors = [getcolor(s.index) for s in singularities]
+    singularity_colors = [index2color(s.index) for s in singularities]
     points = [s.coords.data for s in singularities]
-    color --> singularity_colors
+    seriescolor --> singularity_colors
     label --> ""
     points
 end
 
-
-
 RecipesBase.@userplot Plot_Barrier
-RecipesBase.@recipe function f(as::Plot_Barrier; barrier_width=3, barrier_color=:red)
-    barrier = as.args[1].curve
-    label --> ""
+RecipesBase.@recipe function f(as::Plot_Barrier; linewidth=3, color=:red, showlabel=false)
+    barrier = as.args[1]
+    curve = barrier.curve
+    text = showlabel ? "p = $(round(barrier.p, digits=2))" : ""
+    @show text
+    label --> text
     aspect_ratio --> 1
-    w --> barrier_width
-    color --> barrier_color
-    barrier
+    linewidth --> linewidth
+    seriescolor --> color
+    curve
 end
 
 RecipesBase.@userplot Plot_DBS
@@ -524,9 +526,9 @@ RecipesBase.@recipe function f(as::Plot_DBS; logBg=true)
     yspan = bg.axes[2].val
     xlims --> (LL[1], UR[1])
     ylims --> (LL[2], UR[2])
-    color --> :viridis
+    seriescolor --> :viridis
     seriestype --> :heatmap
-    xspan, yspan, logBg ? permutedims(log10.(bg)) : permutedims(bg)
+    xspan, yspan, permutedims(logBg ? log10.(bg) : bg)
 end
 
 RecipesBase.@userplot Empty_Heatmap
@@ -546,16 +548,17 @@ end
 
 
 """
-    plot_vortices(vortices, singularities, [LL, UR ; bg])
+    plot_vortices(vortices, singularities, LL, UR ; bg=nothing)
 
 Plots the output of [`ellipticLCS`](@ref).
 """
 function plot_vortices(vortices, singularities, LL, UR;
     bg=nothing,
     logBg=true,
-    barrier_width=3,
-    barrier_color=:red,
+    linewidth=3,
+    color=:red,
     include_singularities=true,
+    showlabel=false,
     kwargs...)
 
     if bg !== nothing
@@ -564,7 +567,7 @@ function plot_vortices(vortices, singularities, LL, UR;
         fig = empty_heatmap(LL, UR; kwargs...)
     end
     for v in vortices, b in v.barriers
-        plot_barrier!(b; barrier_width=barrier_width, barrier_color=barrier_color, kwargs...)
+        plot_barrier!(b; linewidth=linewidth, color=color, showlabel=showlabel, kwargs...)
     end
     if include_singularities
         plot_singularities!(singularities; kwargs...)
