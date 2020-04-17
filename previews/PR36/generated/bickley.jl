@@ -45,7 +45,7 @@ vortices, singularities = ellipticLCS(C̅, p)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers")
+    bg=trace, title="DBS field and transport barriers", showlabel=true)
 Plots.plot(fig)
 
 using Distances
