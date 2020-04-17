@@ -92,7 +92,7 @@ nprocs() == 1 && addprocs()
 using StaticArrays, AxisArrays
 q = 21
 tspan = range(0., stop=1., length=q)
-nx = ny = 51
+nx = ny = 101
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
@@ -111,5 +111,5 @@ vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, title="DBS field and transport barriers", showlabel=true, clims=(0,5))
 DISPLAY_PLOT(fig, rot_double_gyre_geodesic_vortices)

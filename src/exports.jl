@@ -105,6 +105,8 @@ export
 	plot_ftle,
 	eulerian_videos,
 	eulerian_video,
+	plot_field,
+	plot_field!,
 	plot_barrier,
 	plot_barrier!,
 	plot_singularities,

@@ -437,22 +437,13 @@ RecipesBase.@recipe function f(as::Plot_FTLE;
     maxval = maximum(FTLE)
 
     print("plot_ftle ignored $nancounter NaN values ($nonancounter were good). Bounds ($minval,$maxval)")
-    seriestype --> :heatmap
 
     if flip_y == true
         x2 = reverse(x2)
         x2 *= -1
     end
-
+    seriestype := :heatmap
     x1, x2, FTLE
-
-    #= TODO
-    if existing_plot === nothing
-        return Plots.heatmap(x1,x2,FTLE; kwargs...)
-    else
-        return Plots.heatmap!(existing_plot,x1,x2,FTLE; kwargs...)
-    end
-    =#
 end
 
 """
@@ -467,6 +458,116 @@ Points where `check_inbounds(x[1],x[2],p) == false` are set to `NaN` (i.e. trans
 Unless `pass_on_errors` is set to `true`, errors from calculating FTLE values are caught and ignored.
 """
 plot_ftle
+
+"""
+    plot_vortices(vortices, singularities, LL, UR; bg=nothing)
+
+Plots the output of [`ellipticLCS`](@ref).
+
+## Keyword arguments
+* `bg=nothing`: whether to plot some background scalar field;
+* `logBg=true`: whether to take the `log10` of the scalar field;
+* `include_singularities=true`: whether to plot singularities;
+* `showlabel=false`: whether to show labels with the respective parameter values;
+* other keyword arguments are passed on to the plotting functions.
+"""
+function plot_vortices(vortices, singularities, LL, UR;
+    bg=nothing,
+    logBg=true,
+    include_singularities=true,
+    showlabel=false,
+    kwargs...
+)
+    if bg !== nothing
+        fig = plot_field(bg, LL, UR; logBg=logBg, kwargs...)
+    else
+        fig = empty_heatmap(LL, UR; kwargs...)
+    end
+    for v in vortices, b in v.barriers
+        plot_barrier!(b; showlabel=showlabel, kwargs...)
+    end
+    if include_singularities
+        plot_singularities!(singularities; kwargs...)
+    end
+    return fig
+end
+
+RecipesBase.@userplot Plot_Field
+RecipesBase.@recipe function f(as::Plot_Field; logBg=true)
+    bg = as.args[1]
+    LL = as.args[2]
+    UR = as.args[3]
+    xspan = bg.axes[1].val
+    yspan = bg.axes[2].val
+    seriestype := :heatmap
+    seriescolor --> :viridis
+    xlims := (LL[1], UR[1])
+    ylims := (LL[2], UR[2])
+    aspect_ratio --> 1
+    xspan, yspan, permutedims(logBg ? log10.(bg) : bg)
+end
+
+"""
+    plot_field(field, LL, UR; logBg=true)
+
+Makes a heatmap plot of the scalar field given as the `AxisArray` `field` on the
+domain spanned by the lower-left corner `LL` and the upper-right corner `UR`.
+The keyword argument `logBg` determines whether the `log10` of the scalar field
+is plotted.
+"""
+plot_field
+
+"""
+    plot_field!
+
+Same as [`plot_field`](@ref), but adds the output to the currently active plot.
+"""
+plot_field!
+
+RecipesBase.@userplot Empty_Heatmap
+RecipesBase.@recipe function f(as::Empty_Heatmap)
+    LL = as.args[1]
+    UR = as.args[2]
+    xspan = range(LL[1], stop=UR[1], length=2)
+    yspan = range(LL[2], stop=UR[2], length=2)
+    bg = [NaN for _ in yspan, _ in xspan]
+    xlims := (LL[1], UR[1])
+    ylims := (LL[2], UR[2])
+    colorbar := :none
+    seriestype := :heatmap
+    aspect_ratio --> 1
+    xspan, yspan, bg
+end
+
+RecipesBase.@userplot Plot_Barrier
+RecipesBase.@recipe function f(as::Plot_Barrier; showlabel=false)
+    barrier = as.args[1]
+    curve = barrier.curve
+    linewidth --> 3
+    label := showlabel ? "p = $(round(barrier.p, digits=2))" : ""
+    linecolor --> :red
+    if showlabel
+        linecolor := :auto
+    end
+    aspect_ratio --> 1
+    curve
+end
+
+"""
+    plot_barrier(barrier::EllipticBarrier; showlabel=false)
+
+Makes a line plot of the `barrier`, where the keyword argument `showlabel`
+determines whether a legend entry showing the barrier's parameter value is
+created.
+"""
+plot_barrier
+
+"""
+    plot_barrier!(barrier::EllipticBarrier; showlabel=false)
+
+Same as [`plot_barrier`](@ref), but adds the output to the currently active plot.
+"""
+plot_barrier!
 
 function index2color(ind)
     if ind == 1//1
@@ -495,82 +596,32 @@ end
 RecipesBase.@userplot Plot_Singularities
 RecipesBase.@recipe function f(as::Plot_Singularities)
     singularities = as.args[1]
-    seriestype --> :scatter
     singularity_colors = [index2color(s.index) for s in singularities]
     points = [s.coords.data for s in singularities]
-    seriescolor --> singularity_colors
-    label --> ""
+    seriestype := :scatter
+    seriescolor := singularity_colors
+    label := ""
     points
 end
 
-RecipesBase.@userplot Plot_Barrier
-RecipesBase.@recipe function f(as::Plot_Barrier; linewidth=3, color=:red, showlabel=false)
-    barrier = as.args[1]
-    curve = barrier.curve
-    text = showlabel ? "p = $(round(barrier.p, digits=2))" : ""
-    @show text
-    label --> text
-    aspect_ratio --> 1
-    linewidth --> linewidth
-    seriescolor --> color
-    curve
-end
+"""
+    plot_singularities(singularities::Vector{Singularity})
 
-RecipesBase.@userplot Plot_DBS
-RecipesBase.@recipe function f(as::Plot_DBS; logBg=true)
-    bg = as.args[1]
-    LL = as.args[2]
-    UR = as.args[3]
-    xspan = bg.axes[1].val
-    aspect_ratio --> 1
-    yspan = bg.axes[2].val
-    xlims --> (LL[1], UR[1])
-    ylims --> (LL[2], UR[2])
-    seriescolor --> :viridis
-    seriestype --> :heatmap
-    xspan, yspan, permutedims(logBg ? log10.(bg) : bg)
-end
-
-RecipesBase.@userplot Empty_Heatmap
-RecipesBase.@recipe function f(as::Empty_Heatmap)
-    LL = as.args[1]
-    UR = as.args[2]
-    xspan = range(LL[1], stop=UR[1], length=2)
-    yspan = range(LL[2], stop=UR[2], length=2)
-    xlims --> (LL[1], UR[1])
-    ylims --> (LL[2], UR[2])
-    bg = [NaN for x in xspan, y in yspan]
-    colorbar --> :none
-    seriestype --> :heatmap
-    xspan, yspan, bg
-end
-
-
+Makes a scatter plot of the `singularities`, with coloring depending on the
+respective index:
+* index = 1: white
+* index = 1/2: orange
+* index = -1/2: blue
+* index = 3/2: purple
+* index > 3/2: brown
+* index = -3/2: green
+* ind < -3/2: black
+"""
+plot_singularities
 
 """
-    plot_vortices(vortices, singularities, LL, UR ; bg=nothing)
+    plot_singularities!(singularities::Vector{Singularity})
 
-Plots the output of [`ellipticLCS`](@ref).
+Same as [`plot_singularities`](@ref), but adds the output to the currently active plot.
 """
-function plot_vortices(vortices, singularities, LL, UR;
-    bg=nothing,
-    logBg=true,
-    linewidth=3,
-    color=:red,
-    include_singularities=true,
-    showlabel=false,
-    kwargs...)
-
-    if bg !== nothing
-        fig = plot_dbs(bg, LL, UR; logBg=logBg, kwargs...)
-    else
-        fig = empty_heatmap(LL, UR; kwargs...)
-    end
-    for v in vortices, b in v.barriers
-        plot_barrier!(b; linewidth=linewidth, color=color, showlabel=showlabel, kwargs...)
-    end
-    if include_singularities
-        plot_singularities!(singularities; kwargs...)
-    end
-    return fig
-end
+plot_singularities!
