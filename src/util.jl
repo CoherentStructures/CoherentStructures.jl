@@ -66,8 +66,10 @@ the result in the corresponding slice of `du`.
 This is so that a decoupled ODE system with several initial values can
 be solved without having to call the ODE solver multiple times.
 """
-function arraymap!(du::Vector, u::Vector, p, t,
-                            odefun, N::Int, dim::Int)
+function arraymap!(du, u, p, t, odefun::ODE.ODEFunction{true}, N::Int, dim::Int)
+    eachindex(du, u) == Base.OneTo(N*dim) || throw(
+        DimensionMismatch("vector arguments must have equal axes")
+    )
     @inbounds for i in 1:N
         @views odefun(du[1+(i - 1)*dim:i*dim], u[1+(i-1)*dim:i*dim], p, t)
     end
