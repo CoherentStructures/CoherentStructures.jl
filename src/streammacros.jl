@@ -346,17 +346,25 @@ function simple_simplifier(expr::Expr)
     end
     return Expr(expr.head, args...)
 end
+simple_simplifier(expr) = expr
+
 
 function propagate_constants(expr::ModelingToolkit.Operation)
-        return expr.op(propagate_constants.(expr.args)...) 
+        if all(isconstant.(expr.args))
+            return expr.op(propagate_constants.(expr.args)...) 
+        else
+            return Operation(expr.op, propagate_constants.(expr.args))
+        end
 end
 propagate_constants(x::Constant) = x.value
 propagate_constants(x) = x
 
+isconstant(x::Operation) = !(x.op isa Variable) && all(isconstant.(x.args))
+isconstant(x::Constant) = true
 
-simple_simplifier(expr) = expr
+
+
 expr_grad(expr, coord_vars::Vector{Symbol}) = expr_diff.(expr, coord_vars)
-
 function hessian(expr, coord_vars)
     ∇expr = expr_grad(expr, coord_vars)
     ∇²expr = expr_grad(expr)
