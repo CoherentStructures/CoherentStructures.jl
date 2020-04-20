@@ -41,7 +41,6 @@ const VD = VoronoiDelaunay
 import JuAFEM
 const JFM = JuAFEM
 using RecipesBase
-import SymEngine
 import ModelingToolkit
 using ModelingToolkit: Variable, Differential, simplified_expr,
       expand_derivatives, Expression, Operation, Constant
