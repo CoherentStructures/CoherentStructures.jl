@@ -26,6 +26,7 @@ bickleyJetEqVari! = ODE.ODEFunction{true}((DU, U, p, t) -> DU .= bickleyJetEqVar
 # rotating double gyre flow  [Mosovsky & Meiss, 2011]
 @define_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F

@@ -219,6 +219,8 @@ end
 #            symbolic differentiation of expressions using SymEngine                   #
 ########################################################################################
 
+ModelingToolkit.derivative(::typeof(sign), x, ::Val{1}) = 0
+
 sgn(x) = (x > 0) ? one(x) : (x < 0) ? -one(x) : zero(x)
 heaviside(x) = 0 < x ? one(x) : zero(x)
 window(x, a, b) = (a <= x < b) ? one(x) : zero(x)
@@ -232,6 +234,13 @@ diff_dict[:zero] = :zero
 diff_dict[:window] = :zero
 
 function expr_diff(expr::Expr, var::Symbol)
+    D = Differential(var) 
+
+    toolkit_expr = convert(Expression, expr) 
+    d_expr = simplified_expr(expand_derivatives(D(toolkit_expr)))
+    d_expr = convert(Expression, simple_simplifier(d_expr))
+    return simplified_expr(propagate_constants(d_expr))
+
     # not a nice way to differentiate expressions, but ReverseDiffSource
     # is broken.
     expr_sym = SymEngine.Basic(expr)
@@ -300,6 +309,10 @@ function simple_simplifier(expr::Expr)
     if expr.head !== :call
         return Expr(expr.head, args...)
     end
+    if args[1] === :one
+        return 1
+    end
+
     if args[1] === :zero
         return 0
     end
@@ -333,6 +346,13 @@ function simple_simplifier(expr::Expr)
     end
     return Expr(expr.head, args...)
 end
+
+function propagate_constants(expr::ModelingToolkit.Operation)
+        return expr.op(propagate_constants.(expr.args)...) 
+end
+propagate_constants(x::Constant) = x.value
+propagate_constants(x) = x
+
 
 simple_simplifier(expr) = expr
 expr_grad(expr, coord_vars::Vector{Symbol}) = expr_diff.(expr, coord_vars)
