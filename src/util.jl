@@ -79,13 +79,15 @@ end
 This function is like `arraymap!(du, u, p, t, odefun, 4, 2)`,
 but `du` is returned as a `StaticVector`.
 """
-@inbounds function arraymap2(u::SVector{10}, p, t, odefun)
-    p0 = odefun(SVector{2}(u[1],  u[2]), p, t)
-    p1 = odefun(SVector{2}(u[3],  u[4]), p, t)
-    p2 = odefun(SVector{2}(u[5],  u[6]), p, t)
-    p3 = odefun(SVector{2}(u[7],  u[8]), p, t)
-    p4 = odefun(SVector{2}(u[9], u[10]), p, t)
-    return SVector{10}(p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], p3[1], p3[2], p4[1], p4[2])
+function arraymap2(u::SVector{10}, p, t, odefun)
+    @inbounds begin
+        p0 = odefun(SVector{2}(u[1],  u[2]), p, t)
+        p1 = odefun(SVector{2}(u[3],  u[4]), p, t)
+        p2 = odefun(SVector{2}(u[5],  u[6]), p, t)
+        p3 = odefun(SVector{2}(u[7],  u[8]), p, t)
+        p4 = odefun(SVector{2}(u[9], u[10]), p, t)
+        return SVector{10}(p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], p3[1], p3[2], p4[1], p4[2])
+    end
 end
 
 """
@@ -94,18 +96,20 @@ end
 This function is like `arraymap!(du, u, pt, odefun, 7, 3)`,
 but `du` is returned as a `StaticVector`.
 """
-@inbounds function arraymap3(u::SVector{21}, p, t, odefun)
-    p0 = odefun(SVector{3}(u[1], u[2], u[3]), p, t)
-    p1 = odefun(SVector{3}(u[4], u[5], u[6]), p, t)
-    p2 = odefun(SVector{3}(u[7], u[8], u[9]), p, t)
-    p3 = odefun(SVector{3}(u[10], u[11], u[12]), p, t)
-    p4 = odefun(SVector{3}(u[13], u[14], u[15]), p, t)
-    p5 = odefun(SVector{3}(u[16], u[17], u[18]), p, t)
-    p6 = odefun(SVector{3}(u[19], u[20], u[21]), p, t)
-    return SVector{21}(p0[1], p0[2], p0[3],
-                         p1[1], p1[2], p1[3], p2[1], p2[2], p2[3],
-                         p3[1], p3[2], p3[3], p4[1], p4[2], p4[3],
-                         p5[1], p5[2], p5[3], p6[1], p6[2], p6[3])
+function arraymap3(u::SVector{21}, p, t, odefun)
+    @inbounds begin
+        p0 = odefun(SVector{3}(u[1], u[2], u[3]), p, t)
+        p1 = odefun(SVector{3}(u[4], u[5], u[6]), p, t)
+        p2 = odefun(SVector{3}(u[7], u[8], u[9]), p, t)
+        p3 = odefun(SVector{3}(u[10], u[11], u[12]), p, t)
+        p4 = odefun(SVector{3}(u[13], u[14], u[15]), p, t)
+        p5 = odefun(SVector{3}(u[16], u[17], u[18]), p, t)
+        p6 = odefun(SVector{3}(u[19], u[20], u[21]), p, t)
+        return SVector{21}(p0[1], p0[2], p0[3],
+                             p1[1], p1[2], p1[3], p2[1], p2[2], p2[3],
+                             p3[1], p3[2], p3[3], p4[1], p4[2], p4[3],
+                             p5[1], p5[2], p5[3], p6[1], p6[2], p6[3])
+    end
 end
 
 """
