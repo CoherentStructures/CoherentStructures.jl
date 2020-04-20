@@ -7,7 +7,7 @@
     STmetric(metric, p)
 
 Creates a spatiotemporal, averaged-in-time metric. At each time instance, the
-distance between two states `a` and `b` is computed via `evaluate(metric, a, b)`.
+distance between two states `a` and `b` is computed via `metric(a, b)`.
 The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 
 ## Fields
@@ -25,14 +25,14 @@ The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 ```jldoctest; setup=(using Distances, StaticArrays)
 julia> x = [@SVector rand(2) for _ in 1:10];
 
-julia> STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
+julia> d = STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
 STmetric{Euclidean,Int64}(Euclidean(0.0), 1)
 
-julia> evaluate(STmetric(Euclidean(), 1), x, x)
+julia> d(x, x)
 0.0
 ```
 """
-struct STmetric{M<:Dists.SemiMetric,T<:Real} <: Dists.SemiMetric
+struct STmetric{M<:Dists.SemiMetric,T<:Real} <: Dists.UnionSemiMetric
     metric::M
     p::T
 end
@@ -40,52 +40,8 @@ end
 # defaults: metric = Euclidean(), dim = 2, p = 1
 STmetric(d::Dists.PreMetric = Dists.Euclidean()) = STmetric(d, 1)
 
-# Specialized for Arrays and avoids a branch on the size
-@inline Base.@propagate_inbounds function Dists.evaluate(
-    d::STmetric,
-    a::AbstractVector{<:SVector},
-    b::AbstractVector{<:SVector},
-)
-    la = length(a)
-    lb = length(b)
-    @boundscheck if la != lb
-        throw(DimensionMismatch("first array has length $la which does not match the length of the second, $lb."))
-    elseif la == 0
-        return zero(Float64)
-    end
-    @inbounds begin
-        s = zero(Dists.result_type(d, a, b))
-        if IndexStyle(a, b) === IndexLinear()
-            @simd for I in 1:length(a)
-                ai = a[I]
-                bi = b[I]
-                s = Dists.eval_reduce(d, s, Dists.evaluate(d.metric, ai, bi))
-            end
-        else
-            if size(a) == size(b)
-                @simd for I in eachindex(a, b)
-                    ai = a[I]
-                    bi = b[I]
-                    s = Dists.eval_reduce(
-                        d,
-                        s,
-                        Dists.evaluate(d.metric, ai, bi),
-                    )
-                end
-            else
-                for (Ia, Ib) in zip(eachindex(a), eachindex(b))
-                    ai = a[Ia]
-                    bi = b[Ib]
-                    s = Dists.eval_reduce(
-                        d,
-                        s,
-                        Dists.evaluate(d.metric, ai, bi),
-                    )
-                end
-            end
-        end
-        return Dists.eval_end(d, s / la)
-    end
+function (dist::STmetric)(a::AbstractArray, b::AbstractArray)
+    return Dists._evaluate(dist, a, b, Dists.parameters(dist))
 end
 
 function Dists.result_type(
@@ -96,6 +52,8 @@ function Dists.result_type(
     T = Dists.result_type(d.metric, zero(eltype(a)), zero(eltype(b)))
     return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)) / 2))
 end
+
+Dists.eval_op(d::STmetric, ai, bi) = d.metric(ai, bi)
 
 @inline function Dists.eval_reduce(d::STmetric, s1, s2)
     p = d.p
@@ -140,7 +98,7 @@ function stmetric(
     d::Dists.SemiMetric = Dists.Euclidean(),
     p::Real = 1,
 )
-    return Dists.evaluate(STmetric(d, p), a, b)
+    return STmetric(d, p)(a, b)
 end
 
 function Dists.pairwise!(
@@ -156,7 +114,7 @@ function Dists.pairwise!(
     @inbounds for j in 1:lb
         bj = b[j]
         for i in 1:la
-            r[i, j] = Dists.evaluate(metric, a[i], bj)
+            r[i, j] = metric(a[i], bj)
         end
     end
     r
@@ -173,7 +131,7 @@ function Dists.pairwise!(
     @inbounds for j in 1:la
         aj = a[j]
         for i in (j+1):la
-            r[i, j] = Dists.evaluate(metric, a[i], aj)
+            r[i, j] = metric(a[i], aj)
         end
         r[j, j] = 0
         for i in 1:(j-1)
@@ -216,7 +174,7 @@ function Dists.colwise!(
     length(r) == lb ||
     throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
     @inbounds for i in 1:lb
-        r[i] = Dists.evaluate(metric, a, b[i])
+        r[i] = metric(a, b[i])
     end
     r
 end
@@ -241,7 +199,7 @@ function Dists.colwise!(
     la == length(r) ||
     throw(DimensionMismatch("incorrect size of r, got $(length(r)), but expected $la"))
     @inbounds for i in 1:la
-        r[i] = Dists.evaluate(metric, a[i], b[i])
+        r[i] = metric(a[i], b[i])
     end
     r
 end
@@ -349,7 +307,7 @@ function spdist(
         Is, Js, Vs = Int[], Int[], T[]
         aj = data[j]
         for i in (j+1):N
-            temp = Dists.evaluate(metric, data[i], aj)
+            temp = metric(data[i], aj)
             if temp < sp_method.ε
                 push!(Is, i, j)
                 push!(Js, j, i)
@@ -380,7 +338,7 @@ function spdist(
     N, k = length(data), sp_method.k
     Is = SharedArray{Int}(N * (k + 1))
     Js = SharedArray{Int}(N * (k + 1))
-    T = typeof(Dists.evaluate(metric, data[1], data[1]))
+    T = typeof(metric(data[1], data[1]))
     Ds = SharedArray{T}(N * (k + 1))
     perm = collect(1:N)
     ds = Vector{T}(undef, N)

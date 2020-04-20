@@ -1,4 +1,4 @@
-using Test, Distributed, CoherentStructures, Statistics, StaticArrays, Distances
+using Test, Distributed, CoherentStructures, Statistics, StaticArrays, Distances, LinearMaps
 
 t_initial = 0.0
 t_final = 3600.0
@@ -24,15 +24,15 @@ n_coords = 7
     kernel = gaussian(ε)
     sparsify = Neighborhood(gaussiancutoff(ε))
     P = sparse_diff_op_family(sol, sparsify, kernel; metric=metric)
-    @test P isa CoherentStructures.LinMaps
+    @test P isa LinearMaps.MapOrMatrix
 
     P = sparse_diff_op_family(sol, sparsify, kernel, mean; metric=metric)
-    @test P isa CoherentStructures.LinMaps
+    @test P isa LinearMaps.MapOrMatrix
 
     ε = 0.2
     sparsify = Neighborhood(ε)
     P = sparse_diff_op_family(sol, sparsify, Base.one, P -> max.(P...); α=0, metric=metric)
-    @test P isa CoherentStructures.LinMaps
+    @test P isa LinearMaps.MapOrMatrix
 end
 
 @testset "SparsificationMethods" begin
@@ -42,13 +42,13 @@ end
     kernel = gaussian(ε)
     sparsify = Neighborhood(gaussiancutoff(ε))
     P = sparse_diff_op(sol, sparsify, kernel; metric=dist)
-    @test P isa CoherentStructures.LinMaps
+    @test P isa LinearMaps.MapOrMatrix
 
     P = sparse_diff_op(sol, MutualKNN(k), kernel; metric=dist)
-    @test P isa CoherentStructures.LinMaps
+    @test P isa LinearMaps.MapOrMatrix
 
     P = sparse_diff_op(sol, KNN(k), kernel; metric=dist)
-    @test P isa CoherentStructures.LinMaps
+    @test P isa LinearMaps.MapOrMatrix
 end
 
 rmprocs(2:nprocs())
