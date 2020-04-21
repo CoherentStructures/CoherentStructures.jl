@@ -67,7 +67,7 @@ This is so that a decoupled ODE system with several initial values can
 be solved without having to call the ODE solver multiple times.
 """
 function arraymap!(du, u, p, t, odefun::ODE.ODEFunction{true}, N::Int, dim::Int)
-    eachindex(du, u) == Base.OneTo(N*dim) || throw(
+    @boundscheck eachindex(du, u) == Base.OneTo(N*dim) || throw(
         DimensionMismatch("vector arguments must have equal axes")
     )
     @inbounds for i in 1:N
