@@ -31,13 +31,13 @@ julia> f = u -> flow((u, p, t) -> vf(u, p, t), u, range(0., stop=100, length=21)
     return flow(ODE.ODEFunction(odefun), u0, tspan; kwargs...)
 end
 @inline function flow(odefun::ODE.ODEFunction{true}, u0, tspan; kwargs...)
-    return flow(odefun, convert(Vector, u0), tspan; kwargs...)
+    return _flow(odefun, convert(Vector, u0), tspan; kwargs...)
 end
 @inline function flow(odefun::ODE.ODEFunction{false}, u0, tspan; kwargs...)
-    return flow(odefun, convert(SVector{length(u0)}, u0), tspan; kwargs...)
+    return _flow(odefun, convert(SVector{length(u0)}, u0), tspan; kwargs...)
 end
-@inline function flow(
-    odefun::ODE.ODEFunction{false},
+@inline function _flow(
+    odefun::ODE.ODEFunction,
     u0::T,
     tspan;
     p = nothing,
@@ -45,7 +45,7 @@ end
     tolerance = default_tolerance,
     #ctx_for_boundscheck=nothing,
     force_dtmin = false,
-)::Vector{T} where {T<:SVector} # type assertion is necessary
+)::Vector{T} where {T} # type assertion is necessary
     # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing
@@ -64,28 +64,6 @@ end
     #           map(x-> ODE.DiscreteCallback(x,affect!),
     #       [leftSide,rightSide,topSide,bottomSide])...)
     #end
-    prob = ODE.ODEProblem(odefun, u0, (first(tspan), last(tspan)), p)
-    sol = ODE.solve(
-        prob,
-        solver;
-        saveat = tspan,
-        save_everystep = false,
-        dense = false,
-        reltol = tolerance,
-        abstol = tolerance,
-        force_dtmin = force_dtmin,
-    )
-    return sol.u
-end
-@inline function flow(
-    odefun::ODE.ODEFunction{true},
-    u0::T,
-    tspan;
-    p = nothing,
-    solver = default_solver,
-    tolerance = default_tolerance,
-    force_dtmin = false,
-)::Vector{T} where {T<:Vector} # type assertion is necessary
     prob = ODE.ODEProblem(odefun, u0, (first(tspan), last(tspan)), p)
     sol = ODE.solve(
         prob,
@@ -133,7 +111,7 @@ function linearized_flow(
             stencil =
                 [x[1], x[2], x[1] + δ, x[2], x[1], x[2] + δ, x[1] - δ, x[2], x[1], x[2] - δ]
             rhs = ODE.ODEFunction{iip}((du, u, p, t) -> arraymap!(du, u, p, t, odefun, 5, 2))
-            sol = flow(rhs, stencil, tspan; tolerance = tolerance, solver = solver, p = p)
+            sol = _flow(rhs, stencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1], s[2]), sol),
                 map(s -> Tensor{2,2}((s[3:6] .- s[7:10]) ./ 2δ), sol),
@@ -143,7 +121,7 @@ function linearized_flow(
                 x[1] 1 0
                 x[2] 0 1
             ]
-            evsol = flow(odefun, u0, tspan; tolerance = tolerance, solver = solver, p = p)
+            evsol = _flow(odefun, u0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1, 1], s[2, 1]), evsol),
                 map(s -> Tensor{2,2}((s[1, 2], s[2, 2], s[1, 3], s[2, 3])), evsol),
@@ -165,14 +143,14 @@ function linearized_flow(
             )
             srhs = ODE.ODEFunction{iip}((u, p, t) -> arraymap2(u, p, t, odefun))
             ssol =
-                flow(srhs, sstencil, tspan; tolerance = tolerance, solver = solver, p = p)
+                _flow(srhs, sstencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1], s[2]), ssol),
                 map(s -> Tensor{2,2}((@views s[3:6] .- s[7:10]) ./ 2δ), ssol),
             )
         else
             v0 = SMatrix{2,3,T}(x[1], x[2], 1, 0, 0, 1)
-            eqvsol = flow(odefun, v0, tspan; tolerance = tolerance, solver = solver, p = p)
+            eqvsol = _flow(odefun, v0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1, 1], s[2, 1]), eqvsol),
                 map(s -> Tensor{2,2}((s[1, 2], s[2, 2], s[1, 3], s[2, 3])), eqvsol),
@@ -215,7 +193,7 @@ function linearized_flow(
                 x[3] - δ,
             ]
             rhs = ODE.ODEFunction{iip}((du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3))
-            sol = flow(rhs, stencil, tspan; tolerance = tolerance, solver = solver, p = p)
+            sol = _flow(rhs, stencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{3}(s[1], s[2], s[3]), sol),
                 map(s -> Tensor{2,3}((@views s[4:12] .- s[13:21]) ./ 2δ), sol),
@@ -226,7 +204,7 @@ function linearized_flow(
                 x[2] 0 1 0
                 x[3] 0 0 1
             ]
-            eqvsol = flow(odefun, V0, tspan; tolerance = tolerance, solver = solver, p = p)
+            eqvsol = _flow(odefun, V0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{3}(s[1, 1], s[2, 1], s[3, 1]), eqvsol),
                 map(
@@ -272,14 +250,14 @@ function linearized_flow(
             )
             srhs = ODE.ODEFunction{iip}((u, p, t) -> arraymap3(u, p, t, odefun))
             ssol =
-                flow(srhs, sstencil, tspan; tolerance = tolerance, solver = solver, p = p)
+                _flow(srhs, sstencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{3}(s[1], s[2], s[3]), ssol),
                 map(s -> Tensor{2,3}((@views s[4:12] .- s[13:21]) ./ 2δ), ssol),
             )
         else # δ = 0
             u0 = SMatrix{3,4}(x[1], x[2], x[3], 1, 0, 0, 0, 1, 0, 0, 0, 1)
-            evsol = flow(odefun, u0, tspan; tolerance = tolerance, solver = solver, p = p)
+            evsol = _flow(odefun, u0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{3}(s[1, 1], s[2, 1], s[3, 1]), evsol),
                 map(
