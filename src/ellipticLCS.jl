@@ -676,7 +676,7 @@ function orient(T::AxisArray{<:SymmetricTensor{2,2},2}, center::SVector{2})
         [SVector{2}(x, y) - center for x in xspan.val, y in yspan.val],
         T.axes,
     )
-    c1 = AxisArray(sign.(dot.([Ω] .* star, ξ₁)), T.axes)
+    c1 = AxisArray(sign.(dot.((Ω,) .* star, ξ₁)), T.axes)
     ξ₁ .*= c1
     c2 = AxisArray(sign.(dot.(star, ξ₂)), T.axes)
     ξ₂ .*= c2
@@ -1377,7 +1377,7 @@ function constrainedLCS(
                 function constrainedLCSηfield(λ, s, cache)
                     cache .=
                         sqrt.(max.(normsqq .- (λ^2), 0)) .* q1 +
-                        ((-1)^s * λ) .* [Ω] .* q1
+                        ((-1)^s * λ) .* (Ω,) .* q1
                     itp = ITP.LinearInterpolation(cache)
                     return ODE.ODEFunction{false}(
                         (u, p, t) -> itp(u[1], u[2]),
