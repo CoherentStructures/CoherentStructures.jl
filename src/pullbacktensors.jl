@@ -24,30 +24,20 @@ the time interval `tspan`, evaluated at each element of `tspan`.
 
 # Example
 ```julia
-julia> f = u -> flow(bickleyJet, u, range(0., stop=100, length=21))
+julia> f = u -> flow((u, p, t) -> vf(u, p, t), u, range(0., stop=100, length=21))
 ```
 """
-@inline function flow(odefun, u0::AbstractVector, tspan::AbstractVector; kwargs...)
+@inline function flow(odefun, u0, tspan; kwargs...)
     return flow(ODE.ODEFunction(odefun), u0, tspan; kwargs...)
 end
-@inline function flow(
-    odefun::ODE.ODEFunction{true},
-    u0::AbstractVector{<:Real},
-    tspan::AbstractVector;
-    kwargs...,
-)
+@inline function flow(odefun::ODE.ODEFunction{true}, u0, tspan; kwargs...)
     return _flow(odefun, convert(Vector, u0), tspan; kwargs...)
 end
-@inline function flow(
-    odefun::ODE.ODEFunction{false},
-    u0::AbstractVector{T},
-    tspan::AbstractVector;
-    kwargs...,
-) where {T<:Real}
-    return _flow(odefun, convert(SVector{length(u0),T}, u0), tspan; kwargs...)
+@inline function flow(odefun::ODE.ODEFunction{false}, u0, tspan; kwargs...)
+    return _flow(odefun, convert(SVector{length(u0)}, u0), tspan; kwargs...)
 end
 @inline function _flow(
-    odefun,
+    odefun::ODE.ODEFunction,
     u0::T,
     tspan;
     p = nothing,
@@ -74,7 +64,7 @@ end
     #           map(x-> ODE.DiscreteCallback(x,affect!),
     #       [leftSide,rightSide,topSide,bottomSide])...)
     #end
-    prob = ODE.ODEProblem(odefun, u0, (tspan[1], tspan[end]), p)
+    prob = ODE.ODEProblem(odefun, u0, (first(tspan), last(tspan)), p)
     sol = ODE.solve(
         prob,
         solver;
@@ -89,17 +79,17 @@ end
 end
 
 """
-    linearized_flow(odefun, x, tspan,δ; ...) -> Vector{Tensor{2,2}}
+    linearized_flow(odefun, x, tspan, δ; kwargs...)
 
-Calculate derivative of flow map by finite differences if δ != 0.
-If δ==0, attempts to solve variational equation (odefun is assumed to be the rhs of
-variational equation in this case).
-Return time-resolved linearized flow maps.
+Calculate derivative of flow map by finite differencing (if `δ != 0`) or by
+solving the variational equation (if `δ = 0`).
+
+Return the time-resolved base trajectory and its associated linearized flow maps.
 """
-function linearized_flow(odefun, x::AbstractVector, tspan, δ; kwargs...)
+@inline function linearized_flow(odefun, x, tspan, δ; kwargs...)
     dim = length(x)
-    !(dim ∈ (2, 3)) && error("length(u) ∉ [2,3]")
-    linearized_flow(
+    !(dim ∈ (2, 3)) && throw(ArgumentError("length(u) ∉ [2,3]"))
+    return linearized_flow(
         ODE.ODEFunction(odefun),
         convert(SVector{dim}, x),
         tspan,
@@ -109,18 +99,18 @@ function linearized_flow(odefun, x::AbstractVector, tspan, δ; kwargs...)
 end
 function linearized_flow(
     odefun::ODE.ODEFunction{iip},
-    x::SVector{2,T},
-    tspan::AbstractVector{Float64},
-    δ::Real;
+    x::T,
+    tspan,
+    δ;
     tolerance=default_tolerance,
     solver=default_solver,
     p=nothing,
-) where {iip,T}
+)::Tuple{Vector{T},Vector{<:Tensor{2,2}}} where {iip,T<:SVector{2}}
     if iip
         if δ != 0 # use finite differencing
             stencil =
                 [x[1], x[2], x[1] + δ, x[2], x[1], x[2] + δ, x[1] - δ, x[2], x[1], x[2] - δ]
-            rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 5, 2)
+            rhs = ODE.ODEFunction{iip}((du, u, p, t) -> arraymap!(du, u, p, t, odefun, 5, 2))
             sol = _flow(rhs, stencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1], s[2]), sol),
@@ -128,8 +118,8 @@ function linearized_flow(
             )
         else # δ = 0
             u0 = [
-                x[1] one(T) zero(T)
-                x[2] zero(T) one(T)
+                x[1] 1 0
+                x[2] 0 1
             ]
             evsol = _flow(odefun, u0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
@@ -151,7 +141,7 @@ function linearized_flow(
                 x[1],
                 x[2] - δ,
             )
-            srhs = (u, p, t) -> arraymap2(u, p, t, odefun)
+            srhs = ODE.ODEFunction{iip}((u, p, t) -> arraymap2(u, p, t, odefun))
             ssol =
                 _flow(srhs, sstencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
@@ -159,9 +149,7 @@ function linearized_flow(
                 map(s -> Tensor{2,2}((@views s[3:6] .- s[7:10]) ./ 2δ), ssol),
             )
         else
-            zT = zero(T)
-            oT = one(T)
-            v0 = SMatrix{2,3,T}(x[1], x[2], oT, zT, zT, oT)
+            v0 = SMatrix{2,3,T}(x[1], x[2], 1, 0, 0, 1)
             eqvsol = _flow(odefun, v0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1, 1], s[2, 1]), eqvsol),
@@ -172,14 +160,14 @@ function linearized_flow(
 end
 function linearized_flow(
     odefun::ODE.ODEFunction{iip},
-    x::SVector{3,T},
-    tspan::AbstractVector{Float64},
-    δ::Real;
+    x::T,
+    tspan,
+    δ;
     tolerance=default_tolerance,
     solver=default_solver,
     p=nothing,
-) where {iip,T}
-    if iip
+)::Tuple{Vector{T},Vector{<:Tensor{2,3}}} where {iip,T<:SVector{3}}
+    @inbounds if iip
         if δ != 0 # use finite differencing
             stencil = [
                 x[1],
@@ -204,7 +192,7 @@ function linearized_flow(
                 x[2],
                 x[3] - δ,
             ]
-            rhs = (du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3)
+            rhs = ODE.ODEFunction{iip}((du, u, p, t) -> arraymap!(du, u, p, t, odefun, 7, 3))
             sol = _flow(rhs, stencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{3}(s[1], s[2], s[3]), sol),
@@ -212,9 +200,9 @@ function linearized_flow(
             )
         else # δ = 0
             V0 = [
-                x[1] one(T) zero(T) zero(T)
-                x[2] zero(T) one(T) zero(T)
-                x[3] zero(T) zero(T) one(T)
+                x[1] 1 0 0
+                x[2] 0 1 0
+                x[3] 0 0 1
             ]
             eqvsol = _flow(odefun, V0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
@@ -237,7 +225,7 @@ function linearized_flow(
         end # δ
     else # !iip
         if δ != 0 # use finite differencing
-            sstencil = SVector{21,T}(
+            sstencil = SVector{21}(
                 x[1],
                 x[2],
                 x[3],
@@ -260,7 +248,7 @@ function linearized_flow(
                 x[2],
                 x[3] - δ,
             )
-            srhs = (u, p, t) -> arraymap3(u, p, t, odefun)
+            srhs = ODE.ODEFunction{iip}((u, p, t) -> arraymap3(u, p, t, odefun))
             ssol =
                 _flow(srhs, sstencil, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
@@ -268,9 +256,7 @@ function linearized_flow(
                 map(s -> Tensor{2,3}((@views s[4:12] .- s[13:21]) ./ 2δ), ssol),
             )
         else # δ = 0
-            zT = zero(T)
-            oT = one(T)
-            u0 = SMatrix{3,4,T}(x[1], x[2], x[3], oT, zT, zT, zT, oT, zT, zT, zT, oT)
+            u0 = SMatrix{3,4}(x[1], x[2], x[3], 1, 0, 0, 0, 1, 0, 0, 0, 1)
             evsol = _flow(odefun, u0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{3}(s[1, 1], s[2, 1], s[3, 1]), evsol),
@@ -296,68 +282,58 @@ end
 """
     mean_diff_tensor(odefun, u, tspan, δ; kwargs...) -> SymmetricTensor
 
-Returns the averaged diffusion tensor at a point along a set of times.
-Derivatives are computed with finite differences.
+Return the averaged diffusion tensor at a point along a set of times.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
-   * `kwargs...`: are passed to `linearized_flow`
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
+   * `kwargs`: are passed to `linearized_flow`
 """
-function mean_diff_tensor(
-    odefun,
-    u::AbstractVector,
-    tspan::AbstractVector,
-    δ::Float64;
-    kwargs...,
-)
+function mean_diff_tensor(odefun, u, tspan, δ; kwargs...)
     return mean(Tensors.dott.(inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])))
 end
 
 """
     CG_tensor(odefun, u, tspan, δ; kwargs...) -> SymmetricTensor
 
-Returns the classic right Cauchy--Green strain tensor. Derivatives are computed
-with finite differences.
+Returns the classic right Cauchy--Green strain tensor.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
-   * `kwargs...`: are passed to `linearized_flow`
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
+   * `kwargs`: are passed to `linearized_flow`
 """
-function CG_tensor(odefun, u::AbstractVector, tspan::AbstractVector, δ::Real; kwargs...)
+function CG_tensor(odefun, u, tspan, δ; kwargs...)
     Tensors.tdot(linearized_flow(odefun, u, [tspan[1], tspan[end]], δ; kwargs...)[2][end])
 end
 
 """
     pullback_tensors(odefun, u, tspan, δ; D, kwargs...) -> Tuple(Vector{SymmetricTensor},Vector{SymmetricTensor})
 
-Returns the time-resolved pullback tensors of both the diffusion and
-the metric tensor along a trajectory. Derivatives are computed with finite differences.
+Returns the time-resolved pullback tensors of both the diffusion and the metric
+tensor along a trajectory.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
-   * `D`: (constant) diffusion tensor, metric tensor is computed via inversion; defaults to `eye(2)`
-   * `kwargs...` are passed through to `linearized_flow`
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
+   * `D`: (constant) diffusion tensor, metric tensor is computed via inversion;
+     defaults to identity tensor
+   * `kwargs` are passed to `linearized_flow`
 """
-function pullback_tensors(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    D::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function pullback_tensors(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     G = inv(D)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
     MT = [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
-    DF .= inv.(DF)
-    DT = [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DF]
-    return MT, DT # MT is pullback metric tensor, DT is pullback diffusion tensor
+    return MT, inv.(MT)
 end
 
 """
@@ -365,23 +341,17 @@ end
 
 Returns the time-resolved pullback tensors of the metric tensor along a trajectory,
 aka right Cauchy-Green strain tensor.
-Derivatives are computed with finite differences.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
    * `G`: (constant) metric tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_metric_tensor(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    G::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function pullback_metric_tensor(odefun, u, tspan, δ; G::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
     return [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
 end
@@ -390,23 +360,17 @@ end
     pullback_diffusion_tensor(odefun, u, tspan, δ; D, kwargs...) -> Vector{SymmetricTensor}
 
 Returns the time-resolved pullback tensors of the diffusion tensor along a trajectory.
-Derivatives are computed with finite differences.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
    * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_diffusion_tensor(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    D::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function pullback_diffusion_tensor(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])
     return [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DFinv]
 end
@@ -456,23 +420,17 @@ end
     pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B, kwargs...) -> Vector{SymmetricTensor}
 
 Returns the time-resolved pullback tensors of the diffusion tensor in SDEs.
-Derivatives are computed with finite differences.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
    * `B`: (constant) SDE tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_SDE_diffusion_tensor(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    B::Tensor{2,dim,T}=one(Tensor{2,2,T,4}),
-    kwargs...,
-) where {T,dim}
+function pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B::Tensor{2}=one(Tensor{2,2}), kwargs...)
     DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])
     return [df ⋅ B for df in DFinv]
 end
@@ -482,44 +440,28 @@ end
 
 Returns the transport tensor of a trajectory, aka  time-averaged,
 di ffusivity-structure-weighted version of the classic right Cauchy–Green strain
-tensor. Derivatives are computed with finite differences.
+tensor.
+Linearized flow maps are computed with [`linearized_flow`](@ref), see its
+documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
-   * `δ`: stencil width for the finite differences
+   * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
    * `D`: (constant) diffusion tensor
    * `kwargs...` are passed through to `linearized_flow`
 """
-function av_weighted_CG_tensor(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    D::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function av_weighted_CG_tensor(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     G = inv(D)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
     return det(D) * mean([Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
 end
 
-function met2deg(u::AbstractVector{T}) where {T}
-    diagm(Tensor{2,2,T,4}, [1 / cos(deg2rad(u[2])), one(T)])
-end
+met2deg(u) = diagm(SymmetricTensor{2,2}, (1 / cos(deg2rad(u[2])), 1))
 
-function deg2met(u::AbstractVector{T}) where {T}
-    diagm(Tensor{2,2,T,4}, [cos(deg2rad(u[2])), one(T)])
-end
+deg2met(u) = diagm(SymmetricTensor{2,2}, (cos(deg2rad(u[2])), 1))
 
-function pullback_tensors_geo(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    D::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function pullback_tensors_geo(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     G = inv(D)
     met2deg_init = met2deg(u)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
@@ -529,41 +471,21 @@ function pullback_tensors_geo(
     [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
 end
 
-function pullback_metric_tensor_geo(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    G::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function pullback_metric_tensor_geo(odefun, u, tspan, δ; G::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     met2deg_init = met2deg(u)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     PB = [deg2met(xi) ⋅ DFi ⋅ met2deg_init for (xi, DFi) in DF]
     return [Tensors.symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
 
-function pullback_diffusion_tensor_geo(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    D::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+function pullback_diffusion_tensor_geo(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     PB = [inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in DF]
     return [Tensors.symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
 end
 
-function pullback_SDE_diffusion_tensor_geo(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector,
-    δ::Real;
-    D::SymmetricTensor{2,dim,T}=one(SymmetricTensor{2,2,T,3}),
-    kwargs...,
-) where {T,dim}
+# TODO: this is probably broken, the diffusion tensor is not used!
+function pullback_SDE_diffusion_tensor_geo(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
     DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     B = [inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in DF]
     return B

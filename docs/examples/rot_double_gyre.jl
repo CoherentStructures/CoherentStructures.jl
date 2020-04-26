@@ -90,9 +90,9 @@ nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq
 using StaticArrays, AxisArrays
-q = 51
+q = 21
 tspan = range(0., stop=1., length=q)
-nx = ny = 51
+nx = ny = 101
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
@@ -109,14 +109,7 @@ vortices, singularities = ellipticLCS(C̅, p; outermost=true)
 # The results are then visualized as follows.
 
 using Plots
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title="DBS field and transport barriers",
-            xlims=(xmin, xmax), ylims=(ymin, ymax))
-scatter!([s.coords.data for s in singularities], color=:red, label="singularities")
-scatter!([vortex.center.data for vortex in vortices], color=:yellow, label="vortex cores")
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
-end
+trace = tensor_invariants(C̅)[5]
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
+    bg=trace, title="DBS field and transport barriers", showlabel=true, clims=(0,5))
 DISPLAY_PLOT(fig, rot_double_gyre_geodesic_vortices)

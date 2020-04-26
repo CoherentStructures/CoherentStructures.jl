@@ -2,7 +2,6 @@
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
-# CoherentStructures = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"

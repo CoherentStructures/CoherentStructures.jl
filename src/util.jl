@@ -66,44 +66,52 @@ the result in the corresponding slice of `du`.
 This is so that a decoupled ODE system with several initial values can
 be solved without having to call the ODE solver multiple times.
 """
-@inline function arraymap!(du::Vector, u::Vector, p, t,
-                            odefun, N::Int, dim::Int)
+function arraymap!(du, u, p, t, odefun::ODE.ODEFunction{true}, N::Int, dim::Int)
+    @boundscheck eachindex(du, u) == Base.OneTo(N*dim) || throw(
+        DimensionMismatch("vector arguments must have equal axes")
+    )
     @inbounds for i in 1:N
         @views odefun(du[1+(i - 1)*dim:i*dim], u[1+(i-1)*dim:i*dim], p, t)
     end
 end
 
 """
-    arraymap2(u, p, t, odefun) -> SVector{8}
-This function is like `arraymap!(du, u, p, t, odefun, 4, 2)``,
-but `du` is returned as a StaticVector.
+    arraymap2(u, p, t, odefun) -> SVector{10}
+
+This function is like `arraymap!(du, u, p, t, odefun, 4, 2)`,
+but `du` is returned as a `StaticVector`.
 """
-@inline function arraymap2(u::SVector{10,T}, p, t, odefun)::SVector{10,T} where T
-    p0::SVector{2,T} = odefun(SVector{2,T}(u[1], u[2]), p, t)
-    p1::SVector{2,T} = odefun(SVector{2,T}(u[3], u[4]), p, t)
-    p2::SVector{2,T} = odefun(SVector{2,T}(u[5], u[6]), p, t)
-    p3::SVector{2,T} = odefun(SVector{2,T}(u[7], u[8]), p, t)
-    p4::SVector{2,T} = odefun(SVector{2,T}(u[9], u[10]), p, t)
-    return SVector{10,T}(p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], p3[1], p3[2], p4[1], p4[2])
+function arraymap2(u::SVector{10}, p, t, odefun)
+    @inbounds begin
+        p0 = odefun(SVector{2}(u[1],  u[2]), p, t)
+        p1 = odefun(SVector{2}(u[3],  u[4]), p, t)
+        p2 = odefun(SVector{2}(u[5],  u[6]), p, t)
+        p3 = odefun(SVector{2}(u[7],  u[8]), p, t)
+        p4 = odefun(SVector{2}(u[9], u[10]), p, t)
+        return SVector{10}(p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], p3[1], p3[2], p4[1], p4[2])
+    end
 end
 
 """
     arraymap3(u, p, t, odefun) -> SVector{21}
-This function is like `arraymap!(du, u, pt, odefun, 7, 3)
-but `du` is returned as a StaticVector.
+
+This function is like `arraymap!(du, u, pt, odefun, 7, 3)`,
+but `du` is returned as a `StaticVector`.
 """
-@inline function arraymap3(u::SVector{21,T}, p, t, odefun)::SVector{21,T} where T
-    p0::SVector{3,T} = odefun(SVector{3}(u[1], u[2], u[3]), p, t)
-    p1::SVector{3,T} = odefun(SVector{3}(u[4], u[5], u[6]), p, t)
-    p2::SVector{3,T} = odefun(SVector{3}(u[7], u[8], u[9]), p, t)
-    p3::SVector{3,T} = odefun(SVector{3}(u[10], u[11], u[12]), p, t)
-    p4::SVector{3,T} = odefun(SVector{3}(u[13], u[14], u[15]), p, t)
-    p5::SVector{3,T} = odefun(SVector{3}(u[16], u[17], u[18]), p, t)
-    p6::SVector{3,T} = odefun(SVector{3}(u[19], u[20], u[21]), p, t)
-    return SVector{21,T}(p0[1], p0[2], p0[3],
-                         p1[1], p1[2], p1[3], p2[1], p2[2], p2[3],
-                         p3[1], p3[2], p3[3], p4[1], p4[2], p4[3],
-                         p5[1], p5[2], p5[3], p6[1], p6[2], p6[3])
+function arraymap3(u::SVector{21}, p, t, odefun)
+    @inbounds begin
+        p0 = odefun(SVector{3}(u[1], u[2], u[3]), p, t)
+        p1 = odefun(SVector{3}(u[4], u[5], u[6]), p, t)
+        p2 = odefun(SVector{3}(u[7], u[8], u[9]), p, t)
+        p3 = odefun(SVector{3}(u[10], u[11], u[12]), p, t)
+        p4 = odefun(SVector{3}(u[13], u[14], u[15]), p, t)
+        p5 = odefun(SVector{3}(u[16], u[17], u[18]), p, t)
+        p6 = odefun(SVector{3}(u[19], u[20], u[21]), p, t)
+        return SVector{21}(p0[1], p0[2], p0[3],
+                             p1[1], p1[2], p1[3], p2[1], p2[2], p2[3],
+                             p3[1], p3[2], p3[3], p4[1], p4[2], p4[3],
+                             p5[1], p5[2], p5[3], p6[1], p6[2], p6[3])
+    end
 end
 
 """
@@ -119,7 +127,7 @@ T = [SymmetricTensor{2,2}(rand(3)) for i in 1:10, j in 1:20]
 All output variables have the same array arrangement as `T`; e.g., `λ₁` is a
 10x20 array with scalar entries.
 """
-function tensor_invariants(T::SymmetricTensor{2,2,S,3}) where S <: Real
+function tensor_invariants(T::SymmetricTensor{2,2})
     E = eigen(T)
     λ₁ = eigvals(E)[1]
     λ₂ = eigvals(E)[2]
@@ -217,12 +225,8 @@ function AFromPrecomputedRaw(x, index, q)
     @views return SymmetricTensor{2,2}((q[1])[3*(index-1)+1 : 3*(index-1)+3])
 end
 
-
-#Returns true for all inputs. This is the default function for inbounds checking in plot_ftle
-function always_true(x,y,p)
-    return true
-end
-
+# This is the default function for inbounds checking in plot_ftle.
+always_true(x, y, p) = true
 
 """
     getH(ctx)
