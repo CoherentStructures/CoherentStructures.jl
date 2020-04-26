@@ -43,16 +43,9 @@ p = LCSParameters(2.0)
 vortices, singularities = ellipticLCS(C̅, p)
 
 using Plots
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title="DBS field and transport barriers",
-            xlims=(0, 6.371π), ylims=(ymin, ymax))
-scatter!([s.coords.data for s in singularities], color=:red, label="singularities")
-scatter!([vortex.center.data for vortex in vortices], color=:yellow, label="vortex cores")
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
-end
+trace = tensor_invariants(C̅)[5]
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
+    bg=trace, title="DBS field and transport barriers", showlabel=true)
 Plots.plot(fig)
 
 using Distances

@@ -21,9 +21,9 @@ nprocs() == 1 &amp;&amp; addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq
 using StaticArrays, AxisArrays
-q = 51
+q = 21
 tspan = range(0., stop=1., length=q)
-nx = ny = 51
+nx = ny = 101
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
@@ -36,13 +36,6 @@ end
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(0.5)
 vortices, singularities = ellipticLCS(C̅, p; outermost=true)</code></pre><p>The results are then visualized as follows.</p><pre><code class="language-julia">using Plots
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title=&quot;DBS field and transport barriers&quot;,
-            xlims=(xmin, xmax), ylims=(ymin, ymax))
-scatter!([s.coords.data for s in singularities], color=:red, label=&quot;singularities&quot;)
-scatter!([vortex.center.data for vortex in vortices], color=:yellow, label=&quot;vortex cores&quot;)
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, label=&quot;T = $(round(barrier.p, digits=2))&quot;)
-end</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/rot_double_gyre_geodesic_vortices.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../standard_map/">Standard map »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 7 April 2020 15:31">Tuesday 7 April 2020</span>. Using Julia version 1.4.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+trace = tensor_invariants(C̅)[5]
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
+    bg=trace, title=&quot;DBS field and transport barriers&quot;, showlabel=true, clims=(0,5))</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/rot_double_gyre_geodesic_vortices.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../standard_map/">Standard map »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 26 April 2020 17:09">Sunday 26 April 2020</span>. Using Julia version 1.4.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

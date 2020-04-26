@@ -29,16 +29,9 @@ p = LCSParameters(2.5)
 vortices, singularities = ellipticLCS(C̅, p)
 
 using Plots
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(C̅)
-fig = Plots.heatmap(xspan, yspan, permutedims(log10.(traceT));
-            aspect_ratio=1, color=:viridis, leg=true,
-            title="DBS field and transport barriers",
-            xlims=(xmin, xmax), ylims=(ymin, ymax))
-scatter!([s.coords.data for s in singularities], color=:red, label="singularities")
-scatter!([vortex.center.data for vortex in vortices], color=:yellow, label="vortex cores")
-for vortex in vortices, barrier in vortex.barriers
-    plot!(barrier.curve, w=2, label="T = $(round(barrier.p, digits=2))")
-end
+trace = tensor_invariants(C̅)[5]
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
+    bg=trace, title="DBS field and transport barriers", showlabel=true)
 Plots.plot(fig)
 
 using Interpolations, Tensors
@@ -63,10 +56,9 @@ S = map(rate_of_strain_tensor, P)
 p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20, combine_31])
 vortices, singularities = ellipticLCS(S, p, outermost=true)
 
-λ₁, λ₂, ξ₁, ξ₂, traceT, detT = tensor_invariants(S)
-fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax), bg=λ₁,
-    logBg=false,title="Minor rate-of-strain field and OECSs"
-    )
+λ₁ = tensor_invariants(S)[1]
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
+    bg=λ₁, logBg=false, title="Minor rate-of-strain field and OECSs")
 Plots.plot(fig)
 
 using CoherentStructures
