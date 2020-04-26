@@ -196,7 +196,7 @@ end
 function streamline_derivatives(H::Symbol, formulas::Expr)
     # symbols that are not supposed to be substituted
     # (additional to symbols defined in Base)
-    bound_symbols = [:x, :y, :p, :t, keys(diff_dict)...]
+    bound_symbols = [:x, :y, :p, :t]
     H = substitutions(H, formulas, bound_symbols)
 
     # symbolic gradient and hessian (note the broadcast)
@@ -216,83 +216,21 @@ function streamline_derivatives(H::Symbol, formulas::Expr)
 end
 
 ########################################################################################
-#            symbolic differentiation of expressions using SymEngine                   #
+#            symbolic differentiation of expressions using ModelingToolkit             #
 ########################################################################################
 
-sgn(x) = (x > 0) ? one(x) : (x < 0) ? -one(x) : zero(x)
-heaviside(x) = 0 < x ? one(x) : zero(x)
-window(x, a, b) = (a <= x < b) ? one(x) : zero(x)
-
-# manually define  derivatives for functions that SymEngine cant differentiate
-diff_dict = Dict()
-diff_dict[:abs] = :sgn
-diff_dict[:sgn] = :zero
-diff_dict[:heaviside] = :zero
-diff_dict[:zero] = :zero
-diff_dict[:window] = :zero
+ModelingToolkit.derivative(::typeof(sign), x, ::Val{1}) = 0
 
 function expr_diff(expr::Expr, var::Symbol)
-    # not a nice way to differentiate expressions, but ReverseDiffSource
-    # is broken.
-    expr_sym = SymEngine.Basic(expr)
-    d_expr_sym = SymEngine.diff(expr_sym, var)
-    d_expr = Meta.parse(SymEngine.toString.(d_expr_sym))
+    D = Differential(var) 
 
-    # resolve derivatives that SymEngine doesn't know using diff_dict
-    d_expr = additional_derivatives(d_expr)
+    toolkit_expr = convert(Expression, expr) 
+    d_expr = simplified_expr(expand_derivatives(D(toolkit_expr)))
+    d_expr = convert(Expression, simple_simplifier(d_expr))
+    return simplified_expr(propagate_constants(d_expr))
 
-    # clean up unresolved substitutions that result from SymEnginge treating
-    # unknown derivatives
-    d_expr = substitution_cleaner(d_expr)
-
-    # clean up zeros
-    d_expr = simple_simplifier(d_expr)
 end
 expr_diff(expr, var::Symbol) = expr == var ? 1 : 0
-
-function additional_derivatives(expr::Expr)
-    # some functions like abs(x) are not treated by SymEngine and block the
-    # expression. For example, diff(Basic(:(abs(x^2+1)),:x)) returns a SymEngine Object
-    # whose string representation is parsed to :(Derivative(abs(1 + x ^ 2), x)),
-    # whose AST is:
-    # Expr
-    #  head: Symbol call
-    #  args: Array{Any}((3,))
-    #    1: Symbol Derivative
-    #    2: Expr
-    #           ... Body of expression ...
-    #    3: Symbol x
-    # typ: Any
-
-    # detect expressions of this form
-    if expr.head === :call && expr.args[1] === :Derivative
-        f = expr.args[2].args[1]
-        var = expr.args[3]
-        f_arg = expr.args[2].args[2]
-        if haskey(diff_dict, f)  # try if diff_dict provides a rescue
-            df = diff_dict[f]
-            inner_d = expr_diff(f_arg, var)
-            df_computed_manually = :($df($f_arg) * $inner_d)
-            return additional_derivatives(df_computed_manually)       # handle nested problems
-        end
-    end
-    return Expr(expr.head, additional_derivatives.(expr.args)...) # call recursively on subexpressions
-end
-additional_derivatives(expr) = expr
-
-# A second thing that SymEngine does is returning expressions of the form
-# Subs(ex1, symb1, ex2). Resolve these substitutions
-function substitution_cleaner(expr::Expr)
-    if expr.head === :call && expr.args[1] === :Subs
-        return substitution_cleaner(sym_subst(
-            expr.args[2],
-            expr.args[3],
-            expr.args[4],
-        ))
-    end
-    return Expr(expr.head, substitution_cleaner.(expr.args)...)
-end
-substitution_cleaner(expr) = expr
 
 # perform some basic simplifications like getting rid of ones and zeros
 function simple_simplifier(expr::Expr)
@@ -300,6 +238,10 @@ function simple_simplifier(expr::Expr)
     if expr.head !== :call
         return Expr(expr.head, args...)
     end
+    if args[1] === :one
+        return 1
+    end
+
     if args[1] === :zero
         return 0
     end
@@ -333,10 +275,22 @@ function simple_simplifier(expr::Expr)
     end
     return Expr(expr.head, args...)
 end
-
 simple_simplifier(expr) = expr
-expr_grad(expr, coord_vars::Vector{Symbol}) = expr_diff.(expr, coord_vars)
 
+function propagate_constants(expr::ModelingToolkit.Operation)
+        if all(isconstant.(expr.args))
+            return expr.op(propagate_constants.(expr.args)...) 
+        else
+            return Operation(expr.op, propagate_constants.(expr.args))
+        end
+end
+propagate_constants(x::Constant) = x.value
+propagate_constants(x) = x
+
+isconstant(x::Operation) = !(x.op isa Variable) && all(isconstant.(x.args))
+isconstant(x::Constant) = true
+
+expr_grad(expr, coord_vars::Vector{Symbol}) = expr_diff.(expr, coord_vars)
 function hessian(expr, coord_vars)
     ∇expr = expr_grad(expr, coord_vars)
     ∇²expr = expr_grad(expr)
