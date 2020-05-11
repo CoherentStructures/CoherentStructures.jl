@@ -147,6 +147,10 @@ makedocs(
             "Geostrophic ocean flow" => "generated/ocean_flow.md"
             "Working with trajectories" => "generated/trajectories.md"
             ]
+        "Examples related to publications" => [
+            "Overview" => "examples_pub_overview.md"
+            "Material barriers in turbulence (Karrasch & Schilling 2020)" => "karraschschilling2020a.md"
+        ]
         "Basics" => "basics.md"
         "Methods" => [
             "FEM-based methods" => "fem.md"
