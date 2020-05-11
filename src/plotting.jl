@@ -476,6 +476,50 @@ function eulerian_video_fast(ctx, u::Function,
 end
 =#
 
+RecipesBase.@userplot Plot_Grid_Raw
+RecipesBase.@recipe function f(
+    as::Plot_Grid_Raw;
+)
+
+    ctx::GridContext = as.args[1]
+    nodes = length(as.args) >= 2 ? as.args[2] : [x.x for x in ctx.grid.nodes]
+    shown_triangles = length(as.args) >= 3 ? as.args[3] : [true for x in ctx.grid.cells]
+
+    toplot_1 = Array{Float64}[]
+    toplot_2 = Array{Float64}[]
+    for cell in ctx.grid.cells
+        x_nodes = Float64[]
+        y_nodes = Float64[]
+        for n in cell.nodes
+            push!(x_nodes,nodes[n][1])
+            push!(y_nodes,nodes[n][2])
+        end
+        push!(toplot_1,x_nodes)
+        push!(toplot_2,y_nodes)
+    end
+    seriestype --> :shape
+    aspect_ratio --> 1
+    label --> ""
+    toplot_1[shown_triangles],toplot_2[shown_triangles]
+end
+
+function plot_grid(ctx,as=[x.x for x in ctx.grid.nodes],shaded_triangles=[false for x in ctx.grid.cells];kwargs...)
+    fig = plot_grid_raw(ctx,as,shaded_triangles,fillcolor=ColorTypes.RGBA(1.0,0.0,0.0,0.2);kwargs...)
+    return plot_grid_raw!(fig,ctx,as,map(x->!x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0,0.0,0.0,0.0);kwargs...)
+end
+
+
+
+
+
+
+
+    #seriestype --> :heatmap
+    #fill --> true
+    #xlim --> (LL[1], UR[1])
+    #ylim --> (LL[2], UR[2])
+
+
 RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(
     as::Plot_FTLE;
@@ -737,3 +781,4 @@ plot_singularities
 Same as [`plot_singularities`](@ref), but adds the output to the currently active plot.
 """
 plot_singularities!
+

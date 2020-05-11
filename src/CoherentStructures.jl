@@ -38,10 +38,15 @@ const GP = GeometricalPredicates
 import VoronoiDelaunay
 const VD = VoronoiDelaunay
 
+
+# JuAFEM
 import JuAFEM
 const JFM = JuAFEM
+
+#Other miscallaneous packages
 using RecipesBase
 import SymEngine
+import ColorTypes
 
 # contains a list of exported functions
 include("exports.jl")
