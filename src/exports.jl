@@ -126,12 +126,6 @@ export
 	pullback_SDE_diffusion_tensor,
 	av_weighted_CG_tensor,
 
-	#streammacros.jl
-    @define_stream,
-    @velo_from_stream,
-    @var_velo_from_stream,
-	@vorticity_from_stream,
-
 	#TO.jl
 	nonAdaptiveTOCollocation,
 	adaptiveTOCollocation,
