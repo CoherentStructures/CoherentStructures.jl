@@ -265,6 +265,36 @@ function compute_singularities(
     return singularities
 end
 
+#TODO document this more
+function compute_singularities(
+    ctx::GridContext{2},
+    v::AbstractArray{<:SVector{2}},
+    dist::Function = s1dist,
+)
+    #xspan, yspan = v.axes
+    α = map(u -> atan(u[2], u[1]), v)
+    T = Float64 #TODO: maybe change this?
+    singularities = Singularity{T}[]
+    for cell in ctx.grid.cells
+        temp = 0.0
+        middlecoord = @SVector [0.0, 0.0]
+        nnodes = length(cell.nodes)
+        for nodeid in cell.nodes
+            temp += dist(α[nodeid], α[mod1(nodeid+1,nnodes)])
+            middlecoord += ctx.grid.nodes[nodeid].x.data/nnodes
+        end
+        index = round(Int,temp / π) // 2
+        if !iszero(index)
+            push!(
+                singularities,
+                Singularity((middlecoord[1],middlecoord[2]), index),
+            )
+        end
+    end
+    return singularities
+end
+
+
 """
     combine_singularities(sing_coordinates, sing_indices, combine_distance) -> Vector{Singularity}
 
@@ -568,6 +598,21 @@ function critical_point_detection(
     end
     return new_singularities
 end
+function critical_point_detection(
+    ctx::GridContext{2},
+    vs::Array{<:SVector{2,T}},
+    combine_distance::Real,
+    dist = s1dist;
+    merge_heuristics = [combine_20],
+)::Vector{Singularity{T}} where {T<:Real}
+    singularities = compute_singularities(ctx,vs, dist)
+    new_singularities = combine_singularities(singularities, combine_distance)
+    for f in merge_heuristics
+        new_singularities = f(new_singularities)
+    end
+    return new_singularities
+end
+
 
 """
     singularity_detection(T, combine_distance; merge_heuristics=[combine_20]) -> Vector{Singularity}
@@ -581,11 +626,15 @@ merge singularities, cf. [`LCSParameters`](@ref).
 Return a vector of [`Singularity`](@ref)s.
 """
 function singularity_detection(
-    T::AxisArray{S,2},
+    T::Union{AxisArray{S,2}, Tuple{GridContext{2},Vector{S}}},
     combine_distance::Real;
     merge_heuristics = [combine_20],
 ) where {S<:SymmetricTensor{2,2}}
-    ξ = map(t -> convert(SVector{2}, eigvecs(t)[:, 1]), T)
+    if isa(T,AxisArray{S,2})
+        ξ = map(t -> convert(SVector{2}, eigvecs(t)[:, 1]), T)
+    else
+        ξ = map(t -> convert(SVector{2}, eigvecs(t)[:, 1]), T[2])
+    end
     critical_point_detection(
         ξ,
         combine_distance,
@@ -593,6 +642,7 @@ function singularity_detection(
         merge_heuristics = merge_heuristics,
     )
 end
+
 
 ######################## closed orbit computations #############################
 """

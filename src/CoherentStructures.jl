@@ -72,8 +72,6 @@ include("util.jl")
 # functions related to pulling back tensors under flow maps
 include("pullbacktensors.jl")
 
-# functions related to geodesic elliptic LCS detection
-include("ellipticLCS.jl")
 
 # generation of vector fields from stream functions
 include("streammacros.jl")
@@ -116,5 +114,8 @@ include("ulam.jl")
 
 # plotting functionality
 include("plotting.jl")
+
+# functions related to geodesic elliptic LCS detection
+include("ellipticLCS.jl")
 
 end
