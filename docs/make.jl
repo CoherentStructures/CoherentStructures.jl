@@ -162,7 +162,7 @@ makedocs(
 
 if "DEPLOY_KEY_2" ∈ keys(ENV)
     GREF = ENV["GITHUB_REF"]
-    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] ∈ ["master", "ref/heads/master"]) 
+    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] ∈ ["master", "refs/heads/master"]) 
         run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
         curdate = Dates.now()
         run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
