@@ -153,6 +153,10 @@ makedocs(
             "Geodesic vortices" => "elliptic.md"
             "Graph Laplacian-based methods" => "Laplace.md"
             ]
+            "Miscallaneous" => [
+                "Helper script for creating videos" => "videos.md"
+
+            ]
     ]
     )
 
