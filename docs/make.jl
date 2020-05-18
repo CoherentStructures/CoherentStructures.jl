@@ -165,6 +165,8 @@ makedocs(
     )
 
 if "DEPLOY_KEY_2" ∈ keys(ENV)
+    GREF = ENV["GITHUB_REF"]
+    println("GITHUB_REF is $GREF")
     if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] == "master")
         run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
         curdate = Dates.now()
