@@ -7,7 +7,7 @@ not want to introduce additional dependencies.
 WARNING: this script will delete/overwrite the file at `output_file`.
 
 Example usage, after the script has been loaded:
-```
+```julia
 xs = range(0,stop=10,length=20)
 ts = range(0,stop=1.0,length=100)
 frames = [
@@ -16,15 +16,16 @@ frames = [
 animatemp4(frames) # Saves to /tmp/output.mp4 by default
 ```
 
- <video controls="" height="100%" width="100%">
+```@raw html <video controls="" height="100%" width="100%">
   <source src="https://raw.githubusercontent.com/natschil/misc/master/videos/sample_video.mp4" type="video/mp4" />
  Your browser does not support the video tag.
  </video>
+```
 
 
 The script:
 
-```
+```julia
 using Printf,UUIDs
 
 using ProgressMeter,Plots
