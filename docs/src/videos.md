@@ -16,7 +16,8 @@ frames = [
 animatemp4(frames) # Saves to /tmp/output.mp4 by default
 ```
 
-```@raw html <video controls="" height="100%" width="100%">
+```@raw html
+<video controls="" height="100%" width="100%">
   <source src="https://raw.githubusercontent.com/natschil/misc/master/videos/sample_video.mp4" type="video/mp4" />
  Your browser does not support the video tag.
  </video>
