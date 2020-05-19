@@ -138,7 +138,7 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
 ```
 
 ```@raw html
-<img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_2.png"/>
+<img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_3.png"/>
 ```
 
 Here they are advected forwards in time:
@@ -152,6 +152,8 @@ plot_vortices(vortexflow.(vortices), singularities, [-π, -π], [π, π];
 ```
 
 ```@raw html
-<img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_3.png"/>
+<img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_4.png"/>
 ```
+
+One of the vortices has been advected so that it is no longer in the field of view of the image, and the plotting function doesn't know that the domain is periodic.
 
