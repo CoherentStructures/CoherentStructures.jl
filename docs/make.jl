@@ -154,10 +154,10 @@ makedocs(
             "Geostrophic ocean flow" => "generated/ocean_flow.md"
             "Working with trajectories" => "generated/trajectories.md"
             ]
-        "Examples related to publications" => [
+        "Related publications" => [
             "Overview" => "examples_pub_overview.md"
-            "Material diffusion barriers" => "diffbarriers.md"
-            "Diffusion barriers in turbulence" => "turbulence.md"
+            "Material diffusion barriers" => "generated/diffbarriers.md"
+            "Diffusion barriers in turbulence" => "generated/turbulence.md"
         ]
         "Basics" => "basics.md"
         "Methods" => [
