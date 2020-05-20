@@ -53,7 +53,7 @@ function mypreprocess(content, whatkind)
         content = content[1:(current_location[1]-1)] * inner_text * content[(closing_bracket[1]+1):end]
     end
     if whatkind === :julia_run
-        content = replace(content,"addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
+        content = replace(content, "addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
         content = replace(content, "OCEAN_FLOW_FILE" => "\"docs/examples/Ocean_geostrophic_velocity.jld2\"")
     else
         content = replace(content, "OCEAN_FLOW_FILE" => "\"Ocean_geostrophic_velocity.jld2\"")
@@ -121,6 +121,20 @@ Literate.script(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), "/tmp
 
 run(`julia --project=docs/ /tmp/standard_map.jl`)
 
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    documenter=false, preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    execute=false, preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    preprocess=preprocess_script)
+
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    documenter=false, preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    execute=false, preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    preprocess=preprocess_script)
+
 # replace links (if any)
 # travis_tag = get(ENV, "TRAVIS_TAG", "")
 # folder = isempty(travis_tag) ? "latest" : travis_tag
@@ -147,9 +161,10 @@ makedocs(
             "Geostrophic ocean flow" => "generated/ocean_flow.md"
             "Working with trajectories" => "generated/trajectories.md"
             ]
-        "Examples related to publications" => [
+        "Related publications" => [
             "Overview" => "examples_pub_overview.md"
-            "Material barriers in turbulence (Karrasch & Schilling 2020)" => "karraschschilling2020a.md"
+            "Material diffusion barriers" => "generated/diffbarriers.md"
+            "Diffusion barriers in turbulence" => "generated/turbulence.md"
         ]
         "Basics" => "basics.md"
         "Methods" => [
@@ -157,16 +172,15 @@ makedocs(
             "Geodesic vortices" => "elliptic.md"
             "Graph Laplacian-based methods" => "Laplace.md"
             ]
-            "Miscallaneous" => [
-                "Helper script for creating videos" => "videos.md"
-
+            "Miscellaneous" => [
+                "Creating animations" => "videos.md"
             ]
     ]
     )
 
 if "DEPLOY_KEY_2" ∈ keys(ENV)
     GREF = ENV["GITHUB_REF"]
-    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] ∈ ["master", "refs/heads/master"]) 
+    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] ∈ ["master", "refs/heads/master"])
         run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
         curdate = Dates.now()
         run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)

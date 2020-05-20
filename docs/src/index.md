@@ -34,7 +34,8 @@ The graph Laplacian methods and the "TO" forms of the dynamic Laplacian FEM meth
 For more information on specific methods, consult the relevant pages of the documentation or the
 examples pages.
 
-## Examples
+## [Examples](@id examples_section)
+
 As a quick hands-on introduction, we demonstrate the usage of the
 `CoherentStructures.jl` package on some classic flow problems. For references to
 the original works in which the methods were developed see the respective help

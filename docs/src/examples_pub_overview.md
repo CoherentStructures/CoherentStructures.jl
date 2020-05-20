@@ -1,10 +1,12 @@
-# Overview of Examples related to Publications
+# Related publications
 
-The `CoherentStructures.jl' package has been used in a number of publications to date,
-and many more publications contain algorithms it has implementations of.
+The `CoherentStructures.jl` package implements several published methodologies
+and algorithms. References to the original works can be found in the
+documentation of the different methods. In this section, we include code that
+reproduces (or imitates) the numerical experiments done in some publications
+that have been or can be performed with `CoherentStructures.jl`.
 
-In this folder, we include code that reproduces (or imitates) the numerical experiments done in some of these papers.
-As the numerical experiments are too involved to recompute the results of each every time this documentation is updated, 
-it may happen that future code changes in `CoherentStructures.jl' or other packages cause the code included to fail or behave differently.
-Please open an issue on github if you notice that this is the case.
-
+In contrast to the other [examples](@ref examples_section), these scripts are not
+run every time the documentation gets rebuilt due to computing time limitations,
+and are therefore not continuously tested. If you find that some of the following
+scripts fail to work, please open an issue on GitHub.
