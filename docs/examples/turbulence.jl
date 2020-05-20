@@ -5,9 +5,9 @@
 #
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:
-#md #     [`turbulence.ipynb`](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/ks2020.ipynb),
+#md #     [`turbulence.ipynb`](https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/turbulence.ipynb),
 #md #     and as an executable julia file
-#md #     [`turbulence.jl`](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/ks2020.jl).
+#md #     [`turbulence.jl`](https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/turbulence.jl).
 #md #
 # The following script reproduces partially the two-dimensional turbulence
 # simulation performed in the paper
@@ -138,9 +138,9 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
     bg=bg, include_singularities=true, barrier_width=4, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
-#md ```@raw html
-#md <img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_2.png"/>
-#md ```
+#md # ```@raw html
+#md # <img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_2.png"/>
+#md # ```
 
 # We plot the detected vortices on top of the vorticity field.
 
@@ -150,9 +150,9 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
     bg=Zs, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
-#md ```@raw html
-#md <img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_3.png"/>
-#md ```
+#md # ```@raw html
+#md # <img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_3.png"/>
+#md # ```
 
 # Next, we advect them forwards in time.
 
@@ -162,9 +162,9 @@ plot_vortices(vortexflow.(vortices), singularities, [-π, -π], [π, π];
     bg=Zs, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
-#md ```@raw html
-#md <img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_4.png"/>
-#md ```
+#md # ```@raw html
+#md # <img src="https://raw.githubusercontent.com/natschil/misc/master/images/turbulence_4.png"/>
+#md # ```
 
 # One of the vortices has been advected so that it is no longer in the field of
 # view of the image, and the plotting function doesn't know that the domain is

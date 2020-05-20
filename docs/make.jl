@@ -53,7 +53,7 @@ function mypreprocess(content, whatkind)
         content = content[1:(current_location[1]-1)] * inner_text * content[(closing_bracket[1]+1):end]
     end
     if whatkind === :julia_run
-        content = replace(content,"addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
+        content = replace(content, "addprocs()" => "addprocs(exeflags=\"--project=docs/\")")
         content = replace(content, "OCEAN_FLOW_FILE" => "\"docs/examples/Ocean_geostrophic_velocity.jld2\"")
     else
         content = replace(content, "OCEAN_FLOW_FILE" => "\"Ocean_geostrophic_velocity.jld2\"")
@@ -121,18 +121,18 @@ Literate.script(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), "/tmp
 
 run(`julia --project=docs/ /tmp/standard_map.jl`)
 
-Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
-    documenter=false, preprocess=preprocess_markdown)
-Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
-    execute=false, preprocess=preprocess_notebook)
-Literate.script(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
-    preprocess=preprocess_script)
-
 Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
 Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
     execute=false, preprocess=preprocess_notebook)
 Literate.script(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    preprocess=preprocess_script)
+
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    documenter=false, preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    execute=false, preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
     preprocess=preprocess_script)
 
 # replace links (if any)
@@ -172,9 +172,8 @@ makedocs(
             "Geodesic vortices" => "elliptic.md"
             "Graph Laplacian-based methods" => "Laplace.md"
             ]
-            "Miscallaneous" => [
-                "Helper script for creating videos" => "videos.md"
-
+            "Miscellaneous" => [
+                "Creating animations" => "videos.md"
             ]
     ]
     )

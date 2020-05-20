@@ -22,7 +22,7 @@
 #
 # The Bickley jet is described by a time-dependent velocity field arising from a
 # stream-function. The corresponding velocity field can be constructed by means
-# of the [``StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl) package.
+# of the [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl) package.
 
 import Pkg
 Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
@@ -94,9 +94,9 @@ trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
     bg=trace, title="DBS field and transport barriers", showlabel=true)
 
-#md ```@raw html
-#md <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_geodesic_vortices.png"/>
-#md ```
+#md # ```@raw html
+#md # <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_geodesic_vortices.png"/>
+#md # ```
 
 # For comparison, we also compute black-hole vortices.
 
@@ -161,6 +161,6 @@ trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
     bg=trace, title="DBS field and transport barriers", showlabel=true)
 
-#md ```@raw html
-#md <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/>
-#md ```
+#md # ```@raw html
+#md # <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/>
+#md # ```
