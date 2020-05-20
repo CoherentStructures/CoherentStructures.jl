@@ -121,6 +121,13 @@ Literate.script(joinpath(@__DIR__, "..", "docs/examples/standard_map.jl"), "/tmp
 
 run(`julia --project=docs/ /tmp/standard_map.jl`)
 
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    documenter=false, preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    execute=false, preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
+    preprocess=preprocess_script)
+
 # replace links (if any)
 # travis_tag = get(ENV, "TRAVIS_TAG", "")
 # folder = isempty(travis_tag) ? "latest" : travis_tag
@@ -149,7 +156,8 @@ makedocs(
             ]
         "Examples related to publications" => [
             "Overview" => "examples_pub_overview.md"
-            "Material barriers in turbulence (Karrasch & Schilling 2020)" => "karraschschilling2020a.md"
+            "Material diffusion barriers" => "hkk2018.md"
+            "Diffusion barriers in turbulence" => "turbulence.md"
         ]
         "Basics" => "basics.md"
         "Methods" => [
@@ -166,7 +174,7 @@ makedocs(
 
 if "DEPLOY_KEY_2" ∈ keys(ENV)
     GREF = ENV["GITHUB_REF"]
-    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] ∈ ["master", "refs/heads/master"]) 
+    if ("GITHUB_REF" ∈ keys(ENV)) &&  (ENV["GITHUB_REF"] ∈ ["master", "refs/heads/master"])
         run(`git -C /tmp/natschil_misc/ add /tmp/natschil_misc/autogen`)
         curdate = Dates.now()
         run(`git -C /tmp/natschil_misc/ commit -m "Autogen $curdate"`)
