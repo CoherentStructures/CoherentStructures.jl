@@ -156,7 +156,7 @@ makedocs(
             ]
         "Examples related to publications" => [
             "Overview" => "examples_pub_overview.md"
-            "Material diffusion barriers" => "hkk2018.md"
+            "Material diffusion barriers" => "diffbarriers.md"
             "Diffusion barriers in turbulence" => "turbulence.md"
         ]
         "Basics" => "basics.md"

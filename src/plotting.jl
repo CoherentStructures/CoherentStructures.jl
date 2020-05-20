@@ -612,9 +612,10 @@ caught and ignored.
 plot_ftle
 
 """
-    plot_vortices(vortices, singularities, LL, UR; bg=nothing)
+    plot_vortices(vortices, singularities, LL, UR; kwargs...)
 
-Plots the output of [`ellipticLCS`](@ref).
+Plots the output of [`ellipticLCS`](@ref) on the domain spanned by the lower left
+corner `LL` and the upper right corner `UR`.
 
 ## Keyword arguments
 * `bg=nothing`: whether to plot some background scalar field;
@@ -781,4 +782,3 @@ plot_singularities
 Same as [`plot_singularities`](@ref), but adds the output to the currently active plot.
 """
 plot_singularities!
-
