@@ -160,4 +160,7 @@ using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
     bg=trace, title="DBS field and transport barriers", showlabel=true)
-DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
+
+#md ```@raw html
+#md <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/>
+#md ```

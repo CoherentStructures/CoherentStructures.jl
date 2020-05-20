@@ -39,8 +39,7 @@ using JLD2
 JLD2.@load(OCEAN_FLOW_FILE)
 VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
-# Since we want to use parallel computing, we set up the integration LCSParameters
-# on all workers, i.e., `@everywhere`.
+# Now, we set up the computational problem.
 
 using AxisArrays
 q = 91
@@ -59,7 +58,8 @@ mCG_tensor = let tspan=tspan, δ=δ, p=VI
         p=p, tolerance=1e-6, solver=Tsit5())
 end
 
-# Now, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.
+# Next, we compute the averaged weighted Cauchy-Green tensor field and extract
+# elliptic LCSs.
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
