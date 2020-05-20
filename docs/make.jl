@@ -128,6 +128,13 @@ Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPU
 Literate.script(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
     preprocess=preprocess_script)
 
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    documenter=false, preprocess=preprocess_markdown)
+Literate.notebook(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    execute=false, preprocess=preprocess_notebook)
+Literate.script(joinpath(@__DIR__, "..", "docs/examples/diffbarriers.jl"), OUTPUT;
+    preprocess=preprocess_script)
+
 # replace links (if any)
 # travis_tag = get(ENV, "TRAVIS_TAG", "")
 # folder = isempty(travis_tag) ? "latest" : travis_tag
