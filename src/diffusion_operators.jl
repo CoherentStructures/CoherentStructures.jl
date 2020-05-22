@@ -111,11 +111,11 @@ function sparse_diff_op_family(
 )
     N = length(data) # number of trajectories
     N == 0 && throw("no data available")
-    q = length(data[1]) # number of time steps
-    q == 0 && throw("trajectories have length 0")
-    # timeslices = map(i -> getindex.(data, i), 1:q)
-    P = Distributed.pmap(enumerate(data)) do (t, timeslice)
-        Pt = sparse_diff_op(timeslice, sp_method, kernel; α=α, metric=metric)
+    q = axes(first(data), 1) # time axis
+    all(d -> axes(d, 1) == q, data) || throw("inhomogeneous trajectory lengths")
+    length(q) == 0 && throw("trajectories have length 0")
+    P = Distributed.pmap(q) do t
+        Pt = sparse_diff_op(getindex.(data, t), sp_method, kernel; α=α, metric=metric)
         verbose && println("time step $t/$q done")
         Pt
     end
