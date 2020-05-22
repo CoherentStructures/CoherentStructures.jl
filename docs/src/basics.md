@@ -77,12 +77,12 @@ tensor_invariants
 ## Distance computations
 
 For computing distances w.r.t. standard metrics, there exists the excellent
-[`Distance.jl`](https://github.com/JuliaStats/Distances.jl) package. For example,
+[`Distances.jl`](https://github.com/JuliaStats/Distances.jl) package. For example,
 the Euclidean distance between two points is computed by any of the last two lines:
 ```
 using Distances
 x, y = rand(3), rand(3)
-evaluate(Euclidean(), x, y)
+Euclidean()(x, y)
 euclidean(x, y)
 ```
 Other metrics of potential interest include `Haversine(r)`, the geodesic
@@ -98,8 +98,8 @@ In `CoherentStructures.jl`, there is one more metric type implemented:
 ```@docs
 STmetric
 ```
-That is a spatiotemporal metric that operates on trajectories in the format of
+This is a spatiotemporal metric that operates on trajectories in the format of
 vectors of static vectors, i.e., `Vector{<:SVector}`. Each vector element
-corresponds to the state vector. The `STmetric` then computes the ``l_p``-mean of
-the spatial distances over time. Notably, `p` may be any "real" number, including
-`Inf` and `-Inf` for the maximum- and "minimum"-norm.
+corresponds to the state vector. The `STmetric` then computes the
+``\\ell_p``-mean of the spatial distances over time. Notably, `p` may be any
+"real" number, including `Inf` and `-Inf` for the maximum- and "minimum"-norm.

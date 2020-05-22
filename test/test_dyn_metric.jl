@@ -31,8 +31,13 @@ end
 Y = [[@SVector rand(2) for _ in 1:21] for _ in 1:10]
 d = zeros(10)
 @testset "colwise spatiotemporal metric" begin
-    dist = map(y -> evaluate(STmetric(), x, y), Y)
-    @test colwise!(d, STmetric(), x, Y) ≈ dist
+    dist = map(y -> STmetric()(x, y), Y)
+    @test colwise!(d, STmetric(), x, Y) == colwise(STmetric(), x, Y)
+    @test d == dist
+    @test colwise!(d, STmetric(), Y, x) == colwise(STmetric(), Y, x)
+    @test d == dist
+    @test colwise!(d, STmetric(), Y, Y) == colwise(STmetric(), Y, Y)
+    @test d == zero(dist)
     b = @benchmarkable colwise!($d, $(STmetric()), $x, $Y)
     @test run(b, samples=4).allocs == 0
 end

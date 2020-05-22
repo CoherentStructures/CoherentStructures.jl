@@ -38,7 +38,7 @@ struct STmetric{M<:Dists.SemiMetric,T<:Real} <: Dists.UnionSemiMetric
 end
 
 # defaults: metric = Euclidean(), dim = 2, p = 1
-STmetric(d::Dists.PreMetric = Dists.Euclidean()) = STmetric(d, 1)
+STmetric(d = Dists.Euclidean()) = STmetric(d, 1)
 
 function (dist::STmetric)(a::AbstractArray, b::AbstractArray)
     return Dists._evaluate(dist, a, b, Dists.parameters(dist))
@@ -46,10 +46,10 @@ end
 
 function Dists.result_type(
     d::STmetric,
-    a::AbstractVector{<:SVector},
-    b::AbstractVector{<:SVector},
-)
-    T = Dists.result_type(d.metric, zero(eltype(a)), zero(eltype(b)))
+    a::AbstractVector{<:S},
+    b::AbstractVector{<:S},
+) where {S<:SVector}
+    T = Dists.result_type(d.metric, zero(S), zero(S))
     return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)) / 2))
 end
 
@@ -93,24 +93,23 @@ end
 end
 
 function stmetric(
-    a::AbstractVector{<:SVector},
-    b::AbstractVector{<:SVector},
+    a::AbstractVector{<:T},
+    b::AbstractVector{<:T},
     d::Dists.SemiMetric = Dists.Euclidean(),
     p::Real = 1,
-)
+) where {T<:SVector}
     return STmetric(d, p)(a, b)
 end
 
 function Dists.pairwise!(
     r::AbstractMatrix,
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:SVector}},
-    b::AbstractVector{<:AbstractVector{<:SVector}};
+    a::AbstractVector{<:AbstractVector{<:T}},
+    b::AbstractVector{<:AbstractVector{<:T}};
     dims::Union{Nothing,Integer} = nothing,
-)
+) where {T<:SVector}
     la, lb = length.((a, b))
-    size(r) == (la, lb) ||
-    throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((na, nb)))."))
+    size(r) == (la, lb) || throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((na, nb)))."))
     @inbounds for j in 1:lb
         bj = b[j]
         for i in 1:la
@@ -126,8 +125,7 @@ function Dists.pairwise!(
     dims::Union{Nothing,Integer} = nothing,
 )
     la = length(a)
-    size(r) == (la, la) ||
-    throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((n, n)))."))
+    size(r) == (la, la) || throw(DimensionMismatch("Incorrect size of r (got $(size(r)), expected $((n, n)))."))
     @inbounds for j in 1:la
         aj = a[j]
         for i in (j+1):la
@@ -143,14 +141,14 @@ end
 
 function Dists.pairwise(
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:SVector}},
-    b::AbstractVector{<:AbstractVector{<:SVector}};
+    a::AbstractVector{<:AbstractVector{<:T}},
+    b::AbstractVector{<:AbstractVector{<:T}};
     dims::Union{Nothing,Integer} = nothing,
-)
+) where {T<:SVector}
     la = length(a)
     lb = length(b)
     (la == 0 || lb == 0) && return reshape(Float64[], 0, 0)
-    r = Matrix{Dists.result_type(metric, a[1], b[1])}(undef, la, lb)
+    r = Matrix{Dists.result_type(metric, first(a), first(b))}(undef, la, lb)
     Dists.pairwise!(r, metric, a, b)
 end
 function Dists.pairwise(
@@ -160,20 +158,19 @@ function Dists.pairwise(
 )
     la = length(a)
     la == 0 && return reshape(Float64[], 0, 0)
-    r = Matrix{Dists.result_type(metric, a[1], a[1])}(undef, la, la)
+    r = Matrix{Dists.result_type(metric, first(a), first(a))}(undef, la, la)
     Dists.pairwise!(r, metric, a)
 end
 
 function Dists.colwise!(
     r::AbstractVector,
     metric::STmetric,
-    a::AbstractVector{<:SVector},
-    b::AbstractVector{<:AbstractVector{<:SVector}},
-)
+    a::AbstractVector{<:T},
+    b::AbstractVector{<:AbstractVector{<:T}},
+) where {T<:SVector}
     lb = length(b)
-    length(r) == lb ||
-    throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
-    @inbounds for i in 1:lb
+    length(r) == lb || throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
+    @inbounds for i in eachindex(b, r)
         r[i] = metric(a, b[i])
     end
     r
@@ -181,9 +178,9 @@ end
 function Dists.colwise!(
     r::AbstractVector,
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:SVector}},
-    b::AbstractVector{<:SVector},
-)
+    a::AbstractVector{<:AbstractVector{<:T}},
+    b::AbstractVector{<:T},
+) where {T<:SVector}
     Dists.colwise!(r, metric, b, a)
 end
 function Dists.colwise!(
@@ -194,11 +191,9 @@ function Dists.colwise!(
 ) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
     la = length(a)
     lb = length(b)
-    la == lb ||
-    throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
-    la == length(r) ||
-    throw(DimensionMismatch("incorrect size of r, got $(length(r)), but expected $la"))
-    @inbounds for i in 1:la
+    la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
+    la == length(r) || throw(DimensionMismatch("incorrect size of r, got $(length(r)), but expected $la"))
+    @inbounds for i in eachindex(a, b, r)
         r[i] = metric(a[i], b[i])
     end
     r
@@ -206,12 +201,11 @@ end
 
 function Dists.colwise(
     metric::STmetric,
-    a::AbstractVector{<:SVector},
-    b::AbstractVector{<:AbstractVector{<:SVector}},
-)
-    lb = length(b)
+    a::AbstractVector{<:T},
+    b::AbstractVector{<:AbstractVector{<:T}},
+) where {T<:SVector}
     Dists.colwise!(
-        zeros(Dists.result_type(metric, a[1], b[1]), lb),
+        Vector{Dists.result_type(metric, a, first(b))}(undef, length(b)),
         metric,
         a,
         b,
@@ -219,16 +213,10 @@ function Dists.colwise(
 end
 function Dists.colwise(
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:SVector}},
-    b::AbstractVector{<:SVector},
-)
-    la = length(a)
-    Dists.colwise!(
-        zeros(Dists.result_type(metric, a[1], b[1]), la),
-        metric,
-        b,
-        a,
-    )
+    a::AbstractVector{<:AbstractVector{<:T}},
+    b::AbstractVector{<:T},
+) where {T<:SVector}
+    return Dists.colwise(metric, b, a)
 end
 function Dists.colwise(
     metric::STmetric,
@@ -237,11 +225,10 @@ function Dists.colwise(
 ) where {T<:AbstractVector{<:AbstractVector{<:SVector}}}
     la = length(a)
     lb = length(b)
-    la == lb ||
-    throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
+    la == lb || throw(DimensionMismatch("lengths of a, $la, and b, $lb, do not match"))
     la == 0 && return reshape(Float64[], 0, 0)
     Dists.colwise!(
-        zeros(Dists.result_type(metric, a[1], b[1]), la),
+        Vector{Dists.result_type(metric, first(a), first(b))}(undef, la),
         metric,
         a,
         b,
@@ -417,9 +404,9 @@ end
 #     r = SharedArray{Dists.result_type(metric, a, a)}(n, n)
 #     Dists.pairwise!(r, metric, a)
 # end
-
-@inline function tri_indices!(i::Int, j::Int, n::Int)
-    i = floor(Int, 0.5 * (1 + sqrt(8n - 7)))
-    j = n - div(i * (i - 1), 2)
-    return i, j
-end
+#
+# @inline function tri_indices!(i::Int, j::Int, n::Int)
+#     i = floor(Int, 0.5 * (1 + sqrt(8n - 7)))
+#     j = n - div(i * (i - 1), 2)
+#     return i, j
+# end
