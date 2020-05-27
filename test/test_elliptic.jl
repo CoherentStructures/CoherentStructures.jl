@@ -59,6 +59,7 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
+include("define_rot_double_gyre.jl")
 mCG_tensor = let ts=tspan
     u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
 end
