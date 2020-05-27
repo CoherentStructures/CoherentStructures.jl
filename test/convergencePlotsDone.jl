@@ -6,6 +6,7 @@ using Plots,Serialization,LinearAlgebra, Printf
 
 include("numericalExperiments.jl")
 
+include("define_bickley_jet.jl")
 experimentRange= 2 .^ (4:8) .+ 1
 experimentRangeSmall= 2 .^ (4:6) .+ 1
 

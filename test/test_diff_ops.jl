@@ -1,5 +1,6 @@
 using Test, Distributed, CoherentStructures, Statistics, StaticArrays, Distances, LinearMaps
 
+include("define_bickley_jet.jl")
 t_initial = 0.0
 t_final = 3600.0
 q = 19
