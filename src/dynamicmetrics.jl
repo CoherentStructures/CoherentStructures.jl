@@ -25,14 +25,21 @@ The resulting distances are subsequently ``ℓ^p``-averaged, with ``p=`` `p`.
 ```jldoctest; setup=(using Distances, StaticArrays)
 julia> x = [@SVector rand(2) for _ in 1:10];
 
+julia> y = [@SVector rand(2) for _ in 1:10];
+
 julia> d = STmetric(Euclidean(), 1) # Euclidean distances arithmetically averaged
 STmetric{Euclidean,Int64}(Euclidean(0.0), 1)
 
-julia> d(x, x)
-0.0
+julia> d(x, y) ≈ sum(Euclidean().(x, y))/10
+true
+
+julia> d = STmetric(Euclidean(), 2);
+
+julia> d(x, y) ≈ sqrt(sum(abs2, Euclidean().(x, y))/10)
+true
 ```
 """
-struct STmetric{M<:Dists.SemiMetric,T<:Real} <: Dists.UnionSemiMetric
+struct STmetric{M<:Dists.SemiMetric,T<:Real} <: Dists.SemiMetric
     metric::M
     p::T
 end
@@ -40,20 +47,48 @@ end
 # defaults: metric = Euclidean(), dim = 2, p = 1
 STmetric(d = Dists.Euclidean()) = STmetric(d, 1)
 
+Dists.evaluate(d::STmetric, a, b) = d(a, b)
 function (dist::STmetric)(a::AbstractArray, b::AbstractArray)
-    return Dists._evaluate(dist, a, b, Dists.parameters(dist))
+    return Dists._evaluate(dist, a, b, nothing)
 end
 
 function Dists.result_type(
     d::STmetric,
-    a::AbstractVector{<:S},
-    b::AbstractVector{<:S},
-) where {S<:SVector}
+    a::AbstractVector{S},
+    b::AbstractVector{S},
+) where {S}
     T = Dists.result_type(d.metric, zero(S), zero(S))
-    return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)) / 2))
+    return typeof(Dists.eval_end(d, Dists.eval_reduce(d, zero(T), zero(T)), 2))
 end
 
-Dists.eval_op(d::STmetric, ai, bi) = d.metric(ai, bi)
+Base.@propagate_inbounds function Dists._evaluate(d::STmetric, a::AbstractArray, b::AbstractArray, ::Nothing)
+    n = length(a)
+    @boundscheck if n != length(b)
+        throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    end
+    if n == 0
+        return zero(result_type(d, a, b))
+    end
+    @inbounds begin
+        s = Dists.eval_start(d, a, b)
+        if (IndexStyle(a, b) === IndexLinear() && eachindex(a) == eachindex(b)) || axes(a) == axes(b)
+            @simd for I in eachindex(a, b)
+                ai = a[I]
+                bi = b[I]
+                s = Dists.eval_reduce(d, s, d.metric(ai, bi))
+            end
+        else
+            for (Ia, Ib) in zip(eachindex(a), eachindex(b))
+                ai = a[Ia]
+                bi = b[Ib]
+                s = Dists.eval_reduce(d, s, d.metric(ai, bi))
+            end
+        end
+        return Dists.eval_end(d, s, n)
+    end
+end
+
+@inline Dists.eval_start(d::STmetric, a, b) = d.p == -Inf ? Inf : zero(Dists.result_type(d, a, b))
 
 @inline function Dists.eval_reduce(d::STmetric, s1, s2)
     p = d.p
@@ -73,22 +108,23 @@ Dists.eval_op(d::STmetric, ai, bi) = d.metric(ai, bi)
         return s1 + s2^p
     end
 end
-@inline function Dists.eval_end(d::STmetric, s)
+
+@inline function Dists.eval_end(d::STmetric, s, n)
     p = d.p
     if p == 1
-        return s
+        return s/n
     elseif p == 2
-        return √s
+        return √(s/n)
     elseif p == -2
-        return 1 / √s
+        return 1 / √(s/n)
     elseif p == -1
-        return 1 / s
+        return 1 / (s/n)
     elseif p == Inf
         return s
     elseif p == -Inf
         return s
     else
-        return s^(1 / p)
+        return (s/n)^(1 / p)
     end
 end
 

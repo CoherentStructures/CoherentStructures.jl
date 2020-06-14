@@ -1,15 +1,17 @@
 using Test, CoherentStructures, StaticArrays, Distances, BenchmarkTools
 
-x = y = [@SVector rand(2) for _ in 1:21]
+m = 10
+x = [@SVector rand(2) for _ in 1:m]
+y = [@SVector rand(2) for _ in 1:m]
 @testset "spatiotemporal metric" begin
-    @test @inferred evaluate(STmetric(Euclidean(), 1), x, y) ≈ 0
-    @test @inferred evaluate(STmetric(Euclidean(), 2), x, y) ≈ 0
-    @test @inferred evaluate(STmetric(SqEuclidean(), 1), x, y) ≈ 0
-    @test @inferred evaluate(STmetric(Euclidean(), -1), x, y) ≈ 0
-    @test @inferred evaluate(STmetric(Euclidean(), -2), x, y) ≈ 0
-    @test @inferred evaluate(STmetric(Euclidean(), Inf), x, y) ≈ 0
-    @test @inferred evaluate(STmetric(Euclidean(), -Inf), x, y) ≈ 0
-    b = @benchmarkable evaluate($(STmetric()), $x, $y)
+    @test @inferred STmetric(Euclidean(), 1)(x, y) ≈ sum(Euclidean().(x, y))/m
+    @test @inferred STmetric(Euclidean(), 2)(x, y) ≈ sqrt(sum(abs2, Euclidean().(x, y))/m)
+    @test @inferred STmetric(SqEuclidean(), 1)(x, y) ≈ sum(SqEuclidean().(x, y))/m
+    @test @inferred STmetric(Euclidean(), -1)(x, y) ≈ inv(sum(inv, Euclidean().(x, y))/m)
+    @test @inferred STmetric(Euclidean(), -2)(x, y) ≈ 1/sqrt(sum(x -> x^(-2), Euclidean().(x, y))/m)
+    @test @inferred STmetric(Euclidean(), Inf)(x, y) ≈ maximum(Euclidean().(x, y))
+    @test @inferred STmetric(Euclidean(), -Inf)(x, y) ≈ minimum(Euclidean().(x, y))
+    b = @benchmarkable $(STmetric())($x, $y)
     @test run(b, samples=4).allocs == 0
 end
 
