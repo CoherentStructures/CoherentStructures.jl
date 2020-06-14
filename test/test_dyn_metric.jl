@@ -1,6 +1,6 @@
 using Test, CoherentStructures, StaticArrays, Distances, BenchmarkTools
 
-m = 10
+m = 20
 x = [@SVector rand(2) for _ in 1:m]
 y = [@SVector rand(2) for _ in 1:m]
 @testset "spatiotemporal metric" begin
@@ -15,12 +15,12 @@ y = [@SVector rand(2) for _ in 1:m]
     @test run(b, samples=4).allocs == 0
 end
 
-X = [[@SVector rand(2) for _ in 1:21] for _ in 1:10]
-Y = [[@SVector rand(2) for _ in 1:21] for _ in 1:11]
+X = [[@SVector rand(2) for _ in 1:m] for _ in 1:10]
+Y = [[@SVector rand(2) for _ in 1:m] for _ in 1:11]
 R = zeros(10, 10)
 r = zeros(length(X), length(Y))
 @testset "pairwise(!) spatiotemporal metric" begin
-    @test @inferred pairwise(STmetric(), [x], [y]) == reshape([0.0], 1, 1)
+    @test @inferred pairwise(STmetric(), [x], [y]) == reshape([STmetric()(x, y)], 1, 1)
     @test @inferred pairwise(STmetric(), [x]) == reshape([0.0], 1, 1)
     @test @inferred pairwise!(R, STmetric(), X) == @inferred pairwise(STmetric(), X)
     b = @benchmarkable pairwise!($R, $(STmetric()), $X)
@@ -30,7 +30,7 @@ r = zeros(length(X), length(Y))
     @test run(b, samples=4).allocs == 0
 end
 
-Y = [[@SVector rand(2) for _ in 1:21] for _ in 1:10]
+Y = [[@SVector rand(2) for _ in 1:m] for _ in 1:10]
 d = zeros(10)
 @testset "colwise spatiotemporal metric" begin
     dist = map(y -> STmetric()(x, y), Y)
