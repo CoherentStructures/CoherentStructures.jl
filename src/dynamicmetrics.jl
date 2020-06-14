@@ -64,10 +64,10 @@ end
 Base.@propagate_inbounds function Dists._evaluate(d::STmetric, a::AbstractArray, b::AbstractArray, ::Nothing)
     n = length(a)
     @boundscheck if n != length(b)
-        throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+        throw(DimensionMismatch("first array has length $n which does not match the length of the second, $(length(b))."))
     end
     if n == 0
-        return zero(result_type(d, a, b))
+        return zero(Dists.result_type(d, a, b))
     end
     @inbounds begin
         s = Dists.eval_start(d, a, b)
@@ -88,7 +88,7 @@ Base.@propagate_inbounds function Dists._evaluate(d::STmetric, a::AbstractArray,
     end
 end
 
-@inline Dists.eval_start(d::STmetric, a, b) = d.p == -Inf ? Inf : zero(Dists.result_type(d, a, b))
+@inline Dists.eval_start(d::STmetric, a, b) = d.p == -Inf ? typemax(Dists.result_type(d, a, b)) : zero(Dists.result_type(d, a, b))
 
 @inline function Dists.eval_reduce(d::STmetric, s1, s2)
     p = d.p
@@ -111,20 +111,18 @@ end
 
 @inline function Dists.eval_end(d::STmetric, s, n)
     p = d.p
+    isinf(p) && return s
+    t = s/n
     if p == 1
-        return s/n
+        return t
     elseif p == 2
-        return √(s/n)
+        return √t
     elseif p == -2
-        return 1 / √(s/n)
+        return 1 / √t
     elseif p == -1
-        return 1 / (s/n)
-    elseif p == Inf
-        return s
-    elseif p == -Inf
-        return s
+        return 1 / t
     else
-        return (s/n)^(1 / p)
+        return t^(1 / p)
     end
 end
 

@@ -11,7 +11,7 @@ y = [@SVector rand(2) for _ in 1:m]
     @test @inferred STmetric(Euclidean(), -2)(x, y) ≈ 1/sqrt(sum(x -> x^(-2), Euclidean().(x, y))/m)
     @test @inferred STmetric(Euclidean(), Inf)(x, y) ≈ maximum(Euclidean().(x, y))
     @test @inferred STmetric(Euclidean(), -Inf)(x, y) ≈ minimum(Euclidean().(x, y))
-    b = @benchmarkable $(STmetric())($x, $y)
+    b = @benchmarkable STmetric()($x, $y)
     @test run(b, samples=4).allocs == 0
 end
 
