@@ -26,6 +26,7 @@ r = zeros(length(X), length(Y))
     b = @benchmarkable pairwise!($R, $(STmetric()), $X)
     @test run(b, samples=4).allocs == 0
     @test size(pairwise(STmetric(), X, Y)) == (length(X), length(Y))
+    @test pairwise(STmetric(), X, Y) == STmetric().(X, permutedims(Y))
     b = @benchmarkable pairwise!($r, $(STmetric()), $X, $Y)
     @test run(b, samples=4).allocs == 0
 end
