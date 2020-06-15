@@ -30,7 +30,7 @@ field = permutedims(reshape(Ψ[:, 3], m, n))
 fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 Plots.plot(fig)
 
-P = sparse_diff_op(trajectories, KNN(400), kernel; metric=STmetric(metric, Inf))
+P = sparse_diff_op(trajectories, KNN(400), gaussian(10); metric=STmetric(metric, Inf))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
@@ -52,9 +52,9 @@ fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 Plots.plot(fig)
 
 import Statistics: mean
-ε = 1e-3
-kernel = gaussian(ε)
-P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel, mean; metric=metric)
+σ = 1e-3
+kernel = gaussian(σ)
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(σ)), kernel, mean; metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
@@ -78,9 +78,9 @@ field = permutedims(reshape(Ψ[:, 3], m, n))
 fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 Plots.plot(fig)
 
-ε = 1e-3
-kernel = gaussian(ε)
-P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=metric)
+σ = 1e-3
+kernel = gaussian(σ)
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(σ)), kernel; metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
