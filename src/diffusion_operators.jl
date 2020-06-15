@@ -16,23 +16,21 @@ julia> kernel(0.)
 1.0
 ```
 """
-function gaussian(σ::Real = 1.0)
+function gaussian(σ = 1.0)
     let s = -1 / 4σ
         x -> exp(s * abs2(x))
     end
 end
 
 """
-    gaussiancutoff(σ, θ)
+    gaussiancutoff(σ, θ = eps())
 
 Computes the positive value at which [`gaussian(σ)`](@ref) equals `θ`, i.e.,
 ```math
 \\sqrt{-4\\sigma\\log(\\theta)}
 ```
 """
-gaussiancutoff(σ::Real, cutoff::Real = eps()) = sqrt(-4σ * log(cutoff))
-
-const LinMaps{T} = Union{LinearMaps.LinearMap{T},AbstractMatrix{T}}
+gaussiancutoff(σ, θ = eps()) = sqrt(-4σ * log(θ))
 
 """
     KNN(k) <: SparsificationMethod
@@ -64,8 +62,8 @@ end
 Defines the ε-Neighborhood sparsification method. In the final graph Laplacian,
 only those particle pairs are included which have distance less than `ε`.
 """
-struct Neighborhood{T<:Real} <: SparsificationMethod
-    ε::T
+struct Neighborhood <: SparsificationMethod
+    ε::Float64
 end
 
 # meta function
@@ -74,7 +72,7 @@ function DM_heatflow(
     p0,
     sp_method::SparsificationMethod,
     kernel;
-    metric::Dists.SemiMetric = Dists.Euclidean(),
+    metric = Dists.Euclidean(),
 )
     data = pmap(flow_fun, p0; batch_size = ceil(sqrt(length(p0))))
     sparse_diff_op_family(data, sp_method, kernel; metric = metric)
@@ -98,26 +96,26 @@ Return a list of sparse diffusion/Markov matrices `P`.
 
 ## Keyword arguments
    * `α=1`: exponent in diffusion-map normalization;
-   * `metric=Euclidean()`: distance function w.r.t. which the kernel is computed, however,
-     only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``;
+   * `metric=Euclidean()`: distance function w.r.t. which the kernel is computed,
+     however, only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``;
    * `verbose=false`: whether to print intermediate progress reports.
 """
 function sparse_diff_op_family(
     data::AbstractVector{<:AbstractVector{<:SVector}},
     sp_method::SparsificationMethod,
     kernel = gaussian(),
-    op_reduce::Function = (P -> prod(reverse(LMs.LinearMap.(P))));
-    α::Real = 1,
-    metric::Dists.SemiMetric = Dists.Euclidean(),
+    op_reduce = (P -> prod(reverse(LMs.LinearMap.(P))));
+    α = 1,
+    metric = Dists.Euclidean(),
     verbose::Bool = false,
 )
     N = length(data) # number of trajectories
     N == 0 && throw("no data available")
-    q = length(data[1]) # number of time steps
-    q == 0 && throw("trajectories have length 0")
-    timeslices = map(i -> getindex.(data, i), 1:q)
-    P = Distributed.pmap(enumerate(timeslices)) do (t, timeslice)
-        Pt = sparse_diff_op(timeslice, sp_method, kernel; α=α, metric=metric)
+    q = axes(first(data), 1) # time axis
+    all(d -> axes(d, 1) == q, data) || throw("inhomogeneous trajectory lengths")
+    length(q) == 0 && throw("trajectories have length 0")
+    P = Distributed.pmap(q) do t
+        Pt = sparse_diff_op(getindex.(data, t), sp_method, kernel; α=α, metric=metric)
         verbose && println("time step $t/$q done")
         Pt
     end
@@ -144,8 +142,8 @@ function sparse_diff_op(
     data::Union{T,AbstractVector{T}},
     sp_method::SparsificationMethod,
     kernel = gaussian();
-    α::Real = 1.0,
-    metric::Dists.SemiMetric = Dists.Euclidean(),
+    α = 1.0,
+    metric = Dists.Euclidean(),
 ) where {T<:AbstractVector{<:SVector}}
     P = spdist(data, sp_method, metric)
     N = LinearAlgebra.checksquare(P)
@@ -155,8 +153,7 @@ function sparse_diff_op(
             vals = nonzeros(P)
             for i in 1:N
                 for j in nzrange(P, i)
-                    vals[j] =
-                        kernel(Dists.evaluate(metric, data[rows[j]], data[i]))
+                    vals[j] = kernel(metric(data[rows[j]], data[i]))
                 end
             end
         end
@@ -177,7 +174,7 @@ Normalize rows and columns of `A` in-place with the respective row-sum to the α
 i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 ``q_k = \\sum_{\\ell} a_{k\\ell}``. Default for `α` is `1`.
 """
-@inline function kde_normalize!(A::AbstractMatrix, α::Real = 1)
+@inline function kde_normalize!(A, α = 1)
     iszero(α) && return A
 
     qₑ = dropdims(reduce(+, A, dims = 2); dims = 2)
@@ -192,7 +189,7 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
     return A
 end
 
-@inline function lrmul!(A::SparseMatrixCSC, qₑ::AbstractVector)
+@inline function lrmul!(A::SparseMatrixCSC, qₑ)
     nzv = SparseArrays.nzvalview(A)
     rv = rowvals(A)
     @inbounds for col in 1:size(A, 2), p in nzrange(A, col)
@@ -200,7 +197,7 @@ end
     end
     return A
 end
-@inline function lrmul!(A::AbstractMatrix, qₑ::AbstractVector)
+@inline function lrmul!(A::AbstractMatrix, qₑ)
     A .= qₑ .* A .* permutedims(qₑ)
     return A
 end
@@ -228,8 +225,7 @@ end
 Normalize rows of `A` in-place with the respective row-sum; i.e., return
 ``a_{ij}:=a_{ij}/q_i``.
 """
-@inline row_normalize!(A::AbstractMatrix) =
-    ldiv!(Diagonal(dropdims(reduce(+, A, dims = 2); dims = 2)), A)
+row_normalize!(A) = ldiv!(Diagonal(dropdims(reduce(+, A, dims = 2); dims = 2)), A)
 
 # spectral clustering/diffusion map related functions
 
@@ -240,7 +236,7 @@ Compute the stationary distribution for a Markov transition operator.
 `P` may be dense or sparse, or a `LinearMap` whose matrix-vector multiplication
 is given by a function. `maxiter` is passed to `Arpack.eigs`.
 """
-function stationary_distribution(P::LinMaps{<:Real}; maxiter = 3000)
+function stationary_distribution(P::LMs.MapOrMatrix; maxiter = 3000)
     E = Arpack.eigs(P; nev = 1, ncv = 50, maxiter = maxiter)
     Π = dropdims(real(E[2]), dims = 2) # stationary distribution
     ext = extrema(Π)
@@ -251,7 +247,7 @@ function stationary_distribution(P::LinMaps{<:Real}; maxiter = 3000)
     return Π
 end
 
-@inline function L_mul_Lt(L::LMs.LinearMap, Π::AbstractVector)
+@inline function L_mul_Lt(L::LMs.LinearMap, Π)
     Πsqrt = Diagonal(sqrt.(Π))
     Πinv = Diagonal(inv.(Π))
     return LMs.LinearMap(
@@ -261,7 +257,7 @@ end
         isposdef = true,
     )
 end
-@inline function L_mul_Lt(L::AbstractMatrix, Π::AbstractVector)
+@inline function L_mul_Lt(L::AbstractMatrix, Π)
     L .= sqrt.(Π) .* L .* permutedims(inv.(sqrt.(Π)))
     LMap = LMs.LinearMap(L)
     return LMs.LinearMap(
@@ -279,7 +275,7 @@ Compute the (time-coupled) diffusion coordinate matrix `Ψ` and the coordinate w
 `Σ` for a diffusion operator `P`. The argument `n_coords` determines the number of
 diffusion  coordinates to be computed, `maxiter` is passed to `Arpack.eigs`.
 """
-function diffusion_coordinates(P::LinMaps, n_coords::Int; maxiter = 3000)
+function diffusion_coordinates(P::LMs.MapOrMatrix, n_coords; maxiter = 3000)
     N = LinearAlgebra.checksquare(P)
     n_coords <= N ||
     throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
@@ -320,4 +316,4 @@ end
 Returns the symmetric pairwise diffusion distance matrix corresponding to points whose
 diffusion coordinates are given by `Ψ`.
 """
-diffusion_distance(Ψ::AbstractMatrix) = Dists.pairwise(Dists.Euclidean(), Ψ)
+diffusion_distance(Ψ) = Dists.pairwise(Dists.Euclidean(), Ψ)
