@@ -23,14 +23,14 @@ function gaussian(σ = 1.0)
 end
 
 """
-    gaussiancutoff(σ, θ)
+    gaussiancutoff(σ, θ = eps())
 
 Computes the positive value at which [`gaussian(σ)`](@ref) equals `θ`, i.e.,
 ```math
 \\sqrt{-4\\sigma\\log(\\theta)}
 ```
 """
-gaussiancutoff(σ, cutoff = eps()) = sqrt(-4σ * log(cutoff))
+gaussiancutoff(σ, θ = eps()) = sqrt(-4σ * log(θ))
 
 """
     KNN(k) <: SparsificationMethod

@@ -76,7 +76,7 @@ DISPLAY_PLOT(fig, ha16ev3)
 # demonstration for 400 nearest, non-mutual neighbors. For the mutual nearest neighbors
 # sparsification, choose `MutualKNN()`.
 
-P = sparse_diff_op(trajectories, KNN(400), kernel; metric=STmetric(metric, Inf))
+P = sparse_diff_op(trajectories, KNN(400), gaussian(10); metric=STmetric(metric, Inf))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
@@ -107,9 +107,9 @@ DISPLAY_PLOT(fig, ha16seba2)
 # ### Space-time diffusion maps [Banisch & Koltai, 2017]
 
 import Statistics: mean
-ε = 1e-3
-kernel = gaussian(ε)
-P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel, mean; metric=metric)
+σ = 1e-3
+kernel = gaussian(σ)
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(σ)), kernel, mean; metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
@@ -136,9 +136,9 @@ DISPLAY_PLOT(fig, pascheev3)
 
 # ### Time coupled diffusion coordinates [Marshall & Hirn, 2018]
 
-ε = 1e-3
-kernel = gaussian(ε)
-P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(ε)), kernel; metric=metric)
+σ = 1e-3
+kernel = gaussian(σ)
+P = sparse_diff_op_family(trajectories, Neighborhood(gaussiancutoff(σ)), kernel; metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
