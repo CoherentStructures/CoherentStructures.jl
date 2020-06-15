@@ -2,17 +2,23 @@ using Test, CoherentStructures, StaticArrays, Distances, BenchmarkTools
 
 m = 20
 x = [@SVector rand(2) for _ in 1:m]
+xfake = [@SVector rand(2) for _ in 1:(m+1)]
+xempty = eltype(x)[]
 y = [@SVector rand(2) for _ in 1:m]
+p = 1 + rand()
 @testset "spatiotemporal metric" begin
-    @test @inferred STmetric(Euclidean(), 1)(x, y) ≈ sum(Euclidean().(x, y))/m
-    @test @inferred STmetric(Euclidean(), 2)(x, y) ≈ sqrt(sum(abs2, Euclidean().(x, y))/m)
-    @test @inferred STmetric(SqEuclidean(), 1)(x, y) ≈ sum(SqEuclidean().(x, y))/m
-    @test @inferred STmetric(Euclidean(), -1)(x, y) ≈ inv(sum(inv, Euclidean().(x, y))/m)
-    @test @inferred STmetric(Euclidean(), -2)(x, y) ≈ 1/sqrt(sum(x -> x^(-2), Euclidean().(x, y))/m)
-    @test @inferred STmetric(Euclidean(), Inf)(x, y) ≈ maximum(Euclidean().(x, y))
-    @test @inferred STmetric(Euclidean(), -Inf)(x, y) ≈ minimum(Euclidean().(x, y))
+    @test @inferred(STmetric(Euclidean(), 1)(x, y)) == stmetric(x, y, Euclidean(), 1) ≈ sum(Euclidean().(x, y))/m
+    @test @inferred(STmetric(Euclidean(), 2)(x, y)) == stmetric(x, y, Euclidean(), 2) ≈ sqrt(sum(abs2, Euclidean().(x, y))/m)
+    @test @inferred(STmetric(SqEuclidean(), 1)(x, y)) == stmetric(x, y, SqEuclidean(), 1) ≈ sum(SqEuclidean().(x, y))/m
+    @test @inferred(STmetric(Euclidean(), -1)(x, y)) == stmetric(x, y, Euclidean(), -1) ≈ inv(sum(inv, Euclidean().(x, y))/m)
+    @test @inferred(STmetric(Euclidean(), -2)(x, y)) == stmetric(x, y, Euclidean(), -2) ≈ 1/sqrt(sum(x -> x^(-2), Euclidean().(x, y))/m)
+    @test @inferred(STmetric(Euclidean(), Inf)(x, y)) == stmetric(x, y, Euclidean(), Inf) == maximum(Euclidean().(x, y))
+    @test @inferred(STmetric(Euclidean(), -Inf)(x, y)) == stmetric(x, y, Euclidean(), -Inf) == minimum(Euclidean().(x, y))
+    @test @inferred(STmetric(Euclidean(), p)(x, y)) == stmetric(x, y, Euclidean(), p) == (sum(x -> x^p, Euclidean().(x, y))/m)^(1/p)
     b = @benchmarkable STmetric()($x, $y)
     @test run(b, samples=4).allocs == 0
+    @test_throws DimensionMismatch stmetric(xfake, y, Euclidean(), 1)
+    @test stmetric(xempty, xempty, Euclidean(), 1) === 0.0
 end
 
 X = [[@SVector rand(2) for _ in 1:m] for _ in 1:10]

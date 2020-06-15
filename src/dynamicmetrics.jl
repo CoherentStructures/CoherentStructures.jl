@@ -47,7 +47,6 @@ end
 # defaults: metric = Euclidean(), dim = 2, p = 1
 STmetric(d = Dists.Euclidean()) = STmetric(d, 1)
 
-Dists.evaluate(d::STmetric, a, b) = d(a, b)
 function (dist::STmetric)(a::AbstractArray, b::AbstractArray)
     return Dists._evaluate(dist, a, b, nothing)
 end
