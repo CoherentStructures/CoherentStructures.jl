@@ -127,8 +127,8 @@ end
 end
 
 function stmetric(
-    a::AbstractVector{<:T},
-    b::AbstractVector{<:T},
+    a::AbstractVector{T},
+    b::AbstractVector{T},
     d::Dists.SemiMetric = Dists.Euclidean(),
     p::Real = 1,
 ) where {T<:SVector}
@@ -138,8 +138,8 @@ end
 function Dists.pairwise!(
     r::AbstractMatrix,
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:T}},
-    b::AbstractVector{<:AbstractVector{<:T}};
+    a::AbstractVector{<:AbstractVector{T}},
+    b::AbstractVector{<:AbstractVector{T}};
     dims::Union{Nothing,Integer} = nothing,
 ) where {T<:SVector}
     la, lb = length.((a, b))
@@ -175,8 +175,8 @@ end
 
 function Dists.pairwise(
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:T}},
-    b::AbstractVector{<:AbstractVector{<:T}};
+    a::AbstractVector{<:AbstractVector{T}},
+    b::AbstractVector{<:AbstractVector{T}};
     dims::Union{Nothing,Integer} = nothing,
 ) where {T<:SVector}
     la = length(a)
@@ -199,8 +199,8 @@ end
 function Dists.colwise!(
     r::AbstractVector,
     metric::STmetric,
-    a::AbstractVector{<:T},
-    b::AbstractVector{<:AbstractVector{<:T}},
+    a::AbstractVector{T},
+    b::AbstractVector{<:AbstractVector{T}},
 ) where {T<:SVector}
     lb = length(b)
     length(r) == lb || throw(DimensionMismatch("incorrect length of r (got $(length(r)), expected $lb)"))
@@ -212,8 +212,8 @@ end
 function Dists.colwise!(
     r::AbstractVector,
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:T}},
-    b::AbstractVector{<:T},
+    a::AbstractVector{<:AbstractVector{T}},
+    b::AbstractVector{T},
 ) where {T<:SVector}
     Dists.colwise!(r, metric, b, a)
 end
@@ -235,8 +235,8 @@ end
 
 function Dists.colwise(
     metric::STmetric,
-    a::AbstractVector{<:T},
-    b::AbstractVector{<:AbstractVector{<:T}},
+    a::AbstractVector{T},
+    b::AbstractVector{<:AbstractVector{T}},
 ) where {T<:SVector}
     Dists.colwise!(
         Vector{Dists.result_type(metric, a, first(b))}(undef, length(b)),
@@ -247,8 +247,8 @@ function Dists.colwise(
 end
 function Dists.colwise(
     metric::STmetric,
-    a::AbstractVector{<:AbstractVector{<:T}},
-    b::AbstractVector{<:T},
+    a::AbstractVector{<:AbstractVector{T}},
+    b::AbstractVector{T},
 ) where {T<:SVector}
     return Dists.colwise(metric, b, a)
 end
@@ -357,7 +357,7 @@ function spdist(
     metric::STmetric,
 )
     N, k = length(data), sp_method.k
-    Is = SharedArray{Int}(N * (k + 1))
+    Is = repeat(1:N, inner=k+1)
     Js = SharedArray{Int}(N * (k + 1))
     T = typeof(metric(data[1], data[1]))
     Ds = SharedArray{T}(N * (k + 1))
@@ -367,12 +367,11 @@ function spdist(
     @inbounds @sync Distributed.@distributed for i in 1:N
         Dists.colwise!(ds, metric, data[i], data)
         index = partialsortperm!(perm, ds, 1:(k+1), initialized = true)
-        Is[(i-1)*(k+1)+1:i*(k+1)] .= i
         Js[(i-1)*(k+1)+1:i*(k+1)] = index
         Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
     end
     D = sparse(Is, Js, Ds, N, N)
-    SparseArrays.dropzeros!(D)
+    # SparseArrays.dropzeros!(D)
     if sp_method isa KNN
         return max.(D, permutedims(D))
     else # sp_method isa MutualKNN
