@@ -1,6 +1,7 @@
 using Documenter
 using Literate
 using CoherentStructures
+using StreamMacros
 using Dates
 ENV["GKSwstype"] = "100"
 using Plots # to not capture precompilation output
