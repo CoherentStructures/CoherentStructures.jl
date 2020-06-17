@@ -13,7 +13,11 @@
 # In the following, we demonstrate how to use coherent structure detection methods
 # that work directly on trajectory data sets. These include the graph
 # Laplace-based and the transfer operator-based methods for approximating the
-# dynamic Laplacian.
+# dynamic Laplacian. For simplicity, we will demonstrate the methods based on
+# trajectories obtained from integrating the Bickley jet velocity field.
+
+using StreamMacros
+bickleyJet = StreamMacros.bickleyJet
 
 # ## Graph Laplace-based methods
 
@@ -153,6 +157,16 @@ DISPLAY_PLOT(fig, mahirn18ev3)
 
 # We first generate some trajectories on a set of `n` random points for the
 # rotating double gyre flow.
+
+using StreamMacros
+using StreamMacros: heaviside
+
+rot_double_gyre = @velo_from_stream stream begin
+    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    Ψ_P         = sin(2π*x)*sin(π*y)
+    Ψ_F         = sin(π*x)*sin(2π*y)
+    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
+end
 
 using CoherentStructures, StaticArrays, Tensors
 

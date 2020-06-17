@@ -14,17 +14,19 @@
 # The rotating double gyre model was introduced by
 # [Mosovsky & Meiss](https://doi.org/10.1137/100794110). It can be derived from
 # the stream function
-#
 # ```math
 # \psi(x,y,t)=(1−s(t))\psi_P +s(t)\psi_F \\ \psi_P (x, y) = \sin(2\pi x) \sin(\pi y) \\ \psi_F (x, y) = \sin(\pi x) \sin(2\pi y)
 # ```
-#
 # where ``s`` is (usually taken to be) a cubic interpolating function satisfying
 # ``s(0) = 0`` and ``s(1) = 1``. It therefore interpolates two double-gyre-type
 # velocity fields, from horizontally to vertically arranged counter-rotating gyres.
-# The corresponding velocity field is provided by the package and callable as
-# `rot_double_gyre`.
-#
+# The corresponding velocity field is provided by the
+# [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl)
+# package and callable as `StreamMacros.rot_double_gyre`.
+
+using StreamMacros
+rot_double_gyre = StreamMacros.rot_double_gyre
+
 # ![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
 #
 # ## FEM-Based Methods

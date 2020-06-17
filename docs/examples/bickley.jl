@@ -14,13 +14,10 @@
 # [Rypina et al.](https://doi.org/10.1175/JAS4036.1); cf. also [del‐Castillo‐Negrete and Morrison](https://doi.org/10.1063/1.858639).
 #
 # The Bickley jet is described by a time-dependent velocity field arising from a
-# stream-function. The corresponding velocity field is provided by the package and
-# callable as `bickleyJet`.
-#
-# Instead of using the `bickleyJet` function to get this velocity field, we could
-# also use the `@velo_from_stream` macro:
+# stream-function. The corresponding velocity field can be conveniently defined
+# using the `@velo_from_stream` macro from [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl):
 
-using CoherentStructures
+using CoherentStructures, StreamMacros
 bickley = @velo_from_stream stream begin
     stream = psi₀ + psi₁
     psi₀   = - U₀ * L₀ * tanh(y / L₀)
@@ -64,7 +61,7 @@ P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 δ = 1.e-6
 D = SymmetricTensor{2,2}([2., 0., 1/2])
 mCG_tensor = let tspan=tspan, δ=δ, D=D
-    u -> av_weighted_CG_tensor(bickleyJet, u, tspan, δ;
+    u -> av_weighted_CG_tensor(bickley, u, tspan, δ;
           D=D, tolerance=1e-6, solver=Tsit5())
 end
 

@@ -143,14 +143,6 @@ export
 	unzip,
 
 	#velocityfields.jl
-	rot_double_gyre,
-	rot_double_gyre!,
-	rot_double_gyreEqVari,
-	rot_double_gyreEqVari!,
-	bickleyJet,
-	bickleyJet!,
-	bickleyJetEqVari,
-	bickleyJetEqVari!,
 	interpolateVF,
 	interp_rhs,
 	interp_rhs!,
