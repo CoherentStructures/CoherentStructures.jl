@@ -1,4 +1,5 @@
 using Test, CoherentStructures, StreamMacros
+import StreamMacros: heaviside
 using StaticArrays, OrdinaryDiffEq, LinearAlgebra, AxisArrays
 const CS = CoherentStructures
 
@@ -62,7 +63,6 @@ P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
 rot_double_gyre = @velo_from_stream stream begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-    heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
