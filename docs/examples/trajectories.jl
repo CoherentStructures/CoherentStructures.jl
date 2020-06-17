@@ -17,7 +17,23 @@
 # trajectories obtained from integrating the Bickley jet velocity field.
 
 using StreamMacros
-bickleyJet = StreamMacros.bickleyJet
+bickleyJet = @velo_from_stream stream begin
+    stream = psi₀ + psi₁
+    psi₀   = - U₀ * L₀ * tanh(y / L₀)
+    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
+
+    re_sum_term =  Σ₁ + Σ₂ + Σ₃
+
+    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))
+    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))
+    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))
+
+    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀
+
+    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3
+    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
+    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
+end
 
 # ## Graph Laplace-based methods
 
@@ -162,10 +178,10 @@ using StreamMacros
 using StreamMacros: heaviside
 
 rot_double_gyre = @velo_from_stream stream begin
-    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-    Ψ_P         = sin(2π*x)*sin(π*y)
-    Ψ_F         = sin(π*x)*sin(2π*y)
-    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
+    st     = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    Ψ_P    = sin(2π*x)*sin(π*y)
+    Ψ_F    = sin(π*x)*sin(2π*y)
+    stream = (1-st) * Ψ_P + st * Ψ_F
 end
 
 using CoherentStructures, StaticArrays, Tensors

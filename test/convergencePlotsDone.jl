@@ -7,7 +7,7 @@ using Plots, Serialization, LinearAlgebra, Printf
 include("numericalExperiments.jl")
 
 bickleyJet = @velo_from_stream stream begin
-    Ψ_bickley = psi₀ + psi₁
+    stream = psi₀ + psi₁
     psi₀   = - U₀ * L₀ * tanh(y / L₀)
     psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
 
