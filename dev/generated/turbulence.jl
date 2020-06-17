@@ -6,10 +6,10 @@ Pkg.add("AxisArrays")
 Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/OceanTools.jl.git"))
-Pkg.pin(Pkg.PackageSpec(name="FourierFlows", version="0.4.1"))
-Pkg.pin(Pkg.PackageSpec(name="GeophysicalFlows", version="0.3.3"))
+Pkg.pin(Pkg.PackageSpec(name="FourierFlows", version="0.4.5"))
+Pkg.pin(Pkg.PackageSpec(name="GeophysicalFlows", version="0.5.1"))
 
-using FourierFlows, GeophysicalFlows, GeophysicalFlows.TwoDTurb, Plots, Random
+using FourierFlows, GeophysicalFlows, GeophysicalFlows.TwoDNavierStokes, Plots, Random
 Random.seed!(1234)
 mygrid = TwoDGrid(256, 2π)
 x, y = gridpoints(mygrid)
@@ -30,9 +30,9 @@ function calcF!(Fh, sol, t, cl, args...)
     nothing
 end
 
-prob = TwoDTurb.Problem(nx=256, Lx=2π, ν=1e-2, nν=0, dt=1e-2,
+prob = TwoDNavierStokes.Problem(nx=256, Lx=2π, ν=1e-2, nν=0, dt=1e-2,
     stepper="FilteredRK4", calcF=calcF!, stochastic=true)
-TwoDTurb.set_zeta!(prob, GeophysicalFlows.peakedisotropicspectrum(mygrid, 2, 0.5))
+TwoDNavierStokes.set_zeta!(prob, GeophysicalFlows.peakedisotropicspectrum(mygrid, 2, 0.5))
 
 
 using Distributed
