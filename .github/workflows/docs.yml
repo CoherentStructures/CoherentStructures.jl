@@ -16,7 +16,8 @@ jobs:
       - name: Install dependencies
         run: julia --project=docs/ -e '
           using Pkg;
-          Pkg.add(PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"));
+          Pkg.add(PackageSpec(; url="https://github.com/KristofferC/JuAFEM.jl.git"));
+          Pkg.add(PackageSpec(; url="https://github.com/CoherentStructures/StreamMacros.jl"));
           Pkg.develop(PackageSpec(; path=pwd()));
           Pkg.instantiate();'
       - name: Build and deploy documentation
