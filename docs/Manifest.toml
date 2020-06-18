@@ -82,9 +82,7 @@ version = "0.7.0"
 
 [[CoherentStructures]]
 deps = ["Arpack", "AxisArrays", "ColorTypes", "DiffEqBase", "Distances", "Distributed", "GeometricalPredicates", "Interpolations", "IterativeSolvers", "JuAFEM", "LinearAlgebra", "LinearMaps", "NearestNeighbors", "OrdinaryDiffEq", "ProgressMeter", "RecipesBase", "SharedArrays", "SparseArrays", "StaticArrays", "Statistics", "SymEngine", "Tensors", "VoronoiDelaunay"]
-git-tree-sha1 = "7463342f4d21193b9655042e4fef7336cd229a82"
-repo-rev = "master"
-repo-url = "https://github.com/CoherentStructures/CoherentStructures.jl.git"
+path = ".."
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
 version = "0.2.0"
 
@@ -360,7 +358,6 @@ git-tree-sha1 = "2118ecd9f0166f821f170f813a8d553bd6c1f0bf"
 repo-rev = "master"
 repo-url = "https://github.com/KristofferC/JuAFEM.jl.git"
 uuid = "30d91d44-8115-11e8-1d28-c19a5ac16de8"
-version = "0.2.0"
 
 [[LAME_jll]]
 deps = ["Libdl", "Pkg"]
