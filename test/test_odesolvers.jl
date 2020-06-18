@@ -1,5 +1,4 @@
-using CoherentStructures, Test, StreamMacros
-import StreamMacros: heaviside
+using CoherentStructures, Test
 using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
 @testset "odesolvers" begin
@@ -48,12 +47,7 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
     @testset "ADE in rotating double gyre" begin
         # rot_double_gyre
-        rot_double_gyre = @velo_from_stream stream begin
-            st     = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-            Ψ_P    = sin(2π*x)*sin(π*y)
-            Ψ_F    = sin(π*x)*sin(2π*y)
-            stream = (1-st) * Ψ_P + st * Ψ_F
-        end
+        include("define_vector_fields.jl")
         N = 25
         δ = 1e-8
         ϵ = 1e-2

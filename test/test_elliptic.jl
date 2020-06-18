@@ -1,5 +1,4 @@
-using Test, CoherentStructures, StreamMacros
-import StreamMacros: heaviside
+using Test, CoherentStructures
 using StaticArrays, OrdinaryDiffEq, LinearAlgebra, AxisArrays
 const CS = CoherentStructures
 
@@ -61,12 +60,7 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
-rot_double_gyre = @velo_from_stream stream begin
-    st     = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-    Ψ_P    = sin(2π*x)*sin(π*y)
-    Ψ_F    = sin(π*x)*sin(2π*y)
-    stream = (1-st) * Ψ_P + st * Ψ_F
-end
+include("define_vector_fields.jl")
 mCG_tensor = let ts=tspan
     u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
 end
