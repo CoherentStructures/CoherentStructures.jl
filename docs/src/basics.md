@@ -24,17 +24,8 @@ function vectorfield3d(u, p, t)
     return StaticArrays.SVector{3}(du1, du2, du3)
 end
 ```
-Furthermore, there are convenience macros to define two-dimensional velocity
+In a companion package [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl), there are convenience macros to define two-dimensional velocity
 and vorticity fields from stream functions.
-```@docs
-@define_stream
-@velo_from_stream
-@var_velo_from_stream
-@vorticity_from_stream
-```
-In fact, two of the predefined velocity fields, the rotating double gyre
-`rot_double_gyre`, and the Bickley jet flow `bickleyJet`, are generated from
-these macros.
 
 Another typical use case is when velocities are given as a data set. In this
 case, one first interpolates the velocity components with [`interpolateVF`](@ref)

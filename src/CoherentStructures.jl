@@ -45,7 +45,6 @@ const JFM = JuAFEM
 
 #Other miscallaneous packages
 using RecipesBase
-import SymEngine
 import ColorTypes
 
 # contains a list of exported functions
@@ -74,9 +73,6 @@ include("pullbacktensors.jl")
 
 # functions related to geodesic elliptic LCS detection
 include("ellipticLCS.jl")
-
-# generation of vector fields from stream functions
-include("streammacros.jl")
 
 # definitions of velocity fields
 include("velocityfields.jl")

@@ -126,12 +126,6 @@ export
 	pullback_SDE_diffusion_tensor,
 	av_weighted_CG_tensor,
 
-	#streammacros.jl
-    @define_stream,
-    @velo_from_stream,
-    @var_velo_from_stream,
-	@vorticity_from_stream,
-
 	#TO.jl
 	nonAdaptiveTOCollocation,
 	adaptiveTOCollocation,
@@ -149,14 +143,6 @@ export
 	unzip,
 
 	#velocityfields.jl
-	rot_double_gyre,
-	rot_double_gyre!,
-	rot_double_gyreEqVari,
-	rot_double_gyreEqVari!,
-	bickleyJet,
-	bickleyJet!,
-	bickleyJetEqVari,
-	bickleyJetEqVari!,
 	interpolateVF,
 	interp_rhs,
 	interp_rhs!,

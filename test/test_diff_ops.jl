@@ -1,4 +1,7 @@
-using Test, Distributed, CoherentStructures, Statistics, StaticArrays, Distances, LinearMaps
+using Test, CoherentStructures, StaticArrays, Distances, LinearMaps
+using Distributed, Statistics
+
+include("define_vector_fields.jl")
 
 t_initial = 0.0
 t_final = 3600.0

@@ -13,7 +13,8 @@
 # In the following, we demonstrate how to use coherent structure detection methods
 # that work directly on trajectory data sets. These include the graph
 # Laplace-based and the transfer operator-based methods for approximating the
-# dynamic Laplacian.
+# dynamic Laplacian. For simplicity, we will demonstrate the methods based on
+# trajectories obtained from integrating the Bickley jet velocity field.
 
 # ## Graph Laplace-based methods
 
@@ -26,10 +27,26 @@
 using Distributed
 (nprocs() == 1) && addprocs()
 
-# We first load our package and some dependencies.
+# We first load our package, some dependencies, and define the vector field.
 
-@everywhere using CoherentStructures
-using StaticArrays, Distances, Plots
+@everywhere using CoherentStructures, StreamMacros
+using Distances, Plots
+@everywhere bickleyJet = @velo_from_stream psi begin
+    psi  = psi₀ + psi₁
+    psi₀ = - U₀ * L₀ * tanh(y / L₀)
+    psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
+
+    re_sum_term = Σ₁ + Σ₂ + Σ₃
+
+    Σ₁ = ε₁ * cos(k₁*(x - c₁*t))
+    Σ₂ = ε₂ * cos(k₂*(x - c₂*t))
+    Σ₃ = ε₃ * cos(k₃*(x - c₃*t))
+
+    k₁ = 2/r₀    ; k₂ = 4/r₀   ; k₃ = 6/r₀
+    ε₁ = 0.0075  ; ε₂ = 0.15   ; ε₃ = 0.3
+    c₂ = 0.205U₀ ; c₃ = 0.461U₀; c₁ = c₃ + (√5-1)*(c₂-c₃)
+    U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
+end
 
 # Next, we define the usual flow parameters. For visualization convenience,
 # we use a regular grid at initial time.
@@ -39,7 +56,7 @@ m = 120; n = 41; N = m*n
 x = range(0.0, stop=20.0, length=m)
 y = range(-3.0, stop=3.0, length=n)
 f = u -> flow(bickleyJet, u, tspan, tolerance=1e-4)
-particles = vec(SVector{2}.(x, y'))
+particles = vec(tuple.(x, y'))
 trajectories = pmap(f, particles; batch_size=m)
 
 # The flow is defined on a cylinder with the following periods in x and y. The
@@ -154,19 +171,27 @@ DISPLAY_PLOT(fig, mahirn18ev3)
 # We first generate some trajectories on a set of `n` random points for the
 # rotating double gyre flow.
 
-using CoherentStructures, StaticArrays, Tensors
+using StreamMacros
+rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    heaviside(x)= 0.5*(sign(x) + 1)
+    Ψ_P         = sin(2π*x)*sin(π*y)
+    Ψ_F         = sin(π*x)*sin(2π*y)
+    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
+end
+using CoherentStructures
 
 n = 500
 tspan = range(0, stop=1.0, length=20)
 xs, ys = rand(n), rand(n)
-particles = SVector{2}.(xs, ys)
+particles = tuple.(xs, ys)
 trajectories = [flow(rot_double_gyre, p, tspan) for p in particles]
 
 # Based on the initial particle positions we generate a triangulation.
 # If this call fails or does not return, the initial positions may not be unique.
 # In that case, simply generate a different set of random initial positions.
 
-ctx, _ = irregularDelaunayGrid(Vec{2}.(particles))
+ctx, _ = irregularDelaunayGrid(particles)
 
 # Next, we generate the stiffness and mass matrices and solve the generalized eigenproblem.
 

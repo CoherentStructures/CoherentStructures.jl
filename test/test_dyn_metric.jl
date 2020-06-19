@@ -1,5 +1,6 @@
-using Test, CoherentStructures, StaticArrays, Distances, BenchmarkTools
+using Test, CoherentStructures, StaticArrays, Distances, BenchmarkTools, Random
 
+Random.seed!(1234)
 m = 20
 x = [@SVector rand(2) for _ in 1:m]
 xfake = [@SVector rand(2) for _ in 1:(m+1)]

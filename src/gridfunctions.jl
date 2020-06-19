@@ -352,8 +352,13 @@ Triangulate the nodes `nodes_in` and return a `GridContext` and `bdata` for them
 If `on_torus==true`, the triangulation is done on a torus.
 If `PC==true`, return a mesh with piecewise constant shape-functions, else P1 Lagrange.
 """
-function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
-        on_torus=false, on_cylinder=false, LL=nothing, UR=nothing, PC=false, kwargs...)
+function irregularDelaunayGrid(nodes_in::AbstractVector{Vec{2,Float64}};
+        on_torus=false,
+        on_cylinder=false,
+        LL=nothing,
+        UR=nothing,
+        PC=false,
+        kwargs...)
     if on_torus || on_cylinder
         @assert (LL !== nothing && UR !== nothing)
     end
@@ -372,6 +377,21 @@ function irregularDelaunayGrid(nodes_in::Vector{Vec{2,Float64}};
         bdata = BoundaryData()
     end
     return ctx, bdata
+end
+function irregularDelaunayGrid(nodes_in::AbstractVector{NTuple{2,Float64}};
+        on_torus=false,
+        on_cylinder=false,
+        LL=nothing,
+        UR=nothing,
+        PC=false,
+        kwargs...)
+    return irregularDelaunayGrid(Vec{2}.(nodes_in);
+            on_torus=on_torus,
+            on_cylinder=on_cylinder,
+            LL=LL,
+            UR=UR,
+            PC=PC,
+            kwargs...)
 end
 
 """
@@ -806,7 +826,7 @@ sure it is within `ctx.spatialBounds` (if `project_in==true`).
 Helper function.
 """
 function project_in_xin(
-    ctx::GridContext{dim}, x_in::AbstractVector{T},project_in
+    ctx::GridContext{dim}, x_in::AbstractVector{T}, project_in
     )::Vec{dim,T} where {dim,T}
 
     if !project_in
@@ -856,7 +876,7 @@ function evaluate_function_from_node_or_cellvals(
     ctx::GridContext{dim}, vals::AbstractVector{S}, x_in::Vec{dim,W};
     outside_value=NaN, project_in=false, throw_errors=true)::S where {dim,S,W}
 
-    x::Vec{dim,W} = project_in_xin(ctx,x_in,project_in)
+    x::Vec{dim,W} = project_in_xin(ctx, x_in, project_in)
 
     @assert length(vals) == ctx.n
 
@@ -1150,12 +1170,14 @@ GP.getx(p::NumberedPoint2D) = p.x
 
 #More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
 
-function delaunay2(x::Vector{Vec{2,Float64}})
+function delaunay2(x::Vector{<:Union{Vec{2,Float64},NTuple{2,Float64}}})
     width = VD.max_coord - VD.min_coord
-    max_x = maximum(map(v->v[1], x))
-    min_x = minimum(map(v->v[1], x))
-    max_y = maximum(map(v->v[2], x))
-    min_y = minimum(map(v->v[2], x))
+    @inbounds begin
+        max_x = maximum(map(v->v[1], x))
+        min_x = minimum(map(v->v[1], x))
+        max_y = maximum(map(v->v[2], x))
+        min_y = minimum(map(v->v[2], x))
+    end
     scale_x = 0.9*width/(max_x - min_x)
     scale_y = 0.9*width/(max_y - min_y)
     n = length(x)
@@ -1238,7 +1260,7 @@ Calls VoronoiDelaunay for delaunay triangulation. Makes a periodic triangulation
 if `on_torus` is set to `true` similarly with `on_cylinder`.
 """
 function JFM.generate_grid(::Type{JFM.Triangle},
-     nodes_in::Vector{Vec{2,Float64}};
+     nodes_in::AbstractVector{Vec{2,Float64}};
      on_torus=false, on_cylinder=false, LL=nothing, UR=nothing)
     @assert !(on_torus && on_cylinder)
     if on_torus || on_cylinder
@@ -1261,7 +1283,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
         for i in (0, 1, -1), j in (0, 1, -1)
             for (index, node) in enumerate(nodes_in)
                 new_point = node .+ (i*dx, j*dy)
-                push!(nodes_to_triangulate,Vec{2}((new_point[1], new_point[2])))
+                push!(nodes_to_triangulate, Vec{2}((new_point[1], new_point[2])))
                 push!(points_mapping, index)
             end
         end

@@ -47,6 +47,7 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
     @testset "ADE in rotating double gyre" begin
         # rot_double_gyre
+        include("define_vector_fields.jl")
         N = 25
         δ = 1e-8
         ϵ = 1e-2

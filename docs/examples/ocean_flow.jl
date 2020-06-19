@@ -30,7 +30,7 @@
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays
+@everywhere using CoherentStructures, OrdinaryDiffEq
 
 # Next, we load and interpolate the velocity data sets. Loading the data sets defines
 # `Lon`, `Lat`, `Time`, `UT`, `VT`.
@@ -51,7 +51,7 @@ nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
 δ = 1.e-5
 mCG_tensor = let tspan=tspan, δ=δ, p=VI
     u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
@@ -78,7 +78,7 @@ DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 # With only minor modifications, we are also able to compute OECSs. We start by
 # loading some packages and define the rate-of-strain tensor function.
 
-using Interpolations, Tensors
+using Interpolations, Tensors, StaticArrays
 
 V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
 
@@ -96,7 +96,7 @@ nx = 950
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
 
 # Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.
 # As there tend to be many 3 wedge + trisector-type singularity combinations

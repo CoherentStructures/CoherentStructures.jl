@@ -1,4 +1,6 @@
-using CoherentStructures, OrdinaryDiffEq, Arpack
+using CoherentStructures, OrdinaryDiffEq, Arpack, StreamMacros
+
+bickleyJet = StreamMacros.bickleyJet
 
 nx, ny = 100, 31
 LL = [0.0, -3.0]; UR=[6.371π, 3.0]

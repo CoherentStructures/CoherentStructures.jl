@@ -1,4 +1,5 @@
-using Test, StaticArrays, OrdinaryDiffEq, LinearAlgebra, CoherentStructures, AxisArrays
+using Test, CoherentStructures
+using StaticArrays, OrdinaryDiffEq, LinearAlgebra, AxisArrays
 const CS = CoherentStructures
 
 @testset "singularities" begin
@@ -59,6 +60,7 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
 
+include("define_vector_fields.jl")
 mCG_tensor = let ts=tspan
     u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
 end

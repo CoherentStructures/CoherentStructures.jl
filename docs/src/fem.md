@@ -49,7 +49,7 @@ For more details, see [Froyland & Junge, 2018](https://arxiv.org/pdf/1705.03640.
 
 ### Grids
 
-Various types of regular and irregular meshes (with Delaunay triangulation using [VoronoiDelaunay.jl](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) and include:
+Various types of regular and irregular meshes (with Delaunay triangulation using [`VoronoiDelaunay.jl`](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) and include:
  - triangular P1-Lagrange elements in 2D (all methods)
  - quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
  - triangular and quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
@@ -57,7 +57,7 @@ Various types of regular and irregular meshes (with Delaunay triangulation using
 
 ## The `GridContext` Type
 
-The FEM-based methods of `CoherentStructures.jl` rely heavily on the [JuAFEM.jl](https://github.com/KristofferC/JuAFEM.jl) package.
+The FEM-based methods of `CoherentStructures.jl` rely heavily on the [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) package.
 This package is very low-level and does not provide point-location/plotting functionality.
 To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a `GridContext` structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.
 
@@ -91,7 +91,7 @@ using Plots, Tensors
 ctx, _ = regularP2TriangularGrid((10, 10))
 u = zeros(ctx.n)
 u[45] = 1.0
-Plots.heatmap(range(0, stop=1, length=200),range(0, stop=1, length=200),
+Plots.heatmap(range(0, stop=1, length=200), range(0, stop=1, length=200),
     (x, y) -> evaluate_function_from_dofvals(ctx, u, Vec(x, y)))
 ```
 

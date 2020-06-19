@@ -14,17 +14,24 @@
 # The rotating double gyre model was introduced by
 # [Mosovsky & Meiss](https://doi.org/10.1137/100794110). It can be derived from
 # the stream function
-#
 # ```math
 # \psi(x,y,t)=(1−s(t))\psi_P +s(t)\psi_F \\ \psi_P (x, y) = \sin(2\pi x) \sin(\pi y) \\ \psi_F (x, y) = \sin(\pi x) \sin(2\pi y)
 # ```
-#
 # where ``s`` is (usually taken to be) a cubic interpolating function satisfying
 # ``s(0) = 0`` and ``s(1) = 1``. It therefore interpolates two double-gyre-type
 # velocity fields, from horizontally to vertically arranged counter-rotating gyres.
-# The corresponding velocity field is provided by the package and callable as
-# `rot_double_gyre`.
-#
+# The corresponding velocity field can be conveniently defined using the
+# `@velo_from_stream` macro from [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl):
+
+using StreamMacros
+rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    heaviside(x)= 0.5*(sign(x) + 1)
+    Ψ_P         = sin(2π*x)*sin(π*y)
+    Ψ_F         = sin(π*x)*sin(2π*y)
+    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
+end
+
 # ![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
 #
 # ## FEM-Based Methods
@@ -88,16 +95,23 @@ DISPLAY_PLOT(res, rot_double_gyre_fem)
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere using CoherentStructures, OrdinaryDiffEq
-using StaticArrays, AxisArrays
+@everywhere using CoherentStructures, OrdinaryDiffEq, StreamMacros
+using AxisArrays
 q = 21
 tspan = range(0., stop=1., length=q)
 nx = ny = 101
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
 δ = 1.e-6
+@everywhere rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    heaviside(x)= 0.5*(sign(x) + 1)
+    Ψ_P         = sin(2π*x)*sin(π*y)
+    Ψ_F         = sin(π*x)*sin(2π*y)
+    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
+end
 mCG_tensor = let tspan=tspan, δ=δ
     u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
 end

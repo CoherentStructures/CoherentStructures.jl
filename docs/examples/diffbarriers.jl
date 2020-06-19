@@ -28,38 +28,36 @@ import Pkg
 Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/StreamMacros.jl"))
-Pkg.add(["OrdinaryDiffEq", "Tensors", "StaticArrays", "AxisArrays", "JLD2", "Plots"])
+Pkg.add(["OrdinaryDiffEq", "Tensors", "AxisArrays", "JLD2", "Plots"])
 
-using StreamMacros
-
-bickley = @velo_from_stream stream begin
-    stream = psi₀ + psi₁
-    psi₀   = - U₀ * L₀ * tanh(y / L₀)
-    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
-
-    re_sum_term =  Σ₁ + Σ₂ + Σ₃
-
-    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))
-    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))
-    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))
-
-    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀
-
-    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3
-    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
-
-    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
-end
-
-# Next, we turn on parallel computing.
+# Next, we turn on parallel computing, load the relevant packages on all available
+# workers and define the velocity field.
 
 using Distributed
 nprocs() == 1 && addprocs()
 
+@everywhere using CoherentStructures, StreamMacros
+@everywhere bickley = @velo_from_stream psi begin
+    psi  = psi₀ + psi₁
+    psi₀ = - U₀ * L₀ * tanh(y / L₀)
+    psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
+
+    re_sum_term = Σ₁ + Σ₂ + Σ₃
+
+    Σ₁ = ε₁ * cos(k₁*(x - c₁*t))
+    Σ₂ = ε₂ * cos(k₂*(x - c₂*t))
+    Σ₃ = ε₃ * cos(k₃*(x - c₃*t))
+
+    k₁ = 2/r₀    ; k₂ = 4/r₀   ; k₃ = 6/r₀
+    ε₁ = 0.0075  ; ε₂ = 0.15   ; ε₃ = 0.3
+    c₂ = 0.205U₀ ; c₃ = 0.461U₀; c₁ = c₃ + (√5-1)*(c₂-c₃)
+    U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
+end
+
 # Now, set up the computational domain and problem-dependent parameters.
 
-using CoherentStructures, StaticArrays, AxisArrays
-@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
+using AxisArrays
+@everywhere using OrdinaryDiffEq, Tensors
 
 q = 81
 tspan = range(0., stop=3456000., length=q)
@@ -68,7 +66,7 @@ nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
 δ = 1.e-6
 
 # In our work, we used an anisotropic diffusion tensor.
@@ -119,7 +117,7 @@ fig
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays
+@everywhere using CoherentStructures, OrdinaryDiffEq
 
 # Next, we load and interpolate the velocity data sets. Loading the data sets defines
 # `Lon`, `Lat`, `Time`, `UT`, `VT`.
@@ -141,7 +139,7 @@ nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
 δ = 1.e-5
 mCG_tensor = let tspan=tspan, δ=δ, p=VI
     u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
