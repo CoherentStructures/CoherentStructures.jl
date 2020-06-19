@@ -3,30 +3,27 @@
 Pkg.add(Pkg.PackageSpec(url=&quot;https://github.com/KristofferC/JuAFEM.jl.git&quot;))
 Pkg.add(Pkg.PackageSpec(url=&quot;https://github.com/CoherentStructures/CoherentStructures.jl.git&quot;))
 Pkg.add(Pkg.PackageSpec(url=&quot;https://github.com/CoherentStructures/StreamMacros.jl&quot;))
-Pkg.add([&quot;OrdinaryDiffEq&quot;, &quot;Tensors&quot;, &quot;StaticArrays&quot;, &quot;AxisArrays&quot;, &quot;JLD2&quot;, &quot;Plots&quot;])
+Pkg.add([&quot;OrdinaryDiffEq&quot;, &quot;Tensors&quot;, &quot;AxisArrays&quot;, &quot;JLD2&quot;, &quot;Plots&quot;])</code></pre><p>Next, we turn on parallel computing, load the relevant packages on all available workers and define the velocity field.</p><pre><code class="language-julia">using Distributed
+nprocs() == 1 &amp;&amp; addprocs()
 
-using StreamMacros
+@everywhere using CoherentStructures, StreamMacros
+@everywhere bickley = @velo_from_stream psi begin
+    psi  = psi₀ + psi₁
+    psi₀ = - U₀ * L₀ * tanh(y / L₀)
+    psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
 
-bickley = @velo_from_stream stream begin
-    stream = psi₀ + psi₁
-    psi₀   = - U₀ * L₀ * tanh(y / L₀)
-    psi₁   =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
+    re_sum_term = Σ₁ + Σ₂ + Σ₃
 
-    re_sum_term =  Σ₁ + Σ₂ + Σ₃
+    Σ₁ = ε₁ * cos(k₁*(x - c₁*t))
+    Σ₂ = ε₂ * cos(k₂*(x - c₂*t))
+    Σ₃ = ε₃ * cos(k₃*(x - c₃*t))
 
-    Σ₁  =  ε₁ * cos(k₁*(x - c₁*t))
-    Σ₂  =  ε₂ * cos(k₂*(x - c₂*t))
-    Σ₃  =  ε₃ * cos(k₃*(x - c₃*t))
-
-    k₁ = 2/r₀      ; k₂ = 4/r₀    ; k₃ = 6/r₀
-
-    ε₁ = 0.0075    ; ε₂ = 0.15    ; ε₃ = 0.3
-    c₂ = 0.205U₀   ; c₃ = 0.461U₀ ; c₁ = c₃ + (√5-1)*(c₂-c₃)
-
-    U₀ = 62.66e-6  ; L₀ = 1770e-3 ; r₀ = 6371e-3
-end</code></pre><p>Next, we turn on parallel computing.</p><pre><code class="language-julia">using Distributed
-nprocs() == 1 &amp;&amp; addprocs()</code></pre><p>Now, set up the computational domain and problem-dependent parameters.</p><pre><code class="language-julia">using CoherentStructures, StaticArrays, AxisArrays
-@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
+    k₁ = 2/r₀    ; k₂ = 4/r₀   ; k₃ = 6/r₀
+    ε₁ = 0.0075  ; ε₂ = 0.15   ; ε₃ = 0.3
+    c₂ = 0.205U₀ ; c₃ = 0.461U₀; c₁ = c₃ + (√5-1)*(c₂-c₃)
+    U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
+end</code></pre><p>Now, set up the computational domain and problem-dependent parameters.</p><pre><code class="language-julia">using AxisArrays
+@everywhere using OrdinaryDiffEq, Tensors
 
 q = 81
 tspan = range(0., stop=3456000., length=q)
@@ -35,7 +32,7 @@ nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan&#39;), xspan, yspan)
 δ = 1.e-6</code></pre><p>In our work, we used an anisotropic diffusion tensor.</p><pre><code class="language-julia">D = SymmetricTensor{2,2}([2., 0., 1/2])</code></pre><p>Now, we compute the diffusion-weighted averaged Cauchy-Green tensor, set a parameter (and others by default) for the geodesic vortex computation, and finally compute vortices.</p><pre><code class="language-julia">mCG_tensor = let tspan=tspan, δ=δ, D=D
     u -&gt; av_weighted_CG_tensor(bickley, u, tspan, δ;
           D=D, tolerance=1e-6, solver=Tsit5())
@@ -54,7 +51,7 @@ BHvortices, singularities = ellipticLCS(C, p)</code></pre><p>Finally, we plot th
 fig</code></pre><h3 id="Geostrophic-ocean-surface-flow-1"><a class="docs-heading-anchor" href="#Geostrophic-ocean-surface-flow-1">Geostrophic ocean surface flow</a><a class="docs-heading-anchor-permalink" href="#Geostrophic-ocean-surface-flow-1" title="Permalink"></a></h3><p>Here, we demonstrate how to detect material barriers to diffusive transport.</p><pre><code class="language-julia">using Distributed
 nprocs() == 1 &amp;&amp; addprocs()
 
-@everywhere using CoherentStructures, OrdinaryDiffEq, StaticArrays</code></pre><p>Next, we load and interpolate the velocity data sets. Loading the data sets defines <code>Lon</code>, <code>Lat</code>, <code>Time</code>, <code>UT</code>, <code>VT</code>.</p><pre><code class="language-julia">using JLD2
+@everywhere using CoherentStructures, OrdinaryDiffEq</code></pre><p>Next, we load and interpolate the velocity data sets. Loading the data sets defines <code>Lon</code>, <code>Lat</code>, <code>Time</code>, <code>UT</code>, <code>VT</code>.</p><pre><code class="language-julia">using JLD2
 JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
 VI = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Since we want to use parallel computing, we set up the integration LCSParameters on all workers, i.e., <code>@everywhere</code>.</p><pre><code class="language-julia">using AxisArrays
 q = 91
@@ -66,7 +63,7 @@ nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan&#39;), xspan, yspan)
+P = AxisArray(tuple.(xspan, yspan&#39;), xspan, yspan)
 δ = 1.e-5
 mCG_tensor = let tspan=tspan, δ=δ, p=VI
     u -&gt; av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
@@ -76,4 +73,4 @@ p = LCSParameters(2.5)
 vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>Finally, the result is visualized as follows.</p><pre><code class="language-julia">using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title=&quot;DBS field and transport barriers&quot;, showlabel=true)</code></pre><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../examples_pub_overview/">« Overview</a><a class="docs-footer-nextpage" href="../turbulence/">Diffusion barriers in turbulence »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 17 June 2020 13:20">Wednesday 17 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    bg=trace, title=&quot;DBS field and transport barriers&quot;, showlabel=true)</code></pre><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../examples_pub_overview/">« Overview</a><a class="docs-footer-nextpage" href="../turbulence/">Diffusion barriers in turbulence »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 19 June 2020 15:17">Friday 19 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
