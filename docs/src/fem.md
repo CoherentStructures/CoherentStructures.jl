@@ -91,7 +91,7 @@ using Plots, Tensors
 ctx, _ = regularP2TriangularGrid((10, 10))
 u = zeros(ctx.n)
 u[45] = 1.0
-Plots.heatmap(range(0, stop=1, length=200),range(0, stop=1, length=200),
+Plots.heatmap(range(0, stop=1, length=200), range(0, stop=1, length=200),
     (x, y) -> evaluate_function_from_dofvals(ctx, u, Vec(x, y)))
 ```
 
