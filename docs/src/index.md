@@ -18,7 +18,7 @@ First, install the [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) packa
     ]add https://github.com/KristofferC/JuAFEM.jl.git
 
 In order to run the example cases, please install our companion package
-[`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl) by typing
+[`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl.git) by typing
 
     ]add https://github.com/CoherentStructures/StreamMacros.jl
 
