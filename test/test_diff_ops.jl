@@ -11,6 +11,8 @@ xmin, xmax, ymin, ymax = 0., 6.371π, -3., 3.
 m = 50
 n = 31
 N = m*n
+x = range(xmin, stop=xmax, length=m)
+y = range(ymin, stop=ymax, length=n)
 p0 = vec(tuple.(x, y'))
 metric = PeriodicEuclidean([xmax, Inf])
 dist = STmetric(metric, 1)
