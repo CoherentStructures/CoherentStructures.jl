@@ -1,4 +1,4 @@
-using OrdinaryDiffEq
+using OrdinaryDiffEq, StaticArrays
 const ODE = OrdinaryDiffEq
 
 heaviside(x) = x > 0 ? one(x) : zero(x)

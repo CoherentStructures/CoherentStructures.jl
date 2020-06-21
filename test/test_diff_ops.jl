@@ -1,4 +1,4 @@
-using Test, CoherentStructures, StaticArrays, Distances, LinearMaps
+using Test, CoherentStructures, Distances, LinearMaps
 using Distributed, Statistics
 
 include("define_vector_fields.jl")
@@ -11,7 +11,7 @@ xmin, xmax, ymin, ymax = 0., 6.371π, -3., 3.
 m = 50
 n = 31
 N = m*n
-p0 = vec(SVector{2}.(range(xmin, stop=xmax, length=m), range(ymin, stop=ymax, length=n)'))
+p0 = vec(tuple.(x, y'))
 metric = PeriodicEuclidean([xmax, Inf])
 dist = STmetric(metric, 1)
 f = let tspan=tspan
@@ -28,7 +28,7 @@ n_coords = 7
 @testset "sparse_diff_op_family" begin
     ε = 1e-3
     kernel = gaussian(ε)
-    sparsify = Neighborhood(gaussiancutoff(ε))
+    sparsify = Neighborhood(gaussiancutoff(10ε))
     P = sparse_diff_op_family(sol, sparsify, kernel; metric=metric)
     @test P isa LinearMaps.MapOrMatrix
     @test size(P) == (N, N)
