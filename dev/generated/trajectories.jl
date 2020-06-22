@@ -82,7 +82,7 @@ fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 Plots.plot(fig)
 
 ε = 0.2
-P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> row_normalize!(min.(sum(P), 1));
+P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> row_normalize!(max.(P...));
                             α=0, metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
