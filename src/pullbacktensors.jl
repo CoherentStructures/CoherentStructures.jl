@@ -106,7 +106,7 @@ function linearized_flow(
     solver=default_solver,
     p=nothing,
 )::Tuple{Vector{T},Vector{<:Tensor{2,2}}} where {iip,T<:SVector{2}}
-    if iip
+    @inbounds if iip
         if δ != 0 # use finite differencing
             stencil =
                 [x[1], x[2], x[1] + δ, x[2], x[1], x[2] + δ, x[1] - δ, x[2], x[1], x[2] - δ]
