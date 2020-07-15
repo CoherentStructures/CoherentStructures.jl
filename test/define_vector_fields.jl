@@ -41,3 +41,42 @@ bickleyJet! = ODE.ODEFunction{true}((du, u, p, t) -> begin
     return du
     end
 )
+
+
+var_rot_double_gyre = begin
+          (ODE).ODEFunction{false}(((var"#249#u", var"#250#p", var"#251#t")->begin
+                      var"#246#X" = StaticArrays.SMatrix{2, 2}(var"#249#u"[1, 2], var"#249#u"[2, 2], var"#249#u"[1, 3], var"#249#u"[2, 3])
+                      var"#247#DV" = StaticArrays.SMatrix{2, 2}(-((2 * π ^ 2 
+                                     * cos(var"#249#u"[1, 1] * π) * cos(2 
+                                     * var"#249#u"[2, 1] * π) * (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") 
+                                     * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) + 0.5 
+                                     * (1 + sign(-1 + var"#251#t"))) + 2 * π ^ 2 * cos(
+                                     var"#249#u"[2, 1] * π) * cos(2 * var"#249#u"[1, 1] * π) * (1 - (0.25 * var"#251#t" ^ 2 
+                                     * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) + 0.5 
+                                     * (1 + sign(-1 + var"#251#t")))))), -(π ^ 2) * sin(var"#249#u"[1, 1] * π) * sin(2 * var"#249#u"[2, 1] *
+                                     π) * (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) 
+                                     + 0.5 * (1 + sign(-1 + var"#251#t"))) - 4 * π ^ 2 * sin(var"#249#u"[2, 1] * π) * sin(2 * var"#249#u"[1, 1] 
+                                     * π) * (1 - (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) 
+                                     + 0.5 * (1 + sign(-1 + var"#251#t")))), -((-4 * π ^ 2 * sin(var"#249#u"[1, 1] * π) * sin(2 * var"#249#u"[2, 1] * 
+                                     π) * (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) 
+                                     + 0.5 * (1 + sign(-1 + var"#251#t"))) - π ^ 2 * sin(var"#249#u"[2, 1] * π) * sin(2 * var"#249#u"[1, 1] 
+                                     * π) * (1 - (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 
+                                     - var"#251#t")) + 0.5 * (1 + sign(-1 + var"#251#t")))))), 2 * π ^ 2 * cos(var"#249#u"[1, 1] * π) 
+                                     * cos(2 * var"#249#u"[2, 1] * π) * (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) 
+                                     * (1 + sign(1 - var"#251#t")) + 0.5 * (1 + sign(-1 + var"#251#t"))) + 2 * π ^ 2 * cos(var"#249#u"[2, 1] 
+                                     * π) * cos(2 * var"#249#u"[1, 1] * π) * (1 - (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") 
+                                     * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) + 0.5 * (1 + sign(-1 + var"#251#t")))))
+                      var"#248#DX" = var"#247#DV" * var"#246#X"
+
+                      return StaticArrays.SMatrix{2, 3}(-((2 * π * sin(var"#249#u"[1, 1] * π) * cos(2 * var"#249#u"[2, 1] * π) * (0.25 
+                                     * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) + 0.5 
+                                     * (1 + sign(-1 + var"#251#t"))) + π * cos(var"#249#u"[2, 1] * π) * sin(2 * var"#249#u"[1, 1] * π) 
+                                     * (1 - (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 - var"#251#t")) 
+                                     + 0.5 * (1 + sign(-1 + var"#251#t")))))), 2 * π * sin(var"#249#u"[2, 1] * π) * cos(2 * var"#249#u"[1, 1] 
+                                     * π) * (1 - (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) * (1 + sign(1 
+                                     - var"#251#t")) + 0.5 * (1 + sign(-1 + var"#251#t")))) + π * cos(var"#249#u"[1, 1] * π) 
+                                     * sin(2 * var"#249#u"[2, 1] * π) * (0.25 * var"#251#t" ^ 2 * (3 - 2var"#251#t") * (1 + sign(var"#251#t")) 
+                                     * (1 + sign(1 - var"#251#t")) + 0.5 * (1 + sign(-1 + var"#251#t"))), var"#248#DX"[1, 1], 
+                                     var"#248#DX"[2, 1], var"#248#DX"[1, 2], var"#248#DX"[2, 2])
+                  end))
+      end
