@@ -41,3 +41,42 @@ bickleyJet! = ODE.ODEFunction{true}((du, u, p, t) -> begin
     return du
     end
 )
+
+
+var_rot_double_gyre = begin
+          (ODE).ODEFunction{false}(((u, p, t)->begin
+                      X = StaticArrays.SMatrix{2, 2}(u[1, 2], u[2, 2], u[1, 3], u[2, 3])
+                      DV = StaticArrays.SMatrix{2, 2}(-((2 * π ^ 2 
+                                     * cos(u[1, 1] * π) * cos(2 
+                                     * u[2, 1] * π) * (0.25 * t ^ 2 * (3 - 2t) 
+                                     * (1 + sign(t)) * (1 + sign(1 - t)) + 0.5 
+                                     * (1 + sign(-1 + t))) + 2 * π ^ 2 * cos(
+                                     u[2, 1] * π) * cos(2 * u[1, 1] * π) * (1 - (0.25 * t ^ 2 
+                                     * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 - t)) + 0.5 
+                                     * (1 + sign(-1 + t)))))), -(π ^ 2) * sin(u[1, 1] * π) * sin(2 * u[2, 1] *
+                                     π) * (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 - t)) 
+                                     + 0.5 * (1 + sign(-1 + t))) - 4 * π ^ 2 * sin(u[2, 1] * π) * sin(2 * u[1, 1] 
+                                     * π) * (1 - (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 - t)) 
+                                     + 0.5 * (1 + sign(-1 + t)))), -((-4 * π ^ 2 * sin(u[1, 1] * π) * sin(2 * u[2, 1] * 
+                                     π) * (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 - t)) 
+                                     + 0.5 * (1 + sign(-1 + t))) - π ^ 2 * sin(u[2, 1] * π) * sin(2 * u[1, 1] 
+                                     * π) * (1 - (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 
+                                     - t)) + 0.5 * (1 + sign(-1 + t)))))), 2 * π ^ 2 * cos(u[1, 1] * π) 
+                                     * cos(2 * u[2, 1] * π) * (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) 
+                                     * (1 + sign(1 - t)) + 0.5 * (1 + sign(-1 + t))) + 2 * π ^ 2 * cos(u[2, 1] 
+                                     * π) * cos(2 * u[1, 1] * π) * (1 - (0.25 * t ^ 2 * (3 - 2t) 
+                                     * (1 + sign(t)) * (1 + sign(1 - t)) + 0.5 * (1 + sign(-1 + t)))))
+                      DX = DV * X
+
+                      return StaticArrays.SMatrix{2, 3}(-((2 * π * sin(u[1, 1] * π) * cos(2 * u[2, 1] * π) * (0.25 
+                                     * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 - t)) + 0.5 
+                                     * (1 + sign(-1 + t))) + π * cos(u[2, 1] * π) * sin(2 * u[1, 1] * π) 
+                                     * (1 - (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 - t)) 
+                                     + 0.5 * (1 + sign(-1 + t)))))), 2 * π * sin(u[2, 1] * π) * cos(2 * u[1, 1] 
+                                     * π) * (1 - (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) * (1 + sign(1 
+                                     - t)) + 0.5 * (1 + sign(-1 + t)))) + π * cos(u[1, 1] * π) 
+                                     * sin(2 * u[2, 1] * π) * (0.25 * t ^ 2 * (3 - 2t) * (1 + sign(t)) 
+                                     * (1 + sign(1 - t)) + 0.5 * (1 + sign(-1 + t))), DX[1, 1], 
+                                     DX[2, 1], DX[1, 2], DX[2, 2])
+                  end))
+      end

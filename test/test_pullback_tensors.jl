@@ -124,3 +124,8 @@ end
         end
     end
 end
+ 
+@testset "variational equation" begin
+    include("define_vector_fields.jl")
+    @test (@inferred CG_tensor(var_rot_double_gyre, (0.5, 0.5), [0.0, 5.0], 0.0)) isa SymmetricTensor
+end

@@ -149,7 +149,7 @@ function linearized_flow(
                 map(s -> Tensor{2,2}((@views s[3:6] .- s[7:10]) ./ 2δ), ssol),
             )
         else
-            v0 = SMatrix{2,3,T}(x[1], x[2], 1, 0, 0, 1)
+            v0 = SMatrix{2,3}(x[1], x[2], 1, 0, 0, 1)
             eqvsol = _flow(odefun, v0, tspan; tolerance = tolerance, solver = solver, p = p)
             return (
                 map(s -> SVector{2}(s[1, 1], s[2, 1]), eqvsol),
