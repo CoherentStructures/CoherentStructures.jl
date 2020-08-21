@@ -64,11 +64,7 @@ end
 #object and the locate() function
 struct DelaunayCellLocator <: PointLocator
     m::Int64
-    scale_x::Float64
-    scale_y::Float64
-    minx::Float64
-    miny::Float64
-    tess::VD.DelaunayTessellation2D{NumberedPoint2D}
+    tess::VD.Delaunay2
     extended_points::Vector{Vec{2,Float64}}
     point_number_table::Vector{Int}
     cell_number_table::Vector{Int}
@@ -76,63 +72,51 @@ end
 
 function locatePoint(loc::DelaunayCellLocator, grid::JFM.Grid, x::Vec{2,Float64})
     #TODO: can this work for x that are not Float64?
-    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x, VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
-    if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
-        throw(DomainError("point(s) outside of domain"))
-    end
-    t_index = VD.findindex(loc.tess, point_inbounds)
-    t = loc.tess._trigs[t_index]
-    if VD.isexternal(t)
-        throw(DomainError("triangle outside of domain"))
-    end
-    v1::Vec{2} = loc.extended_points[t._b.id] - loc.extended_points[t._a.id]
-    v2::Vec{2} = loc.extended_points[t._c.id] - loc.extended_points[t._a.id]
+    #t_index = VD.findindex(loc.tess, NumberedPoint2D(x[1],x[2]))
+    t_index = VD.findindex(loc.tess, VD.Point2D(x[1],x[2]))
+    t = loc.tess.trigs[t_index,:]
+    #if VD.isexternal(t,(1.0,2.0,1.0,2.0))
+    #if t._a.id == 0 || t._b.id == 0 || t._c.id == 0
+    #    throw(DomainError("triangle outside of domain"))
+    #end
+    v1::Vec{2} = loc.extended_points[t[2]] - loc.extended_points[t[1]]
+    v2::Vec{2} = loc.extended_points[t[3]] - loc.extended_points[t[1]]
     J::Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
     #J = [v1[1] v2[1]; v1[2] v2[2]]
     #TODO: rewrite this so that we actually find the cell in question and get the ids
     #From there (instead of from the tesselation). Then get rid of the permutation that
     #is implicit below (See also comment below in P2DelaunayCellLocator locatePoint())
-    return (inv(J) ⋅ (x - loc.extended_points[t._a.id])), loc.point_number_table[[t._b.id, t._c.id, t._a.id]], loc.cell_number_table[t_index]
+    return (inv(J) ⋅ (x - loc.extended_points[t[1]])), loc.point_number_table[[t[2], t[3], t[1]]], loc.cell_number_table[t_index]
 end
 
 #For delaunay triangulations with P2-Lagrange Elements
 struct P2DelaunayCellLocator <: PointLocator
     m::Int64
-    scale_x::Float64
-    scale_y::Float64
-    minx::Float64
-    miny::Float64
-    tess::VD.DelaunayTessellation2D{NumberedPoint2D}
-    internal_triangles::Vector{Int}
-    inv_internal_triangles::Vector{Int}
+    tess::VD.Delaunay2
+    #internal_triangles::Vector{Int}
+    #inv_internal_triangles::Vector{Int}
     point_number_table::Vector{Int}
-    function P2DelaunayCellLocator(m,scale_x,scale_y,minx,miny,tess,point_number_table)
-        itr = start(tess)
-        internal_triangles = []
-        inv_internal_triangles = zeros(length(tess._trigs))
-        while !done(tess,itr)
-            push!(internal_triangles, itr.ix)
-            next(tess,itr)
-        end
-        for (i,j) in enumerate(internal_triangles)
-            inv_internal_triangles[j] = i
-        end
-        res = new(m,scale_x,scale_y,minx,miny,tess,internal_triangles,inv_internal_triangles,point_number_table)
+    function P2DelaunayCellLocator(m,tess,point_number_table)
+        #itr = start(tess)
+        #internal_triangles = []
+        #inv_internal_triangles = zeros(length(tess._trigs))
+        #while !done(tess,itr)
+        #    push!(internal_triangles, itr.ix)
+        #    next(tess,itr)
+        #end
+        #for (i,j) in enumerate(internal_triangles)
+        #    inv_internal_triangles[j] = i
+        #end
+        res = new(m,tess,point_number_table)
         return res
     end
 end
 
 function locatePoint(loc::P2DelaunayCellLocator, grid::JFM.Grid, x::Vec{2,Float64})
     #TODO: can this work for x that are not Float64?
-    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
-    if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
-        throw(DomainError("point(s) outside of domain"))
-    end
-    t = VD.findindex(loc.tess, point_inbounds)
-    if VD.isexternal(loc.tess._trigs[t])
-        throw(DomainError("triangle outside of domain"))
-    end
-    qTriangle = grid.cells[loc.inv_internal_triangles[t]]
+    t_index = VD.findindex(loc.tess, Tess.Point2D(x[1],x[2]))
+
+    qTriangle = grid.cells[t_index]
     v1::Vec{2} = grid.nodes[qTriangle.nodes[2]].x - grid.nodes[qTriangle.nodes[1]].x
     v2::Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
     J::Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)

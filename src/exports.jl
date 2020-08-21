@@ -98,6 +98,7 @@ export
 
 	#plotting.jl
 	plot_u,
+    plot_grid,
 	plot_u!,
 	plot_spectrum,
 	plot_real_spectrum,

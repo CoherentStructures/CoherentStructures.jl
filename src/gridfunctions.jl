@@ -75,7 +75,7 @@ mutable struct GridContext{dim,G<:JFM.Grid,ITP<:JFM.Interpolation,ITPG<:JFM.Inte
                 dh::JFM.DofHandler,
                 qr::JFM.QuadratureRule,
                 loc::PointLocator;
-                no_precompute=false
+                no_precompute=false,kwargs...
             ) where {dim}
 
         x = new{dim,typeof(grid),typeof(ip),typeof(ip_geom),typeof(dh),typeof(qr),typeof(loc)}(grid, ip, ip_geom, dh, qr, loc)
@@ -184,7 +184,7 @@ function GridContext{1}(::Type{JFM.QuadraticLine},
     loc = Regular1dGridLocator{JFM.QuadraticLine}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
     dh = JFM.DofHandler(grid)
     qr = JFM.QuadratureRule{1, JFM.RefCube}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     JFM.close!(dh)
     result = GridContext{1}(grid, ip, JFM.Lagrange{1,JFM.RefCube,2}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
@@ -324,7 +324,7 @@ function GridContext{2}(
         @assert !(LL === nothing || UR === nothing)
     end
     grid, loc = JFM.generate_grid(JFM.Triangle, node_list;
-                    on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR)
+                    on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR,kwargs...)
     dh = JFM.DofHandler(grid)
     qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
@@ -381,10 +381,22 @@ Create a delaunay grid in 2d from `npoints` random points on the box with lower
 left corner `LL` and upper right corner `UR`.
 Extra keyword arguments are passed to `irregularDelaunayGrid`.
 """
-function randomDelaunayGrid(npoints::Int, LL::NTuple{2,<:Real}=(0.0,0.0), UR::NTuple{2,<:Real}=(1.0,1.0);
-                            kwargs...)
+function randomDelaunayGrid(npoints::Int, LL=(0.0,0.0), UR=(1.0,1.0);
+                            add_corners=false,extra_boundary_points_per_edge=0,kwargs...)
     width = UR .- LL
     nodes_in = map(_ -> Vec{2}((rand()*width[1] + LL[1], rand()*width[2] + LL[2])), 1:npoints)
+    if add_corners
+        push!(nodes_in, Vec{2}((LL[1],LL[2])))
+        push!(nodes_in, Vec{2}((LL[1],UR[2])))
+        push!(nodes_in, Vec{2}((UR[1],LL[2])))
+        push!(nodes_in, Vec{2}((UR[1],UR[2])))
+        for j in range(0,stop=1.0,length=extra_boundary_points_per_edge+2)[2:end-1]
+            push!(nodes_in, Vec{2}((LL[1] + j*width[1],LL[2])))
+            push!(nodes_in, Vec{2}((LL[1],LL[2] + j*width[2])))
+            push!(nodes_in, Vec{2}((LL[1] + j*width[1],UR[2])))
+            push!(nodes_in, Vec{2}((UR[1],LL[2] + j*width[2])))
+        end
+    end
     return irregularDelaunayGrid(nodes_in; LL=LL, UR=UR, kwargs...)
 end
 
@@ -404,12 +416,12 @@ If `PC==true`, returns a piecewise constant grid. Else returns a P1-Lagrange gri
 """
 function regularDelaunayGrid(
             numnodes::Tuple{Int,Int}=(25, 25),
-            LL::NTuple{2,<:Real}=(0.0, 0.0),
-            UR::NTuple{2,<:Real}=(1.0, 1.0);
+            LL=(0.0, 0.0),
+            UR=(1.0, 1.0);
             quadrature_order::Int=default_quadrature_order,
             on_torus::Bool=false,
             on_cylinder::Bool=false,
-            nudge_epsilon::Real=1e-5,
+            nudge_epsilon::Real=0.0,
             PC::Bool=false,kwargs...
         )
     X = range(LL[1], stop=UR[1], length=numnodes[1])
@@ -483,8 +495,8 @@ Create a regular P2 triangular grid with `numnodes` being the number of (non-int
 """
 function regularP2DelaunayGrid(
             numnodes::Tuple{Int,Int}=(25, 25),
-            LL::NTuple{2,<:Real}=(0.0, 0.0),
-            UR::NTuple{2,<:Real}=(1.0, 1.0);
+            LL=(0.0, 0.0),
+            UR=(1.0, 1.0);
             quadrature_order::Int=default_quadrature_order, kwargs...)
     X = range(LL[1], stop=UR[1], length=numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
@@ -507,8 +519,8 @@ Create a regular triangular grid. Does not use Delaunay triangulation internally
 
 function GridContext{2}(::Type{JFM.Triangle},
                          numnodes::Tuple{Int,Int}=(25, 25),
-                         LL::NTuple{2,<:Real}=(0.0, 0.0),
-                         UR::NTuple{2,<:Real}=(1.0, 1.0);
+                         LL=(0.0, 0.0),
+                         UR=(1.0, 1.0);
                          quadrature_order::Int=default_quadrature_order,
                          ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}(),kwargs...
                          )
@@ -533,8 +545,8 @@ Create a regular triangular grid on a rectangle; does not use Delaunay triangula
 If
 """
 function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),
-                                LL::NTuple{2,<:Real}=(0.0,0.0),
-                                UR::NTuple{2,<:Real}=(1.0,1.0);
+                                LL=(0.0,0.0),
+                                UR=(1.0,1.0);
                                 quadrature_order::Int=default_quadrature_order,
                                 PC=false, kwargs...)
     if PC == false
@@ -548,8 +560,6 @@ function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),
     return ctx, BoundaryData()
 end
 
-@deprecate regularTriangularGrid(numnodes::Tuple{Int,Int}, LL::AbstractVector{<:Real}, UR::AbstractVector{<:Real}; kwargs...) regularTriangularGrid(numnodes, (LL...,), (UR...,); kwargs...)
-
 #= TODO 1.0
 """
     GridContext{2}(JuAFEM.QuadraticTriangle, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
@@ -559,8 +569,8 @@ Constructor for regular P2 triangular grids. Does not use Delaunay triangulation
 =#
 function GridContext{2}(::Type{JFM.QuadraticTriangle},
                          numnodes::Tuple{Int,Int}=(25, 25),
-                         LL::NTuple{2,<:Real}=(0.0,0.0),
-                         UR::NTuple{2,<:Real}=(1.0,1.0);
+                         LL=(0.0,0.0),
+                         UR=(1.0,1.0);
                          quadrature_order::Int=default_quadrature_order,
                          ip=JFM.Lagrange{2,JFM.RefTetrahedron,2}(), kwargs...
                          )
@@ -588,15 +598,13 @@ end
 Create a regular P2 triangular grid on a rectangle. Does not use Delaunay triangulation internally.
 """
 function regularP2TriangularGrid(numnodes::Tuple{Int,Int}=(25, 25),
-                                    LL::NTuple{2,<:Real}=(0.0,0.0),
-                                    UR::NTuple{2,<:Real}=(1.0,1.0);
+                                    LL=(0.0,0.0),
+                                    UR=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order, kwargs...)
     ctx = GridContext{2}(JFM.QuadraticTriangle, numnodes, LL, UR, quadrature_order=quadrature_order;kwargs...)
     return ctx, BoundaryData()
 end
 
-@deprecate regularP2TriangularGrid(numnodes::Tuple{Int,Int}, LL::AbstractVector{<:Real}, UR::AbstractVector{<:Real};
-                                    kwargs...) regularP2TriangularGrid(numnodes, (LL...,), (UR...,); kwargs...)
 #= TODO 1.0
 """
     GridContext{2}(JuAFEM.Quadrilateral, numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)
@@ -606,8 +614,8 @@ Constructor for regular P1 quadrilateral grids.
 =#
 function GridContext{2}(::Type{JFM.Quadrilateral},
                         numnodes::Tuple{Int,Int}=(25,25),
-                        LL::NTuple{2,<:Real}=(0.0,0.0),
-                        UR::NTuple{2,<:Real}=(1.0,1.0);
+                        LL=(0.0,0.0),
+                        UR=(1.0,1.0);
                         quadrature_order::Int=default_quadrature_order,
                         ip=JFM.Lagrange{2, JFM.RefCube, 1}(), kwargs...)
     #The -1 below is needed because JuAFEM internally then goes on to increment it
@@ -635,8 +643,8 @@ Create a regular P1 quadrilateral grid on a rectangle. If `PC==true`, use
 piecewise constant shape functions, otherwise use P1 Lagrange.
 """
 function regularQuadrilateralGrid(numnodes::Tuple{Int,Int}=(25, 25),
-                                    LL::NTuple{2,<:Real}=(0.0,0.0),
-                                    UR::NTuple{2,<:Real}=(1.0,1.0);
+                                    LL=(0.0,0.0),
+                                    UR=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order,
                                     PC=false, kwargs...)
     if !PC
@@ -662,8 +670,8 @@ Constructor for regular P2 quadrilateral grids.
 =#
 function GridContext{2}(::Type{JFM.QuadraticQuadrilateral},
                         numnodes::Tuple{Int,Int}=(25, 25),
-                        LL::NTuple{2,<:Real}=(0.0,0.0),
-                        UR::NTuple{2,<:Real}=(1.0,1.0);
+                        LL=(0.0,0.0),
+                        UR=(1.0,1.0);
                         quadrature_order::Int=default_quadrature_order,
                         ip=JFM.Lagrange{2, JFM.RefCube, 2}(), kwargs...)
     if !isa(ip, JFM.Lagrange)
@@ -690,8 +698,8 @@ end
 Create a regular P2 quadrilateral grid on a rectangle.
 """
 function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),
-                                    LL::NTuple{2,<:Real}=(0.0,0.0),
-                                    UR::NTuple{2,<:Real}=(1.0,1.0);
+                                    LL=(0.0,0.0),
+                                    UR=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order, kwargs...)
     ctx = GridContext{2}(JFM.QuadraticQuadrilateral, numnodes, LL, UR, quadrature_order=quadrature_order,kwargs...)
     return ctx, BoundaryData()
@@ -706,8 +714,8 @@ Create a regular P1 Tetrahedral Grid in 3D.
 =#
 function GridContext{3}(::Type{JFM.Tetrahedron},
                          numnodes::NTuple{3,Int}=(10,10,10),
-                         LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-                         UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+                         LL=(0.0,0.0,0.0),
+                         UR=(1.0,1.0,1.0);
                          quadrature_order::Int=default_quadrature_order3D,
                          ip=JFM.Lagrange{3, JFM.RefTetrahedron, 1}(), kwargs...)
     #The -1 below is needed because JuAFEM internally then goes on to increment it
@@ -738,8 +746,8 @@ Create a regular P2 Tetrahedral Grid in 3D.
 =#
 function GridContext{3}(::Type{JFM.QuadraticTetrahedron},
                          numnodes::NTuple{3,Int}=(10,10,10),
-                         LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-                         UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+                         LL=(0.0,0.0,0.0),
+                         UR=(1.0,1.0,1.0);
                          quadrature_order::Int=default_quadrature_order3D,
                          ip=JFM.Lagrange{3, JFM.RefTetrahedron, 2}(), kwargs...)
     if !isa(ip, JuAFEM.Lagrange)
@@ -766,8 +774,8 @@ Create a regular P1 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay tr
 """
 function regularTetrahedralGrid(
         numnodes::NTuple{3,Int}=(10,10,10),
-        LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-        UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+        LL=(0.0,0.0,0.0),
+        UR=(1.0,1.0,1.0);
         quadrature_order::Int=default_quadrature_order3D, PC=false, kwargs...)
     if !PC
         ip = JFM.Lagrange{3,JFM.RefTetrahedron,1}()
@@ -787,8 +795,8 @@ end
 Create a regular P2 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.
 """
 function regularP2TetrahedralGrid(numnodes::NTuple{3,Int}=(10,10,10),
-                                    LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-                                    UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+                                    LL=(0.0,0.0,0.0),
+                                    UR=(1.0,1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order3D,
                                     kwargs...)
     ctx = GridContext{3}(JFM.QuadraticTetrahedron,
@@ -1133,44 +1141,8 @@ function sample_to(u::AbstractMatrix{T}, ctx_old::GridContext, ctx_new::GridCont
 end
 
 
-#Helper type for keeping track of point numbers
-struct NumberedPoint2D <: VD.AbstractPoint2D
-    x::Float64
-    y::Float64
-    id::Int64
-    NumberedPoint2D(x::Float64,y::Float64,k::Int64) = new(x,y,k)
-    NumberedPoint2D(x::Float64,y::Float64) = new(x, y, 0)
-    NumberedPoint2D(p::VD.Point2D) = new(p.x, p.y, 0)
-    NumberedPoint2D(p::Vec{2,Float64}) = new(p[1], p[2], 0)
-end
-GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
-GP.Point2D(p::NumberedPoint2D) = Point2D(p.x,p.y)
-GP.gety(p::NumberedPoint2D) = p.y
-GP.getx(p::NumberedPoint2D) = p.x
 
-#More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
 
-function delaunay2(x::Vector{Vec{2,Float64}})
-    width = VD.max_coord - VD.min_coord
-    max_x = maximum(map(v->v[1], x))
-    min_x = minimum(map(v->v[1], x))
-    max_y = maximum(map(v->v[2], x))
-    min_y = minimum(map(v->v[2], x))
-    scale_x = 0.9*width/(max_x - min_x)
-    scale_y = 0.9*width/(max_y - min_y)
-    n = length(x)
-    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - min_x)*scale_x, VD.min_coord+(x[i][2]-min_y)*scale_y, i) for i in 1:n]
-    for i in 1:n
-        @assert !(GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord)
-    end
-    tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
-    push!(tess, a)
-    m = 0
-    for i in tess
-        m += 1
-    end
-    return tess, m, scale_x, scale_y, min_x, min_y
-end
 
 
 #See if this cell, or horizontal (and vertical if on_cylinder==false) translations
@@ -1239,7 +1211,7 @@ if `on_torus` is set to `true` similarly with `on_cylinder`.
 """
 function JFM.generate_grid(::Type{JFM.Triangle},
      nodes_in::Vector{Vec{2,Float64}};
-     on_torus=false, on_cylinder=false, LL=nothing, UR=nothing)
+     on_torus=false, on_cylinder=false, LL=nothing, UR=nothing,return_covering_space_triangulation=false,kwargs...)
     @assert !(on_torus && on_cylinder)
     if on_torus || on_cylinder
         @assert !(LL === nothing || UR === nothing)
@@ -1284,7 +1256,8 @@ function JFM.generate_grid(::Type{JFM.Triangle},
     end
 
     #Delaunay Triangulation
-    tess, m, scale_x, scale_y, min_x, min_y = delaunay2(nodes_to_triangulate)
+    tess = VD.Delaunay2(nodes_to_triangulate)
+    m = size(tess.trigs,1)
 
     nodes = map(JFM.Node, nodes_in)
 
@@ -1305,7 +1278,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
     #Our periodic tesselation produced many copies of the same cell
     #In order to do point location later, cell_number_table[i] = j means
     #that cell i in the periodic tesselation corresponds to cell j of the grid
-    cell_number_table = zeros(Int, length(tess._trigs))
+    cell_number_table = zeros(Int, size(tess.trigs,1))
     #In order to build cell_number_table, we are interested in *all* cells
     #of the triangulation. But we only consider cells to be added to the grid
     #that have a node inside the original grid. cells_to_deal_with contains other
@@ -1318,24 +1291,23 @@ function JFM.generate_grid(::Type{JFM.Triangle},
     nodes_used = zeros(Bool, num_nodes_in)
 
 
-    tri_iterator = Base.iterate(tess)
-    while tri_iterator != nothing
-        (tri, triindex) = tri_iterator
+    for i in 1:size(tess.trigs,1)
+        tri = tess.trigs[i,:]
         #It could be the the triangle in question is oriented the wrong way
         #We test this, and flip it if neccessary
-        J = Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri._b.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e1)
-        J += Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri._c.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e2)
+        J = Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri[2]]] - nodes_to_triangulate[switched_nodes_table[tri[1]]]), e1)
+        J += Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri[3]]] - nodes_to_triangulate[switched_nodes_table[tri[1]]]), e2)
         detJ = det(J)
         @assert detJ != 0
         if detJ > 0
-            new_tri_nodes_from_tess = (tri._a.id, tri._b.id, tri._c.id)
+            new_tri_nodes_from_tess = (tri[1],tri[2],tri[3])
         else
-            new_tri_nodes_from_tess = (tri._a.id, tri._c.id, tri._b.id)
+            new_tri_nodes_from_tess = (tri[1],tri[3],tri[2])
         end
 
         if !(on_torus || on_cylinder)
             push!(cells, JFM.Triangle(new_tri_nodes_from_tess))
-            cell_number_table[triindex.ix-1] = length(cells)
+            cell_number_table[i] = length(cells)
         else
             #Get the nodes in question.
             tri_nodes = switched_nodes_table[collect(new_tri_nodes_from_tess)]
@@ -1349,7 +1321,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
                                     num_nodes_in, on_cylinder)
                 if thiscell != 0
                     #We have, so nothing to do here except record this.
-                   cell_number_table[triindex.ix-1] = thiscell
+                   cell_number_table[i] = thiscell
                 else
                     #Now iterate over the nodes of the cell
                     for (index, cur) in enumerate(tri_nodes)
@@ -1390,14 +1362,13 @@ function JFM.generate_grid(::Type{JFM.Triangle},
                     push!(cells, new_tri)
 
                     #We now remember that we've used this cell
-                    cell_number_table[triindex.ix-1] = length(cells)
+                    cell_number_table[i] = length(cells)
                     cells_used[ Tuple{Int,Int,Int}(sort(collect(new_tri_nodes_from_tess))) ] = length(cells)
                 end
             else #Deal with this cell later
-                cells_to_deal_with[Tuple{Int,Int,Int}(tri_nodes)] = triindex.ix-1
+                cells_to_deal_with[Tuple{Int,Int,Int}(tri_nodes)] = i
             end
         end
-        tri_iterator = Base.iterate(tess, triindex)
     end
     #Write down location of remaining cells
     if on_torus || on_cylinder
@@ -1413,14 +1384,14 @@ function JFM.generate_grid(::Type{JFM.Triangle},
         used_nodes[collect(c.nodes)] .= true
     end
     if any(x -> x == false, used_nodes)
-        @warn "Some nodes added that might cause problems with JuAFEM. Proceed at your own risk."
+        @error "Some nodes added that might cause problems with JuAFEM. Proceed at your own risk."
     end
 
     facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
     grid = JFM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
-    locator = DelaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate[switched_nodes_table], points_mapping, cell_number_table)
+    locator = DelaunayCellLocator(m, tess, nodes_to_triangulate[switched_nodes_table], points_mapping, cell_number_table)
     return grid, locator
 end
 
@@ -1432,8 +1403,8 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
 
     points_mapping = Vector{Int}[]
 
-    tess, m, scale_x, scale_y, minx, miny = delaunay2(nodes_to_triangulate)
-    locator = P2DelaunayCellLocator(m, scale_x, scale_y, minx, miny, tess,points_mapping)
+    tess = VD.Delaunay2(nodes_to_triangulate)
+    m = size(tess.trigs,1)
     nodes = map(JFM.Node, nodes_in)
     n = length(nodes)
     ctr = n #As we add nodes (for edge vertices), increment the ctr...
@@ -1441,7 +1412,7 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
     centerNodes = spzeros(n,n)
     cells = JFM.QuadraticTriangle[]
     for tri_id in 1:m
-        tri = tess._trigs[locator.internal_triangles[tri_id]]
+        tri = tess.trigs[tri_id,:]
 
         #Create non-vertex nodes
         ab = centerNodes[tri._a.id, tri._b.id]
@@ -1479,6 +1450,7 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
         end
         push!(cells, new_tri)
     end
+    locator = P2DelaunayCellLocator(m, tess,points_mapping)
     #facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work

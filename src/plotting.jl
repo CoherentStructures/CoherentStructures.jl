@@ -66,11 +66,11 @@ RecipesBase.@recipe function f(
     dof_vals::Vector{Float64} = as.args[2]
     inverse_flow_map::Function = as.args[3]
     LL = as.args[4]
-    LL isa AbstractVector &&
-    @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
+    #LL isa AbstractVector &&
+    #@warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     UR = as.args[5]
-    UR isa AbstractVector &&
-    @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
+    #UR isa AbstractVector &&
+    #@warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     if ctx isa GridContext{2}
         nx = length(as.args) >= 6 ? as.args[6] : 100
         ny = length(as.args) >= 7 ? as.args[7] : 100
@@ -112,8 +112,8 @@ RecipesBase.@recipe function f(
         seriestype --> :heatmap
         fill --> true
         aspect_ratio --> 1
-        xlim --> (LL[1], UR[1])
-        ylim --> (LL[2], UR[2])
+        xlims --> (LL[1], UR[1])
+        ylims --> (LL[2], UR[2])
         x1, x2, z
     elseif ctx isa GridContext{1}
         nx = length(as.args) >= 6 ? as.args[6] : 100
@@ -145,7 +145,7 @@ RecipesBase.@recipe function f(
         end
 
         seriestype --> :line
-        xlim --> (LL[1], UR[1])
+        xlims --> (LL[1], UR[1])
         x1, z
     end
 end
@@ -507,6 +507,11 @@ function plot_grid(ctx,as=[x.x for x in ctx.grid.nodes],shaded_triangles=[false 
     fig = plot_grid_raw(ctx,as,shaded_triangles,fillcolor=ColorTypes.RGBA(1.0,0.0,0.0,0.2);kwargs...)
     return plot_grid_raw!(fig,ctx,as,map(x->!x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0,0.0,0.0,0.0);kwargs...)
 end
+function plot_grid!(ctx,as=[x.x for x in ctx.grid.nodes],shaded_triangles=[false for x in ctx.grid.cells];kwargs...)
+    fig = plot_grid_raw!(ctx,as,shaded_triangles,fillcolor=ColorTypes.RGBA(1.0,0.0,0.0,0.2);kwargs...)
+    return plot_grid_raw!(fig,ctx,as,map(x->!x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0,0.0,0.0,0.0);kwargs...)
+end
+
 
 
 
@@ -781,4 +786,3 @@ plot_singularities
 Same as [`plot_singularities`](@ref), but adds the output to the currently active plot.
 """
 plot_singularities!
-
