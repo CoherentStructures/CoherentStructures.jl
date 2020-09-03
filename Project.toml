@@ -1,6 +1,6 @@
 name = "CoherentStructures"
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
-version = "0.3.2"
+version = "0.3.3"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
