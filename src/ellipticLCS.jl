@@ -54,7 +54,7 @@ This is a container for coherent vortex boundaries. An object `vortex` of type
   field ``\\eta_{\\lambda}^{\\pm}`` via the formula ``(-1)^s``.
 """
 struct EllipticBarrier{T<:Real}
-    curve::Vector{Tuple{T,T}}
+    curve::Vector{SVector{2,T}}
     core::SVector{2,T}
     p::Float64
     s::Bool
@@ -822,15 +822,7 @@ function compute_closed_orbits(
                     closed &&
                     uniform && in_well_defined_squares && contains_singularity
                 )
-                    push!(
-                        vortices,
-                        EllipticBarrier(
-                            [qs.data for qs in orbit],
-                            ps[1],
-                            λ⁰,
-                            σ,
-                        ),
-                    )
+                    push!(vortices, EllipticBarrier(orbit, ps[1], λ⁰, σ))
                     rev && break
                 end
             end
@@ -1635,16 +1627,17 @@ function flow(odefun::ODE.ODEFunction, u::EllipticBarrier{T}, tspan; kwargs...) 
     nc = length(u.curve)
     newcurves = map(
         let odefun = odefun, tspan = tspan, kwargs = kwargs
-            x -> flow(odefun, (x[1], x[2]), tspan; kwargs...)
+            x -> flow(odefun, x, tspan; kwargs...)
         end,
         u.curve,
     )
-    newcurves2 = Vector{Tuple{T,T}}[]
+    newcurves2 = Vector{SVector{2,T}}[]
     for i in 1:nt
-        curcurve = Tuple{T,T}[]
-        for j in 1:nc
-            push!(curcurve, (newcurves[j][i][1], newcurves[j][i][2]))
-        end
+        curcurve = [convert(SVector{2,T}, n[i]) for n in newcurves]
+        # SVector{2,T}[]
+        # for j in 1:nc
+        #     push!(curcurve, convert(SVector{2,T}, newcurves[j][i]))
+        # end
         push!(newcurves2, curcurve)
     end
     newcores = flow(odefun, u.core, tspan; kwargs...)
