@@ -103,6 +103,13 @@ end
     vortices32 = @inferred getvortices(T, [Singularity((Float32(0.25), Float32(0.5)), 1)], p; verbose=false)
     @test length(vortices32) == length(vortices)
     vortices, singularities = @inferred ellipticLCS(T, p; outermost=true, verbose=false)
+    vortex = vortices[1]
+    flowvortex = flow(rot_double_gyre, vortex, tspan)
+    @test flowvortex isa Vector{<:EllipticVortex}
+    @test length(flowvortex) == length(tspan)
+    flowbarrier = flow(rot_double_gyre, vortex.barriers[1], tspan)
+    @test flowbarrier isa Vector{<:EllipticBarrier}
+    @test length(flowbarrier) == length(tspan)
     @test sum(map(v -> length(v.barriers), vortices)) == 2
     @test singularities isa Vector{Singularity{Float64}}
     @test length(singularities) > 5
