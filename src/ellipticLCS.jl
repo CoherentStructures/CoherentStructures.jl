@@ -1630,12 +1630,12 @@ end
 
 ### Some convenience functions
 
-function flow(odefun, u::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
+function flow(odefun::ODE.ODEFunction, u::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
     nt = length(tspan)
     nc = length(u.curve)
     newcurves = map(
         let odefun = odefun, tspan = tspan, kwargs = kwargs
-            x -> flow(odefun, SVector{2}(x[1], x[2]), tspan; kwargs...)
+            x -> flow(odefun, (x[1], x[2]), tspan; kwargs...)
         end,
         u.curve,
     )
@@ -1653,13 +1653,13 @@ function flow(odefun, u::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
     ]
 end
 
-function flow(odefun, u::Singularity, tspan; kwargs...)
+function flow(odefun::ODE.ODEFunction, u::Singularity, tspan; kwargs...)
     nt = length(tspan)
     newcoords = flow(odefun, u.coords, tspan; kwargs...)
     return [Singuarity(newcoords[i], u.index) for i in 1:nt]
 end
 
-function flow(odefun, u::EllipticVortex{T}, tspan; kwargs...) where {T}
+function flow(odefun::ODE.ODEFunction, u::EllipticVortex{T}, tspan; kwargs...) where {T}
     newbarriers = [flow(odefun, b, tspan; kwargs...) for b in u.barriers]
     newbarriers2 = Vector{EllipticBarrier{T}}[]
     nt = length(tspan)
