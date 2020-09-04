@@ -565,7 +565,7 @@ RecipesBase.@recipe function f(
             end
             (nancounter_local, nonancounter_local)
         end
-        minval = minimum(FTLE)
+    minval = minimum(FTLE)
     maxval = maximum(FTLE)
 
     @info "plot_ftle ignored $nancounter NaN values ($nonancounter were good). Bounds ($minval,$maxval)"
@@ -719,7 +719,7 @@ function index2color(ind)
     end
     if ind == 3 // 2
         return :purple
-            end
+    end
     if ind > 3 // 2
         return :brown
     end
