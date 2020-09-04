@@ -37,16 +37,16 @@ function plot_u!(
 ) where {dim}
     if dim in (1, 2)
         plot_u_eulerian!(
-        ctx,
-        dof_vals,
-        identity,
-        ctx.spatialBounds[1],
-        ctx.spatialBounds[2],
-        nx,
-        ny;
-        bdata=bdata,
-        kwargs...,
-    )
+            ctx,
+            dof_vals,
+            identity,
+            ctx.spatialBounds[1],
+            ctx.spatialBounds[2],
+            nx,
+            ny;
+            bdata=bdata,
+            kwargs...,
+        )
     else
         throw(AssertionError("Not yet implemented"))
     end
@@ -80,14 +80,14 @@ RecipesBase.@recipe function f(
         x2 = range(LL[2], stop=UR[2], length=ny)
         if euler_to_lagrange_points === nothing
             euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(
-            inverse_flow_map,
-            [x1, x2],
-            throw_errors=throw_errors,
-        )
+                inverse_flow_map,
+                [x1, x2],
+                throw_errors=throw_errors,
+            )
             euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
             for i in 1:nx, j in 1:ny
                 euler_to_lagrange_points[j, i] = Vec{2}((euler_to_lagrange_points_raw[j, i, 1],
-                euler_to_lagrange_points_raw[j, i, 2],))
+                                                         euler_to_lagrange_points_raw[j, i, 2]))
             end
         end
 
@@ -119,21 +119,20 @@ RecipesBase.@recipe function f(
 
         if euler_to_lagrange_points === nothing
             euler_to_lagrange_points_raw =
-            compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1])
+                compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1])
             euler_to_lagrange_points = [zero(Vec{1}) for x in x1]
             for i in 1:nx
-                euler_to_lagrange_points[i] =
-                Vec{1}([euler_to_lagrange_points_raw[i]])
+                euler_to_lagrange_points[i] = Vec{1}([euler_to_lagrange_points_raw[i]])
             end
         end
 
         if z === nothing
             z_raw = evaluate_function_from_dofvals_multiple(
-            ctx,
-            u_values[:, :],
-            vec(euler_to_lagrange_points),
-            outside_value=NaN,
-        )
+                ctx,
+                u_values[:, :],
+                vec(euler_to_lagrange_points),
+                outside_value=NaN,
+            )
             z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
@@ -357,7 +356,7 @@ Create `num_videos::Int` videos in eulerian coordinates, i.e., where the time
 * `LL` and `UR` are the coordinates of the domain's corners.
 * `nx`, `ny`, and `nt` determine the number of points in each direction.
 * `extra_kwargs_fun(i,t)` can be used to provide additional keyword arguments to
-Plots.heatmap().
+  Plots.heatmap().
 
 Additional kwargs are passed on to `plot_eulerian_video`.
 
@@ -504,79 +503,79 @@ end
 
 RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(
-as::Plot_FTLE;
-tolerance=1e-4,
-solver=ODE.BS5(),
-# existing_plot=nothing, TODO 1.0
-flip_y=false,
-check_inbounds=always_true,
-pass_on_errors=false,
+    as::Plot_FTLE;
+    tolerance=1e-4,
+    solver=ODE.BS5(),
+    # existing_plot=nothing, TODO 1.0
+    flip_y=false,
+    check_inbounds=always_true,
+    pass_on_errors=false,
 )
-odefun = as.args[1]
-p = as.args[2]
-tspan = as.args[3]
-LL = as.args[4]
-UR = as.args[5]
-nx = length(as.args) >= 6 ? as.args[6] : 100
-ny = length(as.args) >= 7 ? as.args[7] : 100
-δ = length(as.args) >= 8 ? as.args[8] : 1e-9
+    odefun = as.args[1]
+    p = as.args[2]
+    tspan = as.args[3]
+    LL = as.args[4]
+    UR = as.args[5]
+    nx = length(as.args) >= 6 ? as.args[6] : 100
+    ny = length(as.args) >= 7 ? as.args[7] : 100
+    δ = length(as.args) >= 8 ? as.args[8] : 1e-9
 
-x1 = collect(range(LL[1] + 1.e-8, stop=UR[1] - 1.e-8, length=nx))
-x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8, length=ny))
-if flip_y
-    x2 = reverse(x2)
-end
-# Initialize FTLE-field with NaNs
-FTLE = SharedArray{Float64,2}(ny, nx)
-totalelements = ny * nx
-FTLE .= NaN
-nancounter, nonancounter =
-    @sync @distributed ((x, y) -> x .+ y) for c in 0:(totalelements - 1)
-        j, i = divrem(c, ny) .+ (1, 1)
-        nancounter_local = 0
-        nonancounter_local = 0
-        if check_inbounds(x1[j], x2[i], p)
-            try
-                cgtensor = CG_tensor(
-                    odefun,
-                    [x1[j], x2[i]],
-                    [tspan[1], tspan[end]],
-                    δ;
-                    tolerance=tolerance,
-                    p=p,
-                    solver=solver,
-                )
-                FTLE[c + 1] =
-                    1 / (2 * (tspan[end] - tspan[1])) *
-                    log(maximum(eigvals(eigen(cgtensor))))
-                if isinf(FTLE[c + 1])
-                    FTLE[c + 1] = NaN
-                end
-                if !isnan(FTLE[c + 1])
-                    nonancounter_local += 1
-                else
+    x1 = collect(range(LL[1] + 1.e-8, stop=UR[1] - 1.e-8, length=nx))
+    x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8, length=ny))
+    if flip_y
+        x2 = reverse(x2)
+    end
+    # Initialize FTLE-field with NaNs
+    FTLE = SharedArray{Float64,2}(ny, nx)
+    totalelements = ny * nx
+    FTLE .= NaN
+    nancounter, nonancounter =
+        @sync @distributed ((x, y) -> x .+ y) for c in 0:(totalelements - 1)
+            j, i = divrem(c, ny) .+ (1, 1)
+            nancounter_local = 0
+            nonancounter_local = 0
+            if check_inbounds(x1[j], x2[i], p)
+                try
+                    cgtensor = CG_tensor(
+                        odefun,
+                        [x1[j], x2[i]],
+                        [tspan[1], tspan[end]],
+                        δ;
+                        tolerance=tolerance,
+                        p=p,
+                        solver=solver,
+                    )
+                    FTLE[c + 1] =
+                        1 / (2 * (tspan[end] - tspan[1])) *
+                        log(maximum(eigvals(eigen(cgtensor))))
+                    if isinf(FTLE[c + 1])
+                        FTLE[c + 1] = NaN
+                    end
+                    if !isnan(FTLE[c + 1])
+                        nonancounter_local += 1
+                    else
+                        nancounter_local += 1
+                    end
+                catch e
+                    if pass_on_errors
+                        rethrow(e)
+                    end
                     nancounter_local += 1
                 end
-            catch e
-                if pass_on_errors
-                    rethrow(e)
-                end
-                nancounter_local += 1
             end
+            (nancounter_local, nonancounter_local)
         end
-        (nancounter_local, nonancounter_local)
+        minval = minimum(FTLE)
+    maxval = maximum(FTLE)
+
+    @info "plot_ftle ignored $nancounter NaN values ($nonancounter were good). Bounds ($minval,$maxval)"
+
+    if flip_y
+        x2 = reverse(x2)
+        x2 *= -1
     end
-    minval = minimum(FTLE)
-maxval = maximum(FTLE)
-
-@info "plot_ftle ignored $nancounter NaN values ($nonancounter were good). Bounds ($minval,$maxval)"
-
-if flip_y
-    x2 = reverse(x2)
-    x2 *= -1
-end
     seriestype := :heatmap
-x1, x2, FTLE
+    x1, x2, FTLE
 end
 
 """
@@ -607,43 +606,43 @@ corner `LL` and the upper right corner `UR`.
 * other keyword arguments are passed on to the plotting functions.
 """
 function plot_vortices(
-vortices,
-singularities,
-LL,
-UR;
-bg=nothing,
-logBg=true,
-include_singularities=true,
-showlabel=false,
-kwargs...,
-        )
-if bg !== nothing
-    fig = plot_field(bg, LL, UR; logBg=logBg, kwargs...)
-else
-    fig = empty_heatmap(LL, UR; kwargs...)
-end
-for v in vortices, b in v.barriers
-    plot_barrier!(b; showlabel=showlabel, kwargs...)
-end
-if include_singularities
-    plot_singularities!(singularities; kwargs...)
-end
-return fig
+    vortices,
+    singularities,
+    LL,
+    UR;
+    bg=nothing,
+    logBg=true,
+    include_singularities=true,
+    showlabel=false,
+    kwargs...,
+)
+    if bg !== nothing
+        fig = plot_field(bg, LL, UR; logBg=logBg, kwargs...)
+    else
+        fig = empty_heatmap(LL, UR; kwargs...)
+    end
+    for v in vortices, b in v.barriers
+        plot_barrier!(b; showlabel=showlabel, kwargs...)
+    end
+    if include_singularities
+        plot_singularities!(singularities; kwargs...)
+    end
+    return fig
 end
 
 RecipesBase.@userplot Plot_Field
 RecipesBase.@recipe function f(as::Plot_Field; logBg=true)
-bg = as.args[1]
-LL = as.args[2]
-UR = as.args[3]
-xspan = bg.axes[1].val
-yspan = bg.axes[2].val
-seriestype := :heatmap
-seriescolor --> :viridis
+    bg = as.args[1]
+    LL = as.args[2]
+    UR = as.args[3]
+    xspan = bg.axes[1].val
+    yspan = bg.axes[2].val
+    seriestype := :heatmap
+    seriescolor --> :viridis
     xlims := (LL[1], UR[1])
     ylims := (LL[2], UR[2])
-aspect_ratio --> 1
-xspan, yspan, permutedims(logBg ? log10.(bg) : bg)
+    aspect_ratio --> 1
+    xspan, yspan, permutedims(logBg ? log10.(bg) : bg)
 end
 
 """
@@ -665,31 +664,31 @@ plot_field!
 
 RecipesBase.@userplot Empty_Heatmap
 RecipesBase.@recipe function f(as::Empty_Heatmap)
-LL = as.args[1]
-UR = as.args[2]
-xspan = range(LL[1], stop=UR[1], length=2)
-yspan = range(LL[2], stop=UR[2], length=2)
-bg = [NaN for _ in yspan, _ in xspan]
+    LL = as.args[1]
+    UR = as.args[2]
+    xspan = range(LL[1], stop=UR[1], length=2)
+    yspan = range(LL[2], stop=UR[2], length=2)
+    bg = [NaN for _ in yspan, _ in xspan]
     xlims := (LL[1], UR[1])
     ylims := (LL[2], UR[2])
-colorbar := :none
-seriestype := :heatmap
-aspect_ratio --> 1
-xspan, yspan, bg
+    colorbar := :none
+    seriestype := :heatmap
+    aspect_ratio --> 1
+    xspan, yspan, bg
 end
 
 RecipesBase.@userplot Plot_Barrier
 RecipesBase.@recipe function f(as::Plot_Barrier; showlabel=false)
-barrier = as.args[1]
-curve = [p.data for p in barrier.curve]
-linewidth --> 3
-label := showlabel ? "p = $(round(barrier.p, digits=2))" : ""
-linecolor --> :red
-if showlabel
-    linecolor := :auto
-end
-aspect_ratio --> 1
-curve
+    barrier = as.args[1]
+    curve = [p.data for p in barrier.curve]
+    linewidth --> 3
+    label := showlabel ? "p = $(round(barrier.p, digits=2))" : ""
+    linecolor --> :red
+    if showlabel
+        linecolor := :auto
+    end
+    aspect_ratio --> 1
+    curve
 end
 
 """
@@ -709,38 +708,38 @@ Same as [`plot_barrier`](@ref), but adds the output to the currently active plot
 plot_barrier!
 
 function index2color(ind)
-if ind == 1 // 1
-    return :white
-end
-if ind == 1 // 2
-    return :orange
-end
-if ind == -1 // 2
-    return :blue
-end
-if ind == 3 // 2
-    return :purple
-        end
-if ind > 3 // 2
-    return :brown
-end
-if ind == -3 // 2
-    return :green
-end
-if ind < -3 // 2
-    return :black
-end
+    if ind == 1 // 1
+        return :white
+    end
+    if ind == 1 // 2
+        return :orange
+    end
+    if ind == -1 // 2
+        return :blue
+    end
+    if ind == 3 // 2
+        return :purple
+            end
+    if ind > 3 // 2
+        return :brown
+    end
+    if ind == -3 // 2
+        return :green
+    end
+    if ind < -3 // 2
+        return :black
+    end
 end
 
 RecipesBase.@userplot Plot_Singularities
 RecipesBase.@recipe function f(as::Plot_Singularities)
-singularities = as.args[1]
-singularity_colors = [index2color(s.index) for s in singularities]
-points = [s.coords.data for s in singularities]
-seriestype := :scatter
-seriescolor := singularity_colors
-label := ""
-points
+    singularities = as.args[1]
+    singularity_colors = [index2color(s.index) for s in singularities]
+    points = [s.coords.data for s in singularities]
+    seriestype := :scatter
+    seriescolor := singularity_colors
+    label := ""
+    points
 end
 
 """
