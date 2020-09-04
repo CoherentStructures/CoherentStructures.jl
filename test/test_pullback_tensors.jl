@@ -26,6 +26,7 @@ using CoherentStructures
         @test xs + (tspan[end] - tspan[1]) * One ≈ flow(voop, x0, tspan)[end]
         @test xs + (tspan[end] - tspan[1]) * One ≈ flow(voop, xs, tspan)[end]
         @test xs + (tspan[end] - tspan[1]) * One ≈ flow(voop, xv, tspan)[end]
+        @test length(flow(voop, xs, tspan; saveat = [0.5])) == 1
     end
 end
 

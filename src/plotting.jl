@@ -10,11 +10,11 @@ Keyword arguments are passed down to `plot_u_eulerian`, which this function call
 function plot_u(
     ctx::GridContext{dim},
     dof_vals::Vector{<:Real},
-    nx = 100,
-    ny = 100,
-    LL = ctx.spatialBounds[1],
-    UR = ctx.spatialBounds[2];
-    bdata = nothing,
+    nx=100,
+    ny=100,
+    LL=ctx.spatialBounds[1],
+    UR=ctx.spatialBounds[2];
+    bdata=nothing,
     kwargs...,
 ) where {dim}
     if dim in (1, 2)
@@ -24,15 +24,15 @@ function plot_u(
     end
 end
 function plot_u(ctx, dof_vals::Vector{<:Complex}, args...; kwargs...)
-    return plot_u(ctx, real.(dof_vals), args...; title = "Plotting real part!", kwargs...)
+    return plot_u(ctx, real.(dof_vals), args...; title="Plotting real part!", kwargs...)
 end
 
 function plot_u!(
     ctx::GridContext{dim},
     dof_vals::Vector{<:Real},
-    nx = 100,
-    ny = 100;
-    bdata = nothing,
+    nx=100,
+    ny=100;
+    bdata=nothing,
     kwargs...,
 ) where {dim}
     if dim in (1, 2)
@@ -44,7 +44,7 @@ function plot_u!(
             ctx.spatialBounds[2],
             nx,
             ny;
-            bdata = bdata,
+            bdata=bdata,
             kwargs...,
         )
     else
@@ -55,41 +55,39 @@ end
 RecipesBase.@userplot Plot_U_Eulerian
 RecipesBase.@recipe function f(
     as::Plot_U_Eulerian;
-    bdata = nothing,
-    euler_to_lagrange_points = nothing,
-    z = nothing,
-    postprocessor = nothing,
-    return_scalar_field = false,
-    throw_errors = false,
+    bdata=nothing,
+    euler_to_lagrange_points=nothing,
+    z=nothing,
+    postprocessor=nothing,
+    return_scalar_field=false,
+    throw_errors=false,
 )
     ctx::GridContext = as.args[1]
     dof_vals::Vector{Float64} = as.args[2]
     inverse_flow_map::Function = as.args[3]
     LL = as.args[4]
     LL isa AbstractVector &&
-    @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
+        @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     UR = as.args[5]
     UR isa AbstractVector &&
-    @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
+        @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     if ctx isa GridContext{2}
         nx = length(as.args) >= 6 ? as.args[6] : 100
         ny = length(as.args) >= 7 ? as.args[7] : 100
 
         u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
-        x1 = range(LL[1], stop = UR[1], length = nx)
-        x2 = range(LL[2], stop = UR[2], length = ny)
+        x1 = range(LL[1], stop=UR[1], length=nx)
+        x2 = range(LL[2], stop=UR[2], length=ny)
         if euler_to_lagrange_points === nothing
             euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(
                 inverse_flow_map,
                 [x1, x2],
-                throw_errors = throw_errors,
+                throw_errors=throw_errors,
             )
             euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
             for i in 1:nx, j in 1:ny
-                euler_to_lagrange_points[j, i] = Vec{2}((
-                    euler_to_lagrange_points_raw[j, i, 1],
-                    euler_to_lagrange_points_raw[j, i, 2],
-                ))
+                euler_to_lagrange_points[j, i] = Vec{2}((euler_to_lagrange_points_raw[j, i, 1],
+                                                         euler_to_lagrange_points_raw[j, i, 2]))
             end
         end
 
@@ -98,10 +96,9 @@ RecipesBase.@recipe function f(
                 ctx,
                 u_values[:, :],
                 vec(euler_to_lagrange_points);
-                outside_value = NaN,
-                throw_errors = throw_errors,
+                outside_value=NaN,
+                throw_errors=throw_errors,
             )
-
             z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
 
@@ -117,16 +114,15 @@ RecipesBase.@recipe function f(
         x1, x2, z
     elseif ctx isa GridContext{1}
         nx = length(as.args) >= 6 ? as.args[6] : 100
-        u_values = get_full_dofvals(ctx, dof_vals; bdata = bdata)
-        x1 = range(LL[1], stop = UR[1], length = nx)
+        u_values = get_full_dofvals(ctx, dof_vals; bdata=bdata)
+        x1 = range(LL[1], stop=UR[1], length=nx)
 
         if euler_to_lagrange_points === nothing
             euler_to_lagrange_points_raw =
                 compute_euler_to_lagrange_points_raw(inverse_flow_map, [x1])
             euler_to_lagrange_points = [zero(Vec{1}) for x in x1]
             for i in 1:nx
-                euler_to_lagrange_points[i] =
-                    Vec{1}([euler_to_lagrange_points_raw[i]])
+                euler_to_lagrange_points[i] = Vec{1}([euler_to_lagrange_points_raw[i]])
             end
         end
 
@@ -135,7 +131,7 @@ RecipesBase.@recipe function f(
                 ctx,
                 u_values[:, :],
                 vec(euler_to_lagrange_points),
-                outside_value = NaN,
+                outside_value=NaN,
             )
             z = reshape(z_raw.nzval, size(euler_to_lagrange_points))
         end
@@ -182,7 +178,7 @@ plot_u_eulerian
 function compute_euler_to_lagrange_points_raw(
     inv_flow_map,
     xi;
-    throw_errors = false,
+    throw_errors=false,
 )
     @assert length(xi) ∈ [1, 2]
     if length(xi) == 1
@@ -210,7 +206,7 @@ function compute_euler_to_lagrange_points_raw(
                     euler_to_lagrange_points_raw[j, i, 1] = back[1]
                     euler_to_lagrange_points_raw[j, i, 2] = back[2]
                 catch e
-                    #if isa(e,InexactError)
+                    # if isa(e,InexactError)
                     if !throw_errors
                         euler_to_lagrange_points_raw[j, i, 1] = NaN
                         euler_to_lagrange_points_raw[j, i, 2] = NaN
@@ -242,11 +238,11 @@ struct FrameCollection
     frames::Vector{Any}
 end
 
-function Base.iterate(col::FrameCollection, state = 0)
+function Base.iterate(col::FrameCollection, state=0)
     if state == length(col.frames)
         return nothing
     end
-    return col.frames[state+1], state + 1
+    return col.frames[state + 1], state + 1
 end
 
 function eulerian_videos(
@@ -260,27 +256,27 @@ function eulerian_videos(
     nt,
     LL,
     UR,
-    num_videos = 1;
-    bdata = nothing,
-    extra_kwargs_fun = nothing,
-    throw_errors = false,
+    num_videos=1;
+    bdata=nothing,
+    extra_kwargs_fun=nothing,
+    throw_errors=false,
     kwargs...,
 )
     allvideos = [FrameCollection([]) for i in 1:num_videos]
 
-    for (index, t) in enumerate(range(t0, stop = tf, length = nt))
+    for (index, t) in enumerate(range(t0, stop=tf, length=nt))
         print("Processing frame $index")
         if t != t0
             current_inv_flow_map = x -> inverse_flow_map_t(t, x)
         else
             current_inv_flow_map = x -> x
         end
-        x1 = range(LL[1], stop = UR[1], length = nx)
-        x2 = range(LL[2], stop = UR[2], length = ny)
+        x1 = range(LL[1], stop=UR[1], length=nx)
+        x2 = range(LL[2], stop=UR[2], length=ny)
         euler_to_lagrange_points_raw = compute_euler_to_lagrange_points_raw(
             current_inv_flow_map,
             [x1, x2],
-            throw_errors = throw_errors,
+            throw_errors=throw_errors,
         )
         euler_to_lagrange_points = [zero(Vec{2}) for y in x2, x in x1]
         for i in 1:nx, j in 1:ny
@@ -294,10 +290,10 @@ function eulerian_videos(
         current_us = SharedArray{Float64}(ctx.n, num_videos)
         for i in 1:num_videos
             current_us[:, i] =
-                get_full_dofvals(ctx, us(i, t); bdata = bdata)[ctx.node_to_dof]
+                get_full_dofvals(ctx, us(i, t); bdata=bdata)[ctx.node_to_dof]
         end
         @sync @distributed for xindex in 1:nx
-            #@distributed for current_index in eachindex(z_all)
+            # @distributed for current_index in eachindex(z_all)
             for yindex in 1:ny
                 for i in 1:num_videos
                     current_u = current_us[:, i]
@@ -306,7 +302,7 @@ function eulerian_videos(
                             ctx,
                             current_u,
                             euler_to_lagrange_points[yindex, xindex];
-                            outside_value = NaN,
+                            outside_value=NaN,
                         )
                 end
             end
@@ -321,8 +317,8 @@ function eulerian_videos(
                     UR,
                     nx,
                     ny;
-                    zs = zs_all[:, :, i],
-                    euler_to_lagrange_points = euler_to_lagrange_points,
+                    zs=zs_all[:, :, i],
+                    euler_to_lagrange_points=euler_to_lagrange_points,
                     extra_kwargs_fun(i, t)...,
                     kwargs...,
                 )
@@ -335,8 +331,8 @@ function eulerian_videos(
                     UR,
                     nx,
                     ny;
-                    zs = zs_all[:, :, i],
-                    euler_to_lagrange_points = euler_to_lagrange_points,
+                    zs=zs_all[:, :, i],
+                    euler_to_lagrange_points=euler_to_lagrange_points,
                     kwargs...,
                 )
             end
@@ -347,7 +343,7 @@ function eulerian_videos(
 end
 
 """
-     eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
+    eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
         extra_kwargs_fun=nothing, ...)
 
 Create `num_videos::Int` videos in eulerian coordinates, i.e., where the time
@@ -388,7 +384,7 @@ function eulerian_video(
     nt,
     LL,
     UR;
-    extra_kwargs_fun = nothing,
+    extra_kwargs_fun=nothing,
     kwargs...,
 )
     usfun = (index, t) -> u(t)
@@ -397,90 +393,75 @@ function eulerian_video(
     else
         extra_kwargs_fun_out = nothing
     end
-    return eulerian_videos(
-        ctx,
-        usfun,
-        inverse_flow_map_t,
-        t0,
-        tf,
-        nx,
-        ny,
-        nt,
-        LL,
-        UR,
-        1;
-        extra_kwargs_fun = extra_kwargs_fun_out,
-        kwargs...,
-    )[1]
+    return eulerian_videos(ctx, usfun, inverse_flow_map_t, t0, tf, nx, ny, nt, LL, UR, 1;
+        extra_kwargs_fun=extra_kwargs_fun_out, kwargs...)[1]
 end
 
-#=
+#= 
 function eulerian_video_fast(ctx, u::Function,
-    nx, ny, t0,tf,nt, forward_flow_map, LL_big,UR_big;bdata=nothing,display_inplace=true,kwargs...)
-    LL = ctx.spatialBounds[1]
-    UR = ctx.spatialBounds[2]
-    function corrected_u(t)
-        dof_vals = u(t)
-        if (bdata==nothing) && (ctx.n != length(dof_vals))
-            dbcs = getHomDBCS(ctx)
-            if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
-                error("Input u has wrong length")
-            end
-            dof_values = undoBCS(ctx,dof_vals,dbcs)
-        elseif (bdata != nothing)
-            dof_values = undoBCS(ctx,dof_vals,bdata)
-        else
-            dof_values = dof_vals
+nx, ny, t0,tf,nt, forward_flow_map, LL_big,UR_big;bdata=nothing,display_inplace=true,kwargs...)
+LL = ctx.spatialBounds[1]
+UR = ctx.spatialBounds[2]
+function corrected_u(t)
+    dof_vals = u(t)
+    if (bdata==nothing) && (ctx.n != length(dof_vals))
+        dbcs = getHomDBCS(ctx)
+        if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
+            error("Input u has wrong length")
         end
-        return dof_values
+        dof_values = undoBCS(ctx,dof_vals,dbcs)
+    elseif (bdata != nothing)
+        dof_values = undoBCS(ctx,dof_vals,bdata)
+    else
+        dof_values = dof_vals
     end
-    x1 = range(LL[1],stop=UR[1],length=nx)
-    x2 = range(LL[2],stop=UR[2],length=ny)
-    allpoints = [
-        Vec{2}((x,y)) for y in x2, x in x1
-    ]
-    allpoints_initial = copy(allpoints)
-    #
-    times = range(t0,stop=tf,length=nt)
+    return dof_values
+end
+x1 = range(LL[1],stop=UR[1],length=nx)
+x2 = range(LL[2],stop=UR[2],length=ny)
+allpoints = [
+    Vec{2}((x,y)) for y in x2, x in x1
+]
+allpoints_initial = copy(allpoints)
+#
+times = range(t0,stop=tf,length=nt)
+x1p = [p[1] for p in allpoints]
+x2p = [p[2] for p in allpoints]
+ut = dof2node(ctx,corrected_u(t0))
+val = [evaluate_function_from_nodevals(ctx,ut,[p[1],p[2]]) for p in allpoints]
+#
+res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
+    xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
+    marker=:square,markersize=300.0 /nx,markerstrokewidth=0;kwargs...)]
+if display_inplace
+    Plots.display(res[end])
+end
+#
+for t in 1:(nt-1)
+    allpoints = [forward_flow_map(times[t], times[t+1],p) for p in allpoints]
     x1p = [p[1] for p in allpoints]
     x2p = [p[2] for p in allpoints]
-    ut = dof2node(ctx,corrected_u(t0))
-    val = [evaluate_function_from_nodevals(ctx,ut,[p[1],p[2]]) for p in allpoints]
+    ut = dof2node(ctx,corrected_u(times[t+1]))
+    val = [evaluate_function_from_nodevals(ctx,ut,p) for p in allpoints_initial]
+    push!(res,
+        Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
+            xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
+            marker=:square,markersize=70. /nx,markerstrokewidth=0;kwargs...)
+            )
     #
-    res = [scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
-        xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
-        marker=:square,markersize=300.0 /nx,markerstrokewidth=0;kwargs...)]
-    if display_inplace
-        Plots.display(res[end])
-    end
-    #
-    for t in 1:(nt-1)
-        allpoints = [forward_flow_map(times[t], times[t+1],p) for p in allpoints]
-        x1p = [p[1] for p in allpoints]
-        x2p = [p[2] for p in allpoints]
-        ut = dof2node(ctx,corrected_u(times[t+1]))
-        val = [evaluate_function_from_nodevals(ctx,ut,p) for p in allpoints_initial]
-        push!(res,
-            Plots.scatter(x1p[1:end],x2p[1:end],zcolor=val[1:end],
-                xlim=(LL_big[1],UR_big[1]),ylim=(LL_big[2],UR_big[2]),legend=false,
-                marker=:square,markersize=70. /nx,markerstrokewidth=0;kwargs...)
-                )
-		#
-	if display_inplace
-	    Plots.display(res[end])
-	end
-    end
-    return Plots.@animate for p in res
-        p
-    end
+if display_inplace
+    Plots.display(res[end])
 end
-=#
+end
+return Plots.@animate for p in res
+    p
+end
+end =#
 
 RecipesBase.@userplot Plot_Grid_Raw
 RecipesBase.@recipe function f(
     as::Plot_Grid_Raw;
 )
-
     ctx::GridContext = as.args[1]
     nodes = length(as.args) >= 2 ? as.args[2] : [x.x for x in ctx.grid.nodes]
     shown_triangles = length(as.args) >= 3 ? as.args[3] : [true for x in ctx.grid.cells]
@@ -491,21 +472,21 @@ RecipesBase.@recipe function f(
         x_nodes = Float64[]
         y_nodes = Float64[]
         for n in cell.nodes
-            push!(x_nodes,nodes[n][1])
-            push!(y_nodes,nodes[n][2])
+            push!(x_nodes, nodes[n][1])
+            push!(y_nodes, nodes[n][2])
         end
-        push!(toplot_1,x_nodes)
-        push!(toplot_2,y_nodes)
+        push!(toplot_1, x_nodes)
+        push!(toplot_2, y_nodes)
     end
     seriestype --> :shape
     aspect_ratio --> 1
     label --> ""
-    toplot_1[shown_triangles],toplot_2[shown_triangles]
+    toplot_1[shown_triangles], toplot_2[shown_triangles]
 end
 
-function plot_grid(ctx,as=[x.x for x in ctx.grid.nodes],shaded_triangles=[false for x in ctx.grid.cells];kwargs...)
-    fig = plot_grid_raw(ctx,as,shaded_triangles,fillcolor=ColorTypes.RGBA(1.0,0.0,0.0,0.2);kwargs...)
-    return plot_grid_raw!(fig,ctx,as,map(x->!x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0,0.0,0.0,0.0);kwargs...)
+function plot_grid(ctx, as=[x.x for x in ctx.grid.nodes], shaded_triangles=[false for x in ctx.grid.cells];kwargs...)
+    fig = plot_grid_raw(ctx, as, shaded_triangles, fillcolor=ColorTypes.RGBA(1.0, 0.0, 0.0, 0.2);kwargs...)
+    return plot_grid_raw!(fig, ctx, as, map(x -> !x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0, 0.0, 0.0, 0.0);kwargs...)
 end
 
 
@@ -514,21 +495,21 @@ end
 
 
 
-    #seriestype --> :heatmap
-    #fill --> true
-    #xlim --> (LL[1], UR[1])
-    #ylim --> (LL[2], UR[2])
+# seriestype --> :heatmap
+# fill --> true
+# xlim --> (LL[1], UR[1])
+# ylim --> (LL[2], UR[2])
 
 
 RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(
     as::Plot_FTLE;
-    tolerance = 1e-4,
-    solver = ODE.BS5(),
-    #existing_plot=nothing, TODO 1.0
-    flip_y = false,
-    check_inbounds = always_true,
-    pass_on_errors = false,
+    tolerance=1e-4,
+    solver=ODE.BS5(),
+    # existing_plot=nothing, TODO 1.0
+    flip_y=false,
+    check_inbounds=always_true,
+    pass_on_errors=false,
 )
     odefun = as.args[1]
     p = as.args[2]
@@ -539,17 +520,17 @@ RecipesBase.@recipe function f(
     ny = length(as.args) >= 7 ? as.args[7] : 100
     δ = length(as.args) >= 8 ? as.args[8] : 1e-9
 
-    x1 = collect(range(LL[1] + 1.e-8, stop = UR[1] - 1.e-8, length = nx))
-    x2 = collect(range(LL[2] + 1.e-8, stop = UR[2] - 1.e-8, length = ny))
+    x1 = collect(range(LL[1] + 1.e-8, stop=UR[1] - 1.e-8, length=nx))
+    x2 = collect(range(LL[2] + 1.e-8, stop=UR[2] - 1.e-8, length=ny))
     if flip_y
         x2 = reverse(x2)
     end
-    #Initialize FTLE-field with NaNs
+    # Initialize FTLE-field with NaNs
     FTLE = SharedArray{Float64,2}(ny, nx)
     totalelements = ny * nx
     FTLE .= NaN
     nancounter, nonancounter =
-        @sync @distributed ((x, y) -> x .+ y) for c in 0:(totalelements-1)
+        @sync @distributed ((x, y) -> x .+ y) for c in 0:(totalelements - 1)
             j, i = divrem(c, ny) .+ (1, 1)
             nancounter_local = 0
             nonancounter_local = 0
@@ -560,17 +541,17 @@ RecipesBase.@recipe function f(
                         [x1[j], x2[i]],
                         [tspan[1], tspan[end]],
                         δ;
-                        tolerance = tolerance,
-                        p = p,
-                        solver = solver,
+                        tolerance=tolerance,
+                        p=p,
+                        solver=solver,
                     )
-                    FTLE[c+1] =
+                    FTLE[c + 1] =
                         1 / (2 * (tspan[end] - tspan[1])) *
                         log(maximum(eigvals(eigen(cgtensor))))
-                    if isinf(FTLE[c+1])
-                        FTLE[c+1] = NaN
+                    if isinf(FTLE[c + 1])
+                        FTLE[c + 1] = NaN
                     end
-                    if !isnan(FTLE[c+1])
+                    if !isnan(FTLE[c + 1])
                         nonancounter_local += 1
                     else
                         nancounter_local += 1
@@ -629,19 +610,19 @@ function plot_vortices(
     singularities,
     LL,
     UR;
-    bg = nothing,
-    logBg = true,
-    include_singularities = true,
-    showlabel = false,
+    bg=nothing,
+    logBg=true,
+    include_singularities=true,
+    showlabel=false,
     kwargs...,
 )
     if bg !== nothing
-        fig = plot_field(bg, LL, UR; logBg = logBg, kwargs...)
+        fig = plot_field(bg, LL, UR; logBg=logBg, kwargs...)
     else
         fig = empty_heatmap(LL, UR; kwargs...)
     end
     for v in vortices, b in v.barriers
-        plot_barrier!(b; showlabel = showlabel, kwargs...)
+        plot_barrier!(b; showlabel=showlabel, kwargs...)
     end
     if include_singularities
         plot_singularities!(singularities; kwargs...)
@@ -650,7 +631,7 @@ function plot_vortices(
 end
 
 RecipesBase.@userplot Plot_Field
-RecipesBase.@recipe function f(as::Plot_Field; logBg = true)
+RecipesBase.@recipe function f(as::Plot_Field; logBg=true)
     bg = as.args[1]
     LL = as.args[2]
     UR = as.args[3]
@@ -685,8 +666,8 @@ RecipesBase.@userplot Empty_Heatmap
 RecipesBase.@recipe function f(as::Empty_Heatmap)
     LL = as.args[1]
     UR = as.args[2]
-    xspan = range(LL[1], stop = UR[1], length = 2)
-    yspan = range(LL[2], stop = UR[2], length = 2)
+    xspan = range(LL[1], stop=UR[1], length=2)
+    yspan = range(LL[2], stop=UR[2], length=2)
     bg = [NaN for _ in yspan, _ in xspan]
     xlims := (LL[1], UR[1])
     ylims := (LL[2], UR[2])
@@ -697,9 +678,9 @@ RecipesBase.@recipe function f(as::Empty_Heatmap)
 end
 
 RecipesBase.@userplot Plot_Barrier
-RecipesBase.@recipe function f(as::Plot_Barrier; showlabel = false)
+RecipesBase.@recipe function f(as::Plot_Barrier; showlabel=false)
     barrier = as.args[1]
-    curve = barrier.curve
+    curve = [p.data for p in barrier.curve]
     linewidth --> 3
     label := showlabel ? "p = $(round(barrier.p, digits=2))" : ""
     linecolor --> :red

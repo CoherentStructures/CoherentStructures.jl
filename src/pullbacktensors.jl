@@ -45,6 +45,7 @@ end
     tolerance = default_tolerance,
     #ctx_for_boundscheck=nothing,
     force_dtmin = false,
+    saveat = tspan,
 )::Vector{T} where {T} # type assertion is necessary
     # if needed, add callback to ODEProblems
     #callback = nothing
@@ -68,7 +69,7 @@ end
     sol = ODE.solve(
         prob,
         solver;
-        saveat = tspan,
+        saveat = saveat,
         save_everystep = false,
         dense = false,
         reltol = tolerance,
