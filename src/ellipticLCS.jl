@@ -1632,7 +1632,8 @@ function flow(odefun::ODE.ODEFunction, u::EllipticBarrier{T}, tspan; kwargs...) 
         u.curve,
     )
     newcurves2 = Vector{SVector{2,T}}[]
-    for i in 1:nt
+    timeindices = eachindex(newcurves[1])
+    for i in timeindices
         curcurve = [convert(SVector{2,T}, n[i]) for n in newcurves]
         # SVector{2,T}[]
         # for j in 1:nc
@@ -1642,7 +1643,7 @@ function flow(odefun::ODE.ODEFunction, u::EllipticBarrier{T}, tspan; kwargs...) 
     end
     newcores = flow(odefun, u.core, tspan; kwargs...)
     return [
-        EllipticBarrier{T}(newcurves2[i], newcores[i], u.p, u.s) for i in 1:nt
+        EllipticBarrier{T}(newcurves2[i], newcores[i], u.p, u.s) for i in timeindices
     ]
 end
 
