@@ -1,6 +1,6 @@
 
 """
-plot_u(ctx, dof_vals, nx=100, ny=100, LL, UR; bdata=nothing, kwargs...)
+    plot_u(ctx, dof_vals, nx=100, ny=100, LL, UR; bdata=nothing, kwargs...)
 
 Plot the function with coefficients (in dof order, possible boundary conditions in `bdata`) given by `dof_vals` on the grid `ctx`.
 The domain to be plotted on is given by `ctx.spatialBounds`.
@@ -368,7 +368,7 @@ Returns a Vector of iterables `result`. Call `Plots.animate(result[i])` to get a
 eulerian_videos
 
 """
-eulerian_video(ctx, u, inverse_flow_map_t, t0, tf, nx, ny, nt, LL, UR; extra_kwargs_fun=nothing, ...)
+    eulerian_video(ctx, u, inverse_flow_map_t, t0, tf, nx, ny, nt, LL, UR; extra_kwargs_fun=nothing, ...)
 
 Like `eulerian_videos`, but `u(t)` is a vector of dofs, and `extra_kwargs_fun(t)`
 gives extra keyword arguments. Returns only one result, on which `Plots.animate()`
@@ -580,9 +580,9 @@ x1, x2, FTLE
 end
 
 """
-plot_ftle(odefun, p, tspan, LL, UR, nx, ny;
-    δ=1e-9, tolerance=1e-4, solver=OrdinaryDiffEq.BS5(),
-    existing_plot=nothing, flip_y=false, check_inbounds=always_true, pass_on_errors=false)
+    plot_ftle(odefun, p, tspan, LL, UR, nx, ny;
+        δ=1e-9, tolerance=1e-4, solver=OrdinaryDiffEq.BS5(),
+        existing_plot=nothing, flip_y=false, check_inbounds=always_true, pass_on_errors=false)
 
 Make a heatmap of a FTLE field using finite differences. If `existing_plot` is
 given a value, plot using `heatmap!` on top of it. If `flip_y` is true, then flip
@@ -594,7 +594,7 @@ caught and ignored.
 plot_ftle
 
 """
-plot_vortices(vortices, singularities, LL, UR; kwargs...)
+    plot_vortices(vortices, singularities, LL, UR; kwargs...)
 
 Plots the output of [`ellipticLCS`](@ref) on the domain spanned by the lower left
 corner `LL` and the upper right corner `UR`.
@@ -647,7 +647,7 @@ xspan, yspan, permutedims(logBg ? log10.(bg) : bg)
 end
 
 """
-plot_field(field, LL, UR; logBg=true)
+    plot_field(field, LL, UR; logBg=true)
 
 Makes a heatmap plot of the scalar field given as the `AxisArray` `field` on the
 domain spanned by the lower-left corner `LL` and the upper-right corner `UR`.
@@ -657,7 +657,7 @@ is plotted.
 plot_field
 
 """
-plot_field!
+    plot_field!
 
 Same as [`plot_field`](@ref), but adds the output to the currently active plot.
 """
@@ -693,7 +693,7 @@ curve
 end
 
 """
-plot_barrier(barrier::EllipticBarrier; showlabel=false)
+    plot_barrier(barrier::EllipticBarrier; showlabel=false)
 
 Makes a line plot of the `barrier`, where the keyword argument `showlabel`
 determines whether a legend entry showing the barrier's parameter value is
@@ -702,7 +702,7 @@ created.
 plot_barrier
 
 """
-plot_barrier!(barrier::EllipticBarrier; showlabel=false)
+    plot_barrier!(barrier::EllipticBarrier; showlabel=false)
 
 Same as [`plot_barrier`](@ref), but adds the output to the currently active plot.
 """
@@ -744,7 +744,7 @@ points
 end
 
 """
-plot_singularities(singularities::Vector{Singularity})
+    plot_singularities(singularities::Vector{Singularity})
 
 Makes a scatter plot of the `singularities`, with coloring depending on the
 respective index:
@@ -759,7 +759,7 @@ respective index:
 plot_singularities
 
 """
-plot_singularities!(singularities::Vector{Singularity})
+    plot_singularities!(singularities::Vector{Singularity})
 
 Same as [`plot_singularities`](@ref), but adds the output to the currently active plot.
 """
