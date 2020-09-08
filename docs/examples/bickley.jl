@@ -15,7 +15,7 @@
 #
 # The Bickley jet is described by a time-dependent velocity field arising from a
 # stream-function. The corresponding velocity field can be conveniently defined
-# using the `@velo_from_stream` macro from [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl):
+# using the `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
 using Distributed
 nprocs() == 1 && addprocs()

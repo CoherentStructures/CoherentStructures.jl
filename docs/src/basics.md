@@ -24,7 +24,7 @@ function vectorfield3d(u, p, t)
     return StaticArrays.SVector{3}(du1, du2, du3)
 end
 ```
-In a companion package [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl), there are convenience macros to define two-dimensional velocity
+In a companion package [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl), there are convenience macros to define two-dimensional velocity
 and vorticity fields from stream functions.
 
 Another typical use case is when velocities are given as a data set. In this
