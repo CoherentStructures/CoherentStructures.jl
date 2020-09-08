@@ -21,7 +21,7 @@
 # ``s(0) = 0`` and ``s(1) = 1``. It therefore interpolates two double-gyre-type
 # velocity fields, from horizontally to vertically arranged counter-rotating gyres.
 # The corresponding velocity field can be conveniently defined using the
-# `@velo_from_stream` macro from [`StreamMacros.jl`](@ref https://github.com/CoherentStructures/StreamMacros.jl):
+# `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
 using StreamMacros
 rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin

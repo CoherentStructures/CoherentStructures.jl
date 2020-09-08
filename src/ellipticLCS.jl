@@ -1563,7 +1563,6 @@ Calculate material barriers to diffusive and stochastic transport on the materia
 spanned by `xspan` and `yspan`, where the averaged weighted CG tensor is computed at the
 time instance contained in `tspan`. The argument `lcsp` must be of type
 [`LCSParameters`](@ref), and contains parameters used for the elliptic vortex detection.
-
 """
 function materialbarriers(
     odefun,

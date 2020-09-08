@@ -109,8 +109,8 @@ RecipesBase.@recipe function f(
         seriestype --> :heatmap
         fill --> true
         aspect_ratio --> 1
-        xlim --> (LL[1], UR[1])
-        ylim --> (LL[2], UR[2])
+        xlims --> (LL[1], UR[1])
+        ylims --> (LL[2], UR[2])
         x1, x2, z
     elseif ctx isa GridContext{1}
         nx = length(as.args) >= 6 ? as.args[6] : 100

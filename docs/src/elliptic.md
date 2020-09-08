@@ -55,9 +55,8 @@ In summary, the implementation consists of the following steps:
 The fully automated high-level functions are:
 ```@docs
 ellipticLCS
-```
-```@docs
 constrainedLCS
+materialbarriers
 ```
 One of their arguments is a list of parameters used in the LCS detection. This
 list is combined in a data type called `LCSParameters`. The output is a list of `EllipticBarrier`s and a list of `Singularity`s.
