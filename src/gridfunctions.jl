@@ -271,7 +271,7 @@ const regular2dGridTypes = [
 Constructs a regular grid. `gridType` should be one from `regular2dGridTypes`.
 """
 function regular2dGrid(gridType::String, numnodes::NTuple{2,Int},
-        LL::NTuple{2,<:Real}=(0.0, 0.0), UR::NTuple{2,<:Real}=(1.0, 1.0); kwargs...)
+        LL=(0.0, 0.0), UR=(1.0, 1.0); kwargs...)
     if gridType == "regular PC triangular grid"
         return regularTriangularGrid(numnodes, LL, UR; PC=true, kwargs...)
     elseif gridType == "regular P1 triangular grid"
@@ -295,7 +295,7 @@ function regular2dGrid(gridType::String, numnodes::NTuple{2,Int},
     end
 end
 
-@deprecate regular2dGrid(gridType::String, numnodes::NTuple{2,Int}, LL::Vector{<:Real}, UR::Vector{<:Real}; kwargs...) regular2dGrid(gridType, numnodes, (LL...,), (UR...,); kwargs...)
+#@deprecate regular2dGrid(gridType::String, numnodes::NTuple{2,Int}, LL::Vector{<:Real}, UR::Vector{<:Real}; kwargs...) regular2dGrid(gridType, numnodes, (LL...,), (UR...,); kwargs...)
 
 #= #TODO 1.0
 """
@@ -525,14 +525,14 @@ function GridContext{2}(::Type{JFM.Triangle},
                          ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}(),kwargs...
                          )
     # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.Triangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{JFM.Triangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    grid = JFM.generate_grid(JFM.Triangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}((LL[1],LL[2])), Vec{2}((UR[1],UR[2])))
+    loc = Regular2DGridLocator{JFM.Triangle}(numnodes[1], numnodes[2], Vec{2}((LL[1],LL[2])), Vec{2}((UR[1],UR[2])))
     dh = JFM.DofHandler(grid)
     qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     JFM.close!(dh)
     result = GridContext{2}(grid, ip,JFM.Lagrange{2,JFM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
-    result.spatialBounds = (LL, UR)
+    result.spatialBounds = ((LL[1],LL[2]), (UR[1],UR[2]))
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular triangular grid"
     return result
@@ -554,7 +554,7 @@ function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),
     else
         ip = JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
     end
-    ctx = GridContext{2}(JFM.Triangle, numnodes, LL, UR;
+    ctx = GridContext{2}(JFM.Triangle, numnodes, [LL[1],LL[2]], [UR[1],UR[2]];
             quadrature_order=quadrature_order,ip=ip,kwargs...
             )
     return ctx, BoundaryData()

@@ -157,6 +157,7 @@ end
         z=nothing,
         postprocessor=nothing,
         bdata=nothing,
+        throw_errors=false,
         kwargs...)
 
 Plot a heatmap of a function in Eulerian coordinates, i.e., the pushforward of
