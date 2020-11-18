@@ -1738,22 +1738,21 @@ end
 """
     area(polygon)
 
-Compute the enclosed area of `polygon`, which can be of type `EllipticBarrier` or
-`EllipticVortex`. In the latter case, the enclosed area of the outermost (i.e., the
-last `EllipticBarrier` in the `barriers` field) is computed.
+Compute the enclosed area of `polygon`, which can be of type `Vector{SVector{2}}`,
+`EllipticBarrier` or `EllipticVortex`. In the latter case, the enclosed area of
+the outermost (i.e., the last `EllipticBarrier` in the `barriers` field) is computed.
 """
-function area(barrier::EllipticBarrier)
-    poly = barrier.curve
-    a = zero(eltype(eltype(poly)))
-    p1 = p2 = first(poly)
-    @inbounds for i in 2:length(poly)
-        p2 = poly[i]
-        a += p1[1]*p2[2]
-        a -= p2[1]*p1[2]
-        p1 = p2
+function area(poly::Vector{SVector{2,T}}) where {T}
+    a = zero(T)
+    @inbounds @simd for i in 1:length(poly)-1
+        p1 = poly[i]
+        p2 = poly[i+1]
+        a += p1[1]*p2[2]-p2[1]*p1[2]
     end
+    p1 = last(poly)
     p2 = first(poly)
     a += p1[1]*p2[2]-p2[1]*p1[2]
     return 0.5*a
 end
-area(vortex::EllipticVortex) = area(last(vortex.barriers))
+area(barrier::EllipticBarrier) = area(barrier.curve)
+area(vortex::EllipticVortex)   = area(last(vortex.barriers))
