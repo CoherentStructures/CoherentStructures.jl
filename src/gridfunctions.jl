@@ -1341,7 +1341,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
 
 
     tri_iterator = Base.iterate(tess)
-    while tri_iterator != nothing
+    while tri_iterator !== nothing
         (tri, triindex) = tri_iterator
         #It could be the the triangle in question is oriented the wrong way
         #We test this, and flip it if neccessary

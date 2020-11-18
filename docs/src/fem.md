@@ -1,7 +1,7 @@
 # Finite-element discretizations of the dynamic Laplacian
 
-These methods rely on the theory outlined by Froyland's [*Dynamical Laplacian*]
-(http://arxiv.org/pdf/1411.7186v4.pdf)
+These methods rely on the theory outlined by Froyland's
+[*Dynamical Laplacian*](http://arxiv.org/pdf/1411.7186v4.pdf)
 and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrasch & Keller.
 
 The Laplace-like operators are best discretized by finite-element-based methods,
@@ -21,7 +21,9 @@ of $\Delta^{dyn}$ can be used to find Lagrangian Coherent Structures.
 See the [Examples](@ref examples_section) section for examples of how these methods can be used.
 
 ## Features
+
 ### CG and TO methods
+
 The standard Galerkin formulation of the weak dynamical Laplace is referred to
 as the CG-method here, due to the fact that the inverse Cauchy-Green tensor
 appears in the weak formulation. This gives a bilinear form
@@ -36,24 +38,26 @@ These approximate the weak form of the Dynamical-Laplace by a bilinear-form:
 $\tilde a_h(u,v) = \sum_{t \in \mathcal T} a^t(I_hP_t u, I_h P_t v)$
 
 where $I_h$ is a suitable interpolation operator depending on the mesh-width $h$. Options for $I_h$ implemented in this package are:
+
 - collocation (pointwise interpolation):
-    - points used are mesh points from domain grid ("adaptive TO"),
-    - points used are arbitrary ("non-adaptive TO");
+  - points used are mesh points from domain grid ("adaptive TO"),
+  - points used are arbitrary ("non-adaptive TO");
 - the $L^2$-orthogonal projection onto an FEM-space:
-    - using the forward-flow map (currently gives poor results),
-    - using the inverse flow map.
-Note that the $L^2$-Galerkin methods currently perform very poorly on larger
-problems.
+  - using the forward-flow map (currently gives poor results),
+  - using the inverse flow map.
+
+Note that the $L^2$-Galerkin methods currently perform very poorly on larger problems.
 
 For more details, see [Froyland & Junge, 2018](https://arxiv.org/pdf/1705.03640.pdf).
 
 ### Grids
 
 Various types of regular and irregular meshes (with Delaunay triangulation using [`VoronoiDelaunay.jl`](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) and include:
- - triangular P1-Lagrange elements in 2D (all methods)
- - quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
- - triangular and quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
- - tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)
+
+- triangular P1-Lagrange elements in 2D (all methods)
+- quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
+- triangular and quadrilateral P2-Lagrange elements in 2D (all methods except adaptive TO)
+- tetrahedral P1-Lagrange elements in 3D (only CG method tested, non-adaptive TO might work also)
 
 ## The `GridContext` Type
 
@@ -85,6 +89,7 @@ See [Stiffness and Mass Matrices](@ref) from the [FEM-API](@ref) section.
 ## Evaluating Functions in the Approximation Space
 
 given a series of coefficients that represent a function in the approximation space, to evaluate a function at a point, use the `evaluate_function_from_node_or_cellvals` or `evaluate_function_from_dofvals` functions.
+
 ```@example 6
 using CoherentStructures #hide
 using Plots, Tensors
@@ -109,10 +114,11 @@ function.
 To use something other than the natural homogeneous von Neumann boundary
 conditions, the `BoundaryData` type can be used. This currently
 supports combinations of homogeneous Dirichlet and periodic boundary conditions.
- - Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass
-   matrices to be deleted
- - Periodic boundary conditions require rows and columns of the stiffness/mass
-   matrices to be added to each other.
+
+- Homogeneous Dirichlet BCs require rows and columns of the stiffness/mass
+  matrices to be deleted
+- Periodic boundary conditions require rows and columns of the stiffness/mass
+  matrices to be added to each other.
 
 This means that the coefficient vectors for elements of the approximation space
 that satisfy the boundary conditions are potentially smaller and in a different
@@ -121,15 +127,16 @@ account.
 
 ### Constructing Boundary Conditions
 
-Natural von-Neumann boundary conditions can be constructed with:
-`BoundaryData()` and are generally the default
+Natural von-Neumann boundary conditions can be constructed with `BoundaryData()`
+and are generally the default.
 
 Homogeneous Dirichlet boundary conditions can be constructed with the
 `getHomDBCS(ctx[, which="all"])` function. The optional `which` parameter is a
 vector of strings, corresponding to `JuAFEM` face-sets, e.g.
 `getHomDBCS(ctx, which=["left", "right"])`
 
-Periodic boundary conditions are constructed by calling `BoundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a
+Periodic boundary conditions are constructed by calling
+`BoundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a
 function that should return `true` if and only if two points should be identified.
 Due to floating-point rounding errors, note that using exact comparisons (`==`)
 should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are
@@ -141,6 +148,7 @@ For details, see [`BoundaryData`](@ref).
 ### Example
 
 Here we apply homogeneous DBC to top and bottom, and identify the left and right side:
+
 ```@example 6
 using CoherentStructures, Distances, Plots
 ctx, _ = regularQuadrilateralGrid((10, 10))
@@ -166,36 +174,45 @@ Tensor fields can be constructed in parallel, and then passed to [`assembleStiff
 TODO: Add this example
 
 ## FEM-API
+
 ```@meta
 CurrentModule = CoherentStructures
 ```
 
 ### Stiffness and Mass Matrices
+
 ```@docs
 assembleStiffnessMatrix
 assembleMassMatrix
 adaptiveTOCollocationStiffnessMatrix
 ```
 
-
 ### Constructing Grids
 
 There are several helper functions available for constructing grids. The simplest is:
+
 #### In 1D
+
 ```@docs
 regular1dP1Grid
 regular1dP2Grid
 ```
+
 ### In 2D
+
 ```@docs
 regular2dGrid
 ```
+
 Supported values for the `gridType` argument are:
+
 ```@example
 using CoherentStructures #hide
 regular2dGridTypes
 ```
+
 The following functions are conceptually similar:
+
 ```@docs
 regularTriangularGrid
 regularDelaunayGrid
@@ -205,18 +222,23 @@ regularP2DelaunayGrid
 regularQuadrilateralGrid
 regularP2QuadrilateralGrid
 ```
+
 In 3D we have
+
 ```@docs
 regularTetrahedralGrid
 regularP2TetrahedralGrid
 ```
+
 All of these methods return a `GridContext` object and a `BoundaryData` object. The latter is only relevant when using
 a Delaunay grid with `on_torus==true`.
+
 ```@docs
 CoherentStructures.GridContext
 ```
 
 ### Boundary Conditions API
+
 ```@docs
 BoundaryData
 getHomDBCS
@@ -225,6 +247,7 @@ applyBCS
 ```
 
 ### Helper functions
+
 ```@docs
 dof2node
 getDofCoordinates
@@ -245,20 +268,25 @@ getH
 ```
 
 ### Plotting API
+
 #### FEM
+
 ```@docs
 plot_u
 plot_u_eulerian
 eulerian_videos
 eulerian_video
 ```
+
 ### Other plotting utilities
+
 ```@docs
 plot_ftle
 ```
 
 ### Defaults
-```
+
+```julia
 const default_quadrature_order=5
 const default_solver = OrdinaryDiffEq.BS5()
 ```

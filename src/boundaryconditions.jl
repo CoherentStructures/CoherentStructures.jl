@@ -248,13 +248,13 @@ function applyBCS(ctx_row::GridContext{dim}, K, bdata_row;
 
     is_symmetric = issymmetric(K) && (bdata_row == bdata_col)
 
-    if bdata_col != nothing
+    if bdata_col !== nothing
         correspondsTo_col = BCTable(ctx_col, bdata_col)
     else
         correspondsTo_col = collect(1:(size(K)[2]))
     end
 
-    if bdata_row != nothing
+    if bdata_row !== nothing
         correspondsTo_row = BCTable(ctx_row, bdata_row)
     else
         correspondsTo_row = collect(1:(size(K)[1]))
@@ -375,13 +375,13 @@ end
 isEmptyBC(bdata::BoundaryData) = all(isempty, (bdata.dbc_dofs, bdata.periodic_dofs_from))
 
 function get_full_dofvals(ctx, dof_vals; bdata=nothing)
-    if (bdata==nothing) && (ctx.n != length(dof_vals))
+    if (bdata === nothing) && (ctx.n != length(dof_vals))
         dbcs = getHomDBCS(ctx)
         if length(dbcs.dbc_dofs) + length(dof_vals) != ctx.n
             error("Input u has wrong length")
         end
         dof_values = undoBCS(ctx, dof_vals, dbcs)
-    elseif (bdata != nothing)
+    elseif (bdata !== nothing)
         dof_values = undoBCS(ctx, dof_vals, bdata)
     else
         dof_values = dof_vals

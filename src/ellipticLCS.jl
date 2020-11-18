@@ -40,11 +40,12 @@ function getindices(singularities::AbstractArray{<:Singularity})
 end
 
 """
-This is a container for coherent vortex boundaries. An object `vortex` of type
-`EllipticBarrier` can be easily plotted by `plot(vortex.curve)`, or
-`plot!([figure, ]vortex.curve)` if it is to be overlaid over an existing plot.
+This is a container for coherent vortex boundaries. An object `barrier` of type
+`EllipticBarrier` can be easily plotted by `plot(barrier.curve)`, or
+`plot!([figure, ]barrier.curve)` if it is to be overlaid over an existing plot.
 
 ## Fields
+
 * `curve`: a vector of tuples, contains the coordinates of coherent vortex boundary
   points;
 * `core`: location of the vortex core;
@@ -65,6 +66,7 @@ This is a container for an elliptic vortex, as represented by the vortex's `cent
 and a list `barriers` of all computed [`EllipticBarrier`](@ref)s.
 
 ## Fields
+
 * `center`: location of the vortex center;
 * `barriers`: vector of `EllipticBarrier`s.
 """
@@ -77,6 +79,7 @@ end
 Container for parameters used in elliptic LCS computations.
 
 ## Fields
+
 * `boxradius`: "radius" of localization square for closed orbit detection
 * `indexradius=1e-1boxradius`: radius for singularity type detection
 * `merge_heuristics`: a list of heuristics for combining singularities, supported are
@@ -96,8 +99,9 @@ Container for parameters used in elliptic LCS computations.
 * `only_uniform::Bool=true`: whether or not to reject orbits that are not uniform
 
 ## Example
-```
-julia> p = LCSParameters(2.5)
+
+```repl
+p = LCSParameters(2.5)
 LCSParameters(2.5, 0.25, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 ```
 """
@@ -196,6 +200,30 @@ struct LCScache{Ts<:Real,Tv<:SVector{2,<:Real}}
     ξ₁::AxisArray{Tv,2}
     ξ₂::AxisArray{Tv,2}
     η::AxisArray{Tv,2}
+end
+
+"""
+Container for parameters used in point-inserting flow computations;
+see [`flowgrow`](@ref).
+
+## Fields
+
+* `maxcurv=0.3`: maximal bound on the absolute value of the discrete curvature;
+* `mindist=0.1`: least acceptable distance between two consecutive points;
+* `maxdist=1.0`: maximal acceptable distance between two consecutive points.
+"""
+struct FlowGrowParams
+    maxcurv::Float64
+    mindist::Float64
+    maxdist::Float64
+    function FlowGrowParams(maxcurv, mindist, maxdist)
+        all(isposdef, (maxcurv, mindist, maxdist))
+        return new(Float64(maxcurv), Float64(mindist), Float64(maxdist))
+    end
+end
+
+function FlowGrowParams(; maxcurv=0.3, mindist=0.1, maxdist=1.0)
+    return FlowGrowParams(maxcurv, mindist, maxdist)
 end
 
 """
@@ -1621,49 +1649,111 @@ end
 
 ### Some convenience functions
 
-function flow(odefun::ODE.ODEFunction, u::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
-    nt = length(tspan)
-    nc = length(u.curve)
-    newcurves = map(
-        let odefun = odefun, tspan = tspan, kwargs = kwargs
-            x -> flow(odefun, x, tspan; kwargs...)
-        end,
-        u.curve,
-    )
-    newcurves2 = Vector{SVector{2,T}}[]
-    timeindices = eachindex(newcurves[1])
-    for i in timeindices
-        curcurve = [convert(SVector{2,T}, n[i]) for n in newcurves]
-        # SVector{2,T}[]
-        # for j in 1:nc
-        #     push!(curcurve, convert(SVector{2,T}, newcurves[j][i]))
-        # end
-        push!(newcurves2, curcurve)
-    end
-    newcores = flow(odefun, u.core, tspan; kwargs...)
-    return [
-        EllipticBarrier{T}(newcurves2[i], newcores[i], u.p, u.s) for i in timeindices
-    ]
-end
-
 function flow(odefun::ODE.ODEFunction, u::Singularity, tspan; kwargs...)
     nt = length(tspan)
     newcoords = flow(odefun, u.coords, tspan; kwargs...)
-    return [Singuarity(newcoords[i], u.index) for i in 1:nt]
+    return Singuarity.(newcoords, u.index)
+end
+function flow(odefun::ODE.ODEFunction, curve::Vector{<:SVector}, tspan; kwargs...)
+    nt = length(tspan)
+    newcurves = [flow(odefun, x, tspan; kwargs...) for x in curve]
+    return map(1:nt) do t
+        [nc[t] for nc in newcurves]
+    end
+end
+function flow(odefun::ODE.ODEFunction, barrier::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
+    nt = length(tspan)
+    newcurves = flow(odefun, barrier.curve, tspan; kwargs...)
+    newcores = flow(odefun, barrier.core, tspan; kwargs...)
+    return EllipticBarrier{T}.(newcurves, newcores, barrier.p, barrier.s)
+end
+function flow(odefun::ODE.ODEFunction, vortex::EllipticVortex{T}, tspan; kwargs...) where {T}
+    nt = length(tspan)
+    newcenters  = flow(odefun, vortex.center, tspan; kwargs...)
+    newbarriers = [flow(odefun, barrier, tspan; kwargs...) for barrier in vortex.barriers]
+    newbarriers2 = map(1:nt) do t
+        [barrier[t] for barrier in newbarriers]
+    end
+    return EllipticVortex{T}.(newcenters, newbarriers2)
 end
 
-function flow(odefun::ODE.ODEFunction, u::EllipticVortex{T}, tspan; kwargs...) where {T}
-    newbarriers = [flow(odefun, b, tspan; kwargs...) for b in u.barriers]
-    newbarriers2 = Vector{EllipticBarrier{T}}[]
-    nt = length(tspan)
-    nb = length(u.barriers)
-    for i in 1:nt
-        curbarriers = EllipticBarrier{T}[]
-        for j in 1:nb
-            push!(curbarriers, newbarriers[j][i])
+function refine!(ccurve::Vector{<:SVector}, ncurve::Vector{<:SVector}, odefun, tspan, params; kwargs...)
+    i = firstindex(ncurve)
+    while i < lastindex(ncurve)-1
+        if i > firstindex(ncurve)
+            κ = curvature(ncurve[i-1], ncurve[i], ncurve[i+1])
+        else
+            κ = 0.0
         end
-        push!(newbarriers2, curbarriers)
+        d = norm(ncurve[i+1] - ncurve[i])
+        if (d > params.maxdist) || ((κ > params.maxcurv) && (d > params.mindist))
+            if (i > firstindex(ncurve)) && (i < lastindex(ncurve)-1)
+                cadd = cubicinterp(ccurve[i-1], ccurve[i], ccurve[i+1], ccurve[i+2])
+            else
+                cadd = (ccurve[i] + ccurve[i+1])/2
+            end
+            if any(isnan, cadd)
+                i += 1
+            else # point insertion is potentially suboptimal
+                insert!(ccurve, i+1, cadd)
+                insert!(ncurve, i+1, flow(odefun, cadd, tspan; kwargs...)[2])
+            end
+        else
+            i += 1
+        end
     end
-    newcenters = flow(odefun, u.center, tspan; kwargs...)
-    return [EllipticVortex{T}(newcenters[i], newbarriers2[i]) for i in 1:nt]
+    return ccurve
 end
+function refine!(cbarrier::EllipticBarrier, nbarrier::EllipticBarrier, odefun, tspan, params; kwargs...)
+    ccurve = cbarrier.curve
+    ncurve = nbarrier.curve
+    refine!(ccurve, ncurve, odefun, tspan, params; kwargs...)
+    # @show length(ccurve)
+    return cbarrier
+end
+
+function flowgrow(odefun, barrier::EllipticBarrier, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...)
+    nt = length(tspan)
+    nc = length(barrier.curve)
+    barrierevol = Vector{typeof(barrier)}(undef, nt)
+    barrierevol[1] = deepcopy(barrier)
+    for i in 1:length(tspan)-1
+        ts = tspan[i:i+1]
+        barrierevol[i+1] = flow(odefun, barrierevol[i], ts; kwargs...)[2]
+        refine!(barrierevol[i], barrierevol[i+1], odefun, ts, params; kwargs...)
+        # @show i
+    end
+    return barrierevol
+end
+function flowgrow(odefun, vortex::EllipticVortex{T}, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...) where {T}
+    nt = length(tspan)
+    newcenters  = flow(odefun, vortex.center, tspan; kwargs...)
+    newbarriers = [flowgrow(odefun, barrier, tspan, params; kwargs...) for barrier in vortex.barriers]
+    newbarriers2 = map(1:nt) do t
+        [nb[t] for nb in newbarriers]
+    end
+    return typeof(vortex).(newcenters, newbarriers2)
+end
+
+"""
+    area(polygon)
+
+Compute the enclosed area of `polygon`, which can be of type `EllipticBarrier` or
+`EllipticVortex`. In the latter case, the enclosed area of the outermost (i.e., the
+last `EllipticBarrier` in the `barriers` field) is computed.
+"""
+function area(barrier::EllipticBarrier)
+    poly = barrier.curve
+    a = zero(eltype(eltype(poly)))
+    p1 = p2 = first(poly)
+    @inbounds for i in 2:length(poly)
+        p2 = poly[i]
+        a += p1[1]*p2[2]
+        a -= p2[1]*p1[2]
+        p1 = p2
+    end
+    p2 = first(poly)
+    a += p1[1]*p2[2]-p2[1]*p1[2]
+    return 0.5*a
+end
+area(vortex::EllipticVortex) = area(last(vortex.barriers))
