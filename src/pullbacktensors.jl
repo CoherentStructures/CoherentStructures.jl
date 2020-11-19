@@ -10,7 +10,7 @@ struct Trajectory{dim,ts,T,N}
 end
 
 """
-    flow(odefun,  u0, tspan; p, solver, tolerance, force_dtmin)
+    flow(odefun, u0, tspan; p, solver, tolerance, force_dtmin)
 
 Solve the ODE with right hand side given by `odefun` and initial value `u0` over
 the time interval `tspan`, evaluated at each element of `tspan`.

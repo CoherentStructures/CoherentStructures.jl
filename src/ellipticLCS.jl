@@ -6,6 +6,7 @@ const Ω = SMatrix{2,2}(0.0, 1.0, -1.0, 0.0)
 Container type for critical points of vector fields or singularities of line fields.
 
 ## Fields
+
 * `coords::SVector{2}`: coordinates of the singularity
 * `index::Rational`: index of the singularity
 """
@@ -1648,36 +1649,31 @@ function materialbarriers(
 end
 
 ### Some convenience functions
-
 function flow(odefun::ODE.ODEFunction, u::Singularity, tspan; kwargs...)
-    nt = length(tspan)
     newcoords = flow(odefun, u.coords, tspan; kwargs...)
-    return Singuarity.(newcoords, u.index)
+    return Singularity.(newcoords, u.index)
 end
 function flow(odefun::ODE.ODEFunction, curve::Vector{<:SVector}, tspan; kwargs...)
-    nt = length(tspan)
     newcurves = [flow(odefun, x, tspan; kwargs...) for x in curve]
-    return map(1:nt) do t
+    return map(eachindex(tspan)) do t
         [nc[t] for nc in newcurves]
     end
 end
 function flow(odefun::ODE.ODEFunction, barrier::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
-    nt = length(tspan)
     newcurves = flow(odefun, barrier.curve, tspan; kwargs...)
     newcores = flow(odefun, barrier.core, tspan; kwargs...)
     return EllipticBarrier{T}.(newcurves, newcores, barrier.p, barrier.s)
 end
 function flow(odefun::ODE.ODEFunction, vortex::EllipticVortex{T}, tspan; kwargs...) where {T}
-    nt = length(tspan)
     newcenters  = flow(odefun, vortex.center, tspan; kwargs...)
     newbarriers = [flow(odefun, barrier, tspan; kwargs...) for barrier in vortex.barriers]
-    newbarriers2 = map(1:nt) do t
+    newbarriers2 = map(eachindex(tspan)) do t
         [barrier[t] for barrier in newbarriers]
     end
     return EllipticVortex{T}.(newcenters, newbarriers2)
 end
 
-function refine!(ccurve::Vector{<:SVector}, ncurve::Vector{<:SVector}, odefun, tspan, params; kwargs...)
+function refine!(ccurve::Vector{T}, ncurve::Vector{T}, odefun, tspan, params; kwargs...) where {T<:SVector}
     i = firstindex(ncurve)
     while i < lastindex(ncurve)-1
         if i > firstindex(ncurve)
@@ -1704,32 +1700,44 @@ function refine!(ccurve::Vector{<:SVector}, ncurve::Vector{<:SVector}, odefun, t
     end
     return ccurve
 end
-function refine!(cbarrier::EllipticBarrier, nbarrier::EllipticBarrier, odefun, tspan, params; kwargs...)
-    ccurve = cbarrier.curve
-    ncurve = nbarrier.curve
-    refine!(ccurve, ncurve, odefun, tspan, params; kwargs...)
-    # @show length(ccurve)
+function refine!(cbarrier::EllipticBarrier{T}, nbarrier::EllipticBarrier{T}, odefun, tspan, params; kwargs...) where {T}
+    refine!(cbarrier.curve, nbarrier.curve, odefun, tspan, params; kwargs...)
     return cbarrier
 end
 
-function flowgrow(odefun, barrier::EllipticBarrier, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...)
+"""
+    flowgrow(odefun, curve, tspan, params; kwargs...)
+
+Advect `curve` with point insertion by the ODE with right hand side `odefun` over
+the time interval `tspan`, evaluated at each element of `tspan`. This method is
+known in oceanography as Dritschel's method. The point insertion method is controlled
+by the parameters stored in `params::FlowGrowParams`; cf. [`FlowGrowParams`](@ref).
+Keyword arguments `kwargs` are passed to the [`flow`](@ref) function.
+
+Convenience methods for [`EllipticBarrier`](@ref) and [`EllipticVortex`] objects
+in place of `curve` exist. In this case, the method returns a vector of length
+`length(tspan)` of corresponding objects.
+"""
+function flowgrow(odefun, curve::Vector{<:SVector}, tspan, params; kwargs...)
     nt = length(tspan)
-    nc = length(barrier.curve)
-    barrierevol = Vector{typeof(barrier)}(undef, nt)
-    barrierevol[1] = deepcopy(barrier)
-    for i in 1:length(tspan)-1
+    newcurves = Vector{typeof(curve)}(undef, nt)
+    newcurves[1] = deepcopy(curve)
+    for i in 1:nt-1
         ts = tspan[i:i+1]
-        barrierevol[i+1] = flow(odefun, barrierevol[i], ts; kwargs...)[2]
-        refine!(barrierevol[i], barrierevol[i+1], odefun, ts, params; kwargs...)
-        # @show i
+        newcurves[i+1] = flow(odefun, newcurves[i], ts; kwargs...)[2]
+        refine!(newcurves[i], newcurves[i+1], odefun, ts, params; kwargs...)
     end
-    return barrierevol
+    return newcurves
+end
+function flowgrow(odefun, barrier::EllipticBarrier, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...)
+    newcores  = flow(odefun, barrier.core, tspan; kwargs...)
+    newcurves = flowgrow(odefun, barrier.curve, tspan, params; kwargs...)
+    return typeof(barrier).(newcurves, newcores, barrier.p, barrier.s)
 end
 function flowgrow(odefun, vortex::EllipticVortex{T}, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...) where {T}
-    nt = length(tspan)
     newcenters  = flow(odefun, vortex.center, tspan; kwargs...)
     newbarriers = [flowgrow(odefun, barrier, tspan, params; kwargs...) for barrier in vortex.barriers]
-    newbarriers2 = map(1:nt) do t
+    newbarriers2 = map(eachindex(tspan)) do t
         [nb[t] for nb in newbarriers]
     end
     return typeof(vortex).(newcenters, newbarriers2)

@@ -142,6 +142,13 @@ compute_closed_orbits
 
 ### Convenience functions
 
+First of all, [`Singularity`](@ref), [`EllipticBarrier`](@ref) and [`EllipticVortex`](@ref)
+objects can be passed as initial conditions to the [`flow`](@ref) function, which returns
+a (time-resolved) vector of corresponding objects. Moreover, we have advection with
+adaptive point insertion (known in oceanography as "Dritschel advection") and an function
+to compute the area of [`EllipticBarrier`](@ref) and [`EllipticVortex`](@ref) objects.
+
 ```@docs
+flowgrow
 area
 ```
