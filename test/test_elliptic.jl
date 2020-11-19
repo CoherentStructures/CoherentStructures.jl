@@ -116,7 +116,7 @@ end
     fgbarrier = flowgrow(rot_double_gyre, vortex.barriers[1], tspan, FlowGrowParams())
     @test fgbarrier isa Vector{<:EllipticBarrier}
     @test length(fgbarrier) == length(tspan)
-    @test CS.area(vortex) == CS.area(vortex.barriers[end])
+    @test area(vortex) == area(vortex.barriers[end])
     @test sum(map(v -> length(v.barriers), vortices)) == 2
     @test singularities isa Vector{Singularity{Float64}}
     @test length(singularities) > 5
