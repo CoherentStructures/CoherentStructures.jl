@@ -7,6 +7,7 @@ not want to introduce additional dependencies.
 WARNING: this script will delete/overwrite the file at `output_file`.
 
 Example usage, after the script has been loaded:
+
 ```julia
 xs = range(0,stop=10,length=20)
 ts = range(0,stop=1.0,length=100)
@@ -23,11 +24,10 @@ animatemp4(frames) # Saves to /tmp/output.mp4 by default
  </video>
 ```
 
-
 The script:
 
 ```julia
-using Printf,UUIDs
+using Printf, UUIDs
 
 using ProgressMeter,Plots
 

@@ -308,7 +308,7 @@ function eulerian_videos(
             end
         end
         for i in 1:num_videos
-            if extra_kwargs_fun != nothing
+            if extra_kwargs_fun !== nothing
                 curframe = plot_u_eulerian(
                     ctx,
                     zeros(ctx.n),

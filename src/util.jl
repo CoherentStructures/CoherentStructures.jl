@@ -6,10 +6,10 @@ const PEuclidean = Distances.PeriodicEuclidean
 @enum BisectionStatus::Int zero_found=0 maxiters_exceeded=1 nans_between=2 no_real_root=3
 
 # bisection is used in closed orbit detection in ellipticLCS.jl
-function bisection(f, a::T, b::T, tol::Real=1e-4,
-        maxiter::Int=20, margin_step::T=(b-a)/20
-        )::Tuple{BisectionStatus, T} where T <: Real
+function bisection(f, a, b, tol=1e-4, maxiter=20, margin_step=(b-a)/20)
     @assert margin_step > 0
+    T = typeof((oneunit(a) + oneunit(b))/2)
+    a, b, margin_step = promote(a, b, margin_step)
     fa, fb = f(a), f(b)
 
     if abs(fa) < tol
@@ -18,9 +18,9 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
     	return (zero_found, b)
     end
 
-    local c::T
+    # local c::T
     i = 0
-    firsttime=true
+    firsttime = true
     while true
         i < maxiter || return (maxiters_exceeded, T(NaN))
     	if isnan(fa) && abs(a-b) > margin_step && (a + margin_step > a)
@@ -34,18 +34,18 @@ function bisection(f, a::T, b::T, tol::Real=1e-4,
             fb = f(b)
             continue
         end
-        firsttime=false
+        firsttime = false
         i += 1
         fa * fb <= 0 || return (no_real_root, T(NaN))
         #We use bisection in general, but regular falsi for the first 4 iterations if doing so is well-defined.
     	if i > 3 || (fb - fa)  == 0
             c = (a + b) / 2 # bisection
         else
-            c = (a*fb-b*fa)/(fb-fa) # regula falsi
+            c = (a*fb - b*fa)/(fb - fa) # regula falsi
         end
         fc = f(c)
         if abs(fc) < tol
-            return (zero_found,c)
+            return (zero_found, c)
         elseif fa * fc > 0
             a = c  # Root is in the right half of [a,b].
             fa = fc
@@ -166,6 +166,33 @@ Returns a cubic spline interpolant of the `AxisArray` `A` (without extrapolation
 function ITP.CubicSplineInterpolation(A::AxisArray)
     ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
                         axisvalues(A)...)
+end
+
+# functions used by flowgrow
+function curvature(a, b, c)
+    bma = b - a
+    normba = norm(bma)
+    bmc = b - c
+    normbc = norm(bmc)
+    d = bma + (normba / normbc) * bmc
+    temp = max(min(0.5 * norm(d) / normba, 1), -1)
+    return 2 * asin(temp)
+end
+
+function cubicinterp(x1, x2, x3, x4)
+    # Dritschel's curvature interpolation
+    d21 = x2 - x1
+    d32 = x3 - x2
+    d43 = x4 - x3
+    n = SVector{2}((-d32[2], d32[1]))
+    d1 = norm(d21)
+    d2 = norm(d32)
+    d3 = norm(d43)
+    k1 = 2*(d21[1]*d32[2] - d21[2]*d32[1]) / norm(d1^2 * d32 + d2^2 * d21)
+    k2 = 2*(d32[1]*d43[2] - d32[2]*d43[1]) / norm(d2^2 * d43 + d3^2 * d32)
+    p = 0.5
+    eta = d2*(-(k1/6 + k2/12) + (k1 + (k2-k1)/6)*p*p*p)
+    return x2 + p*d32 + eta*n
 end
 
 """

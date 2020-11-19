@@ -24,9 +24,12 @@ export
 	ellipticLCS,
 	constrainedLCS,
 	materialbarriers,
-    combine_20,
-    combine_31,
-    combine_20_aggressive,
+	combine_20,
+	combine_31,
+	combine_20_aggressive,
+	flowgrow,
+	FlowGrowParams,
+	area,
 
 	#diffusion_operators.jl
 	gaussian,
