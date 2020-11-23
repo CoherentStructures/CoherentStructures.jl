@@ -110,7 +110,7 @@ end
     flowbarrier = flow(rot_double_gyre, vortex.barriers[1], tspan)
     @test flowbarrier isa Vector{<:EllipticBarrier}
     @test length(flowbarrier) == length(tspan)
-    fgvortex = flowgrow(rot_double_gyre, vortex, tspan, FlowGrowParams())
+    fgvortex = flowgrow(rot_double_gyre, vortex, tspan, FlowGrowParams(maxdist=0.1, mindist=0.01))
     @test fgvortex isa Vector{<:EllipticVortex}
     @test length(fgvortex) == length(tspan)
     fgbarrier = flowgrow(rot_double_gyre, vortex.barriers[1], tspan, FlowGrowParams())

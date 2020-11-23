@@ -1700,10 +1700,6 @@ function refine!(ccurve::Vector{T}, ncurve::Vector{T}, odefun, tspan, params; kw
     end
     return ccurve
 end
-function refine!(cbarrier::EllipticBarrier{T}, nbarrier::EllipticBarrier{T}, odefun, tspan, params; kwargs...) where {T}
-    refine!(cbarrier.curve, nbarrier.curve, odefun, tspan, params; kwargs...)
-    return cbarrier
-end
 
 """
     flowgrow(odefun, curve, tspan, params; kwargs...)
