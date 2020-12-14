@@ -9,6 +9,8 @@ jobs:
   CompatHelper:
     runs-on: ubuntu-latest
     steps:
+      - name: Install dependencies
+        run: julia -e 'using Pkg; Pkg.add(PackageSpec(; url="https://github.com/KristofferC/JuAFEM.jl.git"))'
       - name: Pkg.add("CompatHelper")
         run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
       - name: CompatHelper.main(; subdirs = ["", "docs"])
