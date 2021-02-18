@@ -87,7 +87,7 @@ S = applyBCS(ctx, 0.5(S0 + S1), bdata);
 
 using Arpack
 
-λ, v = real.(eigs(S, M; which=:SM, nev=6));
+λ, v = eigs(S, M, which=:SM, nev=6);
 
 using Clustering
 
