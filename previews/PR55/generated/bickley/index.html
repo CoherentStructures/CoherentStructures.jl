@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bickley jet · CoherentStructures.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">CoherentStructures.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../rot_double_gyre/">Rotating double gyre</a></li><li><a class="tocitem" href="../standard_map/">Standard map</a></li><li class="is-active"><a class="tocitem" href>Bickley jet</a><ul class="internal"><li><a class="tocitem" href="#Geodesic-vortices"><span>Geodesic vortices</span></a></li><li><a class="tocitem" href="#FEM-based-Methods"><span>FEM-based Methods</span></a></li></ul></li><li><a class="tocitem" href="../ocean_flow/">Geostrophic ocean flow</a></li><li><a class="tocitem" href="../trajectories/">Working with trajectories</a></li></ul></li><li><span class="tocitem">Related publications</span><ul><li><a class="tocitem" href="../../examples_pub_overview/">Overview</a></li><li><a class="tocitem" href="../diffbarriers/">Material diffusion barriers</a></li><li><a class="tocitem" href="../turbulence/">Diffusion barriers in turbulence</a></li></ul></li><li><a class="tocitem" href="../../basics/">Basics</a></li><li><span class="tocitem">Methods</span><ul><li><a class="tocitem" href="../../fem/">FEM-based methods</a></li><li><a class="tocitem" href="../../elliptic/">Geodesic vortices</a></li><li><a class="tocitem" href="../../Laplace/">Graph Laplacian-based methods</a></li></ul></li><li><span class="tocitem">Miscellaneous</span><ul><li><a class="tocitem" href="../../videos/">Creating animations</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Bickley jet</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Bickley jet</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CoherentStructures/CoherentStructures.jl/blob/master/docs/examples/bickley.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Bickley-jet"><a class="docs-heading-anchor" href="#Bickley-jet">Bickley jet</a><a id="Bickley-jet-1"></a><a class="docs-heading-anchor-permalink" href="#Bickley-jet" title="Permalink"></a></h1><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/CoherentStructures/CoherentStructures.jl/blob/gh-pages/dev/generated/bickley.ipynb"><code>bickley.ipynb</code></a>, and as an executable julia file <a href="https://raw.githubusercontent.com/CoherentStructures/CoherentStructures.jl/gh-pages/dev/generated/bickley.jl"><code>bickley.jl</code></a>.</p></div></div><p>The Bickley jet flow is a kinematic idealized model of a meandering zonal jet flanked above and below by counterrotating vortices. It was introduced by <a href="https://doi.org/10.1175/JAS4036.1">Rypina et al.</a>; cf. also <a href="https://doi.org/10.1063/1.858639">del‐Castillo‐Negrete and Morrison</a>.</p><p>The Bickley jet is described by a time-dependent velocity field arising from a stream-function. The corresponding velocity field can be conveniently defined using the <code>@velo_from_stream</code> macro from <a href="https://github.com/CoherentStructures/StreamMacros.jl"><code>StreamMacros.jl</code></a>:</p><pre><code class="language-julia">using Distributed
+nprocs() == 1 &amp;&amp; addprocs()
+
+@everywhere using CoherentStructures, StreamMacros
+@everywhere bickley = @velo_from_stream psi begin
+    psi  = psi₀ + psi₁
+    psi₀ = - U₀ * L₀ * tanh(y / L₀)
+    psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
+
+    re_sum_term = Σ₁ + Σ₂ + Σ₃
+
+    Σ₁ = ε₁ * cos(k₁*(x - c₁*t))
+    Σ₂ = ε₂ * cos(k₂*(x - c₂*t))
+    Σ₃ = ε₃ * cos(k₃*(x - c₃*t))
+
+    k₁ = 2/r₀    ; k₂ = 4/r₀   ; k₃ = 6/r₀
+    ε₁ = 0.0075  ; ε₂ = 0.15   ; ε₃ = 0.3
+    c₂ = 0.205U₀ ; c₃ = 0.461U₀; c₁ = c₃ + (√5-1)*(c₂-c₃)
+    U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
+end</code></pre><p>Now, <code>bickley</code> is a callable function with the standard <code>OrdinaryDiffEq</code> signature <code>(u, p, t)</code> with state <code>u</code>, (unused) parameter <code>p</code> and time <code>t</code>.</p><h2 id="Geodesic-vortices"><a class="docs-heading-anchor" href="#Geodesic-vortices">Geodesic vortices</a><a id="Geodesic-vortices-1"></a><a class="docs-heading-anchor-permalink" href="#Geodesic-vortices" title="Permalink"></a></h2><p>Here we briefly demonstrate how to find material barriers to diffusive transport; see <a href="../../elliptic/#Geodesic-elliptic-material-vortices">Geodesic elliptic material vortices</a> for references and details.</p><pre><code class="language-julia">using Distributed
+nprocs() == 1 &amp;&amp; addprocs()
+
+@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
+using AxisArrays
+q = 81
+tspan = range(0., stop=3456000., length=q)
+ny = 61
+nx = (22ny) ÷ 6
+xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = AxisArray(tuple.(xspan, yspan&#39;), xspan, yspan)
+δ = 1.e-6
+D = SymmetricTensor{2,2}([2., 0., 1/2])
+mCG_tensor = let tspan=tspan, δ=δ, D=D
+    u -&gt; av_weighted_CG_tensor(bickley, u, tspan, δ;
+          D=D, tolerance=1e-6, solver=Tsit5())
+end
+
+C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
+p = LCSParameters(2.0)
+vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>The result is visualized as follows:</p><pre><code class="language-julia">using Plots
+trace = tensor_invariants(C̅)[5]
+fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
+    bg=trace, title=&quot;DBS field and transport barriers&quot;, showlabel=true)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_geodesic_vortices.png" alt/></p><h2 id="FEM-based-Methods"><a class="docs-heading-anchor" href="#FEM-based-Methods">FEM-based Methods</a><a id="FEM-based-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#FEM-based-Methods" title="Permalink"></a></h2><p>Assume we have setup the <code>bickley</code> function using the <code>@velo_from_stream</code> macro as described above. We are working on a periodic domain in one direction:</p><pre><code class="language-julia">using Distances
+LL = (0.0, -3.0); UR = (6.371π, 3.0)
+ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
+predicate = (p1, p2) -&gt; peuclidean(p1, p2, [6.371π, Inf]) &lt; 1e-10
+bdata = BoundaryData(ctx, predicate, []);</code></pre><p>Using a FEM-based method to compute coherent structures:</p><pre><code class="language-julia">using Arpack
+cgfun = (x -&gt; mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81),
+     1.e-8; tolerance=1e-5))
+
+K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
+M = assembleMassMatrix(ctx, bdata=bdata)
+λ, v = eigs(K, M, which=:SM, nev= 10)
+
+import Plots
+fig_spectrum = plot_real_spectrum(λ)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_fem_spectrum.png" alt/></p><p>K-means clustering yields the coherent vortices.</p><pre><code class="language-julia">using Clustering
+ctx2, _ = regularTriangularGrid((200, 60), LL, UR)
+v_upsampled = sample_to(v, ctx, ctx2, bdata=bdata)
+
+function iterated_kmeans(numiterations, args...)
+    best = kmeans(args...)
+    for i in 1:(numiterations - 1)
+        cur = kmeans(args...)
+        if cur.totalcost &lt; best.totalcost
+            best = cur
+        end
+    end
+    return best
+end
+
+n_partition = 8
+res = iterated_kmeans(20, permutedims(v_upsampled[:,2:n_partition]), n_partition)
+u = kmeansresult2LCS(res)
+u_combined = sum([u[:,i] * i for i in 1:n_partition])
+fig = plot_u(ctx2, u_combined, 400, 400;
+    color=:rainbow, colorbar=:none, title=&quot;$n_partition-partition of Bickley jet&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_fem.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../standard_map/">« Standard map</a><a class="docs-footer-nextpage" href="../ocean_flow/">Geostrophic ocean flow »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 18 February 2021 11:02">Thursday 18 February 2021</span>. Using Julia version 1.5.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
