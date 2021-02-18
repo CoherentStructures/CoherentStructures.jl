@@ -6,8 +6,7 @@ Julia.
 
 | **Documentation**                                                               | **Build Status**                                                                                |
 |:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![][build-img]][build-url] [![][codecov-img]][codecov-url] |
-
+| [![stable docs][docs-stable-img]][docs-stable-url] [![dev docs][docs-dev-img]][docs-dev-url] | [![build status][build-img]][build-url] [![code coverage][codecov-img]][codecov-url] |
 
 ## Installation
 
@@ -18,9 +17,9 @@ First, install the [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) packa
     pkg> add https://github.com/KristofferC/JuAFEM.jl.git
 
 In order to run the example cases, please install our companion package
-[`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl.git) by typing
+[`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl) by typing
 
-    pkg> add https://github.com/CoherentStructures/StreamMacros.jl
+    pkg> add https://github.com/CoherentStructures/StreamMacros.jl.git
 
 Finally, install this package by typing
 
