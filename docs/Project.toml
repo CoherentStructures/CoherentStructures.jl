@@ -19,6 +19,7 @@ StreamMacros = "1418a599-1564-4a75-98e9-b890cf8b552f"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 
 [compat]
+Arpack = "0.4"
 Clustering = "0.13, 0.14"
 Documenter = "0.24, 0.25, 0.26"
 JLD2 = "0.1.11, 02, 0.3, 0.4"
