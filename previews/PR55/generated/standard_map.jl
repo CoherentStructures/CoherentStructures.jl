@@ -34,7 +34,7 @@ cg(x) = 0.5*(I + dott(inv(Df2(x))))         # avg. inv. Cauchy-Green tensor
 
 K = assembleStiffnessMatrix(ctx, cg, bdata=bd)
 M = assembleMassMatrix(ctx, bdata=bd)
-λ, v = eigs(K, M, which=:SM)
+λ, v = real.(eigs(K, M; which=:SM))
 
 using Printf
 title = [ @sprintf("\\lambda = %.3f", λ[i]) for i = 1:4 ]

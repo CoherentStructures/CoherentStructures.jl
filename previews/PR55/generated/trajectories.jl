@@ -129,7 +129,7 @@ S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], tspan;
 M = assembleMassMatrix(ctx)
 
 using Arpack
-λ, V = eigs(S, M; which=:SM, nev=6)
+λ, V = real.(eigs(S, M; which=:SM, nev=6))
 
 using Plots
 fig = plot_real_spectrum(λ, label="")

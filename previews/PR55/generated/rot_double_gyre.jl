@@ -14,7 +14,7 @@ ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
 K = assembleStiffnessMatrix(ctx, A)
 M = assembleMassMatrix(ctx)
-λ, v = eigs(-K, M, which=:SM);
+λ, v = real.(eigs(-K, M; which=:SM));
 
 import Plots
 res = [plot_u(ctx, v[:,i], 100, 100, colorbar=:none, clim=(-3,3)) for i in 1:6];
