@@ -57,7 +57,7 @@ x = range(0.0, stop=20.0, length=m)
 y = range(-3.0, stop=3.0, length=n)
 f = u -> flow(bickleyJet, u, tspan, tolerance=1e-4)
 particles = vec(tuple.(x, y'))
-trajectories = pmap(f, particles; batch_size=m)
+trajectories = pmap(f, particles; batch_size=ceil(Int, length(P)/nprocs()^2))
 
 # The flow is defined on a cylinder with the following periods in x and y. The
 # variable `metric` defines the (spatial) distance metric.
@@ -74,9 +74,9 @@ n_coords = 6
 
 # ### Spectral-clustering approach/L_1 time averaging [Hadjighasem, Karrasch, Teramoto & Haller, 2016]
 
-ε = 3e-1
+ε = 1.0
 kernel = gaussian(ε)
-P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε/5)), kernel; metric=STmetric(metric, 1))
+P = sparse_diff_op(trajectories, Neighborhood(gaussiancutoff(ε/20)), kernel; metric=STmetric(metric, 1))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 # We plot the second and third eigenvectors.
@@ -93,7 +93,7 @@ DISPLAY_PLOT(fig, ha16ev3)
 # demonstration for 400 nearest, non-mutual neighbors. For the mutual nearest neighbors
 # sparsification, choose `MutualKNN()`.
 
-P = sparse_diff_op(trajectories, KNN(400), gaussian(10); metric=STmetric(metric, Inf))
+P = sparse_diff_op(trajectories, KNN(200), gaussian(10); metric=STmetric(metric, Inf))
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
 field = permutedims(reshape(Ψ[:, 2], m, n))
@@ -139,7 +139,7 @@ DISPLAY_PLOT(fig, bakoev3)
 
 # ### Network-based approach [Padberg-Gehle & Schneide, 2017]
 ε = 0.2
-P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, P -> row_normalize!(max.(P...));
+P = sparse_diff_op_family(trajectories, Neighborhood(ε), Base.one, row_normalize!∘unionadjacency;
                             α=0, metric=metric)
 λ, Ψ = diffusion_coordinates(P, n_coords)
 
