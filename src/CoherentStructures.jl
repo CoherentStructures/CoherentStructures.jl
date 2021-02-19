@@ -30,7 +30,7 @@ const ITP = Interpolations
 import LinearMaps
 const LMs = LinearMaps
 import IterativeSolvers
-import Arpack
+import ArnoldiMethod
 
 # import geometry related packages
 import GeometricalPredicates
