@@ -83,10 +83,8 @@ version = "0.7.0"
 
 [[CoherentStructures]]
 deps = ["Arpack", "AxisArrays", "ColorTypes", "DiffEqBase", "Distances", "Distributed", "GeometricalPredicates", "Interpolations", "IterativeSolvers", "JuAFEM", "LinearAlgebra", "LinearMaps", "NearestNeighbors", "OrdinaryDiffEq", "ProgressMeter", "RecipesBase", "SharedArrays", "SparseArrays", "StaticArrays", "Statistics", "Tensors", "VoronoiDelaunay"]
-git-tree-sha1 = "87f96da143b2dd5e066ae000d925a5137832649c"
 path = ".."
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
-version = "0.3.5"
 
 [[ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random", "StaticArrays"]
