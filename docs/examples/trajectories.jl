@@ -57,7 +57,7 @@ x = range(0.0, stop=20.0, length=m)
 y = range(-3.0, stop=3.0, length=n)
 f = u -> flow(bickleyJet, u, tspan, tolerance=1e-4)
 particles = vec(tuple.(x, y'))
-trajectories = pmap(f, particles; batch_size=ceil(Int, length(P)/nprocs()^2))
+trajectories = pmap(f, particles; batch_size=ceil(Int, N/nprocs()^2))
 
 # The flow is defined on a cylinder with the following periods in x and y. The
 # variable `metric` defines the (spatial) distance metric.
