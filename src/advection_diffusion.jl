@@ -5,7 +5,7 @@
 # meta function
 """
     FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=BoundaryData();
-    factor=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
+        factor=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
 Compute the heat flow operator for the time-dependent heat equation, which
 corresponds to the advection-diffusion equation in Lagrangian coordinates, by
@@ -33,10 +33,9 @@ function FEM_heatflow(odefun!, ctx::GridContext, tspan, κ::Real, p=nothing, bda
 end
 
 function implicitEulerStepFamily(ctx::GridContext, sol, tspan, κ, δ; factor=true, bdata=BoundaryData())
-
     M = assembleMassMatrix(ctx, bdata=bdata)
     nnzM = nonzeros(M)
-    n = size(M)[1]
+    n = size(M, 1)
     scale = -step(tspan) * κ
     # TODO: think about pmap-parallelization
     P = map(tspan[2:end]) do t

@@ -42,6 +42,7 @@ export
 	sparse_diff_op,
 	kde_normalize!,
 	row_normalize!,
+	unionadjacency,
 	sparse_adjacency_family,
 	sparse_adjacency,
 	stationary_distribution,

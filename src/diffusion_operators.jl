@@ -227,21 +227,41 @@ Normalize rows of `A` in-place with the respective row-sum; i.e., return
 """
 row_normalize!(A) = ldiv!(Diagonal(dropdims(reduce(+, A, dims = 2); dims = 2)), A)
 
+"""
+    unionadjacency(Ps)
+
+Take a tuple/vector `Ps` of adjacency matrices and compute the adjacency matrix of the
+union of the corresponding graphs.
+"""
+function unionadjacency(Ps)
+    I, J, V = Int[], Int[], Float64[]
+    for P in Ps
+        Ii, Ji, Vi = findnz(P)
+        append!(I, Ii)
+        append!(J, Ji)
+        append!(V, Vi)
+    end
+    return sparse(I, J, V, size(first(Ps))..., max)
+end
+
 # spectral clustering/diffusion map related functions
 
 """
-    stationary_distribution(P; maxiter=3000) -> Vector
+    stationary_distribution(P) -> Vector
 
 Compute the stationary distribution for a Markov transition operator.
 `P` may be dense or sparse, or a `LinearMap` whose matrix-vector multiplication
-is given by a function. `maxiter` is passed to `Arpack.eigs`.
+is given by a function.
 """
-function stationary_distribution(P::LMs.MapOrMatrix; maxiter = 3000)
-    E = Arpack.eigs(P; nev = 1, ncv = 50, maxiter = maxiter)
-    Π = dropdims(real(E[2]), dims = 2) # stationary distribution
+function stationary_distribution(P)
+    decomp, history = ArnoldiMethod.partialschur(P; nev=1, tol=0.0)
+    history.converged || error("computation of stationary distribution failed")
+    λs, X = ArnoldiMethod.partialeigen(decomp)
+    # λs, X = Arpack.eigs(P; nev = 1, ncv = 50, maxiter = maxiter)
+    Π = dropdims(real(X), dims = 2) # stationary distribution
     ext = extrema(Π)
     if (prod(ext) < 0) && (all(abs.(ext) .> eps(eltype(ext))))
-        throw(error("Both signs in stationary distribution (extrema are $ext)"))
+        error("Both signs in stationary distribution (extrema are $ext)")
     end
     Π .= abs.(Π)
     return Π
@@ -269,31 +289,35 @@ end
 end
 
 """
-    diffusion_coordinates(P, n_coords; maxiter=3000) -> (Σ, Ψ)
+    diffusion_coordinates(P, n_coords) -> (Σ, Ψ)
 
 Compute the (time-coupled) diffusion coordinate matrix `Ψ` and the coordinate weight vector
 `Σ` for a diffusion operator `P`. The argument `n_coords` determines the number of
-diffusion  coordinates to be computed, `maxiter` is passed to `Arpack.eigs`.
+diffusion  coordinates to be computed.
 """
-function diffusion_coordinates(P::LMs.MapOrMatrix, n_coords; maxiter = 3000)
+function diffusion_coordinates(P, n_coords)
     N = LinearAlgebra.checksquare(P)
     n_coords <= N ||
     throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
-    Π = stationary_distribution(transpose(P); maxiter = maxiter)
+    Π = stationary_distribution(transpose(P))
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
-    E = Arpack.eigs(
-        L;
-        nev = n_coords,
-        ncv = max(50, 2 * n_coords + 1),
-        maxiter = maxiter,
-    )
+    decomp, history = ArnoldiMethod.partialschur(L; nev=n_coords, tol=0.0)
+    history.converged || error("computation of stationary distribution failed")
+    λs, V = ArnoldiMethod.partialeigen(decomp)
+
+    # λs, V = Arpack.eigs(
+    #     L;
+    #     nev = n_coords,
+    #     ncv = max(50, 2 * n_coords + 1),
+    #     maxiter = maxiter,
+    # )
 
     # eigenvalues close to zero can be negative even though they
     # should be positive.
-    drop_num_zeros(x) = abs(x) < eps(E[1][1]) ? zero(x) : x
-    Σ = drop_num_zeros.(E[1])
+    drop_num_zeros(x) = abs(x) < eps(λs[1]) ? zero(x) : x
+    Σ = drop_num_zeros.(λs)
 
     if any(Σ .< 0)
         @warn "Negative eigenvalue bigger than eps($(Σ[1]))in $(Σ)! " *
@@ -301,13 +325,14 @@ function diffusion_coordinates(P::LMs.MapOrMatrix, n_coords; maxiter = 3000)
     end
 
     Σ .= sqrt.(abs.(Σ))
-    Ψ = E[2]
+    Ψ = real(V)
 
     # Compute diffusion map Ψ and extract the diffusion coordinates
     rmul!(Ψ, Diagonal(Σ))
     @. Π = 1 / sqrt(Π)
     lmul!(Diagonal(Π), Ψ)
-    return Σ, Ψ
+    p = sortperm(Σ; rev=true)
+    return Σ[p], Ψ[:,p]
 end
 
 """

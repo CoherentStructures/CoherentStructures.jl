@@ -192,6 +192,12 @@ function LCSParameters(;
     )
 end
 
+function Base.show(io::IO, p::T) where {T<:LCSParameters}
+    keys = fieldnames(T)
+    values = getfield.(Ref(p), keys)
+    return show(io, (; zip(keys, values)...))
+end
+
 struct LCScache{Ts<:Real,Tv<:SVector{2,<:Real}}
     λ₁::AxisArray{Ts,2}
     λ₂::AxisArray{Ts,2}
@@ -1480,7 +1486,14 @@ function constrainedLCS(
     return vortexlist::Vector{<:EllipticVortex}, critpts::Vector{<:Singularity}
 end
 
+"""
+    in_defined_squares(xs, cache)
 
+Check whether a vector of points `xs`, interpreted as a curve, passes only cells of the
+grid on which the line/vector field is well-behaved. Well-behavior is tested by checking
+whether any pair of vectors at the corner points point in opposite directions, i.e.,
+``v_i \\cdot v_j < 0`` for corner vectors ``v_i`` and ``v_j``.
+"""
 function in_defined_squares(xs, cache)
     xspan = cache.η.axes[1].val
     yspan = cache.η.axes[2].val
@@ -1511,6 +1524,13 @@ function in_defined_squares(xs, cache)
     return true
 end
 
+"""
+    in_uniform_squares(xs, λ⁰, cache)
+
+Check whether a vector of points `xs`, interpreted as a curve, passes only cells of the
+grid on which the η-field equation is well-posed. Well-posedness is tested by checking
+whether the parameter `λ⁰` lies between `λ₁` and `λ₂` at the corner points.
+"""
 function in_uniform_squares(xs, λ⁰, cache)
     xspan = cache.η.axes[1].val
     yspan = cache.η.axes[2].val
