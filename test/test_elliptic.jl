@@ -30,7 +30,7 @@ end
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
-            for mh in (Any[], [combine_20], [combine_20_aggressive], [combine_31])
+            for mh in ((), (Combine20(),), (Combine20Aggressive(),), (Combine31(),))
                 S = @inferred critical_point_detection(v, 0.1; merge_heuristics=mh)
                 @test length(S) == 1
                 @test iszero(S[1].coords)
@@ -42,7 +42,7 @@ end
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
-        for mh in (Any[], [combine_20], [combine_20_aggressive], [combine_31])
+        for mh in ((), (Combine20(),), (Combine20Aggressive(),), (Combine31(),))
             S = @inferred critical_point_detection(v, 0.1; merge_heuristics=mh)
             @test length(S) == 1
             @test iszero(S[1].coords)
@@ -58,24 +58,28 @@ nx = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
+P = AxisArray(tuple.(xspan, permutedims(yspan)), xspan, yspan)
 
 include("define_vector_fields.jl")
-mCG_tensor = let ts=tspan
-    u -> av_weighted_CG_tensor(rot_double_gyre, u, ts, 1e-6)
+mCG_tensor = let tspan=tspan, rdg=rot_double_gyre
+    u -> av_weighted_CG_tensor(rdg, u, tspan, 1e-6)
 end
+@inferred av_weighted_CG_tensor(rot_double_gyre, P[1], tspan, 1e-6)
+@inferred mCG_tensor(P[1])
 T = @inferred map(mCG_tensor, P)
 
 @testset "combine singularities" begin
-    @inferred singularity_detection(T, 0.1; merge_heuristics=[])
+    @inferred singularity_detection(T, 0.1; merge_heuristics=())
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
     singularities = @inferred compute_singularities(ξ, p1dist)
-    new_singularities = @inferred combine_singularities(singularities, 3*step(xspan))
-    @inferred CoherentStructures.combine_20(new_singularities)
+    new_singularities = @inferred CS.Combine(3*step(xspan))(singularities)
+    for mh in (Combine20(), Combine20Aggressive(), Combine31())
+        @inferred mh(new_singularities)
+    end
     r₁ , r₂ = 2*rand(2)
-    @test sum(getindices(combine_singularities(singularities, r₁))) ==
-        sum(getindices(combine_singularities(singularities, r₂))) ==
-        sum(getindices(combine_singularities(singularities, 2)))
+    @test sum(getindices(CS.Combine(r₁)(singularities))) ==
+        sum(getindices(CS.Combine(r₂)(singularities))) ==
+        sum(getindices(CS.Combine(2)(singularities)))
 end
 
 @testset "closed orbit detection" begin
@@ -135,20 +139,21 @@ end
         P = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
         q = map(p -> iszero(p) ? ones(typeof(p)) : scaling*(Ω + I) * normalize(p), P)
         if combine
-            mhs = [combine_20]
+            mhs = (Combine20(),)
         else
-            mhs = Any[]
+            mhs = ()
         end
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), mhs, 60, 0.5, 1.5, 1e-4)
+        @inferred critical_point_detection(q, p.indexradius; merge_heuristics=mhs)
 
-        vortices, singularities = @inferred constrainedLCS(q, p; outermost=true, verbose=false, debug=false)
+        vortices, singularities = @inferred constrainedLCS(q, p; verbose=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
         @test singularities isa Vector{Singularity{Float64}}
         @test vortices[1].center ≈ Z atol=max(step(xspan), step(yspan))
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
 
-        vortices, singularities = @inferred constrainedLCS(q, p; outermost=false, verbose=false, debug=false)
+        vortices, singularities = @inferred constrainedLCS(q, p; outermost=false, verbose=false)
         @test sum(map(v -> length(v.barriers), vortices)) > 1
         @test singularities isa Vector{Singularity{Float64}}
         @test length(singularities) == 1
