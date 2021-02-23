@@ -25,7 +25,6 @@ import Pkg
 Pkg.add("FourierFlows")
 Pkg.add("GeophysicalFlows")
 Pkg.add("Plots")
-Pkg.add("AxisArrays")
 Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/OceanTools.jl.git"))
@@ -144,10 +143,8 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
 
 # We plot the detected vortices on top of the vorticity field.
 
-using AxisArrays
-Zs = AxisArray(zs[:,:,1], xs, ys)
 plot_vortices(vortices, singularities, [-π, -π], [π, π];
-    bg=Zs, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
+    bg=zs[:,:,1], logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
 #md # ```@raw html
@@ -157,9 +154,8 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
 # Next, we advect them forwards in time.
 
 vortexflow = vortex -> flow(uv_trilinear, vortex, [0., 5.]; p=p2)[end]
-Zs = AxisArray(zs[:,:,26], xs, ys)
 plot_vortices(vortexflow.(vortices), singularities, [-π, -π], [π, π];
-    bg=Zs, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
+    bg=zs[:,:,26], logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
 #md # ```@raw html

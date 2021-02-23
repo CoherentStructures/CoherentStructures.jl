@@ -24,13 +24,13 @@
 # `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
 using StreamMacros
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+rot_double_gyre(u, p, t) = (@velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
-end
+end)(u, p, t)
 
 # ![](https://raw.githubusercontent.com/natschil/misc/db22aeef/images/double_gyre.gif)
 #
@@ -42,7 +42,9 @@ using CoherentStructures, Arpack
 LL, UR = (0.0, 0.0), (1.0, 1.0)
 ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 
-A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
+A(x) = let vf=rot_double_gyre
+    mean_diff_tensor(vf, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
+end
 K = assembleStiffnessMatrix(ctx, A)
 M = assembleMassMatrix(ctx)
 λ, v = eigs(-K, M, which=:SM);
@@ -96,14 +98,13 @@ using Distributed
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq, StreamMacros
-using AxisArrays
 q = 21
 tspan = range(0., stop=1., length=q)
 nx = ny = 101
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
+P = tuple.(xspan, permutedims(yspan))
 δ = 1.e-6
 @everywhere rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
@@ -112,13 +113,13 @@ P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
-mCG_tensor = let tspan=tspan, δ=δ
-    u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
+mCG_tensor = let tspan=tspan, δ=δ, vf=rot_double_gyre
+    u -> av_weighted_CG_tensor(vf, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(0.5)
-vortices, singularities = ellipticLCS(C̅, p; outermost=true)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p; outermost=true)
 
 # The results are then visualized as follows.
 

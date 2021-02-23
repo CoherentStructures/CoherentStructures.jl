@@ -41,7 +41,6 @@ VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Now, we set up the computational problem.
 
-using AxisArrays
 q = 91
 t_initial = minimum(Time)
 t_final = t_initial + 90
@@ -51,10 +50,10 @@ nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
+P = tuple.(xspan, permutedims(yspan))
 δ = 1.e-5
-mCG_tensor = let tspan=tspan, δ=δ, p=VI
-    u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+mCG_tensor = let tspan=tspan, δ=δ, p=VI, vf=interp_rhs
+    u -> av_weighted_CG_tensor(vf, u, tspan, δ;
         p=p, tolerance=1e-6, solver=Tsit5())
 end
 
@@ -63,7 +62,7 @@ end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
-vortices, singularities = ellipticLCS(C̅, p)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
 # Finally, the result is visualized as follows.
 
@@ -96,7 +95,7 @@ nx = 950
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
+P = tuple.(xspan, permutedims(yspan))
 
 # Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs.
 # As there tend to be many 3 wedge + trisector-type singularity combinations
@@ -104,7 +103,7 @@ P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
 
 S = map(rate_of_strain_tensor, P)
 p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20, combine_31])
-vortices, singularities = ellipticLCS(S, p, outermost=true)
+vortices, singularities = ellipticLCS(S, xspan, yspan, p; outermost=true)
 
 # Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges
 

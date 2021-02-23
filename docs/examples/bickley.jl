@@ -21,7 +21,7 @@ using Distributed
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, StreamMacros
-@everywhere bickley = @velo_from_stream psi begin
+@everywhere bickley(u, p, t) = (@velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
     psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -36,7 +36,7 @@ nprocs() == 1 && addprocs()
     ε₁ = 0.0075  ; ε₂ = 0.15   ; ε₃ = 0.3
     c₂ = 0.205U₀ ; c₃ = 0.461U₀; c₁ = c₃ + (√5-1)*(c₂-c₃)
     U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
-end
+end)(u, p, t)
 
 # Now, `bickley` is a callable function with the standard `OrdinaryDiffEq`
 # signature `(u, p, t)` with state `u`, (unused) parameter `p` and time `t`.
@@ -49,26 +49,26 @@ end
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
-using AxisArrays
-q = 81
-tspan = range(0., stop=3456000., length=q)
-ny = 61
-nx = (22ny) ÷ 6
-xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-xspan = range(xmin, stop=xmax, length=nx)
-yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
-δ = 1.e-6
-D = SymmetricTensor{2,2}([2., 0., 1/2])
-mCG_tensor = let tspan=tspan, δ=δ, D=D
-    u -> av_weighted_CG_tensor(bickley, u, tspan, δ;
-          D=D, tolerance=1e-6, solver=Tsit5())
+@everywhere begin
+    using CoherentStructures, OrdinaryDiffEq, Tensors
+    q = 81
+    tspan = range(0., stop=3456000., length=q)
+    ny = 61
+    nx = (22ny) ÷ 6
+    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
+    xspan = range(xmin, stop=xmax, length=nx)
+    yspan = range(ymin, stop=ymax, length=ny)
+    P = tuple.(xspan, yspan')
+    δ = 1.e-6
+    D = SymmetricTensor{2,2}([2., 0., 1/2])
+    mCG_tensor(u) = let tspan=tspan, δ=δ, D=D, vf=bickley
+        av_weighted_CG_tensor(vf, u, tspan, δ; D=D, tolerance=1e-6, solver=Tsit5())
+    end
 end
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
-vortices, singularities = ellipticLCS(C̅, p)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
 # The result is visualized as follows:
 
