@@ -52,8 +52,8 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, permutedims(yspan))
 δ = 1.e-5
-mCG_tensor = let tspan=tspan, δ=δ, p=VI, vf=interp_rhs
-    u -> av_weighted_CG_tensor(vf, u, tspan, δ;
+mCG_tensor(u) = let tspan=tspan, δ=δ, p=VI, vf=interp_rhs
+    av_weighted_CG_tensor(vf, u, tspan, δ;
         p=p, tolerance=1e-6, solver=Tsit5())
 end
 
@@ -101,8 +101,8 @@ P = tuple.(xspan, permutedims(yspan))
 # As there tend to be many 3 wedge + trisector-type singularity combinations
 # with OECSs, we enable the `combine_31` heuristic.
 
-S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20, combine_31])
+S = rate_of_strain_tensor.(P)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[Combine20(), Combine31()])
 vortices, singularities = ellipticLCS(S, xspan, yspan, p; outermost=true)
 
 # Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges
@@ -130,8 +130,9 @@ UV = interpolateVF(Lon, Lat, Time, UT, VT)
 t_initial = minimum(Time)
 t_final = t_initial + 90
 times = [t_initial, t_final]
-flow_map = u0 -> flow(interp_rhs, u0, times;
-    p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
+flow_map(u0) = let vf=interp_rhs, p=UV, times=times
+    flow(vf, u0, times; p=p, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
+end
 
 # Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.
 
@@ -199,6 +200,5 @@ u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i] * i for i in 1:n_partition])
 fig = plot_u(ctx2, u_combined, 200, 200;
     color=:viridis, colorbar=:none, title="$n_partition-partition of Ocean Flow")
-
 
 DISPLAY_PLOT(fig, ocean_flow_fem)

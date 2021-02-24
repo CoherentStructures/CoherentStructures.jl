@@ -716,7 +716,7 @@ function compute_returning_orbit(
         return (sol.u, sol.retcode)
     catch e
         if e isa BoundsError
-            return ([SVector{2,T}(NaN, NaN),], 2)
+            return ([SVector{2,T}(NaN, NaN),], :BoundsError)
         end
         rethrow(e)
     end
@@ -760,7 +760,6 @@ function orient(T::AxisArray{<:SymmetricTensor{2,2},2}, center::SVector{2})
     ξ₂ .*= c2
     return LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
 end
-
 """
     compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000, maxiters_bisection=20)
 

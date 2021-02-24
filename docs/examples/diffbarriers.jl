@@ -76,9 +76,9 @@ D = SymmetricTensor{2,2}([2., 0., 1/2])
 # parameter (and others by default) for the geodesic vortex computation, and
 # finally compute vortices.
 
-mCG_tensor = let tspan=tspan, δ=δ, D=D, vf=bickley
-    u -> av_weighted_CG_tensor(vf, u, tspan, δ;
-          D=D, tolerance=1e-6, solver=Tsit5())
+mCG_tensor(u) = let tspan=tspan, δ=δ, D=D, vf=bickley
+    av_weighted_CG_tensor(vf, u, tspan, δ;
+        D=D, tolerance=1e-6, solver=Tsit5())
 end
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
@@ -97,8 +97,8 @@ fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
 
 # For comparison, we also compute black-hole vortices.
 
-C_tensor = let tspan=tspan, δ=δ, vf=bickley
-    u -> CG_tensor(vf, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
+CG_tensor(u) = let tspan=tspan, δ=δ, vf=bickley
+    CG_tensor(vf, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
 end
 C = pmap(C_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
@@ -139,14 +139,14 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, permutedims(yspan))
 δ = 1.e-5
-mCG_tensor = let tspan=tspan, δ=δ, p=VI, vf=interp_rhs
-    u -> av_weighted_CG_tensor(vf, u, tspan, δ;
+mcg_tensor(u) = let tspan=tspan, δ=δ, p=VI, vf=interp_rhs
+    av_weighted_CG_tensor(vf, u, tspan, δ;
         p=p, tolerance=1e-6, solver=Tsit5())
 end
 
 # Now, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.
 
-C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
+C̅ = pmap(mcg_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
 vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 

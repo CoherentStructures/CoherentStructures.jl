@@ -184,7 +184,7 @@ using CoherentStructures
 n = 500
 tspan = range(0, stop=1.0, length=20)
 xs, ys = rand(n), rand(n)
-particles = tuple.(xs, ys)
+particles = zip(xs, ys)
 trajectories = [flow(rot_double_gyre, p, tspan) for p in particles]
 
 # Based on the initial particle positions we generate a triangulation.

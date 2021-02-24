@@ -13,7 +13,7 @@ n = 31
 N = m*n
 x = range(xmin, stop=xmax, length=m)
 y = range(ymin, stop=ymax, length=n)
-p0 = vec(tuple.(x, y'))
+p0 = collect(Iterators.product(x, y))
 metric = PeriodicEuclidean([xmax, Inf])
 dist = STmetric(metric, 1)
 f = let tspan=tspan

@@ -21,7 +21,7 @@ using Distributed
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, StreamMacros
-@everywhere bickley(u, p, t) = (@velo_from_stream psi begin
+@everywhere bickley = @velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
     psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -36,7 +36,7 @@ nprocs() == 1 && addprocs()
     ε₁ = 0.0075  ; ε₂ = 0.15   ; ε₃ = 0.3
     c₂ = 0.205U₀ ; c₃ = 0.461U₀; c₁ = c₃ + (√5-1)*(c₂-c₃)
     U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
-end)(u, p, t)
+end
 
 # Now, `bickley` is a callable function with the standard `OrdinaryDiffEq`
 # signature `(u, p, t)` with state `u`, (unused) parameter `p` and time `t`.
@@ -45,9 +45,6 @@ end)(u, p, t)
 #
 # Here we briefly demonstrate how to find material barriers to diffusive transport;
 # see [Geodesic elliptic material vortices](@ref) for references and details.
-
-using Distributed
-nprocs() == 1 && addprocs()
 
 @everywhere begin
     using CoherentStructures, OrdinaryDiffEq, Tensors
@@ -92,8 +89,9 @@ bdata = BoundaryData(ctx, predicate, []);
 # Using a FEM-based method to compute coherent structures:
 
 using Arpack
-cgfun = (x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81),
-     1.e-8; tolerance=1e-5))
+cgfun(x) = let vf=bickley
+    mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81), 1.e-8; tolerance=1e-5)
+end
 
 K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
 M = assembleMassMatrix(ctx, bdata=bdata)

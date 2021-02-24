@@ -58,20 +58,21 @@ nx = 51
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, permutedims(yspan)), xspan, yspan)
+P = Iterators.product(xspan, yspan)
 
 include("define_vector_fields.jl")
 mCG_tensor = let tspan=tspan, rdg=rot_double_gyre
     u -> av_weighted_CG_tensor(rdg, u, tspan, 1e-6)
 end
-@inferred av_weighted_CG_tensor(rot_double_gyre, P[1], tspan, 1e-6)
-@inferred mCG_tensor(P[1])
+@inferred av_weighted_CG_tensor(rot_double_gyre, first(P), tspan, 1e-6)
+@inferred mCG_tensor(first(P))
 T = @inferred map(mCG_tensor, P)
+Taxis = AxisArray(T, xspan, yspan)
 
 @testset "combine singularities" begin
-    @inferred singularity_detection(T, 0.1; merge_heuristics=())
+    @inferred singularity_detection(T, xspan, yspan, 0.1; merge_heuristics=())
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    singularities = @inferred compute_singularities(ξ, p1dist)
+    singularities = @inferred compute_singularities(ξ, xspan, yspan, p1dist)
     new_singularities = @inferred CS.Combine(3*step(xspan))(singularities)
     for mh in (Combine20(), Combine20Aggressive(), Combine31())
         @inferred mh(new_singularities)
@@ -87,7 +88,7 @@ end
     vf(λ) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> (Ω - (1.0 - λ) * I) * u)
     seed = SVector{2}(rand(), 0)
     ret, info = @inferred compute_returning_orbit(vf(1.0), seed)
-    @test info == 0
+    @test info === :Terminated
     @test ret[1] ≈ seed
     d = @inferred CS.Poincaré_return_distance(vf(1.0), seed)
     @test d ≈ 0 atol = 1e-5
@@ -101,12 +102,12 @@ end
     # p = @inferred LCSParameters(3*max(step(xspan), step(yspan)), 0.5, true, 60, 0.7, 1.5, 1e-4)
     p = @inferred LCSParameters(0.5)
     @test p isa LCSParameters
-    cache = @inferred CS.orient(T, SVector{2}(0.25, 0.5))
+    cache = @inferred CS.orient(Taxis, SVector{2}(0.25, 0.5))
     @test cache isa CS.LCScache
-    vortices = @inferred getvortices(T, [Singularity((0.25, 0.5), 1)], p; verbose=false)
-    vortices32 = @inferred getvortices(T, [Singularity((Float32(0.25), Float32(0.5)), 1)], p; verbose=false)
+    vortices = @inferred getvortices(Taxis, [Singularity((0.25, 0.5), 1)], p; verbose=false)
+    vortices32 = @inferred getvortices(Taxis, [Singularity((Float32(0.25), Float32(0.5)), 1)], p; verbose=false)
     @test length(vortices32) == length(vortices)
-    vortices, singularities = @inferred ellipticLCS(T, p; outermost=true, verbose=false)
+    vortices, singularities = @inferred ellipticLCS(Taxis, p; outermost=true, verbose=false)
     vortex = vortices[1]
     flowvortex = flow(rot_double_gyre, vortex, tspan)
     @test flowvortex isa Vector{<:EllipticVortex}
@@ -124,7 +125,7 @@ end
     @test sum(map(v -> length(v.barriers), vortices)) == 2
     @test singularities isa Vector{Singularity{Float64}}
     @test length(singularities) > 5
-    vortices, _ = @inferred ellipticLCS(T, p; outermost=false, verbose=false)
+    vortices, _ = @inferred ellipticLCS(Taxis, p; outermost=false, verbose=false)
     @test sum(map(v -> length(v.barriers), vortices)) > 20
     vortices_auto, _, _ = materialbarriers(rot_double_gyre, xspan, yspan, tspan, p; verbose=false)
     @test length(vortices) == length(vortices_auto)
