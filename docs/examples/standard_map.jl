@@ -29,6 +29,7 @@ f(x) = (rem2pi(x[1] + x[2] + a*sin(x[1]), RoundDown),
 
 X = Tuple{Float64,Float64}[]
 for i in 1:50
+    global X
     Random.seed!(i)
     x = 2π .* (rand(), rand())
     for i in 1:500
@@ -50,7 +51,7 @@ Df(x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
 
 n, ll, ur = 100, (0.0, 0.0), (2π, 2π)       # grid size, domain corners
 ctx, _ = regularTriangularGrid((n, n), ll, ur)
-pred(x,y) = peuclidean(x, y, [2π, 2π]) < 1e-9
+pred = (x,y) -> peuclidean(x, y, [2π, 2π]) < 1e-9
 bd = BoundaryData(ctx, pred)                # periodic boundary
 
 I = one(Tensor{2,2})                        # identity matrix

@@ -17,11 +17,10 @@
 # stream-function. The corresponding velocity field can be conveniently defined
 # using the `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
-using Distributed
+using Distributed, StreamMacros
 nprocs() == 1 && addprocs()
 
-@everywhere using CoherentStructures, StreamMacros
-@everywhere bickley = @velo_from_stream psi begin
+const bickley = @velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
     psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -46,22 +45,19 @@ end
 # Here we briefly demonstrate how to find material barriers to diffusive transport;
 # see [Geodesic elliptic material vortices](@ref) for references and details.
 
-@everywhere begin
-    using CoherentStructures, OrdinaryDiffEq, Tensors
-    q = 81
-    tspan = range(0., stop=3456000., length=q)
-    ny = 61
-    nx = (22ny) ÷ 6
-    xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
-    xspan = range(xmin, stop=xmax, length=nx)
-    yspan = range(ymin, stop=ymax, length=ny)
-    P = tuple.(xspan, yspan')
-    δ = 1.e-6
-    D = SymmetricTensor{2,2}([2., 0., 1/2])
-    mCG_tensor(u) = let tspan=tspan, δ=δ, D=D, vf=bickley
-        av_weighted_CG_tensor(vf, u, tspan, δ; D=D, tolerance=1e-6, solver=Tsit5())
-    end
-end
+@everywhere using CoherentStructures
+using OrdinaryDiffEq, Tensors
+q = 81
+const tspan = range(0., stop=3456000., length=q)
+ny = 61
+nx = (22ny) ÷ 6
+xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = tuple.(xspan, yspan')
+const δ = 1.e-6
+const D = SymmetricTensor{2,2}([2., 0., 1/2])
+mCG_tensor = u -> av_weighted_CG_tensor(vf, u, tspan, δ; D=D, tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
@@ -89,9 +85,7 @@ bdata = BoundaryData(ctx, predicate, []);
 # Using a FEM-based method to compute coherent structures:
 
 using Arpack
-cgfun(x) = let vf=bickley
-    mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81), 1.e-8; tolerance=1e-5)
-end
+cgfun = x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81), 1.e-8; tolerance=1e-5)
 
 K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
 M = assembleMassMatrix(ctx, bdata=bdata)

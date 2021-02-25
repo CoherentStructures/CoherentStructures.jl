@@ -37,25 +37,23 @@ nprocs() == 1 && addprocs()
 
 using JLD2
 JLD2.@load(OCEAN_FLOW_FILE)
-VI = interpolateVF(Lon, Lat, Time, UT, VT)
+const uv = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Now, we set up the computational problem.
 
 q = 91
 t_initial = minimum(Time)
 t_final = t_initial + 90
-tspan = range(t_initial, stop=t_final, length=q)
+const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
 nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, permutedims(yspan))
-δ = 1.e-5
-mCG_tensor(u) = let tspan=tspan, δ=δ, p=VI, vf=interp_rhs
-    av_weighted_CG_tensor(vf, u, tspan, δ;
-        p=p, tolerance=1e-6, solver=Tsit5())
-end
+const δ = 1.e-5
+mCG_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+    p=uv, tolerance=1e-6, solver=Tsit5())
 
 # Next, we compute the averaged weighted Cauchy-Green tensor field and extract
 # elliptic LCSs.
@@ -79,13 +77,12 @@ DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 using Interpolations, Tensors, StaticArrays
 
-V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
 
 rate_of_strain_tensor(xin) = let V=V
     x, y = xin
     grad = Interpolations.gradient(V, x, y)
-    df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
-    return symmetric(df)
+    symmetric(Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2])))
 end
 
 # To make life more exciting, we choose a larger domain.
@@ -123,16 +120,14 @@ import JLD2, OrdinaryDiffEq, Plots
 
 JLD2.@load(OCEAN_FLOW_FILE)
 
-UV = interpolateVF(Lon, Lat, Time, UT, VT)
+const UV = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Next, we define a flow function from it.
 
 t_initial = minimum(Time)
 t_final = t_initial + 90
-times = [t_initial, t_final]
-flow_map(u0) = let vf=interp_rhs, p=UV, times=times
-    flow(vf, u0, times; p=p, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
-end
+const times = [t_initial, t_final]
+flow_map(u0) = flow(interp_rhs, u0, times; p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
 
 # Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.
 

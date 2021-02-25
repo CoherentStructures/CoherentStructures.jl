@@ -97,27 +97,23 @@ DISPLAY_PLOT(res, rot_double_gyre_fem)
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere begin
-    using CoherentStructures, OrdinaryDiffEq, StreamMacros
-    q = 21
-    tspan = range(0., stop=1., length=q)
-    nx = ny = 101
-    xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
-    xspan = range(xmin, stop=xmax, length=nx)
-    yspan = range(ymin, stop=ymax, length=ny)
-    P = tuple.(xspan, permutedims(yspan))
-    δ = 1.e-6
-    rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
-        st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-        heaviside(x)= 0.5*(sign(x) + 1)
-        Ψ_P         = sin(2π*x)*sin(π*y)
-        Ψ_F         = sin(π*x)*sin(2π*y)
-        Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
-    end
-    mcg_tensor(u) = let tspan=tspan, δ=δ, vf=rot_double_gyre
-        av_weighted_CG_tensor(vf, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
-    end
+@everywhere using CoherentStructures, OrdinaryDiffEq, StreamMacros
+q = 21
+const tspan = range(0., stop=1., length=q)
+nx = ny = 101
+xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
+xspan = range(xmin, stop=xmax, length=nx)
+yspan = range(ymin, stop=ymax, length=ny)
+P = tuple.(xspan, permutedims(yspan))
+const δ = 1.e-6
+const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
+    heaviside(x)= 0.5*(sign(x) + 1)
+    Ψ_P         = sin(2π*x)*sin(π*y)
+    Ψ_F         = sin(π*x)*sin(2π*y)
+    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
+mcg_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mcg_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(0.5)
