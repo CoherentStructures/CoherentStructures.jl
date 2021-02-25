@@ -57,7 +57,7 @@ yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, yspan')
 const δ = 1.e-6
 const D = SymmetricTensor{2,2}([2., 0., 1/2])
-mCG_tensor = u -> av_weighted_CG_tensor(vf, u, tspan, δ; D=D, tolerance=1e-6, solver=Tsit5())
+mCG_tensor = u -> av_weighted_CG_tensor(bickley, u, tspan, δ; D=D, tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)

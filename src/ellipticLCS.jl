@@ -690,12 +690,12 @@ reached, `2` for out of bounds error, 3 for other error).
 """
 function compute_returning_orbit(
     vf::ODE.ODEFunction,
-    seed::SVector{2,T},
+    seed::T,
     save::Bool = false,
     maxiters::Int = 2000,
     tolerance::Float64 = 1e-8,
     max_orbit_length::Float64 = 20.0,
-) where {T<:Real} #::Tuple{Vector{SVector{2,T}},Int} 
+)::Tuple{Vector{T},Symbol} where {T<:SVector{2}} # TODO: type assertion necessary on Julia v1.0
     dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
     condition(u, t, integrator) = dir * (seed[2] - u[2])
     affect!(integrator) = ODE.terminate!(integrator)
@@ -716,7 +716,7 @@ function compute_returning_orbit(
         return (sol.u, sol.retcode)
     catch e
         if e isa BoundsError
-            return ([SVector{2,T}(NaN, NaN),], :BoundsError)
+            return [SVector{2,eltype(T)}(NaN, NaN)], :BoundsError
         end
         rethrow(e)
     end
@@ -1110,8 +1110,8 @@ function getvortices(
     #     * vx::S,vy::S (coordinates of vortex center)
     #     * vr::S (length of Poincaré section)
     #     * p::LCSParameters
-    #     * T_local (A local copy of the tensor field)
     #     * outermost::Bool (whether to only search for outermost barriers)
+    #     * T_local (A local copy of the tensor field)
     # Worker processes/tasks take elements from jobs_rc, calculate barriers, and put
     # the results in results_rc
 
@@ -1342,7 +1342,7 @@ function constrainedLCS(
     # detect centers of elliptic (in the index sense) regions
     xspan = q.axes[1]
     xmax = xspan[end]
-    # unfortunately, this type assertion is required for inferrability
+    # TODO: unfortunately, this type assertion is required for inferrability
     critpts::Vector{Singularity{S}} = critical_point_detection(
         q,
         p.indexradius;

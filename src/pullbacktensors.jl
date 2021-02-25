@@ -38,7 +38,7 @@ end
 end
 @inline function _flow(
     odefun::ODE.ODEFunction,
-    u0,
+    u0::T,
     tspan;
     p = nothing,
     solver = default_solver,
@@ -46,7 +46,7 @@ end
     #ctx_for_boundscheck=nothing,
     force_dtmin = false,
     saveat = tspan,
-)
+)::Vector{T} where {T} # TODO: type assertion needed in Julia v1.0
     # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing

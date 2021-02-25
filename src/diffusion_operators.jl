@@ -101,7 +101,7 @@ Return a list of sparse diffusion/Markov matrices `P`.
    * `verbose=false`: whether to print intermediate progress reports.
 """
 function sparse_diff_op_family(
-    data::AbstractVector{<:AbstractVector{<:SVector}},
+    data::AbstractArray{<:AbstractVector{<:SVector}},
     sp_method::SparsificationMethod,
     kernel = gaussian(),
     op_reduce = (P -> prod(reverse(LMs.LinearMap.(P))));
@@ -139,12 +139,12 @@ Return a sparse diffusion/Markov matrix `P`.
      only for point pairs where ``metric(x_i, x_j)\\leq \\varepsilon``.
 """
 function sparse_diff_op(
-    data::Union{T,AbstractVector{T}},
+    data::Union{AbstractArray{<:SVector},AbstractArray{<:AbstractVector{<:SVector}}},
     sp_method::SparsificationMethod,
     kernel = gaussian();
     α = 1.0,
     metric = Dists.Euclidean(),
-) where {T<:AbstractVector{<:SVector}}
+)
     P = spdist(data, sp_method, metric)
     N = LinearAlgebra.checksquare(P)
     if sp_method isa Neighborhood # P corresponds to the adjacency matrix

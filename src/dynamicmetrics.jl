@@ -276,11 +276,12 @@ Return a sparse distance matrix as determined by the sparsification method `sp_m
 and `metric`.
 """
 function spdist(
-    data::AbstractVector{<:SVector},
+    data::AbstractArray{<:SVector},
     sp_method::Neighborhood,
     metric::Dists.PreMetric = Distances.Euclidean(),
 )
     N = length(data) # number of states
+    data = vec(data)
     # TODO: check for better leafsize values
     tree =
         metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric; leafsize = 10) :
@@ -297,6 +298,7 @@ function spdist(
     metric::Dists.PreMetric = Distances.Euclidean(),
 )
     N = length(data) # number of states
+    data = vec(data)
     # TODO: check for better leafsize values
     tree =
         metric isa NN.MinkowskiMetric ? NN.KDTree(data, metric; leafsize = 10) :
@@ -314,12 +316,12 @@ function spdist(
     end
 end
 function spdist(
-    data::AbstractVector{<:AbstractVector{<:SVector}},
+    data::AbstractArray{<:AbstractArray{<:SVector}},
     sp_method::Neighborhood,
     metric::STmetric,
 )
     N = length(data) # number of trajectories
-    T = Dists.result_type(metric, data[1], data[1])
+    T = Dists.result_type(metric, first(data), first(data))
     I1 = collect(1:N)
     J1 = collect(1:N)
     V1 = zeros(T, N)
@@ -340,7 +342,7 @@ function spdist(
         IJV = Distributed.pmap(
             tempfun,
             1:(N-1);
-            batch_size = (N ÷ Distributed.nprocs()),
+            batch_size = (N ÷ Distributed.nprocs()^2),
         )
     else
         IJV = map(tempfun, 1:(N-1))
@@ -351,10 +353,11 @@ function spdist(
     return sparse(Is, Js, Vs, N, N)
 end
 function spdist(
-    data::AbstractVector{<:AbstractVector{<:SVector}},
+    data::AbstractArray{<:AbstractArray{<:SVector}},
     sp_method::Union{KNN,MutualKNN},
     metric::STmetric,
 )
+    data = vec(data)
     N, k = length(data), sp_method.k
     Is = repeat(1:N, inner=k+1)
     Js = SharedArray{Int}(N * (k + 1))
