@@ -23,8 +23,11 @@
 # The corresponding velocity field can be conveniently defined using the
 # `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
-using StreamMacros
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+using Distributed
+nprocs() == 1 && addprocs()
+
+@everywhere using StreamMacros
+const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
@@ -42,9 +45,7 @@ using CoherentStructures, Arpack
 LL, UR = (0.0, 0.0), (1.0, 1.0)
 ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 
-A(x) = let vf=rot_double_gyre
-    mean_diff_tensor(vf, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
-end
+A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
 K = assembleStiffnessMatrix(ctx, A)
 M = assembleMassMatrix(ctx)
 λ, v = eigs(-K, M, which=:SM);
@@ -94,10 +95,7 @@ DISPLAY_PLOT(res, rot_double_gyre_fem)
 # Here, we demonstrate how to calculate black-hole vortices, see
 # [Geodesic elliptic material vortices](@ref) for references and details.
 
-using Distributed
-nprocs() == 1 && addprocs()
-
-@everywhere using CoherentStructures, OrdinaryDiffEq, StreamMacros
+@everywhere using CoherentStructures, OrdinaryDiffEq
 q = 21
 const tspan = range(0., stop=1., length=q)
 nx = ny = 101
@@ -106,13 +104,6 @@ xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, permutedims(yspan))
 const δ = 1.e-6
-const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
-    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-    heaviside(x)= 0.5*(sign(x) + 1)
-    Ψ_P         = sin(2π*x)*sin(π*y)
-    Ψ_F         = sin(π*x)*sin(2π*y)
-    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
-end
 mcg_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mcg_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
