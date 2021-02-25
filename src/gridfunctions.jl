@@ -378,21 +378,8 @@ function irregularDelaunayGrid(nodes_in::AbstractVector{Vec{2,Float64}};
     end
     return ctx, bdata
 end
-function irregularDelaunayGrid(nodes_in::AbstractVector{NTuple{2,Float64}};
-        on_torus=false,
-        on_cylinder=false,
-        LL=nothing,
-        UR=nothing,
-        PC=false,
-        kwargs...)
-    return irregularDelaunayGrid(Vec{2}.(nodes_in);
-            on_torus=on_torus,
-            on_cylinder=on_cylinder,
-            LL=LL,
-            UR=UR,
-            PC=PC,
-            kwargs...)
-end
+irregularDelaunayGrid(nodes_in; kwargs...) =
+    irregularDelaunayGrid(Vec{2}.(nodes_in); kwargs...)
 
 """
     randomDelaunayGrid(npoints, LL, UR; kwargs...)
