@@ -184,7 +184,7 @@ n = 500
 ts = range(0, stop=1.0, length=20)
 xs, ys = rand(n), rand(n)
 particles = zip(xs, ys)
-const trajectories = [flow(rot_double_gyre, p, ts) for p in particles]
+trajectories = [flow(rot_double_gyre, p, ts) for p in particles]
 
 # Based on the initial particle positions we generate a triangulation.
 # If this call fails or does not return, the initial positions may not be unique.
