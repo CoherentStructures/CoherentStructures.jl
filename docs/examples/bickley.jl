@@ -68,7 +68,7 @@ vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 DISPLAY_PLOT(fig, bickley_geodesic_vortices)
 
 # ## FEM-based Methods

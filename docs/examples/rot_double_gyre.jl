@@ -115,5 +115,5 @@ vortices, singularities = ellipticLCS(C̅, xspan, yspan, p; outermost=true)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true, clims=(0,5))
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true, clims=(0,5))
 DISPLAY_PLOT(fig, rot_double_gyre_geodesic_vortices)

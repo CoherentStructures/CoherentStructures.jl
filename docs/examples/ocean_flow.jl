@@ -67,7 +67,7 @@ vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 # ## Objective Eulerian coherent structures (OECS)
@@ -106,7 +106,7 @@ vortices, singularities = ellipticLCS(S, xspan, yspan, p; outermost=true)
 
 λ₁ = tensor_invariants(S)[1]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=λ₁, logBg=false, title="Minor rate-of-strain field and OECSs")
+    bg=λ₁, xspan=xspan, yspan=yspan, logBg=false, title="Minor rate-of-strain field and OECSs")
 DISPLAY_PLOT(fig, ocean_flow_oecs)
 
 # ## FEM-based methods

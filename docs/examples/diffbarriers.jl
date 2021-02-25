@@ -87,7 +87,7 @@ vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 
 #md # ```@raw html
 #md # <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_geodesic_vortices.png"/>
@@ -149,7 +149,7 @@ vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 
 #md # ```@raw html
 #md # <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/>

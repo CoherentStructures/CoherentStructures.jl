@@ -134,7 +134,7 @@ vortices, singularities, bg = CS.materialbarriers(
 # result is shown below.
 
 plot_vortices(vortices, singularities, [-π, -π], [π, π];
-    bg=bg, include_singularities=true, barrier_width=4, barrier_color=:red,
+    bg=bg, xspan=xs, yspan=ys, include_singularities=true, barrier_width=4, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
 #md # ```@raw html
@@ -144,7 +144,7 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
 # We plot the detected vortices on top of the vorticity field.
 
 plot_vortices(vortices, singularities, [-π, -π], [π, π];
-    bg=zs[:,:,1], logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
+    bg=zs[:,:,1], xspan=xs, yspan=ys, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
 #md # ```@raw html
@@ -155,7 +155,7 @@ plot_vortices(vortices, singularities, [-π, -π], [π, π];
 
 vortexflow = vortex -> flow(uv_trilinear, vortex, [0., 5.]; p=uv)[end]
 plot_vortices(vortexflow.(vortices), singularities, [-π, -π], [π, π];
-    bg=zs[:,:,26], logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
+    bg=zs[:,:,26], xspan=xs, yspan=ys, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
 #md # ```@raw html
