@@ -17,9 +17,10 @@
 # stream-function. The corresponding velocity field can be conveniently defined
 # using the `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
-using Distributed, StreamMacros
+using Distributed
 nprocs() == 1 && addprocs()
 
+@everywhere using CoherentStructures, StreamMacros
 const bickley = @velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
@@ -45,8 +46,7 @@ end
 # Here we briefly demonstrate how to find material barriers to diffusive transport;
 # see [Geodesic elliptic material vortices](@ref) for references and details.
 
-@everywhere using CoherentStructures
-using OrdinaryDiffEq, Tensors
+@everywhere using OrdinaryDiffEq, Tensors
 q = 81
 const tspan = range(0., stop=3456000., length=q)
 ny = 61
