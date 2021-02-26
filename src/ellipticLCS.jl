@@ -106,6 +106,14 @@ struct EllipticVortex{T<:Real}
     barriers::Vector{EllipticBarrier{T}}
 end
 
+abstract type Parameters end
+
+function Base.show(io::IO, p::T) where {T<:Parameters}
+    keys = fieldnames(T)
+    values = getfield.(Ref(p), keys)
+    return show(io, (; zip(keys, values)...))
+end
+
 """
 Container for parameters used in elliptic LCS computations.
 
@@ -133,7 +141,7 @@ p = LCSParameters(2.5)
 LCSParameters(2.5, 0.25, true, 100, 0.7, 2.0, 0.00025, 2.5e-8, 1000, 20.0, 30)
 ```
 """
-struct LCSParameters{T<:Tuple{Vararg{MergeHeuristic}}}
+struct LCSParameters{T<:Tuple{Vararg{MergeHeuristic}}} <: Parameters
     boxradius::Float64
     indexradius::Float64
     merge_heuristics::T
@@ -220,12 +228,6 @@ function LCSParameters(;
     )
 end
 
-function Base.show(io::IO, p::T) where {T<:LCSParameters}
-    keys = fieldnames(T)
-    values = getfield.(Ref(p), keys)
-    return show(io, (; zip(keys, values)...))
-end
-
 struct LCScache{Ts<:Real,Tv<:SVector{2,<:Real}}
     λ₁::AxisArray{Ts,2}
     λ₂::AxisArray{Ts,2}
@@ -249,7 +251,7 @@ see [`flowgrow`](@ref).
 * `mindist=0.1`: least acceptable distance between two consecutive points;
 * `maxdist=1.0`: maximal acceptable distance between two consecutive points.
 """
-struct FlowGrowParams
+struct FlowGrowParams <: Parameters
     maxcurv::Float64
     mindist::Float64
     maxdist::Float64
@@ -771,6 +773,10 @@ function orient(T::AxisArray{<:SymmetricTensor{2,2},2}, center::SVector{2})
     ξ₂ .*= c2
     return LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
 end
+function orient(T::AbstractMatrix{<:SymmetricTensor{2,2}}, xspan, yspan, center::SVector{2})
+    return orient(AxisArray(T, xspan, yspan), center)
+end
+
 """
     compute_closed_orbits(ps, ηfield, cache; kwargs...)
 
@@ -927,13 +933,17 @@ field given by shifted versions of `T` on the 2D computational grid spanned
 by `xspan` and `yspan`. `p` is a [`LCSParameters`](@ref)-type container of
 computational parameters. Returns a list of `EllipticBarrier`-type objects.
 
-The keyword arguments and their default values are:
-*   `outermost=true`: only the outermost barriers, i.e., the vortex
-    boundaries are returned, otherwise all detected transport barrieres;
-*   `verbose=true`: show intermediate computational information;
-*   `debug=false`: whether to use the debug mode, which avoids parallelization
-    for more precise error messages.
-*   `singularity_predicate = nothing`: provide an optional callback to reject certain singularity candidates.
+## Keyword arguments
+
+* `outermost=true`: only the outermost barriers, i.e., the vortex
+  boundaries are returned, otherwise all detected transport barrieres;
+* `verbose=true`: show intermediate computational information;
+* `unique_vortices=true`: filter out vortices enclosed by other vortices;
+* `suggested_centers=[]`: suggest vortex centers (of type [`Singularity`](@ref));
+* `debug=false`: whether to use the debug mode, which avoids parallelization
+  for more precise error messages;
+* `singularity_predicate = nothing`: provide an optional callback to reject certain
+  singularity candidates.
 """
 function ellipticLCS(
     T::AbstractMatrix{SymmetricTensor{2,2,S,3}},
@@ -1280,20 +1290,13 @@ function makeVortexListUnique(vortices::Vector{<:EllipticVortex}, indexradius)
     result = typeof(vortices[1])[]
     for i in 1:N
         which_not_to_add[i] && continue
-        idxs2 =
-            NN.inrange(vortexcenters_tree, vortexcenters[i], 2 * indexradius)
+        idxs2 = NN.inrange(vortexcenters_tree, vortexcenters[i], 2 * indexradius)
         for j in idxs2
             j == i && continue
-            c1 = [
-                SVector{2}(p[1], p[2]) for p in vortices[j].barriers[1].curve
-            ]
-            c2 = [
-                SVector{2}(p[1], p[2]) for p in vortices[i].barriers[1].curve
-            ]
-            if contains_point(c1, vortexcenters[i]) ||
-               contains_point(c2, vortexcenters[j])
-                which_not_to_add[j] = true
-            end
+            c1 = [SVector{2}(p[1], p[2]) for p in vortices[j].barriers[1].curve]
+            c2 = [SVector{2}(p[1], p[2]) for p in vortices[i].barriers[1].curve]
+            which_not_to_add[j] = contains_point(c1, vortexcenters[i]) ||
+                contains_point(c2, vortexcenters[j])
         end
         push!(result, vortices[i])
     end
