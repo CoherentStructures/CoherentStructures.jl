@@ -172,7 +172,7 @@ DISPLAY_PLOT(fig, mahirn18ev3)
 # rotating double gyre flow.
 
 using StreamMacros, CoherentStructures
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
@@ -194,7 +194,7 @@ ctx, _ = irregularDelaunayGrid(particles)
 
 # Next, we generate the stiffness and mass matrices and solve the generalized eigenproblem.
 
-S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], tspan; flow_map_mode=1)
+S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], ts; flow_map_mode=1)
 M = assembleMassMatrix(ctx)
 
 using Arpack
