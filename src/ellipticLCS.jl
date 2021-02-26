@@ -238,6 +238,8 @@ struct LCScache{Ts<:Real,Tv<:SVector{2,<:Real}}
 end
 
 """
+    struct FlowGrowParams
+
 Container for parameters used in point-inserting flow computations;
 see [`flowgrow`](@ref).
 
@@ -261,41 +263,53 @@ function FlowGrowParams(; maxcurv=0.3, mindist=0.1, maxdist=1.0)
     return FlowGrowParams(maxcurv, mindist, maxdist)
 end
 
+abstract type SignedAngleDist end
+struct S1Dist <: SignedAngleDist end
+
 """
-    s1dist(α, β)
+    S1Dist()(α, β)
 
 Computes the signed length of the angle of the shortest circle segment going
 from angle `β` to angle `α`, as computed on the full circle.
 
-# Examples
+## Examples
+
 ```jldoctest
-julia> s1dist(π/2, 0)
+julia> dist = S1Dist();
+
+julia> dist(π/2, 0)
 1.5707963267948966
 
-julia> s1dist(0, π/2)
+julia> dist(0, π/2)
 -1.5707963267948966
 ```
 """
-@inline s1dist(x::Real, y::Real) = rem2pi(float(x - y), RoundNearest)
+(::S1Dist)(x, y) = rem2pi(x - y, RoundNearest)
+@deprecate s1dist(x, y) S1Dist()(x, y)
 
+struct P1Dist <: SignedAngleDist end
 """
-    p1dist(α, β)
+    P1Dist()(α, β)
 
 Computes the signed length of the angle of the shortest circle segment going
 from angle `β` to angle `α [± π]`, as computed on the half circle.
 
-# Examples
+## Examples
+
 ```jldoctest
-julia> p1dist(π, 0)
+julia> dist = P1Dist();
+
+julia> dist(π, 0)
 0.0
 ```
 """
-@inline p1dist(x::Real, y::Real) = rem(float(x - y), float(π), RoundNearest)
+(::P1Dist)(x, y) = rem(float(x - y), float(π), RoundNearest)
+@deprecate p1dist(x, y) P1Dist()(x, y)
 
 ##################### singularity/critical point detection #####################
 """
-    compute_singularities(v, xspan, yspan, dist=s1dist) -> Vector{Singularity}    
-    compute_singularities(v::AxisArray, dist=s1dist) -> Vector{Singularity}
+    compute_singularities(v, xspan, yspan, dist=S1Dist()) -> Vector{Singularity}    
+    compute_singularities(v::AxisArray, dist=S1Dist()) -> Vector{Singularity}
 
 Computes critical points and singularities of vector and line fields `v`,
 respectively. The argument `dist` is a signed distance function for angles.
@@ -304,7 +318,7 @@ Choose `s1dist` (default) for vector fields, and `p1dist` for line fields.
 function compute_singularities(v::AbstractMatrix{<:SVector{2}},
     xspan::AbstractRange,
     yspan::AbstractRange,
-    dist::Function = s1dist,
+    dist::SignedAngleDist = S1Dist(),
 )
     axes(v) == (eachindex(xspan), eachindex(yspan)) || error("axes don't match")
     @inbounds α = map(u -> atan(u[2], u[1]), v)
@@ -326,10 +340,7 @@ function compute_singularities(v::AbstractMatrix{<:SVector{2}},
     end
     return singularities
 end
-@inline function compute_singularities(
-    v::AxisArray{<:SVector{2},2},
-    dist::Function = s1dist,
-)
+function compute_singularities(v::AxisArray{<:SVector{2},2}, dist::SignedAngleDist = S1Dist())
     xspan, yspan = v.axes
     return compute_singularities(v.data, xspan.val, yspan.val, dist)    
 end
@@ -602,16 +613,16 @@ end
 @deprecate combine_20_aggressive(singularities) Combine20Aggressive()(singularities)
 
 """
-    critical_point_detection(vs, xspan, yspan, combine_distance, dist=s1dist;
+    critical_point_detection(vs, xspan, yspan, combine_distance, dist=S1Dist();
         merge_heuristics=(combine_20,)) -> Vector{Singularity}
-    critical_point_detection(vs::AxisArray, combine_distance, dist=s1dist;
+    critical_point_detection(vs::AxisArray, combine_distance, dist=S1Dist();
         merge_heuristics=(combine_20,)) -> Vector{Singularity}
 
 Computes critical points of a vector/line field `vs`, potentially given as an `AxisArray`.
 Critical points with distance less or equal to `combine_distance` are
 combined by averaging the coordinates and adding the respective indices. The
-argument `dist` is a signed distance function for angles: choose [`s1dist`](@ref)
-for vector fields, and [`p1dist`](@ref) for line fields; cf. [`compute_singularities`](@ref).
+argument `dist` is a signed distance function for angles: choose [`S1Dist()`](@ref)
+for vector fields, and [`P1Dist()`](@ref) for line fields; cf. [`compute_singularities`](@ref).
 [`MergeHeuristic`](@ref)s listed in `merge_heuristics`, cf. [`LCSParameters`](@ref),
 are applied to combine singularities.
 
@@ -622,7 +633,7 @@ function critical_point_detection(
     xspan::AbstractRange,
     yspan::AbstractRange,
     combine_distance::Real,
-    dist = s1dist;
+    dist::SignedAngleDist = S1Dist();
     merge_heuristics = (Combine20(),),
 )
     singularities = compute_singularities(vs, xspan, yspan, dist)
@@ -635,7 +646,7 @@ end
 @inline function critical_point_detection(
     vs::AxisArray{<:SVector{2},2},
     combine_distance::Real,
-    dist = s1dist;
+    dist::SignedAngleDist = S1Dist();
     merge_heuristics = (Combine20(),),
 )
     xspan, yspan = vs.axes
@@ -666,7 +677,7 @@ function singularity_detection(
         @inbounds v = eigvecs(t)[:, 1]
         @inbounds SVector{2}((v[1], v[2]))
     end
-    critical_point_detection(ξ, xspan, yspan, combine_distance, p1dist; merge_heuristics=merge_heuristics)
+    critical_point_detection(ξ, xspan, yspan, combine_distance, P1Dist(); merge_heuristics=merge_heuristics)
 end
 @inline function singularity_detection(
     T::AxisArray{<:SymmetricTensor{2,2},2},
@@ -716,7 +727,7 @@ function compute_returning_orbit(
         return (sol.u, sol.retcode)
     catch e
         if e isa BoundsError
-            return [SVector{2,eltype(T)}(NaN, NaN)], :BoundsError
+            return ([SVector{2,eltype(T)}(NaN, NaN)], :BoundsError)
         end
         rethrow(e)
     end
@@ -761,14 +772,22 @@ function orient(T::AxisArray{<:SymmetricTensor{2,2},2}, center::SVector{2})
     return LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
 end
 """
-    compute_closed_orbits(ps, ηfield, cache; rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000, maxiters_bisection=20)
+    compute_closed_orbits(ps, ηfield, cache; kwargs...)
 
 Compute the (outermost) closed orbit for a given Poincaré section `ps`, a vector field
-constructor `ηfield`, and an LCScache `cache`. Keyword arguments `pmin` and `pmax`
-correspond to the range of shift parameters in which closed orbits are sought;
-`rev` determines whether closed orbits are sought from the outside inwards (`true`)
-or from the inside outwards (`false`). `rdist` sets the required return distance for
-an orbit to be considered as closed. The parameter `maxiters_ode` gives the maximum number
+constructor `ηfield`, and an LCScache `cache`.
+
+## Keyword arguments
+
+* `rev=true`: determines whether closed orbits are sought from the outside inwards (`true`)
+  or from the inside outwards (`false`);
+* `pmin=0.7`, `pmax=1.5`: correspond to the range of shift parameters in which closed orbits are sought;
+* `rdist=1e-4` sets the required return distance for an orbit to be considered as closed
+
+rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000, maxiters_bisection=20
+
+
+. . The parameter `maxiters_ode` gives the maximum number
 of steps taken by the ODE solver when computing the closed orbit, the ode solver uses tolerance
 given by `tolerance_ode`. The parameter `maxiters_bisection` gives the maximum number of iterations
 used by the bisection algorithm to find closed orbits.
@@ -778,16 +797,7 @@ function compute_closed_orbits(
     ηfield,
     cache;
     rev::Bool = true,
-    pmin::Real = 0.7,
-    pmax::Real = 1.5,
-    rdist::Real = 1e-4,
-    tolerance_ode::Float64 = 1e-8,
-    maxiters_ode::Int = 2000,
-    max_orbit_length::Float64 = 20.0,
-    maxiters_bisection::Int = 20,
-    only_enclosing = true,
-    only_smooth = true,
-    only_uniform = true,
+    p::LCSParameters = LCSParameters()
 ) where {S1<:Real}
     if cache isa LCScache # tensor-based LCS computation
         l1itp = ITP.LinearInterpolation(cache.λ₁)
@@ -797,9 +807,9 @@ function compute_closed_orbits(
     end
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     prd(λ::Float64, σ::Bool, seed::SVector{2}, cache) =
-        let tol = tolerance_ode,
-            maxode = maxiters_ode,
-            maxorbit = max_orbit_length
+        let tol = p.tolerance_ode,
+            maxode = p.maxiters_ode,
+            maxorbit = p.max_orbit_length
 
             Poincaré_return_distance(
                 ηfield(λ, σ, cache),
@@ -831,16 +841,16 @@ function compute_closed_orbits(
     vortices = EllipticBarrier{S1}[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
-        if cache isa LCScache && only_uniform
-            pmin_local = max(pmin, l1itp(ps[i][1], ps[i][2]))
-            pmax_local = min(pmax, l2itp(ps[i][1], ps[i][2]))
+        if cache isa LCScache && p.only_uniform
+            pmin_local = max(p.pmin, l1itp(ps[i][1], ps[i][2]))
+            pmax_local = min(p.pmax, l2itp(ps[i][1], ps[i][2]))
             margin_step = (pmax_local - pmin_local) / 20
             if !(margin_step > 0)
                 continue
             end
         else #TODO: can something like the above be done for the constrained LCS setting too?
-            pmin_local = pmin
-            pmax_local = pmax
+            pmin_local = p.pmin
+            pmax_local = p.pmax
             margin_step = (pmax_local - pmin_local) / 20
         end
 
@@ -851,8 +861,8 @@ function compute_closed_orbits(
             end,
             pmin_local,
             pmax_local,
-            rdist,
-            maxiters_bisection,
+            p.rdist,
+            p.maxiters_bisection,
             margin_step,
         )
         if bisection_retcode != zero_found
@@ -863,8 +873,8 @@ function compute_closed_orbits(
                 end,
                 pmin_local,
                 pmax_local,
-                rdist,
-                maxiters_bisection,
+                p.rdist,
+                p.maxiters_bisection,
                 margin_step,
             )
         end
@@ -873,27 +883,27 @@ function compute_closed_orbits(
                 ηfield(λ⁰, σ, cache),
                 ps[i],
                 true,
-                maxiters_ode,
-                tolerance_ode,
-                max_orbit_length,
+                p.maxiters_ode,
+                p.tolerance_ode,
+                p.max_orbit_length,
             )
             if retcode === :Terminated
-                closed = norm(orbit[1] - orbit[end]) <= rdist
+                closed = norm(orbit[1] - orbit[end]) <= p.rdist
                 if cache isa LCScache
                     in_well_defined_squares =
-                        !only_smooth || in_defined_squares(orbit, cache)
+                        !(p.only_smooth) || in_defined_squares(orbit, cache)
                     uniform =
-                        !only_uniform || in_uniform_squares(orbit, λ⁰, cache)
+                        !(p.only_uniform) || in_uniform_squares(orbit, λ⁰, cache)
                 else
                     predicate = let λ = λ⁰
                         qs -> nitp(qs[1], qs[2]) >= λ^2
                     end
                     in_well_defined_squares = true
-                    uniform = !only_uniform || all(predicate, orbit)
+                    uniform = !(p.only_uniform) || all(predicate, orbit)
                 end
 
                 contains_singularity =
-                    !only_enclosing || contains_point(orbit, ps[1])
+                    !(p.only_enclosing) || contains_point(orbit, ps[1])
 
                 if (
                     closed &&
@@ -1185,22 +1195,7 @@ function getvortices(
                 cache = orient(T_local[:, :], SVector{2}(vx, vy))
                 ps = SVector{2}.(vs, vy)
 
-                result = compute_closed_orbits(
-                    ps,
-                    ηfield,
-                    cache;
-                    rev = outermost,
-                    pmin = p.pmin,
-                    pmax = p.pmax,
-                    rdist = p.rdist,
-                    tolerance_ode = p.tolerance_ode,
-                    maxiters_ode = p.maxiters_ode,
-                    max_orbit_length = p.max_orbit_length,
-                    maxiters_bisection = p.maxiters_bisection,
-                    only_enclosing = p.only_enclosing,
-                    only_smooth = p.only_smooth,
-                    only_uniform = p.only_uniform,
-                )
+                result = compute_closed_orbits(ps, ηfield, cache; rev = outermost, p = p)
                 put!(results_rc, (vx, vy, result))
                 num_processed += 1
             end
@@ -1463,21 +1458,7 @@ function constrainedLCS(
                     )
                 end
 
-                result = compute_closed_orbits(
-                    ps,
-                    constrainedLCSηfield,
-                    cache;
-                    rev = outermost,
-                    pmin = p.pmin,
-                    pmax = p.pmax,
-                    rdist = p.rdist,
-                    tolerance_ode = p.tolerance_ode,
-                    maxiters_ode = p.maxiters_ode,
-                    max_orbit_length = p.max_orbit_length,
-                    maxiters_bisection = p.maxiters_bisection,
-                    only_enclosing = p.only_enclosing,
-                    only_smooth = p.only_smooth,
-                )
+                result = compute_closed_orbits(ps, constrainedLCSηfield, cache; rev = outermost, p = p)
                 put!(results_rc, (vx, vy, result))
                 num_processed += 1
             end

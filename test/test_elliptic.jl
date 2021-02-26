@@ -14,10 +14,10 @@ end
 
 @testset "circle distances" begin
     α = rand()
-    @test abs(s1dist(α, α + π)) ≈ π
-    @test p1dist(α, α + π) ≈ 0 atol=1e-15
-    @test s1dist(α, α + 2π) ≈ 0 atol=1e-15
-    @test p1dist(α, α + 2π) ≈ 0 atol=1e-15
+    @test abs(S1Dist()(α, α + π)) ≈ π
+    @test P1Dist()(α, α + π) ≈ 0 atol=1e-15
+    @test S1Dist()(α, α + 2π) ≈ 0 atol=1e-15
+    @test P1Dist()(α, α + 2π) ≈ 0 atol=1e-15
 end
 
 @testset "compute critical points" begin
@@ -72,7 +72,7 @@ Taxis = AxisArray(T, xspan, yspan)
 @testset "combine singularities" begin
     @inferred singularity_detection(T, xspan, yspan, 0.1; merge_heuristics=())
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    singularities = @inferred compute_singularities(ξ, xspan, yspan, p1dist)
+    singularities = @inferred compute_singularities(ξ, xspan, yspan, P1Dist())
     new_singularities = @inferred CS.Combine(3*step(xspan))(singularities)
     for mh in (Combine20(), Combine20Aggressive(), Combine31())
         @inferred mh(new_singularities)
