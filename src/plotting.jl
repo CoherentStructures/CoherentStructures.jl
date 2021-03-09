@@ -654,6 +654,32 @@ function plot_vortices(
     return fig
 end
 
+"""
+    plot_vortices!(fig,args...; kwargs...)
+
+See `plot_vortices`
+"""
+function plot_vortices!(
+    fig,
+    vortices,
+    singularities,
+    LL,
+    UR;
+    logBg = true,
+    include_singularities = true,
+    showlabel = false,
+    kwargs...,
+)
+    for v in vortices, b in v.barriers
+        plot_barrier!(fig,b; showlabel = showlabel, kwargs...)
+    end
+    if include_singularities
+        plot_singularities!(fig,singularities; kwargs...)
+    end
+    return fig
+end
+
+
 RecipesBase.@userplot Plot_Field
 RecipesBase.@recipe function f(as::Plot_Field; logBg = true)
     bg = as.args[1]

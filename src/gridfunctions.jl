@@ -1313,7 +1313,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
             tri_nodes = switched_nodes_table[collect(new_tri_nodes_from_tess)]
 
             #Are any of the vertices actually inside?
-            if any(x -> x <= num_nodes_in, tri_nodes)
+            if any(x -> x <= num_nodes_in, new_tri_nodes_from_tess)
                 #Let's find out if we've already added a (modulo periodicity)
                 #version of this cell
                 thiscell = in_cells_used(cells_used,
@@ -1383,7 +1383,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
     for c in cells
         used_nodes[collect(c.nodes)] .= true
     end
-    if any(x -> x == false, used_nodes)
+    if false ∈ used_nodes
         @error "Some nodes added that might cause problems with JuAFEM. Proceed at your own risk."
     end
 
