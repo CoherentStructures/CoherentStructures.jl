@@ -52,7 +52,9 @@ For more details, see [Froyland & Junge, 2018](https://arxiv.org/pdf/1705.03640.
 
 ### Grids
 
-Various types of regular and irregular meshes (with Delaunay triangulation using [`VoronoiDelaunay.jl`](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported. These are based on the corresponding elements from [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) and include:
+Various types of regular and irregular meshes (with Delaunay triangulation using
+[`VoronoiDelaunay.jl`](https://github.com/JuliaGeometry/VoronoiDelaunay.jl) ) are supported.
+These are based on the corresponding elements from [`Ferrite.jl`](https://github.com/Ferrite-FEM/Ferrite.jl) and include:
 
 - triangular P1-Lagrange elements in 2D (all methods)
 - quadrilateral P1-Lagrange elements in 2D (all methods except adaptive TO)
@@ -61,7 +63,8 @@ Various types of regular and irregular meshes (with Delaunay triangulation using
 
 ## The `GridContext` Type
 
-The FEM-based methods of `CoherentStructures.jl` rely heavily on the [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) package.
+The FEM-based methods of `CoherentStructures.jl` rely heavily on the
+[`Ferrite.jl`](https://github.com/Ferrite-FEM/Ferrite.jl) package.
 This package is very low-level and does not provide point-location/plotting functionality.
 To be able to more conveniently work with the specific types of grids that we need, all necessary variables for a single grid are combined in a `GridContext` structure - including the grid points, the quadrature formula used and the type of element used (e.g. Triangular P1, Quadrilateral P2, etc..). This makes it easier to assemble mass/stiffness matrices, and provides an interface for point-location and plotting.
 
@@ -76,7 +79,7 @@ For nodal finite elements, these correspond to evaluation functionals at the nod
 
 The nodes of the grid can be obtained in the following way `[n.x for n in ctx.grid.nodes]`.
 However, most of the methods of this package do _not_ return results in this order, but instead
-use `JuAFEM.jl`'s dof-ordering.
+use `Ferrite.jl`'s dof-ordering.
 
 See also the documentation in [`dof2node`](@ref) and [`CoherentStructures.GridContext`](@ref)
 
@@ -132,14 +135,14 @@ and are generally the default.
 
 Homogeneous Dirichlet boundary conditions can be constructed with the
 `getHomDBCS(ctx[, which="all"])` function. The optional `which` parameter is a
-vector of strings, corresponding to `JuAFEM` face-sets, e.g.
+vector of strings, corresponding to `Ferrite` face-sets, e.g.
 `getHomDBCS(ctx, which=["left", "right"])`
 
 Periodic boundary conditions are constructed by calling
 `BoundaryData(ctx,predicate,[which_dbc=[]])`. The argument `predicate` is a
 function that should return `true` if and only if two points should be identified.
 Due to floating-point rounding errors, note that using exact comparisons (`==`)
-should be avoided. Only points that are in `JuAFEM.jl` boundary facesets are
+should be avoided. Only points that are in `Ferrite.jl` boundary facesets are
 considered. If this is too restrictive, use the
 `BoundaryData(dbc_dofs, periodic_dofs_from, periodic_dofs_to)` constructor.
 

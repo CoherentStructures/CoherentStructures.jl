@@ -12,18 +12,15 @@ Julia.
 
 The package can be installed with the Julia package manager.
 From the Julia REPL, type `]` to enter the Pkg REPL mode.
-First, install the [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) package by typing in the Julia REPL (console):
 
-    pkg> add https://github.com/KristofferC/JuAFEM.jl.git
+Install this package by typing
+
+    pkg> add https://github.com/CoherentStructures/CoherentStructures.jl.git
 
 In order to run the example cases, please install our companion package
 [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl) by typing
 
     pkg> add https://github.com/CoherentStructures/StreamMacros.jl.git
-
-Finally, install this package by typing
-
-    pkg> add https://github.com/CoherentStructures/CoherentStructures.jl.git
 
 For an introduction to LCS methods, usage examples, and implementation details,
 see the documentation. There, you will also find links to executable source

@@ -1,6 +1,6 @@
 # CoherentStructures.jl
 
-*Tools for computing Lagrangian Coherent Structures in Julia*
+*Tools for computing Lagrangian Coherent Structures in Julia.*
 
 ## Introduction
 
@@ -16,18 +16,14 @@ Contributions from colleagues in the field are most welcome via raising issues o
 
 ## Installation
 
-First, install the [`JuAFEM.jl`](https://github.com/KristofferC/JuAFEM.jl) package by typing in the Julia REPL (console):
+Install this package by typing
 
-    ]add https://github.com/KristofferC/JuAFEM.jl.git
+    ]add https://github.com/CoherentStructures/CoherentStructures.jl.git
 
 In order to run the example cases, please install our companion package
 [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl.git) by typing
 
     ]add https://github.com/CoherentStructures/StreamMacros.jl
-
-Finally, install this package by typing
-
-    ]add https://github.com/CoherentStructures/CoherentStructures.jl.git
 
 ## Overview of supported methods
 

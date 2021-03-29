@@ -1,9 +1,9 @@
 #(c) 2017 Nathanael Schilling
-#This file implements methods for working with JuAFEM grids
+#This file implements methods for working with Ferrite grids
 #This includes methods for making grids from Delaunay Triangulations based
 #on the code in FEMDL.jl
 
-#JuAFEM has no functions for determining which cell a point is in.
+#Ferrite has no functions for determining which cell a point is in.
 #Amongst other things, this file (and pointlocation.jl) implements an API for doing this.
 
 const default_quadrature_order = 5
@@ -12,11 +12,12 @@ const default_quadrature_order3D = 2
 """
     mutable struct GridContext
 
-Stores everything needed as "context" to be able to work on a FEM grid based on the `JuAFEM` package.
+Stores everything needed as "context" to be able to work on a FEM grid based on the `Ferrite` package.
 Adds a point-locator API which facilitates plotting functions defined on the grid within Julia.
 
 # Fields
-- `grid::JuAFEM.Grid`, `ip::JuAFEM.Interpolation`, `ip_geom::JuAFEM.Interpolation`, `qr::JuAFEM.QuadratureRule` - see the [`JuAFEM`](https://github.com/KristofferC/JuAFEM.jl) package.
+- `grid::FEM.Grid`, `ip::FEM.Interpolation`, `ip_geom::FEM.Interpolation`, `qr::FEM.QuadratureRule`;
+  see the [`Ferrite`](https://github.com/Ferrite-FEM/FEM.jl) package.
 - `loc::PointLocator`: object used for point location on the grid.
 
 - `node_to_dof::Vector{Int}`: lookup table for dof index of a node (for Lagrange elements)
@@ -37,7 +38,7 @@ Adds a point-locator API which facilitates plotting functions defined on the gri
 - `gridType`: a string describing what kind of grid this is (e.g. "regular triangular grid")
 - `no_precompute=false`: whether to precompute objects like quadrature points. Only enable this if you know what you are doing.
 """
-mutable struct GridContext{dim,G<:JFM.Grid,ITP<:JFM.Interpolation,ITPG<:JFM.Interpolation,DH<:JFM.DofHandler,QR<:JFM.QuadratureRule,PL<:PointLocator} <: AbstractGridContext{dim} #TODO: Currently set as mutable, is this sensible?
+mutable struct GridContext{dim,G<:FEM.Grid,ITP<:FEM.Interpolation,ITPG<:FEM.Interpolation,DH<:FEM.DofHandler,QR<:FEM.QuadratureRule,PL<:PointLocator} <: AbstractGridContext{dim} #TODO: Currently set as mutable, is this sensible?
     grid::G
     ip::ITP
     ip_geom::ITPG
@@ -69,25 +70,25 @@ mutable struct GridContext{dim,G<:JFM.Grid,ITP<:JFM.Interpolation,ITPG<:JFM.Inte
     gridType::String
 
     function GridContext{dim}(
-                grid::JFM.Grid,
-                ip::JFM.Interpolation,
-                ip_geom::JFM.Interpolation,
-                dh::JFM.DofHandler,
-                qr::JFM.QuadratureRule,
+                grid::FEM.Grid,
+                ip::FEM.Interpolation,
+                ip_geom::FEM.Interpolation,
+                dh::FEM.DofHandler,
+                qr::FEM.QuadratureRule,
                 loc::PointLocator;
                 no_precompute=false
             ) where {dim}
 
         x = new{dim,typeof(grid),typeof(ip),typeof(ip_geom),typeof(dh),typeof(qr),typeof(loc)}(grid, ip, ip_geom, dh, qr, loc)
-        x.num_nodes = JFM.getnnodes(dh.grid)
-        x.num_cells = JFM.getncells(dh.grid)
-        x.n = JFM.ndofs(dh)
+        x.num_nodes = FEM.getnnodes(dh.grid)
+        x.num_cells = FEM.getncells(dh.grid)
+        x.n = FEM.ndofs(dh)
 
         #TODO: Measure if the sorting below is expensive
-        if ip isa JFM.Lagrange
+        if ip isa FEM.Lagrange
             x.node_to_dof = nodeToDHTable(x)
             x.dof_to_node = sortperm(x.node_to_dof)
-        elseif ip isa JFM.PiecewiseConstant
+        elseif ip isa FEM.PiecewiseConstant
             x.cell_to_dof = cellToDHTable(x)
             x.dof_to_cell = sortperm(x.cell_to_dof)
         else
@@ -103,16 +104,16 @@ mutable struct GridContext{dim,G<:JFM.Grid,ITP<:JFM.Interpolation,ITPG<:JFM.Inte
     end
 end
 
-#Based on JuAFEM's WriteVTK.vtk_point_data
+#Based on Ferrite's WriteVTK.vtk_point_data
 function nodeToDHTable(ctx::AbstractGridContext{dim}) where {dim}
     dh = ctx.dh
     n = ctx.n
     res = Vector{Int}(undef,n)
-    for cell in JFM.CellIterator(dh)
-        _celldofs = JFM.celldofs(cell)
+    for cell in FEM.CellIterator(dh)
+        _celldofs = FEM.celldofs(cell)
         ctr = 1
-        offset = JFM.field_offset(dh, dh.field_names[1])
-        for node in JFM.getnodes(cell)
+        offset = FEM.field_offset(dh, dh.field_names[1])
+        for node in FEM.getnodes(cell)
             res[node] = _celldofs[ctr + offset]
             ctr += 1
         end
@@ -124,10 +125,10 @@ function cellToDHTable(ctx::AbstractGridContext{dim}) where {dim}
     dh = ctx.dh
     n = ctx.n
     res = Vector{Int}(undef,n)
-    for (cellindex,cell) in enumerate(JFM.CellIterator(dh))
-        _celldofs = JFM.celldofs(cell)
-        offset = JFM.field_offset(dh, dh.field_names[1])
-        for node in JFM.getnodes(cell)
+    for (cellindex,cell) in enumerate(FEM.CellIterator(dh))
+        _celldofs = FEM.celldofs(cell)
+        offset = FEM.field_offset(dh, dh.field_names[1])
+        for node in FEM.getnodes(cell)
             mynode = node
         end
         res[cellindex] = _celldofs[offset+1]
@@ -136,29 +137,29 @@ function cellToDHTable(ctx::AbstractGridContext{dim}) where {dim}
 end
 #=
 """
-    GridContext{1}(JFM.Line, [numnodes, LL, UR; ip,quadrature_order,ip])
+    GridContext{1}(FEM.Line, [numnodes, LL, UR; ip,quadrature_order,ip])
 
 Constructor for a 1d regular mesh with `numnodes[1]` node on the interval `[LL[1],UR[1]]`.
 The default for `ip` is P1-Lagrange elements, but piecewise-constant elements can also be used.
 """
 =#
-function GridContext{1}(::Type{JFM.Line},
+function GridContext{1}(::Type{FEM.Line},
                          numnodes::Tuple{Int}=(25,), LL::Tuple{<:Real}=(0.0,), UR::Tuple{<:Real}=(1.0,);
                          quadrature_order::Int=default_quadrature_order,
-                         ip=JFM.Lagrange{1,JFM.RefCube,1}(), kwargs...)
-    # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.Line, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
-    loc = Regular1dGridLocator{JFM.Line}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
+                         ip=FEM.Lagrange{1,FEM.RefCube,1}(), kwargs...)
+    # The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.Line, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
+    loc = Regular1dGridLocator{FEM.Line}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
 
-    dh = JFM.DofHandler(grid)
+    dh = FEM.DofHandler(grid)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
+    FEM.close!(dh)
 
-    qr = JFM.QuadratureRule{1, JFM.RefCube}(quadrature_order)
-    result = GridContext{1}(grid, ip,JFM.Lagrange{1,JFM.RefCube,1}(), dh, qr, loc; kwargs...)
+    qr = FEM.QuadratureRule{1, FEM.RefCube}(quadrature_order)
+    result = GridContext{1}(grid, ip,FEM.Lagrange{1,FEM.RefCube,1}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1]]
-    if ip isa JFM.Lagrange
+    if ip isa FEM.Lagrange
         result.gridType = "regular P1 1d grid"
     else
         result.gridType = "regular PC 1d grid"
@@ -169,27 +170,27 @@ end
 
 #=
 """
-    GridContext{1}(JuAFEM.QuadraticLine, numnodes, LL, UR, quadrature_order)
+    GridContext{1}(FEM.QuadraticLine, numnodes, LL, UR, quadrature_order)
 """
 =#
-function GridContext{1}(::Type{JFM.QuadraticLine},
+function GridContext{1}(::Type{FEM.QuadraticLine},
                          numnodes::Tuple{Int}=(25,),
                          LL::Tuple{<:Real}=(0.0,),
                          UR::Tuple{<:Real}=(1.0,);
                          quadrature_order::Int=default_quadrature_order,
-                         ip=JFM.Lagrange{1,JFM.RefCube,2}(), kwargs...
+                         ip=FEM.Lagrange{1,FEM.RefCube,2}(), kwargs...
                          )
-    # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.QuadraticLine, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
-    loc = Regular1dGridLocator{JFM.QuadraticLine}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{1, JFM.RefCube}(quadrature_order)
+    # The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.QuadraticLine, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
+    loc = Regular1dGridLocator{FEM.QuadraticLine}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{1, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result = GridContext{1}(grid, ip, JFM.Lagrange{1,JFM.RefCube,2}(), dh, qr, loc; kwargs...)
+    FEM.close!(dh)
+    result = GridContext{1}(grid, ip, FEM.Lagrange{1,FEM.RefCube,2}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1]]
-    if !isa(ip, JFM.Lagrange)
+    if !isa(ip, FEM.Lagrange)
         @warn("Using non-Lagrange shape functions may or may not work on this mesh")
     end
     result.gridType = "regular P2 1d grid"
@@ -213,9 +214,9 @@ function regular1dPCGrid(numnodes::Int, args...; kwargs...)
 end
 function regular1dPCGrid(numnodes::Tuple{Int}, left::Real=0.0, right::Real=1.0;
                     quadrature_order::Int=default_quadrature_order, kwargs...)
-    result = GridContext{1}(JFM.Line, numnodes, (left,), (right,);
+    result = GridContext{1}(FEM.Line, numnodes, (left,), (right,);
                             quadrature_order=quadrature_order,
-                            ip=JFM.PiecewiseConstant{1,JFM.RefCube,1}(),
+                            ip=FEM.PiecewiseConstant{1,FEM.RefCube,1}(),
                             kwargs...)
     return result, BoundaryData()
 end
@@ -231,7 +232,7 @@ function regular1dP1Grid(numnodes::Int, args...; kwargs...)
 end
 function regular1dP1Grid(numnodes::Tuple{Int}, left::Real=0.0, right::Real=1.0;
                     quadrature_order::Int=default_quadrature_order, kwargs...)
-    result = GridContext{1}(JFM.Line, numnodes, (left,), (right,);
+    result = GridContext{1}(FEM.Line, numnodes, (left,), (right,);
                             quadrature_order=quadrature_order, kwargs...)
     return result, BoundaryData()
 end
@@ -247,7 +248,7 @@ function regular1dP2Grid(numnodes::Int, args...; kwargs...)
 end
 function regular1dP2Grid(numnodes::Tuple{Int}, left=0.0, right=1.0;
                             quadrature_order::Int=default_quadrature_order, kwargs...)
-    result = GridContext{1}(JFM.QuadraticLine, numnodes, (left,), (right,);
+    result = GridContext{1}(FEM.QuadraticLine, numnodes, (left,), (right,);
                                 quadrature_order=quadrature_order, kwargs...)
     return result, BoundaryData()
 end
@@ -299,7 +300,7 @@ end
 
 #= #TODO 1.0
 """
-    GridContext{2}(JuAFEM.Triangle, node_list; [on_torus=false,on_cylinder=false,LL,UR,quadrature_order=default_quadrature_order,ip])
+    GridContext{2}(FEM.Triangle, node_list; [on_torus=false,on_cylinder=false,LL,UR,quadrature_order=default_quadrature_order,ip])
 
 Create a P1-Lagrange grid based on Delaunay Triangulation.
 If `on_torus==true`, triangulates on a periodic domain (in both directions)
@@ -311,26 +312,26 @@ Uses `DelaunayVoronoi.jl` internally.
 """
 =#
 function GridContext{2}(
-            ::Type{JFM.Triangle},
+            ::Type{FEM.Triangle},
             node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order,
             on_torus=false,
             on_cylinder=false,
             LL=nothing,
             UR=nothing,
-            ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}(),kwargs...
+            ip=FEM.Lagrange{2,FEM.RefTetrahedron,1}(),kwargs...
             )
     if on_torus || on_cylinder
         @assert !(LL === nothing || UR === nothing)
     end
-    grid, loc = JFM.generate_grid(JFM.Triangle, node_list;
+    grid, loc = FEM.generate_grid(FEM.Triangle, node_list;
                     on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR)
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result =  GridContext{2}(grid, ip, JFM.Lagrange{2,JFM.RefTetrahedron,1}(), dh, qr, loc; kwargs...)
-    if ip isa JFM.Lagrange
+    FEM.close!(dh)
+    result =  GridContext{2}(grid, ip, FEM.Lagrange{2,FEM.RefTetrahedron,1}(), dh, qr, loc; kwargs...)
+    if ip isa FEM.Lagrange
         result.gridType = "irregular P1 Delaunay grid"
     else
         result.gridType = "irregular PC Delaunay grid"
@@ -363,11 +364,11 @@ function irregularDelaunayGrid(nodes_in::AbstractVector{Vec{2,Float64}};
         @assert (LL !== nothing && UR !== nothing)
     end
     if !PC
-        ip = JFM.Lagrange{2,JFM.RefTetrahedron,1}()
+        ip = FEM.Lagrange{2,FEM.RefTetrahedron,1}()
     else
-        ip = JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
+        ip = FEM.PiecewiseConstant{2,FEM.RefTetrahedron,1}()
     end
-    ctx = GridContext{2}(JFM.Triangle, nodes_in;
+    ctx = GridContext{2}(FEM.Triangle, nodes_in;
             on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR, ip=ip, kwargs...)
     if on_torus
         bdata = BoundaryData(ctx, Dists.PeriodicEuclidean([UR .- LL...;]))
@@ -422,9 +423,9 @@ function regularDelaunayGrid(
     X = range(LL[1], stop=UR[1], length=numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
     if PC
-        ip=JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
+        ip=FEM.PiecewiseConstant{2,FEM.RefTetrahedron,1}()
     else
-        ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}()
+        ip=FEM.Lagrange{2,FEM.RefTetrahedron,1}()
     end
     node_list = vec([Vec{2}((x, y)) for y in Y, x in X])
     if on_torus || on_cylinder
@@ -437,7 +438,7 @@ function regularDelaunayGrid(
         end
         node_list = nudge.(filter(x -> minimum(abs.(x .- UR)) > 1e-8, node_list))
     end
-    result = GridContext{2}(JFM.Triangle, node_list;
+    result = GridContext{2}(FEM.Triangle, node_list;
          quadrature_order=quadrature_order,
          on_torus=on_torus,
          on_cylinder=on_cylinder,
@@ -462,23 +463,23 @@ end
 
 #= TODO 1.0
 """
-    GridContext{2}(JuAFEM.QuadraticTriangle, node_list, quadrature_order=default_quadrature_order)
+    GridContext{2}(FEM.QuadraticTriangle, node_list, quadrature_order=default_quadrature_order)
 
 Create a P2 grid given a set of (non-interior) nodes using Delaunay Triangulation.
 """
 =#
 function GridContext{2}(
-            ::Type{JFM.QuadraticTriangle},
+            ::Type{FEM.QuadraticTriangle},
             node_list::Vector{Vec{2,Float64}};
             quadrature_order::Int=default_quadrature_order,
-            ip=JFM.Lagrange{2,JFM.RefTetrahedron,2}(),kwargs...
+            ip=FEM.Lagrange{2,FEM.RefTetrahedron,2}(),kwargs...
             )
-    grid, loc = JFM.generate_grid(JFM.QuadraticTriangle, node_list)
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
+    grid, loc = FEM.generate_grid(FEM.QuadraticTriangle, node_list)
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result = GridContext{2}(grid, ip,JFM.Lagrange{2,JFM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
+    FEM.close!(dh)
+    result = GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
     result.gridType = "irregular P2 Delaunay grid"
     return result
 end
@@ -496,7 +497,7 @@ function regularP2DelaunayGrid(
     X = range(LL[1], stop=UR[1], length=numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
     node_list = vec([Vec{2}((x, y)) for y in Y, x in X])
-    result = GridContext{2}(JFM.QuadraticTriangle, node_list, quadrature_order=quadrature_order;kwargs...)
+    result = GridContext{2}(FEM.QuadraticTriangle, node_list, quadrature_order=quadrature_order;kwargs...)
     #TODO: Think about what values would be sensible for the two variables below
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
@@ -506,27 +507,27 @@ end
 
 #=
 """
-    GridContext{2}(JuAFEM.Triangle, numnodes, LL,UR; [quadrature_order])
+    GridContext{2}(FEM.Triangle, numnodes, LL,UR; [quadrature_order])
 
 Create a regular triangular grid. Does not use Delaunay triangulation internally.
 """
 =#
 
-function GridContext{2}(::Type{JFM.Triangle},
+function GridContext{2}(::Type{FEM.Triangle},
                          numnodes::Tuple{Int,Int}=(25, 25),
                          LL::NTuple{2,<:Real}=(0.0, 0.0),
                          UR::NTuple{2,<:Real}=(1.0, 1.0);
                          quadrature_order::Int=default_quadrature_order,
-                         ip=JFM.Lagrange{2,JFM.RefTetrahedron,1}(),kwargs...
+                         ip=FEM.Lagrange{2,FEM.RefTetrahedron,1}(),kwargs...
                          )
-    # The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.Triangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{JFM.Triangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
+    # The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = Regular2DGridLocator{FEM.Triangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result = GridContext{2}(grid, ip,JFM.Lagrange{2,JFM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
+    FEM.close!(dh)
+    result = GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular triangular grid"
@@ -545,11 +546,11 @@ function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),
                                 quadrature_order::Int=default_quadrature_order,
                                 PC=false, kwargs...)
     if PC == false
-        ip = JFM.Lagrange{2,JFM.RefTetrahedron,1}()
+        ip = FEM.Lagrange{2,FEM.RefTetrahedron,1}()
     else
-        ip = JFM.PiecewiseConstant{2,JFM.RefTetrahedron,1}()
+        ip = FEM.PiecewiseConstant{2,FEM.RefTetrahedron,1}()
     end
-    ctx = GridContext{2}(JFM.Triangle, numnodes, LL, UR;
+    ctx = GridContext{2}(FEM.Triangle, numnodes, LL, UR;
             quadrature_order=quadrature_order,ip=ip,kwargs...
             )
     return ctx, BoundaryData()
@@ -559,29 +560,29 @@ end
 
 #= TODO 1.0
 """
-    GridContext{2}(JuAFEM.QuadraticTriangle, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
+    GridContext{2}(FEM.QuadraticTriangle, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
 
 Constructor for regular P2 triangular grids. Does not use Delaunay triangulation internally.
 """
 =#
-function GridContext{2}(::Type{JFM.QuadraticTriangle},
+function GridContext{2}(::Type{FEM.QuadraticTriangle},
                          numnodes::Tuple{Int,Int}=(25, 25),
                          LL::NTuple{2,<:Real}=(0.0,0.0),
                          UR::NTuple{2,<:Real}=(1.0,1.0);
                          quadrature_order::Int=default_quadrature_order,
-                         ip=JFM.Lagrange{2,JFM.RefTetrahedron,2}(), kwargs...
+                         ip=FEM.Lagrange{2,FEM.RefTetrahedron,2}(), kwargs...
                          )
-    if !isa(ip,JFM.Lagrange)
+    if !isa(ip,FEM.Lagrange)
         @warn "Using non-Lagrange interpolation with P2 elements may or may not work"
     end
-    #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{JFM.QuadraticTriangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{2, JFM.RefTetrahedron}(quadrature_order)
+    #The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = Regular2DGridLocator{FEM.QuadraticTriangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result =  GridContext{2}(grid, ip,JFM.Lagrange{2,JFM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
+    FEM.close!(dh)
+    result =  GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular P2 triangular grid"
@@ -598,7 +599,7 @@ function regularP2TriangularGrid(numnodes::Tuple{Int,Int}=(25, 25),
                                     LL::NTuple{2,<:Real}=(0.0,0.0),
                                     UR::NTuple{2,<:Real}=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order, kwargs...)
-    ctx = GridContext{2}(JFM.QuadraticTriangle, numnodes, LL, UR, quadrature_order=quadrature_order;kwargs...)
+    ctx = GridContext{2}(FEM.QuadraticTriangle, numnodes, LL, UR, quadrature_order=quadrature_order;kwargs...)
     return ctx, BoundaryData()
 end
 
@@ -606,28 +607,28 @@ end
                                     kwargs...) regularP2TriangularGrid(numnodes, (LL...,), (UR...,); kwargs...)
 #= TODO 1.0
 """
-    GridContext{2}(JuAFEM.Quadrilateral, numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)
+    GridContext{2}(FEM.Quadrilateral, numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)
 
 Constructor for regular P1 quadrilateral grids.
 """
 =#
-function GridContext{2}(::Type{JFM.Quadrilateral},
+function GridContext{2}(::Type{FEM.Quadrilateral},
                         numnodes::Tuple{Int,Int}=(25,25),
                         LL::NTuple{2,<:Real}=(0.0,0.0),
                         UR::NTuple{2,<:Real}=(1.0,1.0);
                         quadrature_order::Int=default_quadrature_order,
-                        ip=JFM.Lagrange{2, JFM.RefCube, 1}(), kwargs...)
-    #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{JFM.Quadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{2, JFM.RefCube}(quadrature_order)
+                        ip=FEM.Lagrange{2, FEM.RefCube, 1}(), kwargs...)
+    #The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = Regular2DGridLocator{FEM.Quadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{2, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result =  GridContext{2}(grid, ip,JFM.Lagrange{2,JFM.RefCube,1}(), dh, qr, loc; kwargs...)
+    FEM.close!(dh)
+    result =  GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefCube,1}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
-    if ip isa JFM.Lagrange
+    if ip isa FEM.Lagrange
         result.gridType = "regular P1 quadrilateral grid"
     else
         result.gridType = "regular PC quadrilateral grid"
@@ -647,11 +648,11 @@ function regularQuadrilateralGrid(numnodes::Tuple{Int,Int}=(25, 25),
                                     quadrature_order::Int=default_quadrature_order,
                                     PC=false, kwargs...)
     if !PC
-        ip = JFM.Lagrange{2,JFM.RefCube,1}()
+        ip = FEM.Lagrange{2,FEM.RefCube,1}()
     else
-        ip = JFM.PiecewiseConstant{2,JFM.RefCube,1}()
+        ip = FEM.PiecewiseConstant{2,FEM.RefCube,1}()
     end
-    ctx = GridContext{2}(JFM.Quadrilateral,
+    ctx = GridContext{2}(FEM.Quadrilateral,
          numnodes, LL, UR;
          quadrature_order=quadrature_order,
          ip=ip,kwargs...
@@ -662,28 +663,28 @@ end
 
 #= TODO 1.0
 """
-    GridContext{2}(JuAFEM.QuadraticQuadrilateral, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
+    GridContext{2}(FEM.QuadraticQuadrilateral, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
 
 Constructor for regular P2 quadrilateral grids.
 """
 =#
-function GridContext{2}(::Type{JFM.QuadraticQuadrilateral},
+function GridContext{2}(::Type{FEM.QuadraticQuadrilateral},
                         numnodes::Tuple{Int,Int}=(25, 25),
                         LL::NTuple{2,<:Real}=(0.0,0.0),
                         UR::NTuple{2,<:Real}=(1.0,1.0);
                         quadrature_order::Int=default_quadrature_order,
-                        ip=JFM.Lagrange{2, JFM.RefCube, 2}(), kwargs...)
-    if !isa(ip, JFM.Lagrange)
+                        ip=FEM.Lagrange{2, FEM.RefCube, 2}(), kwargs...)
+    if !isa(ip, FEM.Lagrange)
         @warn "Non-Lagrange interpolation with P2 elements may or may not work"
     end
-    #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{JFM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{2, JFM.RefCube}(quadrature_order)
+    #The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
+    loc = Regular2DGridLocator{FEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{2, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result =  GridContext{2}(grid, ip,JFM.Lagrange{2,JFM.RefCube,2}(), dh, qr, loc;kwargs...)
+    FEM.close!(dh)
+    result =  GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefCube,2}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular P2 quadrilateral grid"
@@ -700,34 +701,34 @@ function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),
                                     LL::NTuple{2,<:Real}=(0.0,0.0),
                                     UR::NTuple{2,<:Real}=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order, kwargs...)
-    ctx = GridContext{2}(JFM.QuadraticQuadrilateral, numnodes, LL, UR, quadrature_order=quadrature_order,kwargs...)
+    ctx = GridContext{2}(FEM.QuadraticQuadrilateral, numnodes, LL, UR, quadrature_order=quadrature_order,kwargs...)
     return ctx, BoundaryData()
 end
 
 #=TODO 1.0
 """
-    GridContext{3}(JuAFEM.Tetrahedron, numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)
+    GridContext{3}(FEM.Tetrahedron, numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)
 
 Create a regular P1 Tetrahedral Grid in 3D.
 """
 =#
-function GridContext{3}(::Type{JFM.Tetrahedron},
+function GridContext{3}(::Type{FEM.Tetrahedron},
                          numnodes::NTuple{3,Int}=(10,10,10),
                          LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
                          UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
                          quadrature_order::Int=default_quadrature_order3D,
-                         ip=JFM.Lagrange{3, JFM.RefTetrahedron, 1}(), kwargs...)
-    #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
-    loc = Regular3DGridLocator{JFM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{3, JFM.RefTetrahedron}(quadrature_order)
+                         ip=FEM.Lagrange{3, FEM.RefTetrahedron, 1}(), kwargs...)
+    #The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
+    loc = Regular3DGridLocator{FEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{3, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result =  GridContext{3}(grid, ip,JFM.Lagrange{3,JFM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
+    FEM.close!(dh)
+    result =  GridContext{3}(grid, ip,FEM.Lagrange{3,FEM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
-    if ip isa JFM.Lagrange
+    if ip isa FEM.Lagrange
         result.gridType = "3D P1 regular tetrahedral grid"
     else
        result.gridType = "3D PC regular tetrahedral grid"
@@ -738,28 +739,28 @@ end
 
 #=TODO 1.0
 """
-    GridContext{3}(JuAFEM.QuadraticTetrahedron, numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)
+    GridContext{3}(FEM.QuadraticTetrahedron, numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)
 
 Create a regular P2 Tetrahedral Grid in 3D.
 """
 =#
-function GridContext{3}(::Type{JFM.QuadraticTetrahedron},
+function GridContext{3}(::Type{FEM.QuadraticTetrahedron},
                          numnodes::NTuple{3,Int}=(10,10,10),
                          LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
                          UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
                          quadrature_order::Int=default_quadrature_order3D,
-                         ip=JFM.Lagrange{3, JFM.RefTetrahedron, 2}(), kwargs...)
-    if !isa(ip, JuAFEM.Lagrange)
+                         ip=FEM.Lagrange{3, FEM.RefTetrahedron, 2}(), kwargs...)
+    if !isa(ip, FEM.Lagrange)
         @warn "Using non-Lagrange interpolation with P2 Elements may or may not work"
     end
-    #The -1 below is needed because JuAFEM internally then goes on to increment it
-    grid = JFM.generate_grid(JFM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
-    loc = Regular3DGridLocator{JFM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
-    dh = JFM.DofHandler(grid)
-    qr = JFM.QuadratureRule{3, JFM.RefTetrahedron}(quadrature_order)
+    #The -1 below is needed because Ferrite internally then goes on to increment it
+    grid = FEM.generate_grid(FEM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
+    loc = Regular3DGridLocator{FEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
+    dh = FEM.DofHandler(grid)
+    qr = FEM.QuadratureRule{3, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
-    JFM.close!(dh)
-    result =  GridContext{3}(grid, ip,JFM.Lagrange{3,JFM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
+    FEM.close!(dh)
+    result =  GridContext{3}(grid, ip,FEM.Lagrange{3,FEM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2], numnodes[3]]
     result.gridType = "3D regular P2 tetrahedral grid"
@@ -777,11 +778,11 @@ function regularTetrahedralGrid(
         UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
         quadrature_order::Int=default_quadrature_order3D, PC=false, kwargs...)
     if !PC
-        ip = JFM.Lagrange{3,JFM.RefTetrahedron,1}()
+        ip = FEM.Lagrange{3,FEM.RefTetrahedron,1}()
     else
-        ip = JFM.PiecewiseConstant{3,JFM.RefTetrahedron,1}()
+        ip = FEM.PiecewiseConstant{3,FEM.RefTetrahedron,1}()
     end
-    ctx =  GridContext{3}(JFM.Tetrahedron,
+    ctx =  GridContext{3}(FEM.Tetrahedron,
         numnodes, LL, UR;
         quadrature_order=quadrature_order,ip=ip, kwargs...
         )
@@ -798,7 +799,7 @@ function regularP2TetrahedralGrid(numnodes::NTuple{3,Int}=(10,10,10),
                                     UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order3D,
                                     kwargs...)
-    ctx = GridContext{3}(JFM.QuadraticTetrahedron,
+    ctx = GridContext{3}(FEM.QuadraticTetrahedron,
         numnodes, LL, UR;
         quadrature_order=quadrature_order, kwargs...)
     return ctx, BoundaryData()
@@ -883,13 +884,13 @@ function evaluate_function_from_node_or_cellvals(
 
     result::S = zero(S)
 
-    if ctx.ip isa JFM.Lagrange
+    if ctx.ip isa FEM.Lagrange
         for (j, nodeid) in enumerate(nodes)
-            val = JFM.value(ctx.ip, j, local_coordinates)
+            val = FEM.value(ctx.ip, j, local_coordinates)
             result += vals[nodeid]*val
         end
-    elseif ctx.ip isa JFM.PiecewiseConstant
-        val = JFM.value(ctx.ip, 1, local_coordinates)
+    elseif ctx.ip isa FEM.PiecewiseConstant
+        val = FEM.value(ctx.ip, 1, local_coordinates)
         result += vals[cellid]*val
     else
         throw(AssertionError("Unknown interpolation"))
@@ -926,13 +927,13 @@ function evaluate_function_from_node_or_cellvalsFDiff(
 
     result::W = zero(W)
 
-    if ctx.ip isa JFM.Lagrange
+    if ctx.ip isa FEM.Lagrange
         for (j, nodeid) in enumerate(nodes)
-            val::W = JFM.value(ctx.ip, j, local_coordinates)
+            val::W = FEM.value(ctx.ip, j, local_coordinates)
             result += vals[nodeid]*val
         end
-    elseif ctx.ip isa JFM.PiecewiseConstant
-        val = JFM.value(ctx.ip, 1, local_coordinates)
+    elseif ctx.ip isa FEM.PiecewiseConstant
+        val = FEM.value(ctx.ip, 1, local_coordinates)
         result += vals[cellid]*val
     else
         throw(AssertionError("Unknown interpolation"))
@@ -955,7 +956,7 @@ function evaluate_function_from_dofvals(
 
     @assert ctx.n == length(vals)
 
-    if ctx.ip isa JFM.Lagrange
+    if ctx.ip isa FEM.Lagrange
         vals_reorder = vals[ctx.node_to_dof]
     else
         vals_reorder = vals[ctx.cell_to_dof]
@@ -998,12 +999,12 @@ function evaluate_function_from_node_or_cellvals_multiple(
         try
             local_coordinates::Vec{dim,W}, nodes::Vector{Int}, cellid::Int = locatePoint(ctx, x[current_point])
 
-            if ctx.ip isa JFM.Lagrange
+            if ctx.ip isa FEM.Lagrange
                 if !is_diag
                     for i in 1:(size(vals)[2])
                         summed_value = 0.0
                         for (j, nodeid) in enumerate(nodes)
-                            val::W = JFM.value(ctx.ip, j, local_coordinates)
+                            val::W = FEM.value(ctx.ip, j, local_coordinates)
                             summed_value += vals[nodeid,i]*val
                         end
                         push!(rows_tmp,i)
@@ -1011,13 +1012,13 @@ function evaluate_function_from_node_or_cellvals_multiple(
                     end
                 else
                     for (j, nodeid) in enumerate(nodes)
-                        val = JFM.value(ctx.ip, j, local_coordinates)
+                        val = FEM.value(ctx.ip, j, local_coordinates)
                         push!(rows_tmp, nodeid)
                         push!(vals_tmp,vals[nodeid,nodeid]*val)
                     end
                 end
-            elseif ctx.ip isa JFM.PiecewiseConstant
-                val = JFM.value(ctx.ip, 1, local_coordinates)
+            elseif ctx.ip isa FEM.PiecewiseConstant
+                val = FEM.value(ctx.ip, 1, local_coordinates)
                 if !is_diag
                     for i in 1:(size(vals)[2])
                         push!(rows_tmp,i)
@@ -1075,11 +1076,11 @@ function evaluate_function_from_dofvals_multiple(
             outside_value=NaN, project_in=false,throw_errors=false
             )::SparseMatrixCSC{S,Int64} where {dim,S}
     u_vals = zeros(S, size(dofvals))
-    if ctx.ip isa JFM.Lagrange
+    if ctx.ip isa FEM.Lagrange
         for i in 1:ctx.n
             u_vals[i,:] = dofvals[ctx.node_to_dof[i],:]
         end
-    elseif ctx.ip isa JFM.PiecewiseConstant
+    elseif ctx.ip isa FEM.PiecewiseConstant
         for i in 1:ctx.n
             u_vals[i,:] = dofvals[ctx.cell_to_dof[i],:]
         end
@@ -1097,7 +1098,7 @@ Perform nodal_interpolation of a function onto a different grid.
 """
 function sample_to(u::Vector{T}, ctx_old::GridContext, ctx_new::GridContext;
         bdata=BoundaryData(), project_in=true, outside_value=NaN) where {T}
-    if !isa(ctx_new.ip, JFM.Lagrange)
+    if !isa(ctx_new.ip, FEM.Lagrange)
         throw(AssertionError("Nodal interpolation only defined for Lagrange elements"))
     else
         u_node_or_cellvals = undoBCS(ctx_old, u, bdata)[ctx_old.node_to_dof]
@@ -1116,14 +1117,14 @@ Returns a matrix
 function sample_to(u::AbstractMatrix{T}, ctx_old::GridContext, ctx_new::GridContext;
         bdata=BoundaryData(), project_in=true, outside_value=NaN) where {T}
 
-    if !isa(ctx_new.ip, JFM.Lagrange)
+    if !isa(ctx_new.ip, FEM.Lagrange)
         throw(AssertionError("Nodal interpolation only defined for Lagrange elements"))
     end
 
     ncols = size(u)[2]
     u_node_or_cellvals = zeros(T, ctx_old.n, ncols)
     for j in 1:ncols
-        if ctx_old.ip isa JFM.Lagrange
+        if ctx_old.ip isa FEM.Lagrange
             u_node_or_cellvals[:,j] .= undoBCS(ctx_old,u[:,j],bdata)[ctx_old.node_to_dof]
         else
             u_node_or_cellvals[:,j] .= undoBCS(ctx_old,u[:,j],bdata)[ctx_old.cell_to_dof]
@@ -1246,7 +1247,7 @@ Function for creating a grid from scattered nodes.
 Calls VoronoiDelaunay for delaunay triangulation. Makes a periodic triangulation
 if `on_torus` is set to `true` similarly with `on_cylinder`.
 """
-function JFM.generate_grid(::Type{JFM.Triangle},
+function FEM.generate_grid(::Type{FEM.Triangle},
      nodes_in::AbstractVector{Vec{2,Float64}};
      on_torus=false, on_cylinder=false, LL=nothing, UR=nothing)
     @assert !(on_torus && on_cylinder)
@@ -1295,7 +1296,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
     #Delaunay Triangulation
     tess, m, scale_x, scale_y, min_x, min_y = delaunay2(nodes_to_triangulate)
 
-    nodes = map(JFM.Node, nodes_in)
+    nodes = map(FEM.Node, nodes_in)
 
     #Our grid will require some nodes twice.
     #additional_nodes[i] = j means that we require the node i
@@ -1304,7 +1305,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
 
 
     #Cells that are part of the grid later
-    cells = JFM.Triangle[]
+    cells = FEM.Triangle[]
 
     #Here we keep track of which cells we've already added
     #We assume that the mesh is fine enough that a cell is uniquely specified
@@ -1343,7 +1344,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
         end
 
         if !(on_torus || on_cylinder)
-            push!(cells, JFM.Triangle(new_tri_nodes_from_tess))
+            push!(cells, FEM.Triangle(new_tri_nodes_from_tess))
             cell_number_table[triindex.ix-1] = length(cells)
         else
             #Get the nodes in question.
@@ -1373,7 +1374,7 @@ function JFM.generate_grid(::Type{JFM.Triangle},
 
                                 #This node get  s to be the "original" node now
                                 tmpNode = nodes[original_node].x
-                                nodes[original_node] = JFM.Node(nodes_to_triangulate[cur])
+                                nodes[original_node] = FEM.Node(nodes_to_triangulate[cur])
                                 nodes_to_triangulate[original_node] = nodes_to_triangulate[cur]
                                 nodes_to_triangulate[cur] = tmpNode
 
@@ -1388,14 +1389,14 @@ function JFM.generate_grid(::Type{JFM.Triangle},
                                 tri_nodes[index] = additional_nodes[cur]
                             else
                                 #Need to add this node to the grid
-                                push!(nodes, JFM.Node(nodes_to_triangulate[cur]))
+                                push!(nodes, FEM.Node(nodes_to_triangulate[cur]))
                                 additional_nodes[cur] = length(nodes)
                                 tri_nodes[index] = length(nodes)
                             end
                         end
                     end
                     #Phew. We can now add the triangle to the triangulation.
-                    new_tri = JFM.Triangle(Tuple{Int,Int,Int}(tri_nodes))
+                    new_tri = FEM.Triangle(Tuple{Int,Int,Int}(tri_nodes))
                     push!(cells, new_tri)
 
                     #We now remember that we've used this cell
@@ -1422,18 +1423,18 @@ function JFM.generate_grid(::Type{JFM.Triangle},
         used_nodes[collect(c.nodes)] .= true
     end
     if any(x -> x == false, used_nodes)
-        @warn "Some nodes added that might cause problems with JuAFEM. Proceed at your own risk."
+        @warn "Some nodes added that might cause problems with FEM. Proceed at your own risk."
     end
 
     facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
-    grid = JFM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
+    grid = FEM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
     locator = DelaunayCellLocator(m, scale_x, scale_y, min_x, min_y, tess,nodes_to_triangulate[switched_nodes_table], points_mapping, cell_number_table)
     return grid, locator
 end
 
-function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Vec{2,Float64}})
+function FEM.generate_grid(::Type{FEM.QuadraticTriangle}, nodes_in::Vector{Vec{2,Float64}})
 
     nodes_to_triangulate = Vector{Vec{2,Float64}}[]
     dx = UR[1] - LL[1]
@@ -1443,12 +1444,12 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
 
     tess, m, scale_x, scale_y, minx, miny = delaunay2(nodes_to_triangulate)
     locator = P2DelaunayCellLocator(m, scale_x, scale_y, minx, miny, tess,points_mapping)
-    nodes = map(JFM.Node, nodes_in)
+    nodes = map(FEM.Node, nodes_in)
     n = length(nodes)
     ctr = n #As we add nodes (for edge vertices), increment the ctr...
 
     centerNodes = spzeros(n,n)
-    cells = JFM.QuadraticTriangle[]
+    cells = FEM.QuadraticTriangle[]
     for tri_id in 1:m
         tri = tess._trigs[locator.internal_triangles[tri_id]]
 
@@ -1457,14 +1458,14 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
         if ab == 0
             ctr += 1
             ab = centerNodes[tri._a.id,tri._b.id] = centerNodes[tri._b.id,tri._a.id] =  ctr
-            center = JFM.Node(0.5*(nodes[tri._b.id].x + nodes[tri._a.id].x))
+            center = FEM.Node(0.5*(nodes[tri._b.id].x + nodes[tri._a.id].x))
             push!(nodes,center)
         end
         ac = centerNodes[tri._a.id, tri._c.id]
         if ac == 0
             ctr += 1
             ac = centerNodes[tri._a.id,tri._c.id] = centerNodes[tri._c.id,tri._a.id] = ctr
-            center = JFM.Node(0.5*(nodes[tri._c.id].x + nodes[tri._a.id].x))
+            center = FEM.Node(0.5*(nodes[tri._c.id].x + nodes[tri._a.id].x))
             push!(nodes,center)
         end
 
@@ -1472,7 +1473,7 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
         if bc == 0
             ctr += 1
             bc = centerNodes[tri._b.id,tri._c.id] = centerNodes[tri._c.id,tri._b.id] = ctr
-            center = JFM.Node(0.5*(nodes[tri._c.id].x + nodes[tri._b.id].x))
+            center = FEM.Node(0.5*(nodes[tri._c.id].x + nodes[tri._b.id].x))
             push!(nodes,center)
         end
 
@@ -1482,16 +1483,16 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTriangle}, nodes_in::Vector{Ve
 
         @assert det(J) != 0
         if detJ > 0
-            new_tri = JFM.QuadraticTriangle((tri._a.id,tri._b.id,tri._c.id,ab,bc,ac))
+            new_tri = FEM.QuadraticTriangle((tri._a.id,tri._b.id,tri._c.id,ab,bc,ac))
         else
-            new_tri = JFM.QuadraticTriangle((tri._a.id,tri._c.id,tri._b.id,ac,bc,ab))
+            new_tri = FEM.QuadraticTriangle((tri._a.id,tri._c.id,tri._b.id,ac,bc,ab))
         end
         push!(cells, new_tri)
     end
     #facesets = Dict{String,Set{Tuple{Int,Int}}}()#TODO:Does it make sense to add to this?
     #boundary_matrix = spzeros(Bool, 3, m)#TODO:Maybe treat the boundary correctly?
     #TODO: Fix below if this doesn't work
-    grid = JFM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
+    grid = FEM.Grid(cells, nodes)#, facesets=facesets, boundary_matrix=boundary_matrix)
     return grid, locator
 
 end
@@ -1536,8 +1537,8 @@ const localnodes = [((1,1,1),(3,1,1),(1,3,1),(1,3,3)),
 _avg(x, y) = (x == 1 && y == 3) || (x == 3 && y == 1) ? 2 : x
 _indexavg(x, y) = CartesianIndex(_avg.(Tuple(x), Tuple(y)))
 
-#Based on JuAFEM's generate_grid(Tetrahedron, ...) function
-function JuAFEM.generate_grid(::Type{JFM.QuadraticTetrahedron}, cells_per_dim::NTuple{3,Int}, left::Vec{3,T}=Vec{3}((-1.0,-1.0,-1.0)), right::Vec{3,T}=Vec{3}((1.0,1.0,1.0))) where {T}
+#Based on Ferrite's generate_grid(Tetrahedron, ...) function
+function FEM.generate_grid(::Type{FEM.QuadraticTetrahedron}, cells_per_dim::NTuple{3,Int}, left::Vec{3,T}=Vec{3}((-1.0,-1.0,-1.0)), right::Vec{3,T}=Vec{3}((1.0,1.0,1.0))) where {T}
     nodes_per_dim = (2 .* cells_per_dim) .+ 1
 
     cells_per_cube = 6
@@ -1554,13 +1555,13 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTetrahedron}, cells_per_dim::N
     numbering = reshape(1:total_nodes, nodes_per_dim)
 
     # Pre-allocate the nodes & cells
-    nodes = Vector{JFM.Node{3,T}}(undef,total_nodes)
-    cells = Vector{JFM.QuadraticTetrahedron}(undef,total_elements)
+    nodes = Vector{FEM.Node{3,T}}(undef,total_nodes)
+    cells = Vector{FEM.QuadraticTetrahedron}(undef,total_elements)
 
     # Generate nodes
     node_idx = 1
     @inbounds for k in 1:n_nodes_z, j in 1:n_nodes_y, i in 1:n_nodes_x
-        nodes[node_idx] = JFM.Node((coords_x[i], coords_y[j], coords_z[k]))
+        nodes[node_idx] = FEM.Node((coords_x[i], coords_y[j], coords_z[k]))
         node_idx += 1
     end
 
@@ -1575,7 +1576,7 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTetrahedron}, cells_per_dim::N
         cube = numbering[(2*(i-1) + 1):(2*i + 1), (2*(j-1)+1): 2*j + 1, (2*(k-1) +1): (2*k +1)]
         for (idx, p1vertices) in enumerate(localnodes)
             v1,v2,v3,v4 = map(CartesianIndex,p1vertices)
-            cells[cell_idx + idx] = JFM.QuadraticTetrahedron((cube[v1], cube[v2], cube[v3], cube[v4],
+            cells[cell_idx + idx] = FEM.QuadraticTetrahedron((cube[v1], cube[v2], cube[v3], cube[v4],
                         cube[_indexavg(v1,v2)], cube[_indexavg(v2,v3)], cube[_indexavg(v1,v3)],
                         cube[_indexavg(v1,v4)], cube[_indexavg(v2,v4)], cube[_indexavg(v3,v4)]))
         end
@@ -1592,7 +1593,7 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTetrahedron}, cells_per_dim::N
     @views bo = [map(x -> (x,1), c_nxyz[1, :, :, 1][:])   ; map(x -> (x,1), c_nxyz[3, :, :, 1][:])]
     @views to = [map(x -> (x,3), c_nxyz[5, :, :, end][:]) ; map(x -> (x,3), c_nxyz[6, :, :, end][:])]
 
-    boundary_matrix = JFM.boundaries_to_sparse([le; ri; bo; to; fr; ba])
+    boundary_matrix = FEM.boundaries_to_sparse([le; ri; bo; to; fr; ba])
 
     facesets = Dict(
         "left" => Set(le),
@@ -1602,5 +1603,5 @@ function JuAFEM.generate_grid(::Type{JFM.QuadraticTetrahedron}, cells_per_dim::N
         "bottom" => Set(bo),
         "top" => Set(to),
     )
-    return JFM.Grid(cells, nodes, facesets=facesets, boundary_matrix=boundary_matrix)
+    return FEM.Grid(cells, nodes, facesets=facesets, boundary_matrix=boundary_matrix)
 end

@@ -1,4 +1,4 @@
-# Strongly inspired by an example provided on JuAFEM's github page, modified and
+# Strongly inspired by an example provided on Ferrite's github page, modified and
 # extended by Nathanael Schilling
 
 #Works in n=2 and n=3
@@ -35,26 +35,26 @@ function assembleStiffnessMatrix(ctx::GridContext, A=tensorIdentity, p=nothing; 
 end
 
 function _assembleStiffnessMatrix(ctx::GridContext, A, p; bdata=BoundaryData())
-    cv = JFM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
+    cv = FEM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh = ctx.dh
-    K = JFM.create_sparsity_pattern(dh)
-    a_K = JFM.start_assemble(K)
-    dofs = zeros(Int, JFM.ndofs_per_cell(dh))
-    n = JFM.getnbasefunctions(cv)         # number of basis functions
+    K = FEM.create_sparsity_pattern(dh)
+    a_K = FEM.start_assemble(K)
+    dofs = zeros(Int, FEM.ndofs_per_cell(dh))
+    n = FEM.getnbasefunctions(cv)         # number of basis functions
     Ke = zeros(n, n)
 
     index = 1 # quadrature point counter
 
-    @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
+    @inbounds for (cellcount, cell) in enumerate(FEM.CellIterator(dh))
         fill!(Ke, 0)
-        JFM.reinit!(cv, cell)
-        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
+        FEM.reinit!(cv, cell)
+        for q in 1:FEM.getnquadpoints(cv) # loop over quadrature points
             Aq = A(ctx.quadrature_points[index], index, p)
-            dΩ = JFM.getdetJdV(cv, q) * ctx.mass_weights[index]
+            dΩ = FEM.getdetJdV(cv, q) * ctx.mass_weights[index]
             for i in 1:n
-                ∇φ = JFM.shape_gradient(cv, q, i)
+                ∇φ = FEM.shape_gradient(cv, q, i)
                 for j in 1:(i-1)
-                    ∇ψ = JFM.shape_gradient(cv, q, j)
+                    ∇ψ = FEM.shape_gradient(cv, q, j)
                     Ke[i,j] -= (∇φ ⋅ (Aq ⋅ ∇ψ)) * dΩ
                     Ke[j,i] -= (∇φ ⋅ (Aq ⋅ ∇ψ)) * dΩ
                 end
@@ -62,8 +62,8 @@ function _assembleStiffnessMatrix(ctx::GridContext, A, p; bdata=BoundaryData())
             end
             index += 1
         end
-        JFM.celldofs!(dofs, cell)
-        JFM.assemble!(a_K, dofs, Ke)
+        FEM.celldofs!(dofs, cell)
+        FEM.assemble!(a_K, dofs, Ke)
     end
     return applyBCS(ctx, K, bdata)
 end
@@ -90,24 +90,24 @@ M = assembleMassMatrix(ctx)
 ```
 """
 function assembleMassMatrix(ctx::GridContext; bdata=BoundaryData(), lumped=false)
-    cv = JFM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
+    cv = FEM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh = ctx.dh
-    M = JFM.create_sparsity_pattern(dh)
-    a_M = JFM.start_assemble(M)
-    dofs = zeros(Int, JFM.ndofs_per_cell(dh))
-    n = JFM.getnbasefunctions(cv)         # number of basis functions
+    M = FEM.create_sparsity_pattern(dh)
+    a_M = FEM.start_assemble(M)
+    dofs = zeros(Int, FEM.ndofs_per_cell(dh))
+    n = FEM.getnbasefunctions(cv)         # number of basis functions
     Me = zeros(n, n)   # Local stiffness and mass matrix
     index = 1
 
-    @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
+    @inbounds for (cellcount, cell) in enumerate(FEM.CellIterator(dh))
         fill!(Me, 0)
-        JFM.reinit!(cv, cell)
-        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
-            dΩ = JFM.getdetJdV(cv, q) * ctx.mass_weights[index]
+        FEM.reinit!(cv, cell)
+        for q in 1:FEM.getnquadpoints(cv) # loop over quadrature points
+            dΩ = FEM.getdetJdV(cv, q) * ctx.mass_weights[index]
             for i in 1:n
-                φ = JFM.shape_value(cv, q, i)
+                φ = FEM.shape_value(cv, q, i)
                 for j in 1:(i-1)
-                    ψ = JFM.shape_value(cv, q, j)
+                    ψ = FEM.shape_value(cv, q, j)
                     scalprod = (φ ⋅ ψ) * dΩ
                     Me[i,j] += scalprod
                     Me[j,i] += scalprod
@@ -116,8 +116,8 @@ function assembleMassMatrix(ctx::GridContext; bdata=BoundaryData(), lumped=false
             end
             index += 1
         end
-        JFM.celldofs!(dofs, cell)
-        JFM.assemble!(a_M, dofs, Me)
+        FEM.celldofs!(dofs, cell)
+        FEM.assemble!(a_M, dofs, Me)
     end
 
     M = applyBCS(ctx, M, bdata)
@@ -131,22 +131,22 @@ Compute the coordinates of all quadrature points on a grid.
 Helper function.
 """
 function getQuadPoints(ctx::GridContext{dim}) where {dim}
-    cv = JFM.CellScalarValues(ctx.qr, ctx.ip_geom)
+    cv = FEM.CellScalarValues(ctx.qr, ctx.ip_geom)
     dh = ctx.dh
-    dofs = zeros(Int, JFM.ndofs_per_cell(dh))
+    dofs = zeros(Int, FEM.ndofs_per_cell(dh))
     result = Vec{dim,Float64}[]
 
-    n = JFM.getnbasefunctions(cv)         # number of basis functions
-    @inbounds for (cellcount, cell) in enumerate(JFM.CellIterator(dh))
-        JFM.reinit!(cv, cell)
-        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
+    n = FEM.getnbasefunctions(cv)         # number of basis functions
+    @inbounds for (cellcount, cell) in enumerate(FEM.CellIterator(dh))
+        FEM.reinit!(cv, cell)
+        for q in 1:FEM.getnquadpoints(cv) # loop over quadrature points
     	    q_coords = zero(Vec{dim,Float64})
             for j in 1:n
                 q_coords += cell.coords[j] * cv.M[j,q]
             end
             push!(result, q_coords)
         end
-        JFM.celldofs!(dofs, cell)
+        FEM.celldofs!(dofs, cell)
     end
     return result
 end
