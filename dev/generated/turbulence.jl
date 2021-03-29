@@ -2,7 +2,6 @@ import Pkg
 Pkg.add("FourierFlows")
 Pkg.add("GeophysicalFlows")
 Pkg.add("Plots")
-Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/OceanTools.jl.git"))
 Pkg.pin(Pkg.PackageSpec(name="FourierFlows", version="0.4.5"))

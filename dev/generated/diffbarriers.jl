@@ -1,5 +1,4 @@
 import Pkg
-Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/StreamMacros.jl"))
 Pkg.add(["OrdinaryDiffEq", "Tensors", "JLD2", "Plots"])
