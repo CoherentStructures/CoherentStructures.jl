@@ -31,7 +31,7 @@ function nonAdaptiveTOCollocation(
         volume_preserving=true
     ) where {dim}
 
-    @assert isa(ctx_codomain.ip, JFM.Lagrange)
+    @assert isa(ctx_codomain.ip, FEM.Lagrange)
 
     n_codomain = ctx_codomain.n
     n_domain = ctx_domain.n
@@ -389,20 +389,20 @@ function L2GalerkinTOFromInverse(
     LL_domain::Vec{dim,Float64} = Vec{dim}(ctx_domain.spatialBounds[1])
     UR_domain::Vec{dim,Float64} = Vec{dim}(ctx_domain.spatialBounds[2])
 
-    cv::JFM.CellScalarValues{dim} = JFM.CellScalarValues(ctx_codomain.qr, ctx_codomain.ip,ctx_codomain.ip_geom)
-    nshapefuncs::Int = JFM.getnbasefunctions(cv)         # number of basis functions
+    cv::FEM.CellScalarValues{dim} = FEM.CellScalarValues(ctx_codomain.qr, ctx_codomain.ip,ctx_codomain.ip_geom)
+    nshapefuncs::Int = FEM.getnbasefunctions(cv)         # number of basis functions
     dofs::Vector{Int} = zeros(nshapefuncs)
     index::Int = 1 #Counter to know the number of the current quadrature point
     DL2I = Vector{Int}()
     DL2J = Vector{Int}()
     DL2V = Vector{Float64}()
 
-    @inbounds for (cellnumber, cell) in enumerate(JFM.CellIterator(ctx_codomain.dh))
-        JFM.reinit!(cv,cell)
-        JFM.celldofs!(dofs,ctx_codomain.dh,cellnumber)
+    @inbounds for (cellnumber, cell) in enumerate(FEM.CellIterator(ctx_codomain.dh))
+        FEM.reinit!(cv,cell)
+        FEM.celldofs!(dofs,ctx_codomain.dh,cellnumber)
         #Iterate over all quadrature points in the cell
-        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
-            dΩ = JFM.getdetJdV(cv,q)
+        for q in 1:FEM.getnquadpoints(cv) # loop over quadrature points
+            dΩ = FEM.getdetJdV(cv,q)
             TQ = Vec{dim}(inverse_flow_map(ctx_codomain.quadrature_points[index]))
             for s in stencil
                 current_point = TQ + s
@@ -411,11 +411,11 @@ function L2GalerkinTOFromInverse(
                     )
                 try
                     local_coords::Vec{dim,Float64}, nodes::Vector{Int}, TQinvCellNumber = locatePoint(ctx_domain,current_point)
-                    if ctx_domain.ip isa JFM.Lagrange
+                    if ctx_domain.ip isa FEM.Lagrange
                         for (shape_fun_num,j) in enumerate(nodes)
                             for i in 1:nshapefuncs
-                                φ = JFM.shape_value(cv,q,i)
-                                ψ = JFM.value(ctx_domain.ip,shape_fun_num,local_coords)
+                                φ = FEM.shape_value(cv,q,i)
+                                ψ = FEM.value(ctx_domain.ip,shape_fun_num,local_coords)
                                 push!(DL2I, dofs[i])
                                 push!(DL2J,ctx_domain.node_to_dof[j])
                                 push!(DL2V, dΩ*φ*ψ*stencil_density)
@@ -455,19 +455,19 @@ function L2GalerkinTO(ctx_domain::GridContext{dim}, flow_map, ctx_codomain::Grid
                         bdata_codomain=bdata_domain,
                         verbosity=1) where {dim}
     DL2 = spzeros(ctx_codomain.n, ctx_domain.n)
-    cv = JFM.CellScalarValues(ctx_domain.qr, ctx_domain.ip, ctx_domain.ip_geom)
-    nbasefuncs = JFM.getnbasefunctions(cv)         # number of basis functions
+    cv = FEM.CellScalarValues(ctx_domain.qr, ctx_domain.ip, ctx_domain.ip_geom)
+    nbasefuncs = FEM.getnbasefunctions(cv)         # number of basis functions
     dofs = zeros(nbasefuncs)
     index = 1 #Counter to know the number of the current quadrature point
     badcounter = 0
 
     #TODO: Make this more efficient
-    @inbounds for (cellnumber, cell) in enumerate(JFM.CellIterator(ctx_domain.dh))
-        JFM.reinit!(cv,cell)
-        JFM.celldofs!(dofs,ctx_domain.dh,cellnumber)
+    @inbounds for (cellnumber, cell) in enumerate(FEM.CellIterator(ctx_domain.dh))
+        FEM.reinit!(cv,cell)
+        FEM.celldofs!(dofs,ctx_domain.dh,cellnumber)
         #Iterate over all quadrature points in the cell
-        for q in 1:JFM.getnquadpoints(cv) # loop over quadrature points
-            dΩ = JFM.getdetJdV(cv,q)
+        for q in 1:FEM.getnquadpoints(cv) # loop over quadrature points
+            dΩ = FEM.getdetJdV(cv,q)
             TQ = Vec{2}(flow_map(ctx_domain.quadrature_points[index]))
             local_coordsTQ::Vec{2,Float64}, nodesTQ::Vector{Int}, cellIndexTQ = try
                     locatePoint(ctx_codomain,TQ)
@@ -479,15 +479,15 @@ function L2GalerkinTO(ctx_domain::GridContext{dim}, flow_map, ctx_codomain::Grid
                 badcounter += 1
                 continue
             end
-            if ctx_codomain.ip isa JFM.Lagrange
+            if ctx_codomain.ip isa FEM.Lagrange
                 for (shape_fun_num, i) in enumerate(nodesTQ)
-                    ψ = JFM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)
+                    ψ = FEM.value(ctx_codomain.ip,shape_fun_num,local_coordsTQ)
                     indexi = ctx_domain.node_to_dof[i]
                     for j in 1:nbasefuncs
                         indexj = 0
-                        if ctx_domain.ip isa JFM.Lagrange
+                        if ctx_domain.ip isa FEM.Lagrange
                             indexj = dofs[j]
-                            φ = JFM.shape_value(cv,q,j)
+                            φ = FEM.shape_value(cv,q,j)
                         else
                             indexj = ctx_domain.cell_to_dof[cellnumber]
                             φ = 1.0
@@ -500,9 +500,9 @@ function L2GalerkinTO(ctx_domain::GridContext{dim}, flow_map, ctx_codomain::Grid
                 ψ = 1.0
                 for j in 1:nbasefuncs
                     indexj = 0
-                    if ctx_domain.ip isa JFM.Lagrange
+                    if ctx_domain.ip isa FEM.Lagrange
                         indexj = dofs[j]
-                        φ = JFM.shape_value(cv,q,j)
+                        φ = FEM.shape_value(cv,q,j)
                     else
                         indexj = ctx_domain.cell_to_dof[cellnumber]
                         φ = 1.0

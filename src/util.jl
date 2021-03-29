@@ -203,7 +203,7 @@ and reorders them to be in node order.
 """
 function dof2node(ctx::AbstractGridContext{dim}, u::Vector) where {dim}
    # n = ctx.n
-   # res = fill(0.0, JuAFEM.getnnodes(ctx.grid))
+   # res = fill(0.0, Ferrite.getnnodes(ctx.grid))
    # for node in 1:n
    #         res[node] = u[ctx.node_to_dof[node]]
    #    end

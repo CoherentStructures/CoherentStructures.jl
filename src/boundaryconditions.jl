@@ -49,39 +49,39 @@ Return `BoundaryData` object corresponding to homogeneous Dirichlet boundary con
 a set of facesets. `which="all"` is shorthand for `["left", "right", "top", "bottom"]`.
 """
 function getHomDBCS(ctx::GridContext{dim}, which="all") where {dim}
-    dbcs = JFM.ConstraintHandler(ctx.dh)
-    #TODO: See if newer version of JuAFEM export a "boundary" nodeset
+    dbcs = FEM.ConstraintHandler(ctx.dh)
+    #TODO: See if newer version of Ferrite export a "boundary" nodeset
     if which == "all"
         if dim == 1
-            dbc = JFM.Dirichlet(:T,
-                    union(JFM.getfaceset(ctx.grid, "left"),
-                     JFM.getfaceset(ctx.grid, "right")
+            dbc = FEM.Dirichlet(:T,
+                    union(FEM.getfaceset(ctx.grid, "left"),
+                     FEM.getfaceset(ctx.grid, "right")
                        ), (x, t) -> 0)
         elseif dim == 2
-            dbc = JFM.Dirichlet(:T,
-                    union(JFM.getfaceset(ctx.grid, "left"),
-                     JFM.getfaceset(ctx.grid, "right"),
-                     JFM.getfaceset(ctx.grid, "top"),
-                     JFM.getfaceset(ctx.grid, "bottom"),
+            dbc = FEM.Dirichlet(:T,
+                    union(FEM.getfaceset(ctx.grid, "left"),
+                     FEM.getfaceset(ctx.grid, "right"),
+                     FEM.getfaceset(ctx.grid, "top"),
+                     FEM.getfaceset(ctx.grid, "bottom"),
                        ), (x, t) -> 0)
         elseif dim == 3
-            dbc = JFM.Dirichlet(:T, union(JFM.getfaceset(ctx.grid, "left"),
-                                             JFM.getfaceset(ctx.grid, "right"),
-                                             JFM.getfaceset(ctx.grid, "top"),
-                                             JFM.getfaceset(ctx.grid, "bottom"),
-                                             JFM.getfaceset(ctx.grid, "front"),
-                                             JFM.getfaceset(ctx.grid, "back")), (x, t) -> 0)
+            dbc = FEM.Dirichlet(:T, union(FEM.getfaceset(ctx.grid, "left"),
+                                             FEM.getfaceset(ctx.grid, "right"),
+                                             FEM.getfaceset(ctx.grid, "top"),
+                                             FEM.getfaceset(ctx.grid, "bottom"),
+                                             FEM.getfaceset(ctx.grid, "front"),
+                                             FEM.getfaceset(ctx.grid, "back")), (x, t) -> 0)
         else
             throw(AssertionError("dim ∉ [1,2,3]"))
         end
     elseif isempty(which)
         return BoundaryData(Vector{Int}())
     else
-        dbc = JFM.Dirichlet(:T, union([JFM.getfaceset(ctx.grid, str) for str in which]...), (x, t) -> 0)
+        dbc = FEM.Dirichlet(:T, union([FEM.getfaceset(ctx.grid, str) for str in which]...), (x, t) -> 0)
     end
-    JFM.add!(dbcs, dbc)
-    JFM.close!(dbcs)
-    JFM.update!(dbcs, 0.0)
+    FEM.add!(dbcs, dbc)
+    FEM.close!(dbcs)
+    FEM.update!(dbcs, 0.0)
     return BoundaryData(dbcs.prescribed_dofs)
 end
 

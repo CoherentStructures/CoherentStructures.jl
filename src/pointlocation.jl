@@ -5,7 +5,7 @@ Point location on grids.
 Returns a tuple (coords, [nodes])
 where coords gives the coordinates within the reference shape (e.g. standard simplex)
 And [nodes] is the list of corresponding node ids, ordered in the order of the
-corresponding shape functions from JFM's interpolation.jl file.
+corresponding shape functions from FEM's interpolation.jl file.
 """#
 function locatePoint(ctx::GridContext{dim}, x::AbstractVector{T}) where {dim,T}
     dim == lenght(x) || throw(DimensionMismatch("point has dimension $(length(x)), grid has dimension $dim"))
@@ -21,13 +21,13 @@ function locatePoint(ctx::GridContext{dim}, x::Vec{dim,T}) where {dim,T}
     return locatePoint(ctx.loc, ctx.grid, x)
 end
 
-struct Regular1dGridLocator{C}<:PointLocator where {C <: JFM.Cell}
+struct Regular1dGridLocator{C}<:PointLocator where {C <: FEM.Cell}
     nx::Int
     LL::Vec{1,Float64}
     UR::Vec{1,Float64}
 end
 
-function locatePoint(loc::Regular1dGridLocator{S}, grid::JFM.Grid, x::Vec{1,T}) where {S,T}
+function locatePoint(loc::Regular1dGridLocator{S}, grid::FEM.Grid, x::Vec{1,T}) where {S,T}
     if x[1] > loc.UR[1] || x[1] < loc.LL[1]
         throw(DomainError("Not in domain"))
     end
@@ -44,12 +44,12 @@ function locatePoint(loc::Regular1dGridLocator{S}, grid::JFM.Grid, x::Vec{1,T}) 
         end
     end
 
-    if S === JFM.Line
+    if S === FEM.Line
         ll = n1
         lr = ll + 1
         @assert lr < (2loc.nx + 1)
         return Vec{1,T}((2 * loc1 - 1,)), [ll + 1, lr + 1], (n1 + 1)
-    elseif S === JFM.QuadraticLine
+    elseif S === FEM.QuadraticLine
         ll = 2n1
         lr = 2n1 + 2
         lm = 2n1 +1
@@ -74,7 +74,7 @@ struct DelaunayCellLocator <: PointLocator
     cell_number_table::Vector{Int}
 end
 
-function locatePoint(loc::DelaunayCellLocator, grid::JFM.Grid, x::Vec{2,Float64})
+function locatePoint(loc::DelaunayCellLocator, grid::FEM.Grid, x::Vec{2,Float64})
     #TODO: can this work for x that are not Float64?
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x, VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
@@ -122,7 +122,7 @@ struct P2DelaunayCellLocator <: PointLocator
     end
 end
 
-function locatePoint(loc::P2DelaunayCellLocator, grid::JFM.Grid, x::Vec{2,Float64})
+function locatePoint(loc::P2DelaunayCellLocator, grid::FEM.Grid, x::Vec{2,Float64})
     #TODO: can this work for x that are not Float64?
     point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
     if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
@@ -141,14 +141,14 @@ function locatePoint(loc::P2DelaunayCellLocator, grid::JFM.Grid, x::Vec{2,Float6
 end
 
 #Here N gives the number of nodes and M gives the number of faces
-struct Regular2DGridLocator{C} <: PointLocator where {C <: JFM.Cell}
+struct Regular2DGridLocator{C} <: PointLocator where {C <: FEM.Cell}
     nx::Int
     ny::Int
     LL::Vec{2,Float64}
     UR::Vec{2,Float64}
 end
 
-function locatePoint(loc::Regular2DGridLocator{S}, grid::JFM.Grid, x::Vec{2,T})::Tuple{Vec{2,T}, Vector{Int}, Int} where {S,T}
+function locatePoint(loc::Regular2DGridLocator{S}, grid::FEM.Grid, x::Vec{2,T})::Tuple{Vec{2,T}, Vector{Int}, Int} where {S,T}
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[1] < loc.LL[1] || x[2] < loc.LL[2]
         throw(DomainError("Not in domain"))
     end
@@ -178,14 +178,14 @@ function locatePoint(loc::Regular2DGridLocator{S}, grid::JFM.Grid, x::Vec{2,T}):
     end
     #Get the four node numbers of quadrilateral the point is in:
 
-    if S === JFM.Triangle || S === JFM.Quadrilateral
+    if S === FEM.Triangle || S === FEM.Quadrilateral
         ll = n1 + n2*loc.nx
         lr = ll + 1
         ul = n1 + (n2+1)*loc.nx
         ur = ul + 1
         @assert ur < (loc.nx * loc.ny)
 
-        if S === JFM.Triangle
+        if S === FEM.Triangle
             if loc1 + loc2 < 1.0 # ◺
                 return Vec{2,T}((loc1, loc2)), [lr+1, ul+1, ll+1], (2*n1 + 2*n2*(loc.nx-1)) +1
             else # ◹
@@ -195,10 +195,10 @@ function locatePoint(loc::Regular2DGridLocator{S}, grid::JFM.Grid, x::Vec{2,T}):
                 tM = Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
                 return tM⋅Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1, lr+1], (2*n1 + 2*n2*(loc.nx-1)) +2
             end
-        else # S == JFM.Quadrilateral
+        else # S == FEM.Quadrilateral
             return Vec{2,T}((2 * loc1 - 1, 2 * loc2 - 1)), [ll+1, lr+1, ur+1, ul+1], (ll+1)
         end
-    elseif S === JFM.QuadraticTriangle || S === JFM.QuadraticQuadrilateral
+    elseif S === FEM.QuadraticTriangle || S === FEM.QuadraticQuadrilateral
         #Get the four node numbers of quadrilateral the point is in
         #Zero-indexing of the array here, so we need to +1 for everything being returned
         num_x_with_edge_nodes::Int = loc.nx  + loc.nx - 1
@@ -209,7 +209,7 @@ function locatePoint(loc::Regular2DGridLocator{S}, grid::JFM.Grid, x::Vec{2,T}):
         ur = ul + 2
         middle_left =  2*n1 + (2*n2+1)*num_x_with_edge_nodes
         @assert ur < (num_x_with_edge_nodes*num_y_with_edge_nodes) #Sanity check
-        if S === JFM.QuadraticTriangle
+        if S === FEM.QuadraticTriangle
             if loc1 + loc2 <= 1.0 # ◺
                 return Vec{2,T}((loc1,loc2)), [lr+1,ul+1,ll+1, middle_left+2, middle_left+1, ll+2], (2*n1 + 2*n2*(loc.nx-1) + 1)
             else # ◹
@@ -219,7 +219,7 @@ function locatePoint(loc::Regular2DGridLocator{S}, grid::JFM.Grid, x::Vec{2,T}):
                 tM = Tensor{2,2,Float64,4}((1.,-1.,1.,0.))
                 return tM⋅Vec{2,T}((loc1-1,loc2)), [ ur+1, ul+1,lr+1,ul+2,middle_left+2, middle_left+3], (2*n1 + 2*n2*(loc.nx-1) + 2)
             end
-        else # S === JFM.QuadraticQuadrilateral
+        else # S === FEM.QuadraticQuadrilateral
             return Vec{2,T}((2*loc1-1,2*loc2-1)), [ll+1,lr+1,ur+1,ul+1,ll+2,middle_left+3, ul+2, middle_left+1,middle_left+2], (n1 + loc.nx*n2 + 1)
         end
     else
@@ -227,7 +227,7 @@ function locatePoint(loc::Regular2DGridLocator{S}, grid::JFM.Grid, x::Vec{2,T}):
     end
 end
 
-struct Regular3DGridLocator{T} <: PointLocator where {T<:JFM.Cell{3}}
+struct Regular3DGridLocator{T} <: PointLocator where {T<:FEM.Cell{3}}
     nx::Int
     ny::Int
     nz::Int
@@ -264,8 +264,8 @@ const tetrahedra_3d =[ ((1,1,1),(3,1,1),(1,3,1),(1,3,3)),
                         ((3,1,1),(3,1,3),(3,3,3),(1,3,3)) ]
 
 function locatePoint(
-    loc::Regular3DGridLocator{S}, grid::JFM.Grid, x::Vec{3,T}
-    ) where {T,S <: Union{JFM.Tetrahedron,JFM.QuadraticTetrahedron}}
+    loc::Regular3DGridLocator{S}, grid::FEM.Grid, x::Vec{3,T}
+    ) where {T,S <: Union{FEM.Tetrahedron,FEM.QuadraticTetrahedron}}
     if x[1] > loc.UR[1]  || x[2] >  loc.UR[2] || x[3] > loc.UR[3] || x[1] < loc.LL[1] || x[2] < loc.LL[2] || x[3] < loc.LL[3]
         throw(DomainError("Not in domain"))
     end
@@ -302,13 +302,13 @@ function locatePoint(
         end
     end
     #Get the 8 node numbers of the rectangular hexahedron the point is in:
-    #Ordering is like tmp of JFM's generate_grid(::Type{Tetrahedron})
+    #Ordering is like tmp of FEM's generate_grid(::Type{Tetrahedron})
 
     i = n1+1
     j = n2+1
     k = n3+1
 
-    if S === JFM.Tetrahedron
+    if S === FEM.Tetrahedron
         node_array = reshape(collect(0:(loc.nx*loc.ny*loc.nz - 1)), (loc.nx, loc.ny, loc.nz))
         nodes = (node_array[i,j,k], node_array[i+1,j,k], node_array[i+1,j+1,k], node_array[i,j+1,k],
                    node_array[i,j,k+1], node_array[i+1,j,k+1], node_array[i+1,j+1,k+1], node_array[i,j+1,k+1])
@@ -329,7 +329,7 @@ function locatePoint(
             M[:,2] = p3-p1
             M[:,3] = p4-p1
             tMI::Tensor{2,3,Float64,9} = Tensor{2,3,Float64}(M)
-            if S === JFM.Tetrahedron
+            if S === FEM.Tetrahedron
                 return inv(tMI) ⋅ Vec{3,T}((loc1,loc2,loc3) .- (p1[1],p1[2],p1[3])), collect(nodes[tet]) .+ 1, 1
             else
                 v1,v2,v3,v4 =  map(CartesianIndex, tetrahedra_3d[index])

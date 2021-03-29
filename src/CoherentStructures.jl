@@ -39,9 +39,9 @@ import VoronoiDelaunay
 const VD = VoronoiDelaunay
 
 
-# JuAFEM
-import JuAFEM
-const JFM = JuAFEM
+# Ferrite
+import Ferrite
+const FEM = Ferrite
 
 #Other miscallaneous packages
 using RecipesBase
@@ -83,7 +83,7 @@ include("seba.jl")
 #Functions related to isoperimetry
 include("isoperimetry.jl")
 
-##Extensions to JuAFEM dealing with non-curved grids
+##Extensions to Ferrite dealing with non-curved grids
 ##Support for evaluating functions at grid points, delaunay Triangulations
 
 #The PointLocator provides an abstract basis class for classes for locating points on grids.
