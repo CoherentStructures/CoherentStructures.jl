@@ -7,54 +7,49 @@ nprocs() == 1 &amp;&amp; addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq</code></pre><p>Next, we load and interpolate the velocity data sets. Loading the data sets defines <code>Lon</code>, <code>Lat</code>, <code>Time</code>, <code>UT</code>, <code>VT</code>.</p><pre><code class="language-julia">using JLD2
 JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
-VI = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Now, we set up the computational problem.</p><pre><code class="language-julia">using AxisArrays
-q = 91
+const uv = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Now, we set up the computational problem.</p><pre><code class="language-julia">q = 91
 t_initial = minimum(Time)
 t_final = t_initial + 90
-tspan = range(t_initial, stop=t_final, length=q)
+const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
 nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan&#39;), xspan, yspan)
-δ = 1.e-5
-mCG_tensor = let tspan=tspan, δ=δ, p=VI
-    u -&gt; av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-        p=p, tolerance=1e-6, solver=Tsit5())
-end</code></pre><p>Next, we compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.</p><pre><code class="language-julia">C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
+P = tuple.(xspan, permutedims(yspan))
+const δ = 1.e-5
+mCG_tensor = u -&gt; av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
+    p=uv, tolerance=1e-6, solver=Tsit5())</code></pre><p>Next, we compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.</p><pre><code class="language-julia">C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
-vortices, singularities = ellipticLCS(C̅, p)</code></pre><p>Finally, the result is visualized as follows.</p><pre><code class="language-julia">using Plots
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)</code></pre><p>Finally, the result is visualized as follows.</p><pre><code class="language-julia">using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title=&quot;DBS field and transport barriers&quot;, showlabel=true)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png" alt/></p><h2 id="Objective-Eulerian-coherent-structures-(OECS)"><a class="docs-heading-anchor" href="#Objective-Eulerian-coherent-structures-(OECS)">Objective Eulerian coherent structures (OECS)</a><a id="Objective-Eulerian-coherent-structures-(OECS)-1"></a><a class="docs-heading-anchor-permalink" href="#Objective-Eulerian-coherent-structures-(OECS)" title="Permalink"></a></h2><p>With only minor modifications, we are also able to compute OECSs. We start by loading some packages and define the rate-of-strain tensor function.</p><pre><code class="language-julia">using Interpolations, Tensors, StaticArrays
+    bg=trace, xspan=xspan, yspan=yspan, title=&quot;DBS field and transport barriers&quot;, showlabel=true)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png" alt/></p><h2 id="Objective-Eulerian-coherent-structures-(OECS)"><a class="docs-heading-anchor" href="#Objective-Eulerian-coherent-structures-(OECS)">Objective Eulerian coherent structures (OECS)</a><a id="Objective-Eulerian-coherent-structures-(OECS)-1"></a><a class="docs-heading-anchor-permalink" href="#Objective-Eulerian-coherent-structures-(OECS)" title="Permalink"></a></h2><p>With only minor modifications, we are also able to compute OECSs. We start by loading some packages and define the rate-of-strain tensor function.</p><pre><code class="language-julia">using Interpolations, Tensors, StaticArrays
 
-V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
 
 rate_of_strain_tensor(xin) = let V=V
     x, y = xin
     grad = Interpolations.gradient(V, x, y)
-    df =  Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2]))
-    return symmetric(df)
+    symmetric(Tensor{2,2}((grad[1][1], grad[1][2], grad[2][1], grad[2][2])))
 end</code></pre><p>To make life more exciting, we choose a larger domain.</p><pre><code class="language-julia">xmin, xmax, ymin, ymax = -12.0, 7.0, -38.1, -22.0
 nx = 950
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan&#39;), xspan, yspan)</code></pre><p>Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs. As there tend to be many 3 wedge + trisector-type singularity combinations with OECSs, we enable the <code>combine_31</code> heuristic.</p><pre><code class="language-julia">S = map(rate_of_strain_tensor, P)
-p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[combine_20, combine_31])
-vortices, singularities = ellipticLCS(S, p, outermost=true)</code></pre><p>Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges</p><pre><code class="language-julia">λ₁ = tensor_invariants(S)[1]
+P = tuple.(xspan, permutedims(yspan))</code></pre><p>Next, we evaluate the rate-of-strain tensor on the grid and compute OECSs. As there tend to be many 3 wedge + trisector-type singularity combinations with OECSs, we enable the <code>combine_31</code> heuristic.</p><pre><code class="language-julia">S = rate_of_strain_tensor.(P)
+p = LCSParameters(boxradius=2.5, pmin=-1, pmax=1, merge_heuristics=[Combine20(), Combine31()])
+vortices, singularities = ellipticLCS(S, xspan, yspan, p; outermost=true)</code></pre><p>Finally, the result is visualized as follows, white are elliptic singularities, blue are trisectors and orange are wedges</p><pre><code class="language-julia">λ₁ = tensor_invariants(S)[1]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=λ₁, logBg=false, title=&quot;Minor rate-of-strain field and OECSs&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_oecs.png" alt/></p><h2 id="FEM-based-methods"><a class="docs-heading-anchor" href="#FEM-based-methods">FEM-based methods</a><a id="FEM-based-methods-1"></a><a class="docs-heading-anchor-permalink" href="#FEM-based-methods" title="Permalink"></a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><pre><code class="language-julia">using CoherentStructures
+    bg=λ₁, xspan=xspan, yspan=yspan, logBg=false, title=&quot;Minor rate-of-strain field and OECSs&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_oecs.png" alt/></p><h2 id="FEM-based-methods"><a class="docs-heading-anchor" href="#FEM-based-methods">FEM-based methods</a><a id="FEM-based-methods-1"></a><a class="docs-heading-anchor-permalink" href="#FEM-based-methods" title="Permalink"></a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><pre><code class="language-julia">using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
 JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
 
-UV = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Next, we define a flow function from it.</p><pre><code class="language-julia">t_initial = minimum(Time)
+const UV = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Next, we define a flow function from it.</p><pre><code class="language-julia">t_initial = minimum(Time)
 t_final = t_initial + 90
-times = [t_initial, t_final]
-flow_map = u0 -&gt; flow(interp_rhs, u0, times;
-    p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]</code></pre><p>Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.</p><pre><code class="language-julia">LL = (-4.0, -34.0)
+const times = [t_initial, t_final]
+flow_map(u0) = flow(interp_rhs, u0, times; p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]</code></pre><p>Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.</p><pre><code class="language-julia">LL = (-4.0, -34.0)
 UR = (6.0, -28.0)
 ctx, _  = regularTriangularGrid((150, 90), LL, UR)
 bdata = getHomDBCS(ctx, &quot;all&quot;);</code></pre><p>For the TO method, we seek generalized eigenpairs involving the bilinear form</p><p class="math-container">\[a_h(u,v) = \frac{1}{2} \left(a_0(u,v) + a_1(I_h u, I_h v) \right).\]</p><p>Here, <span>$a_0$</span> is the weak form of the Laplacian on the initial domain, and <span>$a_1$</span> is the weak form of the Laplacian on the final domain. The operator <span>$I_h$</span> is an interpolation operator onto the space of test functions on the final domain.</p><p>For the adaptive TO method, we use pointwise nodal interpolation (i.e. collocation) and the mesh on the final domain is obtained by doing a Delaunay triangulation on the images of the nodal points of the initial domain. This results in the representation matrix of <span>$I_h$</span> being the identity, so in matrix form we get:</p><p class="math-container">\[S = 0.5(S_0 + S_1)\]</p><p>where <span>$S_0$</span> is the stiffness matrix for the triangulation at initial time, and <span>$S_1$</span> is the stiffness matrix for the triangulation at final time.</p><pre><code class="language-julia">M = assembleMassMatrix(ctx, bdata=bdata)
@@ -82,4 +77,4 @@ res = iterated_kmeans(20, permutedims(v_upsampled[:,1:(n_partition-1)]), n_parti
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i] * i for i in 1:n_partition])
 fig = plot_u(ctx2, u_combined, 200, 200;
-    color=:viridis, colorbar=:none, title=&quot;$n_partition-partition of Ocean Flow&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_fem.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bickley/">« Bickley jet</a><a class="docs-footer-nextpage" href="../trajectories/">Working with trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 22 February 2021 16:45">Monday 22 February 2021</span>. Using Julia version 1.5.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    color=:viridis, colorbar=:none, title=&quot;$n_partition-partition of Ocean Flow&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_fem.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bickley/">« Bickley jet</a><a class="docs-footer-nextpage" href="../trajectories/">Working with trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 29 March 2021 11:49">Monday 29 March 2021</span>. Using Julia version 1.6.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

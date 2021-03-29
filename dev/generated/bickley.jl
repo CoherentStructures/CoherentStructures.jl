@@ -2,7 +2,7 @@ using Distributed
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, StreamMacros
-@everywhere bickley = @velo_from_stream psi begin
+const bickley = @velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
     psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -19,34 +19,27 @@ nprocs() == 1 && addprocs()
     U₀ = 62.66e-6; L₀ = 1770e-3; r₀ = 6371e-3
 end
 
-using Distributed
-nprocs() == 1 && addprocs()
-
-@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
-using AxisArrays
+@everywhere using OrdinaryDiffEq, Tensors
 q = 81
-tspan = range(0., stop=3456000., length=q)
+const tspan = range(0., stop=3456000., length=q)
 ny = 61
 nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
-δ = 1.e-6
-D = SymmetricTensor{2,2}([2., 0., 1/2])
-mCG_tensor = let tspan=tspan, δ=δ, D=D
-    u -> av_weighted_CG_tensor(bickley, u, tspan, δ;
-          D=D, tolerance=1e-6, solver=Tsit5())
-end
+P = tuple.(xspan, yspan')
+const δ = 1.e-6
+const D = SymmetricTensor{2,2}([2., 0., 1/2])
+mCG_tensor = u -> av_weighted_CG_tensor(bickley, u, tspan, δ; D=D, tolerance=1e-6, solver=Tsit5())
 
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
-vortices, singularities = ellipticLCS(C̅, p)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 Plots.plot(fig)
 
 using Distances
@@ -56,8 +49,7 @@ predicate = (p1, p2) -> peuclidean(p1, p2, [6.371π, Inf]) < 1e-10
 bdata = BoundaryData(ctx, predicate, []);
 
 using Arpack
-cgfun = (x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81),
-     1.e-8; tolerance=1e-5))
+cgfun = x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81), 1.e-8; tolerance=1e-5)
 
 K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
 M = assembleMassMatrix(ctx, bdata=bdata)

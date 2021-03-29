@@ -2,7 +2,6 @@ import Pkg
 Pkg.add("FourierFlows")
 Pkg.add("GeophysicalFlows")
 Pkg.add("Plots")
-Pkg.add("AxisArrays")
 Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/OceanTools.jl.git"))
@@ -58,28 +57,25 @@ heatmap(xs, ys, zs[:,:,1];
 const CS = CoherentStructures
 const OT = OceanTools
 ts = range(0.0, step=20prob.clock.dt, length=400)
-p2 = OT.ItpMetadata(xs, ys, ts, (us, vs), OT.periodic, OT.periodic, OT.flat);
+const uv = OT.ItpMetadata(xs, ys, ts, (us, vs), OT.periodic, OT.periodic, OT.flat);
 
 vortices, singularities, bg = CS.materialbarriers(
        uv_trilinear, xs, ys, range(0.0, stop=5.0, length=11),
        LCSParameters(boxradius=π/2, indexradius=0.1, pmax=1.4,
                      merge_heuristics=[combine_20_aggressive]),
-       p=p2, on_torus=true);
+       p=uv, on_torus=true);
 
 plot_vortices(vortices, singularities, [-π, -π], [π, π];
-    bg=bg, include_singularities=true, barrier_width=4, barrier_color=:red,
+    bg=bg, xspan=xs, yspan=ys, include_singularities=true, barrier_width=4, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
-using AxisArrays
-Zs = AxisArray(zs[:,:,1], xs, ys)
 plot_vortices(vortices, singularities, [-π, -π], [π, π];
-    bg=Zs, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
+    bg=zs[:,:,1], xspan=xs, yspan=ys, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
-vortexflow = vortex -> flow(uv_trilinear, vortex, [0., 5.]; p=p2)[end]
-Zs = AxisArray(zs[:,:,26], xs, ys)
+vortexflow = vortex -> flow(uv_trilinear, vortex, [0., 5.]; p=uv)[end]
 plot_vortices(vortexflow.(vortices), singularities, [-π, -π], [π, π];
-    bg=Zs, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
+    bg=zs[:,:,26], xspan=xs, yspan=ys, logBg=false, include_singularities=false, barrier_width=3, barrier_color=:red,
     colorbar=:false, aspect_ratio=1)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
