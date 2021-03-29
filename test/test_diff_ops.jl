@@ -13,7 +13,7 @@ n = 31
 N = m*n
 x = range(xmin, stop=xmax, length=m)
 y = range(ymin, stop=ymax, length=n)
-p0 = vec(tuple.(x, y'))
+p0 = collect(Iterators.product(x, y))
 metric = PeriodicEuclidean([xmax, Inf])
 dist = STmetric(metric, 1)
 f = let tspan=tspan
@@ -41,7 +41,7 @@ n_coords = 7
 
     ε = 0.2
     sparsify = Neighborhood(ε)
-    P = sparse_diff_op_family(sol, sparsify, Base.one, P -> max.(P...); α=0, metric=metric)
+    P = sparse_diff_op_family(sol, sparsify, Base.one, row_normalize!∘unionadjacency; α=0, metric=metric)
     @test P isa LinearMaps.MapOrMatrix
     @test size(P) == (N, N)
 end

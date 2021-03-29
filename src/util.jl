@@ -137,7 +137,7 @@ function tensor_invariants(T::SymmetricTensor{2,2})
     dT = det(T)
     return λ₁, λ₂, ξ₁, ξ₂, tT, dT
 end
-function tensor_invariants(T::AxisArray{<:SymmetricTensor{2,2,<:Real,3},2})
+function tensor_invariants(T::AbstractMatrix{<:SymmetricTensor{2,2,<:Real,3}})
     E = map(t -> eigen(t), T)
     λ₁ = map(e -> eigvals(e)[1], E)
     λ₂ = map(e -> eigvals(e)[2], E)

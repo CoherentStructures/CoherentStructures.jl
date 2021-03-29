@@ -22,11 +22,6 @@ plot_u(ctx, V[:,4], 200, 200)
 
 using CoherentStructures, OrdinaryDiffEq#, DiffEqOperators
 
-
-function rot_double_gyre!(du,u,p,t)
-        du .= rot_double_gyre(u,p,t)
-end
-
 δ = 1e-8
 ctx = regularTriangularGrid((25,25))
 sol = CoherentStructures.advect_serialized_quadpoints(ctx, (0.0,1.0), rot_double_gyre!, nothing, δ;

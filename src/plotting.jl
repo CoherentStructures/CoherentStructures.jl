@@ -489,12 +489,6 @@ function plot_grid(ctx, as=[x.x for x in ctx.grid.nodes], shaded_triangles=[fals
     return plot_grid_raw!(fig, ctx, as, map(x -> !x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0, 0.0, 0.0, 0.0);kwargs...)
 end
 
-
-
-
-
-
-
 # seriestype --> :heatmap
 # fill --> true
 # xlim --> (LL[1], UR[1])
@@ -599,7 +593,10 @@ Plots the output of [`ellipticLCS`](@ref) on the domain spanned by the lower lef
 corner `LL` and the upper right corner `UR`.
 
 ## Keyword arguments
-* `bg=nothing`: whether to plot some background scalar field;
+
+* `bg=nothing`: array of some background scalar field, or nothing;
+* `xspan`: x-axis for the scalar field, ignored if `bg` is an `AxisArray`;
+* `yspan`: y-axis for the scalar field, ignored if `bg` is an `AxisArray`;
 * `logBg=true`: whether to take the `log10` of the scalar field;
 * `include_singularities=true`: whether to plot singularities;
 * `showlabel=false`: whether to show labels with the respective parameter values;
@@ -611,13 +608,17 @@ function plot_vortices(
     LL,
     UR;
     bg=nothing,
+    xspan=nothing,
+    yspan=nothing,
     logBg=true,
     include_singularities=true,
     showlabel=false,
     kwargs...,
 )
     if bg !== nothing
-        fig = plot_field(bg, LL, UR; logBg=logBg, kwargs...)
+        fig = bg isa AxisArray ?
+            plot_field(bg, bg.axes[1].val, bg.axes[2].val, LL, UR; logBg=logBg, kwargs...) :
+            plot_field(bg, xspan, yspan, LL, UR; logBg=logBg, kwargs...)
     else
         fig = empty_heatmap(LL, UR; kwargs...)
     end
@@ -633,10 +634,10 @@ end
 RecipesBase.@userplot Plot_Field
 RecipesBase.@recipe function f(as::Plot_Field; logBg=true)
     bg = as.args[1]
-    LL = as.args[2]
-    UR = as.args[3]
-    xspan = bg.axes[1].val
-    yspan = bg.axes[2].val
+    xspan = as.args[2]
+    yspan = as.args[3]
+    LL = as.args[4]
+    UR = as.args[5]
     seriestype := :heatmap
     seriescolor --> :viridis
     xlims := (LL[1], UR[1])
@@ -646,7 +647,8 @@ RecipesBase.@recipe function f(as::Plot_Field; logBg=true)
 end
 
 """
-    plot_field(field, LL, UR; logBg=true)
+    plot_field(field, xspan, yspan, LL, UR; logBg=true)
+    plot_field(field::AxisArray, LL, UR; logBg=true)
 
 Makes a heatmap plot of the scalar field given as the `AxisArray` `field` on the
 domain spanned by the lower-left corner `LL` and the upper-right corner `UR`.

@@ -28,7 +28,7 @@ import Pkg
 Pkg.add(Pkg.PackageSpec(url="https://github.com/KristofferC/JuAFEM.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/CoherentStructures.jl.git"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/CoherentStructures/StreamMacros.jl"))
-Pkg.add(["OrdinaryDiffEq", "Tensors", "AxisArrays", "JLD2", "Plots"])
+Pkg.add(["OrdinaryDiffEq", "Tensors", "JLD2", "Plots"])
 
 # Next, we turn on parallel computing, load the relevant packages on all available
 # workers and define the velocity field.
@@ -36,8 +36,8 @@ Pkg.add(["OrdinaryDiffEq", "Tensors", "AxisArrays", "JLD2", "Plots"])
 using Distributed
 nprocs() == 1 && addprocs()
 
-@everywhere using CoherentStructures, StreamMacros
-@everywhere bickley = @velo_from_stream psi begin
+@everywhere using StreamMacros
+const bickley = @velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
     psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -56,41 +56,38 @@ end
 
 # Now, set up the computational domain and problem-dependent parameters.
 
-using AxisArrays
-@everywhere using OrdinaryDiffEq, Tensors
+@everywhere using CoherentStructures, OrdinaryDiffEq, Tensors
 
 q = 81
-tspan = range(0., stop=3456000., length=q)
+const tspan = range(0., stop=3456000., length=q)
 ny = 61
 nx = (22ny) ÷ 6
 xmin, xmax, ymin, ymax = 0.0 - 2.0, 6.371π + 2.0, -3.0, 3.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
-δ = 1.e-6
+P = tuple.(xspan, permutedims(yspan))
+const δ = 1.e-6
 
 # In our work, we used an anisotropic diffusion tensor.
 
-D = SymmetricTensor{2,2}([2., 0., 1/2])
+const D = SymmetricTensor{2,2}([2., 0., 1/2])
 
 # Now, we compute the diffusion-weighted averaged Cauchy-Green tensor, set a
 # parameter (and others by default) for the geodesic vortex computation, and
 # finally compute vortices.
 
-mCG_tensor = let tspan=tspan, δ=δ, D=D
-    u -> av_weighted_CG_tensor(bickley, u, tspan, δ;
-          D=D, tolerance=1e-6, solver=Tsit5())
-end
+mCG_tensor = u -> av_weighted_CG_tensor(bickley, u, tspan, δ;
+    D=D, tolerance=1e-6, solver=Tsit5())
 C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
-vortices, singularities = ellipticLCS(C̅, p)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
 # The result is visualized as follows:
 
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 
 #md # ```@raw html
 #md # <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/bickley_geodesic_vortices.png"/>
@@ -98,12 +95,10 @@ fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
 
 # For comparison, we also compute black-hole vortices.
 
-C_tensor = let tspan=tspan, δ=δ
-    u -> CG_tensor(bickley, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
-end
-C = pmap(C_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
+CG_tensor = u -> CG_tensor(bickley, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
+C = pmap(CG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.0)
-BHvortices, singularities = ellipticLCS(C, p)
+BHvortices, singularities = ellipticLCS(C, xspan, yspan, p)
 
 # Finally, we plot them on top of the material diffusion barriers in thin red lines.
 
@@ -123,41 +118,38 @@ nprocs() == 1 && addprocs()
 # `Lon`, `Lat`, `Time`, `UT`, `VT`.
 
 using JLD2
-JLD2.@load(OCEAN_FLOW_FILE)
-VI = interpolateVF(Lon, Lat, Time, UT, VT)
+JLD2.@load("docs/examples/Ocean_geostrophic_velocity.jld2")
+const VI = interpolateVF(Lon, Lat, Time, UT, VT)
 
 # Since we want to use parallel computing, we set up the integration LCSParameters
 # on all workers, i.e., `@everywhere`.
 
-using AxisArrays
 q = 91
 t_initial = minimum(Time)
 t_final = t_initial + 90
-tspan = range(t_initial, stop=t_final, length=q)
+const ts = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
 nx = 300
 ny = floor(Int, (ymax - ymin) / (xmax - xmin) * nx)
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
-δ = 1.e-5
-mCG_tensor = let tspan=tspan, δ=δ, p=VI
-    u -> av_weighted_CG_tensor(interp_rhs, u, tspan, δ;
-        p=p, tolerance=1e-6, solver=Tsit5())
-end
+P = tuple.(xspan, permutedims(yspan))
+const ε = 1.e-5
+mcg_tensor = u -> av_weighted_CG_tensor(interp_rhs, u, ts, ε;
+    p=VI, tolerance=1e-6, solver=Tsit5())
 
 # Now, compute the averaged weighted Cauchy-Green tensor field and extract elliptic LCSs.
 
-C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
+C̅ = pmap(mcg_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
-vortices, singularities = ellipticLCS(C̅, p)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
 # Finally, the result is visualized as follows.
 
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true)
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true)
 
 #md # ```@raw html
 #md # <img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png"/>

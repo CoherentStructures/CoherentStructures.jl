@@ -48,7 +48,7 @@ julia> f = u -> flow(interp_rhs, u, tspan; p=UI)
 julia> mCG_tensor = u -> CG_tensor(interp_rhs, u, tspan, δ; p=UI)
 ```
 """
-interp_rhs = ODE.ODEFunction{false}((u, p, t) -> p(u[1], u[2], t))
+const interp_rhs = ODE.ODEFunction{false}((u, p, t) -> p(u[1], u[2], t))
 
 """
     interp_rhs!(du, u, p, t) -> Vector
@@ -66,7 +66,7 @@ julia> f = u -> flow(interp_rhs!, u, tspan; p=UI)
 julia> mCG_tensor = u -> CG_tensor(interp_rhs!, u, tspan, δ; p=UI)
 ```
 """
-interp_rhs! = ODE.ODEFunction{true}((du, u, p, t) -> du .= p(u[1], u[2], t))
+const interp_rhs! = ODE.ODEFunction{true}((du, u, p, t) -> du .= p(u[1], u[2], t))
 
 # standard map
 const standard_a = 0.971635
@@ -102,7 +102,7 @@ function ABC_flow(u, p, t)
         C * sin(u[2]) + B * cos(u[1])
         )
 end
-abcFlow = ODE.ODEFunction{false}(ABC_flow)
+const abcFlow = ODE.ODEFunction{false}(ABC_flow)
 
 # cylinder flow [Froyland, Lloyd, and Santitissadeekorn, 2010]
 function _cylinder_flow(u, p, t)
@@ -120,4 +120,4 @@ function _cylinder_flow(u, p, t)
         A(t) * cos(x - ν * t) * sin(y)
         )
 end
-cylinder_flow = ODE.ODEFunction{false}(_cylinder_flow)
+const cylinder_flow = ODE.ODEFunction{false}(_cylinder_flow)

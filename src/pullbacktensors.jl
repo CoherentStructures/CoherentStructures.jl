@@ -46,7 +46,7 @@ end
     #ctx_for_boundscheck=nothing,
     force_dtmin = false,
     saveat = tspan,
-)::Vector{T} where {T} # type assertion is necessary
+)::Vector{T} where {T} # TODO: type assertion needed in Julia v1.0
     # if needed, add callback to ODEProblems
     #callback = nothing
     #if ctx_for_boundscheck != nothing

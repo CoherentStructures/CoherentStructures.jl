@@ -108,16 +108,16 @@ This function takes three steps. The first two are:
 
 ```@docs
 compute_singularities
-combine_singularities
+Combine
 ```
 
 The third step is a postprocessing step, in which detected singularities are
 merged according to different heuristics.
 
 ```@docs
-combine_20
-combine_20_aggressive
-combine_31
+Combine20
+Combine31
+Combine20Aggressive
 ```
 
 The function [`compute_singularities`](@ref) requires one of two signed distance

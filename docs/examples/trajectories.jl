@@ -31,7 +31,7 @@ using Distributed
 
 @everywhere using CoherentStructures, StreamMacros
 using Distances, Plots
-@everywhere bickleyJet = @velo_from_stream psi begin
+const bickleyJet = @velo_from_stream psi begin
     psi  = psi₀ + psi₁
     psi₀ = - U₀ * L₀ * tanh(y / L₀)
     psi₁ =   U₀ * L₀ * sech(y / L₀)^2 * re_sum_term
@@ -51,7 +51,7 @@ end
 # Next, we define the usual flow parameters. For visualization convenience,
 # we use a regular grid at initial time.
 
-tspan = range(10*24*3600.0, stop=30*24*3600.0, length=41)
+const tspan = range(10*24*3600.0, stop=30*24*3600.0, length=41)
 m = 120; n = 41; N = m*n
 x = range(0.0, stop=20.0, length=m)
 y = range(-3.0, stop=3.0, length=n)
@@ -171,21 +171,20 @@ DISPLAY_PLOT(fig, mahirn18ev3)
 # We first generate some trajectories on a set of `n` random points for the
 # rotating double gyre flow.
 
-using StreamMacros
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+using StreamMacros, CoherentStructures
+const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
     Ψ_F         = sin(π*x)*sin(2π*y)
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
-using CoherentStructures
 
 n = 500
-tspan = range(0, stop=1.0, length=20)
+ts = range(0, stop=1.0, length=20)
 xs, ys = rand(n), rand(n)
-particles = tuple.(xs, ys)
-trajectories = [flow(rot_double_gyre, p, tspan) for p in particles]
+particles = zip(xs, ys)
+trajectories = [flow(rot_double_gyre, p, ts) for p in particles]
 
 # Based on the initial particle positions we generate a triangulation.
 # If this call fails or does not return, the initial positions may not be unique.
@@ -195,7 +194,7 @@ ctx, _ = irregularDelaunayGrid(particles)
 
 # Next, we generate the stiffness and mass matrices and solve the generalized eigenproblem.
 
-S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], tspan; flow_map_mode=1)
+S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], ts; flow_map_mode=1)
 M = assembleMassMatrix(ctx)
 
 using Arpack

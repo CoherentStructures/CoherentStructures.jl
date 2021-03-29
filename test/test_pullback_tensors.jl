@@ -11,7 +11,7 @@ using CoherentStructures
         xv = Vec{dim}(x0)
 
         voop = ODEFunction{false}((u, p, t) -> zero(SVector{dim}))
-        viip = ODEFunction{true}((du, u, p, t) -> du .= zeros(dim))
+        viip = ODEFunction{true}((du, u, p, t) -> du .= 0)
 
         for x in (xs, xt, xv, x0)
             @test fill(xs, q) == (x !== x0 ? @inferred(flow(voop, x, tspan)) : flow(voop, x, tspan))

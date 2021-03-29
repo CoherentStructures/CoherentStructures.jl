@@ -14,9 +14,8 @@ end
     n = 500
     tspan = range(0, stop=1.0, length=20)
     xs, ys = rand(n), rand(n)
-    particles = tuple.(xs, ys)
-    flowfun = u -> flow(rot_double_gyre, u, tspan)
-    U = DM_heatflow(flowfun, particles, Neighborhood(0.1), gaussian(0.1))
+    particles = zip(xs, ys)
+    U = DM_heatflow(u -> flow(rot_double_gyre, u, tspan), particles, Neighborhood(0.1), gaussian(0.1))
     λ, V = diffusion_coordinates(U, 6)
     @test first(λ) ≈ 1
 end

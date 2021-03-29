@@ -1,32 +1,37 @@
 #OceanFlow.jl - based on code from Daniel Karrasch
-#nprocs() == 1 && addprocs()
-using CoherentStructures
-using Distributed,JLD2
 
-@everywhere begin
-    JLD2.@load "examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
+using Distributed, BenchmarkTools, Test, JLD2
+nprocs() == 1 && addprocs()
 
-    t_initial = minimum(Time)
-    t_final = t_initial + 90
+@everywhere using CoherentStructures
+JLD2.@load "docs/examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
 
-    LL = (-4.0, -34.0)
-    UR = (6.0, -28.0)
-    UI, VI = interpolateVF(Lon, Lat, Time, UT, VT)
-    p = (UI, VI)
-    ctx = regularP2TriangularGrid((100, 60), LL, UR, quadrature_order=2)
+t_initial = minimum(Time)
+t_final = t_initial + 90
 
-    # ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
-    times = [t_initial,t_final]
-end
+LL = (-4.0, -34.0)
+UR = (6.0, -28.0)
+const p = interpolateVF(Lon, Lat, Time, UT, VT)
+ctx, _ = regularP2TriangularGrid((100, 60), LL, UR, quadrature_order=2)
+
+# ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]
+const times = [t_initial,t_final]
 
 ####### for comparison, finally only one of the following lines should remain #######
 # seems like mean(pullback_diffusion_tensor) is no worse than mean_diff_tensor, maybe even faster
 # first the not-in-place SVector versions
-@everywhere mdt(x) = mean_diff_tensor(interp_rhs, x, times, 1.e-8, tolerance=1.e-5, p=p)
-@time As = [mdt(x) for x in ctx.quadrature_points]
-@time As = pmap(mdt, ctx.quadrature_points)
-@time As = parallel_tensor(mdt,ctx.quadrature_points)
-
+mdt(x) = mean_diff_tensor(interp_rhs, x, times, 1.e-8, tolerance=1.e-5, p=p)
+mdt1 = x -> mean_diff_tensor(interp_rhs, x, times, 1.e-8, tolerance=1.e-5, p=p)
+mdt3(x) = let P=p
+    mean_diff_tensor(interp_rhs, x, times, 1.e-8; tolerance=1.e-5, p=P)
+end
+@btime As = map(mdt, $ctx.quadrature_points)
+@btime As = map($mdt1, $ctx.quadrature_points)
+@btime As = map(mdt3, $ctx.quadrature_points)
+@inferred mdt(ctx.quadrature_points[1])
+@inferred mdt1(ctx.quadrature_points[1])
+@inferred mdt3(ctx.quadrature_points[1])
+@inferred mean_diff_tensor(interp_rhs, ctx.quadrature_points[1], times, 1.e-8, tolerance=1.e-5, p=p)
 # now the mutating
 @everywhere mdt!(x) = mean_diff_tensor(interp_rhs!, x, times, 1.e-8, tolerance=1.e-5, p=p)
 @time As = [mdt!(x) for x in ctx.quadrature_points]

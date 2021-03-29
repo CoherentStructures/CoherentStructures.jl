@@ -23,8 +23,11 @@
 # The corresponding velocity field can be conveniently defined using the
 # `@velo_from_stream` macro from [`StreamMacros.jl`](https://github.com/CoherentStructures/StreamMacros.jl):
 
-using StreamMacros
-rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
+using Distributed
+nprocs() == 1 && addprocs()
+
+@everywhere using StreamMacros
+const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     heaviside(x)= 0.5*(sign(x) + 1)
     Ψ_P         = sin(2π*x)*sin(π*y)
@@ -92,38 +95,25 @@ DISPLAY_PLOT(res, rot_double_gyre_fem)
 # Here, we demonstrate how to calculate black-hole vortices, see
 # [Geodesic elliptic material vortices](@ref) for references and details.
 
-using Distributed
-nprocs() == 1 && addprocs()
-
-@everywhere using CoherentStructures, OrdinaryDiffEq, StreamMacros
-using AxisArrays
+@everywhere using CoherentStructures, OrdinaryDiffEq
 q = 21
-tspan = range(0., stop=1., length=q)
+const tspan = range(0., stop=1., length=q)
 nx = ny = 101
 xmin, xmax, ymin, ymax = 0.0, 1.0, 0.0, 1.0
 xspan = range(xmin, stop=xmax, length=nx)
 yspan = range(ymin, stop=ymax, length=ny)
-P = AxisArray(tuple.(xspan, yspan'), xspan, yspan)
-δ = 1.e-6
-@everywhere rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
-    st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
-    heaviside(x)= 0.5*(sign(x) + 1)
-    Ψ_P         = sin(2π*x)*sin(π*y)
-    Ψ_F         = sin(π*x)*sin(2π*y)
-    Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
-end
-mCG_tensor = let tspan=tspan, δ=δ
-    u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
-end
+P = tuple.(xspan, permutedims(yspan))
+const δ = 1.e-6
+mcg_tensor = u -> av_weighted_CG_tensor(rot_double_gyre, u, tspan, δ; tolerance=1e-6, solver=Tsit5())
 
-C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
+C̅ = pmap(mcg_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(0.5)
-vortices, singularities = ellipticLCS(C̅, p; outermost=true)
+vortices, singularities = ellipticLCS(C̅, xspan, yspan, p; outermost=true)
 
 # The results are then visualized as follows.
 
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
-    bg=trace, title="DBS field and transport barriers", showlabel=true, clims=(0,5))
+    bg=trace, xspan=xspan, yspan=yspan, title="DBS field and transport barriers", showlabel=true, clims=(0,5))
 DISPLAY_PLOT(fig, rot_double_gyre_geodesic_vortices)
