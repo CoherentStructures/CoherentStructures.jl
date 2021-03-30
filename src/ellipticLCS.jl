@@ -39,15 +39,14 @@ Extracts the indices of `singularities`, a vector of `Singularity`s.
 function getindices(singularities::AbstractArray{<:Singularity})
     return [s.index for s in singularities]
 end
+"""
+    abstract type MergeHeuristic
 
+Abstract supertype for merge heuristics, which currently include [`Combine`](@ref),
+[`Combine20`](@ref), [`Combine20Aggressive`](@ref), [`Combine31`](@ref).
+"""
 abstract type MergeHeuristic end
 
-"""
-    Combine(dist) <: MergeHeuristic
-
-Merge singularities that are within (Euclidean) distance `dist` from each other.
-Upon merging, a virtual singularity is created with an averaged location.
-"""
 struct Combine <: MergeHeuristic
     distance::Float64
     function Combine(dist::Real)
@@ -55,18 +54,7 @@ struct Combine <: MergeHeuristic
         return new(convert(Float64, dist))
     end
 end
-
-"""
-    Combine20 <: MergeHeuristic
-
-Merge isolated singularity pairs that are mutually nearest neighbors.
-"""
 struct Combine20 <: MergeHeuristic end
-"""
-    Combine31 <: MergeHeuristic
-
-Merge a trisector with three wedge singularities if those are its three nearest neighbors.
-"""
 struct Combine31 <: MergeHeuristic end
 struct Combine20Aggressive <: MergeHeuristic end
 

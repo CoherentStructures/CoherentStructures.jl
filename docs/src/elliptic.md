@@ -55,7 +55,7 @@ In summary, the implementation consists of the following steps:
 
 ## Function documentation
 
-### The meta-functions `ellipticLCS` and `constrainedLCS`
+### Meta-functions
 
 The fully automated high-level functions are:
 
@@ -66,9 +66,10 @@ materialbarriers
 ```
 
 One of their arguments is a list of parameters used in the LCS detection. This
-list is combined in a data type called `LCSParameters`. The output is a list of `EllipticBarrier`s and a list of `Singularity`s.
-There is an option to retrieve all closed barriers (`outermost=false`), in
-contrast to extracting only the outermost vortex boundaries (`outermost=true`), which is more efficient.
+list is combined in a data type called `LCSParameters`. The output is a list of
+`EllipticBarrier`s and a list of `Singularity`s. There is an option to retrieve
+all closed barriers (`outermost=false`), in contrast to extracting only the outermost
+vortex boundaries (`outermost=true`), which is more efficient.
 
 The meta-functions consist of two steps: first, the index
 theory-based determination of where to search for closed orbits,, cf.
@@ -83,6 +84,7 @@ These are the specifically introduced types for elliptic LCS computations.
 LCSParameters
 EllipticBarrier
 EllipticVortex
+MergeHeuristic
 ```
 
 Another one is `Singularity`, which comes along with some convenience functions.
@@ -121,12 +123,12 @@ Combine20Aggressive
 ```
 
 The function [`compute_singularities`](@ref) requires one of two signed distance
-functions for angles. These are [`s1dist`](@ref) for vector fields, and
-[`p1dist`](@ref) for line fields.
+functions for angles. These are [`S1Dist`](@ref) for vector fields, and
+[`P1Dist`](@ref) for line fields.
 
 ```@docs
-s1dist
-p1dist
+S1Dist
+P1Dist
 ```
 
 From all virtual/merged singularities those with a suitable index are selected.
@@ -149,6 +151,7 @@ adaptive point insertion (known in oceanography as "Dritschel advection") and an
 to compute the area of [`EllipticBarrier`](@ref) and [`EllipticVortex`](@ref) objects.
 
 ```@docs
+FlowGrowParams
 flowgrow
 area
 ```
