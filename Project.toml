@@ -29,7 +29,7 @@ VoronoiDelaunay = "72f80fcb-8c52-57d9-aff0-40c1a3526986"
 [compat]
 ArnoldiMethod = "0.1, 0.2"
 AxisArrays = "0.3.3, 0.4"
-ColorTypes = "0.10"
+ColorTypes = "0.10, 0.11"
 DiffEqBase = "6"
 Distances = "0.9, 0.10"
 Ferrite = "0.3"
