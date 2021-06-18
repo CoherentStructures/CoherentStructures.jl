@@ -1587,12 +1587,12 @@ function in_uniform_squares(xs, λ⁰, cache)
 end
 
 function contains_point(xs, point_to_check)
-    points_to_center = [x - point_to_check for x in xs]
+    points_to_center = (x - point_to_check for x in xs)
     angles = [atan(x[2], x[1]) for x in points_to_center]
     lx = length(xs)
     res = 0.0
     for i in 0:(lx-1)
-        res += s1dist(angles[i+1], angles[((i+1)%lx)+1])
+        res += S1Dist()(angles[i + 1], angles[((i + 1)%lx) + 1])
     end
     res /= 2π
     return !iszero(round(res))

@@ -168,17 +168,17 @@ end
     @test center(circle) ≈ zeros(2) atol=eps()
     dense = range(-1, 1, length=101)
     sparse = range(1, -1, length=11)
-    square = SVector{2}.(vcat(vcat.(dense, -1), vcat.(1, dense), vcat.(sparse, 1), vcat.(-1, sparse))) .+ Ref(ones(2))
+    square = SVector{2}.(vcat(vcat.(1, dense), vcat.(sparse, 1), vcat.(-1, sparse), vcat.(dense, -1)) .+ Ref(ones(2)))
     @test area(square) ≈ 4 rtol=5eps()
     @test center(square) ≈ ones(2) atol=5eps()
     barrier = EllipticBarrier(circle, SVector{2}(0.0, 0.0), 1.0, true)
     LL, UR = extrema(barrier)
     @test LL ≈ -ones(2) rtol=1e-5
     @test UR ≈ ones(2) rtol=1e-6
-    @test !clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(u[2], -u[1])), 0)
+    @test !clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
     barrier = EllipticBarrier(square, SVector{2}(1.0, 1.0), 1.0, true)
     LL, UR = extrema(barrier)
     @test LL ≈ zeros(2)
     @test UR ≈ 2ones(2)
-    @test !clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(u[2], -u[1])), 0)
+    @test !clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
 end
