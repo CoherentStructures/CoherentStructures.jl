@@ -82,16 +82,16 @@ end
         B = rand(Tensor{2,dim})
         Sspan = fill(S, length(tspan))
         for v in (voop, viip)
-            @test det(S)*inv(S) ≈ av_weighted_CG_tensor(v, x0, tspan, 0.1; D=S)
-            @test Sspan ≈ pullback_diffusion_tensor(v, x0, tspan, 0.1; D=S)
-            @test Sspan ≈ pullback_metric_tensor(v, x0, tspan, 0.1; G=S)
-            @test fill(B, length(tspan)) ≈ pullback_SDE_diffusion_tensor(v, x0, tspan, 0.1; B=B)
+            @test det(S)*inv(S) ≈ av_weighted_CG_tensor(v, x0, tspan, 0.1; D=(_ -> S))
+            @test Sspan ≈ pullback_diffusion_tensor(v, x0, tspan, 0.1; D=(_ -> S))
+            @test Sspan ≈ pullback_metric_tensor(v, x0, tspan, 0.1; G=(_ -> S))
+            @test fill(B, length(tspan)) ≈ pullback_SDE_diffusion_tensor(v, x0, tspan, 0.1; B=(_ -> B))
         end
         for x in (xs, xt, xv), v in (voop, viip)
-            @test det(S)*inv(S) ≈ @inferred(av_weighted_CG_tensor(v, x, tspan, 0.1; D=S))
-            @test Sspan ≈ @inferred(pullback_diffusion_tensor(v, x, tspan, 0.1; D=S))
-            @test Sspan ≈ @inferred(pullback_metric_tensor(v, x, tspan, 0.1; G=S))
-            @test fill(B, length(tspan)) ≈ @inferred(pullback_SDE_diffusion_tensor(v, x, tspan, 0.1; B=B))
+            @test det(S)*inv(S) ≈ @inferred(av_weighted_CG_tensor(v, x, tspan, 0.1; D=(_ -> S)))
+            @test Sspan ≈ @inferred(pullback_diffusion_tensor(v, x, tspan, 0.1; D=(_ -> S)))
+            @test Sspan ≈ @inferred(pullback_metric_tensor(v, x, tspan, 0.1; G=(_ -> S)))
+            @test fill(B, length(tspan)) ≈ @inferred(pullback_SDE_diffusion_tensor(v, x, tspan, 0.1; B=(_ -> B)))
         end
     end
     # check linear vector field
@@ -125,7 +125,7 @@ end
         end
     end
 end
- 
+
 @testset "variational equation" begin
     include("define_vector_fields.jl")
     @test (@inferred CG_tensor(var_rot_double_gyre, (0.5, 0.5), [0.0, 5.0], 0.0)) isa SymmetricTensor

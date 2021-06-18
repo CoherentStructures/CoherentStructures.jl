@@ -161,3 +161,22 @@ end
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
     end
 end
+
+@testset "elliptic utils" begin
+    circle = SVector.([reverse(sincos(x)) for x in range(0, 2pi, length=1000)])
+    @test area(circle) ≈ π rtol=1e-5
+    @test center(circle) ≈ zeros(2) atol=eps()
+    dense = range(-1, 1, length=101)
+    sparse = range(1, -1, length=11)
+    square = SVector{2}.(vcat(vcat.(dense, -1), vcat.(1, dense), vcat.(sparse, 1), vcat.(-1, sparse))) .+ Ref(ones(2))
+    @test area(square) ≈ 4 rtol=eps()
+    @test center(square) ≈ ones(2) atol=eps()
+    barrier = EllipticBarrier(circle, SVector{2}(0.0, 0.0), 1.0, true)
+    LL, UR = extrema(barrier)
+    @test LL ≈ -ones(2) rtol=1e-5
+    @test UR ≈ ones(2) rtol=1e-6
+    barrier = EllipticBarrier(square, SVector{2}(1.0, 1.0), 1.0, true)
+    LL, UR = extrema(barrier)
+    @test LL ≈ zeros(2)
+    @test UR ≈ 2ones(2)
+end
