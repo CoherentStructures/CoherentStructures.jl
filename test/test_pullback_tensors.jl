@@ -83,8 +83,11 @@ end
         Sspan = fill(S, length(tspan))
         for v in (voop, viip)
             @test det(S)*inv(S) ≈ av_weighted_CG_tensor(v, x0, tspan, 0.1; D=(_ -> S))
-            @test Sspan ≈ pullback_diffusion_tensor(v, x0, tspan, 0.1; D=(_ -> S))
-            @test Sspan ≈ pullback_metric_tensor(v, x0, tspan, 0.1; G=(_ -> S))
+            pbdt = pullback_diffusion_tensor(v, x0, tspan, 0.1; D=(_ -> S))
+            @test Sspan ≈ pbdt
+            pbmt = pullback_metric_tensor(v, x0, tspan, 0.1; G=(_ -> inv(S)))
+            @test inv.(Sspan) ≈ pbmt
+            @test all(pullback_tensors(v, x0, tspan, 0.1; D=(_ -> S)) .≈ (pbmt, pbdt))
             @test fill(B, length(tspan)) ≈ pullback_SDE_diffusion_tensor(v, x0, tspan, 0.1; B=(_ -> B))
         end
         for x in (xs, xt, xv), v in (voop, viip)

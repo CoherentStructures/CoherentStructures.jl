@@ -172,10 +172,16 @@ end
     @test area(square) ≈ 4 rtol=5eps()
     @test center(square) ≈ ones(2) atol=5eps()
     barrier = EllipticBarrier(circle, SVector{2}(0.0, 0.0), 1.0, true)
+    vortices = EllipticVortex(SVector{2}(0.0, 0.0), [barrier])
     LL, UR = extrema(barrier)
+    @test area(vortices) == area(barrier) == area(circle)
+    @test center(vortices) == center(barrier) == center(circle)
+    @test extrema(vortices) == extrema(barrier)
     @test LL ≈ -ones(2) rtol=1e-5
     @test UR ≈ ones(2) rtol=1e-6
     @test !clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
+    @test clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0) ==
+        clockwise(vortices, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
     barrier = EllipticBarrier(square, SVector{2}(1.0, 1.0), 1.0, true)
     LL, UR = extrema(barrier)
     @test LL ≈ zeros(2)
