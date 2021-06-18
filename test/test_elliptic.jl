@@ -165,7 +165,7 @@ end
 @testset "elliptic utils" begin
     circle = SVector.([reverse(sincos(x)) for x in range(0, 2pi, length=1000)])
     @test area(circle) ≈ π rtol=1e-5
-    @test center(circle) ≈ zeros(2) atol=eps()
+    @test center(circle) ≈ zeros(2) atol=5eps()
     dense = range(-1, 1, length=101)
     sparse = range(1, -1, length=11)
     square = SVector{2}.(vcat(vcat.(1, dense), vcat.(sparse, 1), vcat.(-1, sparse), vcat.(dense, -1)) .+ Ref(ones(2)))
