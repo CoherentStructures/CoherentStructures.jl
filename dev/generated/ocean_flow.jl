@@ -25,6 +25,8 @@ C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
 vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
+area.(vortices), clockwise.(vortices, interp_rhs, t_initial, p=uv)
+
 using Plots
 trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
