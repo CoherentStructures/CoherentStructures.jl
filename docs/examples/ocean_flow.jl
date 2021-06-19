@@ -62,6 +62,10 @@ C̅ = pmap(mCG_tensor, P; batch_size=ceil(Int, length(P)/nprocs()^2))
 p = LCSParameters(2.5)
 vortices, singularities = ellipticLCS(C̅, xspan, yspan, p)
 
+# Let us compute the area of each vortex has and whether it rotates in a clockwise fashion.
+
+area.(vortices), clockwise.(vortices, interp_rhs, t_initial, p=uv)
+
 # Finally, the result is visualized as follows.
 
 using Plots

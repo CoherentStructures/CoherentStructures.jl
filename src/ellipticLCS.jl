@@ -15,7 +15,7 @@ struct Singularity{T<:Real}
     index::Rational{Int}
 end
 function Singularity(coords::SVector{2}, index::Real)
-    return Singularity(coords, convert(Rational, index))
+    return Singularity(coords, convert(Rational{Int}, index))
 end
 function Singularity(coords::NTuple{2,Real}, index::Real)
     return Singularity(SVector{2}(coords), index)
@@ -1587,12 +1587,12 @@ function in_uniform_squares(xs, λ⁰, cache)
 end
 
 function contains_point(xs, point_to_check)
-    points_to_center = [x - point_to_check for x in xs]
+    points_to_center = (x - point_to_check for x in xs)
     angles = [atan(x[2], x[1]) for x in points_to_center]
     lx = length(xs)
     res = 0.0
     for i in 0:(lx-1)
-        res += s1dist(angles[i+1], angles[((i+1)%lx)+1])
+        res += S1Dist()(angles[i + 1], angles[((i + 1)%lx) + 1])
     end
     res /= 2π
     return !iszero(round(res))
@@ -1804,3 +1804,74 @@ function area(poly::Vector{SVector{2,T}}) where {T}
 end
 area(barrier::EllipticBarrier) = area(barrier.curve)
 area(vortex::EllipticVortex)   = area(last(vortex.barriers))
+
+"""
+    center(polygon)
+
+Compute the center (of mass) of `polygon`, which can be of type `Vector{SVector{2}}`,
+`EllipticBarrier` or `EllipticVortex`. In the latter case, the center of
+the outermost (i.e., the last `EllipticBarrier` in the `barriers` field) is computed.
+"""
+function center(poly::Vector{SVector{2,T}}) where {T}
+    result = float(zero(eltype(poly)))
+    a = zero(T)
+    @inbounds @simd for i in 1:length(poly) - 1
+        p1 = poly[i]
+        p2 = poly[i+1]
+        pd = p1[1]*p2[2]-p2[1]*p1[2]
+        result += (p1 + p2) * pd
+        a += pd
+    end
+    p1 = last(poly)
+    p2 = first(poly)
+    a += p1[1]*p2[2]-p2[1]*p1[2] # yields the double of the area
+    result /= (3a) # should be divided by 6*area
+    return result
+end
+center(barrier::EllipticBarrier) = center(barrier.curve)
+center(vortex::EllipticVortex)   = center(last(vortex.barriers))
+
+"""
+    Base.extrema(barrier) -> (LL, UR)
+    Base.extrema(vortex) -> (LL, UR)
+
+Compute an axis-aligned, rectangular bounding box around an [`EllipticVortex`](@ref)
+or an [`EllipticBarrier`](@ref). Returns the coordinates of the lower left corner `LL`
+and of the upper right corner `UR`.
+"""
+function Base.extrema(barrier::EllipticBarrier)
+    xmin, xmax = extrema(c[1] for c in barrier.curve)
+    ymin, ymax = extrema(c[2] for c in barrier.curve)
+    return SVector{2}((xmin, ymin)), SVector{2}((xmax, ymax))
+end
+Base.extrema(vortex::EllipticVortex) = extrema(last(vortex.barriers))
+
+"""
+    clockwise(barrier, velocity, t0; p=nothing) -> Bool
+    clockwise(vortex, velocity, t0; p=nothing) -> Bool
+
+Determine whether a given `vortex` or `barrier` is instantaneously (at `t0`) rotating
+clockwise due to the velocity field `velocity`. The keyword argument `p` is a parameter
+passed to `velocity`, for instance the interpolant of the interpolating velocity field
+[`interp_rhs`](@ref).
+
+Clockwise-rotating vortices correspond to anticyclones in the Northern hemisphere and to
+cyclones in the Southern hemisphere.
+"""
+function clockwise(barrier::EllipticBarrier, velo::ODE.ODEFunction{false}, t0; p=nothing)
+    curve = barrier.curve
+    result = 0.0
+    pprev = curve[end-1]
+    pcurr = curve[1]
+    pnext = curve[2]
+    pdiff = pnext - pprev
+    @assert pdiff[2] > 0
+    result = dot(velo(pcurr, p, t0), pdiff)
+    @inbounds for i in 3:length(curve)
+        pprev, pcurr, pnext = pcurr, pnext, curve[i]
+        result += dot(velo(pcurr, p, t0), pnext - pprev)
+    end
+    return result < 0
+end
+clockwise(vortex::EllipticVortex, velo, t0; p=nothing) =
+    clockwise(last(vortex.barriers), velo, t0; p=p)

@@ -30,6 +30,8 @@ export
 	flowgrow,
 	FlowGrowParams,
 	area,
+	center,
+	clockwise,
 
 	#diffusion_operators.jl
 	gaussian,

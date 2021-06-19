@@ -315,46 +315,41 @@ function CG_tensor(odefun, u, tspan, δ; kwargs...)
 end
 
 """
-    pullback_tensors(odefun, u, tspan, δ; D, kwargs...) -> Tuple(Vector{SymmetricTensor},Vector{SymmetricTensor})
+    pullback_tensors(odefun, u, tspan, δ; D, kwargs...) -> (C, D)
 
-Returns the time-resolved pullback tensors of both the diffusion and the metric
-tensor along a trajectory.
-Linearized flow maps are computed with [`linearized_flow`](@ref), see its
-documentation for the meaning of `δ`.
+Returns the time-resolved pullback tensors of both the metric `C` and the diffusion tensor
+`D` along a trajectory. Linearized flow maps are computed with [`linearized_flow`](@ref),
+see its documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
-   * `D`: (constant) diffusion tensor, metric tensor is computed via inversion;
-     defaults to identity tensor
+   * `D`: diffusion tensor function, metric tensor is computed via inversion
    * `kwargs` are passed to `linearized_flow`
 """
-function pullback_tensors(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
-    G = inv(D)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
-    MT = [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
-    return MT, inv.(MT)
+function pullback_tensors(odefun, u, tspan, δ; D::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+    DT = pullback_diffusion_tensor(odefun, u, tspan, δ; D = D, kwargs...)
+    return inv.(DT), DT
 end
 
 """
     pullback_metric_tensor(odefun, u, tspan, δ; G, kwargs...) -> Vector{SymmetricTensor}
 
-Returns the time-resolved pullback tensors of the metric tensor along a trajectory,
-aka right Cauchy-Green strain tensor.
-Linearized flow maps are computed with [`linearized_flow`](@ref), see its
-documentation for the meaning of `δ`.
+Returns the time-resolved pullback tensors of the metric tensor along a trajectory, aka
+right Cauchy-Green strain tensor. Linearized flow maps are computed with
+[`linearized_flow`](@ref), see its documentation for the meaning of `δ`.
 
    * `odefun`: RHS of the ODE
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
-   * `G`: (constant) metric tensor
+   * `G`: metric tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_metric_tensor(odefun, u, tspan, δ; G::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
-    return [Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF]
+function pullback_metric_tensor(odefun, u, tspan, δ; G::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+    pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    return [Tensors.symmetric(transpose(DF[i]) ⋅ G(pos[i]) ⋅ DF[i]) for i in eachindex(pos, DF)]
 end
 
 """
@@ -368,53 +363,13 @@ documentation for the meaning of `δ`.
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
-   * `D`: (constant) diffusion tensor
+   * `D`: diffusion tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_diffusion_tensor(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
-    DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])
-    return [Tensors.symmetric(df ⋅ D ⋅ transpose(df)) for df in DFinv]
-end
-
-# TODO: this function likely doesn't work, uses an unsupported give_back_position keyword argument
-function pullback_diffusion_tensor_function(
-    odefun,
-    u::AbstractVector{T},
-    tspan::AbstractVector{S},
-    δ::Float64,
-    Dfun;
-    p=nothing,
-    tolerance=1.e-3,
-    solver=ODE.BS5(),
-) where {T<:Real,S<:Real}
-
-    DF, pos = iszero(δ) ?
-        linearized_flow(
-        odefun,
-        u,
-        tspan,
-        p = p,
-        tolerance = tolerance,
-        solver = solver,
-        give_back_position = true,
-    ) :
-        linearized_flow(
-        odefun,
-        u,
-        tspan,
-        δ,
-        p = p,
-        tolerance = tolerance,
-        solver = solver,
-        give_back_position = true,
-    )
-
-    DF .= inv.(DF)
-    tlen = length(tspan)
-    result = map(eachindex(DF, pos)) do i
-        Tensors.symmetric(DF[i] ⋅ Dfun(pos[i]) ⋅ transpose(DF[i]))
-    end
-    return result
+function pullback_diffusion_tensor(odefun, u, tspan, δ; D::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+    pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    DFinv = inv.(DF)
+    return [Tensors.symmetric(DFinv[i] ⋅ D(pos[i]) ⋅ transpose(DFinv[i])) for i in eachindex(pos, DF)]
 end
 
 """
@@ -428,12 +383,13 @@ documentation for the meaning of `δ`.
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
-   * `B`: (constant) SDE tensor
+   * `B`: SDE tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B::Tensor{2}=one(Tensor{2,2}), kwargs...)
-    DFinv = inv.(linearized_flow(odefun, u, tspan, δ; kwargs...)[2])
-    return [df ⋅ B for df in DFinv]
+function pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+    pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    DFinv = inv.(DF)
+    return [inv(DF[i]) ⋅ B(pos[i]) for i in eachindex(pos, DF)]
 end
 
 """
@@ -449,13 +405,14 @@ documentation for the meaning of `δ`.
    * `u`: initial value of the ODE
    * `tspan`: set of time instances at which to save the trajectory
    * `δ`: stencil width for the finite differences, see [`linearized_flow`](@ref)
-   * `D`: (constant) diffusion tensor
+   * `D`: diffusion tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function av_weighted_CG_tensor(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
-    G = inv(D)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)[2]
-    return det(D) * mean([Tensors.symmetric(transpose(df) ⋅ G ⋅ df) for df in DF])
+function av_weighted_CG_tensor(odefun, u, tspan, δ; D::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+    pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    return mean(
+        (det(D(pos[i]))*Tensors.symmetric(transpose(DF[i])⋅inv(D(pos[i]))⋅DF[i]) for i in eachindex(pos, DF))
+    )
 end
 
 met2deg(u) = diagm(SymmetricTensor{2,2}, (1 / cos(deg2rad(u[2])), 1))
