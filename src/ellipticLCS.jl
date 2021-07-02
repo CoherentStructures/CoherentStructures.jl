@@ -691,7 +691,7 @@ function compute_returning_orbit(vf::ODE.ODEFunction, seed, save = false, maxite
         return (sol.u, sol.retcode)
     catch e
         if e isa BoundsError
-            return ([SVector{2,eltype(T)}(NaN, NaN)], :BoundsError)
+            return ([typeof(seed)(NaN, NaN)], :BoundsError)
         end
         rethrow(e)
     end
