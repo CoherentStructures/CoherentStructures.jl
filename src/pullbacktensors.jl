@@ -30,10 +30,10 @@ julia> f = u -> flow((u, p, t) -> vf(u, p, t), u, range(0., stop=100, length=21)
 @inline function flow(odefun, u0, tspan; kwargs...)
     return flow(ODE.ODEFunction(odefun), u0, tspan; kwargs...)
 end
-@inline function flow(odefun::ODE.ODEFunction{true}, u0::Union{Tuple{Vararg{T}},AbstractVecOrMat{T}}, tspan; kwargs...) where {T<:Real}
+@inline function flow(odefun::ODE.ODEFunction{true}, u0::Union{Tuple{Vararg{<:Number}},AbstractVecOrMat{<:Number}}, tspan; kwargs...)
     return _flow(odefun, convert(Vector, u0), tspan; kwargs...)
 end
-@inline function flow(odefun::ODE.ODEFunction{false}, u0::Union{Tuple{Vararg{T}},AbstractVecOrMat{T}}, tspan; kwargs...) where {T<:Real}
+@inline function flow(odefun::ODE.ODEFunction{false}, u0::Union{Tuple{Vararg{<:Number}},AbstractVecOrMat{<:Number}}, tspan; kwargs...)
     return _flow(odefun, convert(SVector{length(u0)}, u0), tspan; kwargs...)
 end
 @inline function _flow(

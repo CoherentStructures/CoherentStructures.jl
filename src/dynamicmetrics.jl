@@ -275,11 +275,7 @@ end
 Return a sparse distance matrix as determined by the sparsification method `sp_method`
 and `metric`.
 """
-function spdist(
-    data::AbstractArray{<:SVector},
-    sp_method::Neighborhood,
-    metric::Dists.PreMetric = Distances.Euclidean(),
-)
+function spdist(data, sp_method::Neighborhood, metric::Dists.PreMetric = Distances.Euclidean())
     N = length(data) # number of states
     data = vec(data)
     # TODO: check for better leafsize values
@@ -292,11 +288,7 @@ function spdist(
     Vs = fill(1.0, length(Is))
     return sparse(Is, Js, Vs, N, N, *)
 end
-function spdist(
-    data::AbstractVector{<:SVector},
-    sp_method::Union{KNN,MutualKNN},
-    metric::Dists.PreMetric = Distances.Euclidean(),
-)
+function spdist(data, sp_method::Union{KNN,MutualKNN}, metric::Dists.PreMetric = Distances.Euclidean())
     N = length(data) # number of states
     data = vec(data)
     # TODO: check for better leafsize values
@@ -315,11 +307,7 @@ function spdist(
         return min.(D, permutedims(D))
     end
 end
-function spdist(
-    data::AbstractArray{<:AbstractArray{<:SVector}},
-    sp_method::Neighborhood,
-    metric::STmetric,
-)
+function spdist(data, sp_method::Neighborhood, metric::STmetric)
     N = length(data) # number of trajectories
     T = Dists.result_type(metric, first(data), first(data))
     I1 = collect(1:N)
@@ -352,11 +340,7 @@ function spdist(
     Vs = vcat(V1, getindex.(IJV, 3)...)
     return sparse(Is, Js, Vs, N, N)
 end
-function spdist(
-    data::AbstractArray{<:AbstractArray{<:SVector}},
-    sp_method::Union{KNN,MutualKNN},
-    metric::STmetric,
-)
+function spdist(data, sp_method::Union{KNN,MutualKNN}, metric::STmetric)
     data = vec(data)
     N, k = length(data), sp_method.k
     Is = repeat(1:N, inner=k+1)
