@@ -17,7 +17,6 @@ export
 	compute_singularities,
 	singularity_detection,
 	critical_point_detection,
-	combine_singularities,
 	compute_returning_orbit,
 	compute_closed_orbits,
 	getvortices,
@@ -45,8 +44,6 @@ export
 	kde_normalize!,
 	row_normalize!,
 	unionadjacency,
-	sparse_adjacency_family,
-	sparse_adjacency,
 	stationary_distribution,
 	diffusion_coordinates,
 	diffusion_distance,
@@ -76,7 +73,6 @@ export
 	regularP2QuadrilateralGrid,
 	regularTetrahedralGrid,
 	regularP2TetrahedralGrid,
-	regularGrid,
 	evaluate_function_from_dofvals,
 	evaluate_function_from_node_or_cellvals,
 	evaluate_function_from_node_or_cellvals_multiple,
@@ -91,13 +87,6 @@ export
 	nBCDofs,
 	getDofCoordinates,
 	getCellMidpoint,
-
-	#numericalExperiments.jl
-	makeOceanFlowTestCase,
-	makeDoubleGyreTestCase,
-	experimentResult,
-	runExperiment!,
-	plotExperiment,
 
 	#ulam,jl
 	ulam,
@@ -118,7 +107,6 @@ export
 	plot_singularities,
 	plot_singularities!,
 	plot_vortices,
-	plot_vortices!,
 
 	#pullbacktensors.jl
 	flow,
@@ -128,7 +116,6 @@ export
 	pullback_tensors,
 	pullback_metric_tensor,
 	pullback_diffusion_tensor,
-	pullback_diffusion_tensor_function,
 	pullback_SDE_diffusion_tensor,
 	av_weighted_CG_tensor,
 

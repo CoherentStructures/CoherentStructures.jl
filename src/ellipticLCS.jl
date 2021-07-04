@@ -1,4 +1,4 @@
-# (c) 2018-2020 Daniel Karrasch & Nathanael Schilling
+# (c) 2018-2021 Daniel Karrasch & Nathanael Schilling
 
 const Ω = SMatrix{2,2}(0.0, 1.0, -1.0, 0.0)
 
@@ -393,10 +393,7 @@ function (c::Combine)(singularities::Vector{<:Singularity})
             num_combined += 1
         end
         if current_index != 0
-            push!(
-                combined_singularities,
-                Singularity(current_coords, current_index),
-            )
+            push!(combined_singularities, Singularity(current_coords, current_index))
         end
     end
 
@@ -415,9 +412,7 @@ function (c::Combine20)(singularities::Vector{<:Singularity})
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
     sing_seen = falses(N)
 
-    new_singularities = eltype(singularities)[] # sing_out
-    sing_out_weight = Int[]
-
+    new_sings = eltype(singularities)[] # sing_out
     for i in 1:N
         if sing_seen[i]
             continue
@@ -425,37 +420,32 @@ function (c::Combine20)(singularities::Vector{<:Singularity})
         sing_seen[i] = true
 
         if singularities[i].index != 1 // 2
-            push!(new_singularities, singularities[i])
+            push!(new_sings, singularities[i])
             continue
         end
         #We have an index +1/2 singularity
-        idxs, dists = NN.knn(sing_tree, singularities[i].coords, 2, true)
+        idxs, _ = NN.knn(sing_tree, singularities[i].coords, 2, true)
         nn_idx = idxs[2]
 
         #We've already dealt with the nearest neighbor (but didn't find
         #this one as nearest neighbor), or it isn't a wedge
         if sing_seen[nn_idx] || singularities[nn_idx].index != 1 // 2
-            push!(new_singularities, singularities[i])
+            push!(new_sings, singularities[i])
             continue
         end
 
         #See if the nearest neighbor of the nearest neighbor is i
-        idxs2, dists2 = NN.knn(sing_tree, singularities[nn_idx].coords, 2, true)
+        idxs2, _ = NN.knn(sing_tree, singularities[nn_idx].coords, 2, true)
         if idxs2[2] != i
-            push!(new_singularities, singularities[i])
+            push!(new_sings, singularities[i])
             continue
         end
 
         sing_seen[nn_idx] = true
-        push!(
-            new_singularities,
-            Singularity(
-                0.5 * (singularities[i].coords + singularities[nn_idx].coords),
-                2 // 2,
-            ),
-        )
+        mean_coords = 0.5*(singularities[i].coords + singularities[nn_idx].coords)
+        push!(new_sings, Singularity(mean_coords, 1))
     end
-    return new_singularities
+    return new_sings
 end
 @deprecate combine_20(singularities) Combine20()(singularities)
 
@@ -475,8 +465,7 @@ function (c::Combine31)(singularities::Vector{<:Singularity})
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
     sing_seen = falses(N)
 
-    new_singularities = eltype(singularities)[] # sing_out
-    sing_out_weight = Int[]
+    new_sings = eltype(singularities)[] # sing_out
 
     #Iterate over all trisector-type singularities
     for i in 1:N
@@ -484,7 +473,7 @@ function (c::Combine31)(singularities::Vector{<:Singularity})
             continue
         end
 
-        idxs, dists = NN.knn(sing_tree, singularities[i].coords, 4, true)
+        idxs, _ = NN.knn(sing_tree, singularities[i].coords, 4, true)
         correct_configuration = true
         for j in 1:3
             if singularities[idxs[j+1]].index != 1 // 2
@@ -507,16 +496,16 @@ function (c::Combine31)(singularities::Vector{<:Singularity})
             sing_seen[idxs[j+1]] = true
         end
         sing_seen[i] = true
-        push!(new_singularities, Singularity(singularities[i].coords, 1 // 1))
+        push!(new_sings, Singularity(singularities[i].coords, 1))
     end
 
-    #Add whatever singularities are left over
+    #Add whatever singularities are left
     for i in 1:N
         if !sing_seen[i]
-            push!(new_singularities, singularities[i])
+            push!(new_sings, singularities[i])
         end
     end
-    return new_singularities
+    return new_sings
 end
 @deprecate combine_31(singularities) Combine31()(singularities)
 
@@ -529,21 +518,19 @@ function (c::Combine20Aggressive)(singularities::Vector{<:Singularity})
     N = length(singularities)
     N == 1 && return singularities
     sing_tree = NN.KDTree(getcoords(singularities), Dists.Euclidean())
-    combined_with = [Int[] for i in 1:N]
+    combined_with = [Int[] for _ in 1:N]
     sing_seen = falses(N)
 
-    new_singularities = eltype(singularities)[] # sing_out
-    sing_out_weight = Int[]
+    new_sings = eltype(singularities)[] # sing_out
 
     for i in 1:N
         cur_sing = singularities[i]
-
         if cur_sing.index != 1 // 2
             continue
         end
 
         #We have an index +1/2 singularity
-        idxs, dists = NN.knn(sing_tree, cur_sing.coords, 2, true)
+        idxs, _ = NN.knn(sing_tree, cur_sing.coords, 2, true)
         nn_idx = idxs[2]
         nn_sing = singularities[nn_idx]
 
@@ -575,7 +562,6 @@ function (c::Combine20Aggressive)(singularities::Vector{<:Singularity})
             end
             if in_rect(singularities[j].coords, cur_sing.coords, nn_sing.coords)
                 found_in_rect = true
-                found_in_rect = false
             end
         end
 
@@ -583,22 +569,17 @@ function (c::Combine20Aggressive)(singularities::Vector{<:Singularity})
 
         sing_seen[nn_idx] = true
         sing_seen[i] = true
-        push!(
-            new_singularities,
-            Singularity(
-                0.5 * (singularities[i].coords + singularities[nn_idx].coords),
-                2 // 2,
-            ),
-        )
+        mean_coords = 0.5*(singularities[i].coords + singularities[nn_idx].coords)
+        push!(new_sings, Singularity(mean_coords, 1))
         push!(combined_with[nn_idx], i)
     end
 
     for i in 1:N
         if !sing_seen[i]
-            push!(new_singularities, singularities[i])
+            push!(new_sings, singularities[i])
         end
     end
-    return new_singularities
+    return new_sings
 end
 @deprecate combine_20_aggressive(singularities) Combine20Aggressive()(singularities)
 
@@ -627,11 +608,11 @@ function critical_point_detection(
     merge_heuristics = (Combine20(),),
 )
     singularities = compute_singularities(vs, xspan, yspan, dist)
-    new_singularities = Combine(combine_distance)(singularities)
+    new_sings = Combine(combine_distance)(singularities)
     for f in merge_heuristics
-        new_singularities = f(new_singularities)
+        new_sings = f(new_sings)
     end
-    return new_singularities
+    return new_sings
 end
 @inline function critical_point_detection(
     vs::AxisArray{<:SVector{2},2},
@@ -689,14 +670,7 @@ returning orbit should be saved.
 Returns a tuple of `orbit` and `statuscode` (`0` for success, `1` for `maxiters`
 reached, `2` for out of bounds error, 3 for other error).
 """
-function compute_returning_orbit(
-    vf::ODE.ODEFunction,
-    seed::T,
-    save::Bool = false,
-    maxiters::Int = 2000,
-    tolerance::Float64 = 1e-8,
-    max_orbit_length::Float64 = 20.0,
-)::Tuple{Vector{T},Symbol} where {T<:SVector{2}} # TODO: type assertion necessary on Julia v1.0
+function compute_returning_orbit(vf::ODE.ODEFunction, seed, save = false, maxiters = 2000, tolerance = 1e-8, max_orbit_length = 20.0)
     dir = vf(seed, nothing, 0.0)[2] < 0 ? -1 : 1 # Whether orbits initially go upwards
     condition(u, t, integrator) = dir * (seed[2] - u[2])
     affect!(integrator) = ODE.terminate!(integrator)
@@ -717,20 +691,13 @@ function compute_returning_orbit(
         return (sol.u, sol.retcode)
     catch e
         if e isa BoundsError
-            return ([SVector{2,eltype(T)}(NaN, NaN)], :BoundsError)
+            return ([typeof(seed)(NaN, NaN)], :BoundsError)
         end
         rethrow(e)
     end
 end
 
-function Poincaré_return_distance(
-    vf,
-    seed::SVector{2,T},
-    save::Bool = false;
-    tolerance_ode::Float64 = 1e-8,
-    maxiters_ode::Int = 2000,
-    max_orbit_length::Float64 = 20.0,
-) where {T<:Real}
+function Poincaré_return_distance(vf, seed, save = false; tolerance_ode = 1e-8, maxiters_ode = 2000, max_orbit_length = 20.0)
     sol, retcode = compute_returning_orbit(
         vf,
         seed,
@@ -743,7 +710,7 @@ function Poincaré_return_distance(
     if retcode === :Terminated
         return sol[end][1] - seed[1]
     else
-        return T(NaN)
+        return eltype(seed)(NaN)
     end
 end
 
@@ -775,16 +742,7 @@ constructor `ηfield`, and an LCScache `cache`.
 
 * `rev=true`: determines whether closed orbits are sought from the outside inwards (`true`)
   or from the inside outwards (`false`);
-* `pmin=0.7`, `pmax=1.5`: correspond to the range of shift parameters in which closed orbits are sought;
-* `rdist=1e-4` sets the required return distance for an orbit to be considered as closed
-
-rev=true, pmin=0.7, pmax=1.5, rdist=1e-4, tolerance_ode=1e-8, maxiters_ode=2000, maxiters_bisection=20
-
-
-. . The parameter `maxiters_ode` gives the maximum number
-of steps taken by the ODE solver when computing the closed orbit, the ode solver uses tolerance
-given by `tolerance_ode`. The parameter `maxiters_bisection` gives the maximum number of iterations
-used by the bisection algorithm to find closed orbits.
+* `p::LCSParameters`: an object holding the parameters for the LCS computation; see [`LCSParameters`](@ref).
 """
 function compute_closed_orbits(
     ps::AbstractVector{SVector{2,S1}},
@@ -801,10 +759,7 @@ function compute_closed_orbits(
     end
     # define local helper functions for the η⁺/η⁻ closed orbit detection
     prd(λ::Float64, σ::Bool, seed::SVector{2}, cache) =
-        let tol = p.tolerance_ode,
-            maxode = p.maxiters_ode,
-            maxorbit = p.max_orbit_length
-
+        let tol = p.tolerance_ode, maxode = p.maxiters_ode, maxorbit = p.max_orbit_length
             Poincaré_return_distance(
                 ηfield(λ, σ, cache),
                 seed;
@@ -896,13 +851,9 @@ function compute_closed_orbits(
                     uniform = !(p.only_uniform) || all(predicate, orbit)
                 end
 
-                contains_singularity =
-                    !(p.only_enclosing) || contains_point(orbit, ps[1])
+                contains_singularity = !(p.only_enclosing) || inpolygon(orbit, ps[1])
 
-                if (
-                    closed &&
-                    uniform && in_well_defined_squares && contains_singularity
-                )
+                if (closed && uniform && in_well_defined_squares && contains_singularity)
                     push!(vortices, EllipticBarrier(orbit, ps[1], λ⁰, σ))
                     rev && break
                 end
@@ -914,7 +865,6 @@ end
 
 """
     ellipticLCS(T::AbstractMatrix, xspan, yspan, p; kwargs...)
-    ellipticLCS(T::AxisArray, p; kwargs...)
 
 Computes elliptic LCSs as null-geodesics of the Lorentzian metric tensor
 field given by shifted versions of `T` on the 2D computational grid spanned
@@ -946,11 +896,10 @@ function ellipticLCS(
 ) where {S<:Real}
     # detect centers of elliptic (in the index sense) regions
     singularities = singularity_detection(T, xspan, yspan, p.indexradius;
-        merge_heuristics = p.merge_heuristics,
-    )
+        merge_heuristics = p.merge_heuristics)
     append!(singularities, suggested_centers)
     if singularity_predicate !== nothing
-        singularities = filter(singularity_predicate, singularities)
+        filter!(singularity_predicate, singularities)
     end
     verbose && @info "Found $(length(singularities)) singularities..."
     vortexcenters = filter(s -> s.index == 1, singularities)
@@ -962,11 +911,7 @@ function ellipticLCS(
     end
     return vortices, singularities
 end
-@inline function ellipticLCS(
-    T::AxisArray{<:SymmetricTensor{2,2,S},2},
-    p::LCSParameters = LCSParameters();
-    kwargs...,
-) where {S<:Real}
+@inline function ellipticLCS(T::AxisArray{<:SymmetricTensor,2}, p::LCSParameters = LCSParameters(); kwargs...)
     xspan, yspan = T.axes
     return ellipticLCS(T.data, xspan.val, yspan.val, p; kwargs...)
 end
@@ -1081,14 +1026,15 @@ function ηfield(λ::Float64, σ::Bool, c::LCScache)
 end
 
 """
-    getvortices(T, centers, p = LCSParameters(); outermost=true, verbose=true, debug=false)
+    getvortices(T, xspan, yspan, centers, p = LCSParameters(); kwargs...)
 
 Compute [elliptic vortices](@ref EllipticVortex) from the symmetric tensor field
-`T` with Poincaré sections placed at locations listed in `centers`. The argument
-`p` is of type [`LCSParameters`](@ref) and contains parameters used in the
-vortex detection.
+`T` (with axes `xspan` and `yspan`), with Poincaré sections placed at locations listed in
+`centers`. The argument `p` is of type [`LCSParameters`](@ref) and contains parameters used
+in the vortex detection.
 
 ## Keyword arguments
+
 * `outermost=true`: whether closed orbits should be computed from the outside
   inwards until the first closed orbit is found; otherwise, closed orbits are
   computed from the center outward.
@@ -1096,6 +1042,15 @@ vortex detection.
 * `debug=false`: whether parallel computation should be used. Set to `true` to
   turn off parallel computation and to obtain more useful error messages.
 """
+function getvortices(
+    T::AbstractMatrix{<:SymmetricTensor{2,2}},
+    xspan::AbstractRange,
+    yspan::AbstractRange,
+    vortexcenters::AbstractVector{<:Singularity},
+    p::LCSParameters = LCSParameters();
+    kwargs...)
+    return getvortices(AxisArray(T, xspan, yspan), vortexcenters, p; kwargs...)
+end
 function getvortices(
     T::AxisArray{SymmetricTensor{2,2,S,3},2},
     vortexcenters::AbstractVector{<:Singularity},
@@ -1105,7 +1060,6 @@ function getvortices(
     debug::Bool = false,
 ) where {S<:Real}
     xspan = T.axes[1]
-    xmax = xspan[end]
 
     #This is where results go
     vortices = EllipticVortex{S}[]
@@ -1126,8 +1080,8 @@ function getvortices(
     #How many vortex centers we have
     num_jobs = length(vortexcenters)
 
-    jobs_queue_length = debug ? num_jobs : nprocs()
-    results_queue_length = debug ? num_jobs : 2 * nprocs()
+    jobs_queue_length = debug ? num_jobs : Distributed.nprocs()
+    results_queue_length = debug ? num_jobs : 2 * Distributed.nprocs()
 
     jobs_rc = RemoteChannel(
         () -> Channel{Tuple{S,S,S,LCSParameters,Bool,Ttype}}(jobs_queue_length),
@@ -1255,16 +1209,6 @@ function getvortices(
     @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist
 end
-function getvortices(
-    T::AbstractMatrix{<:SymmetricTensor{2,2}},
-    xspan::AbstractRange,
-    yspan::AbstractRange,
-    vortexcenters::AbstractVector{<:Singularity},
-    p::LCSParameters = LCSParameters();
-    kwargs...
-) where {S<:Real}
-    return getvortices(AxisArray(T, xspan, yspan), vortexcenters, p; kwargs...)
-end
 
 #TODO: Document this more etc...
 function makeVortexListUnique(vortices::Vector{<:EllipticVortex}, indexradius)
@@ -1283,8 +1227,8 @@ function makeVortexListUnique(vortices::Vector{<:EllipticVortex}, indexradius)
             j == i && continue
             c1 = [SVector{2}(p[1], p[2]) for p in vortices[j].barriers[1].curve]
             c2 = [SVector{2}(p[1], p[2]) for p in vortices[i].barriers[1].curve]
-            which_not_to_add[j] = contains_point(c1, vortexcenters[i]) ||
-                contains_point(c2, vortexcenters[j])
+            which_not_to_add[j] = inpolygon(c1, vortexcenters[i]) ||
+                inpolygon(c2, vortexcenters[j])
         end
         push!(result, vortices[i])
     end
@@ -1327,7 +1271,6 @@ function constrainedLCS(
 ) where {S}
     # detect centers of elliptic (in the index sense) regions
     xspan = q.axes[1]
-    xmax = xspan[end]
     # TODO: unfortunately, this type assertion is required for inferrability
     critpts::Vector{Singularity{S}} = critical_point_detection(
         q,
@@ -1369,15 +1312,15 @@ function constrainedLCS(
     # the results in results_rc
     num_jobs = length(vortexcenters)
 
-    jobs_queue_length = debug ? num_jobs : nprocs()
-    results_queue_length = debug ? num_jobs : 2 * nprocs()
+    jobs_queue_length = debug ? num_jobs : Distributed.nprocs()
+    results_queue_length = debug ? num_jobs : 2 * Distributed.nprocs()
 
 
     jobs_rc = RemoteChannel(
-        () -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(nprocs()),
+        () -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(jobs_queue_length),
     )
     results_rc = RemoteChannel(
-        () -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(2 * nprocs()),
+        () -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(results_queue_length),
     )
 
     #Producer job
@@ -1436,7 +1379,7 @@ function constrainedLCS(
 
                 cache = deepcopy(q_local)
                 normsqq = map(v -> norm(v)^2, q_local)
-                nitp = ITP.LinearInterpolation(normsqq)
+                # nitp = ITP.LinearInterpolation(normsqq)
                 invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
                 q1 = invnormsqq .* q_local
                 function constrainedLCSηfield(λ, s, cache)
@@ -1470,9 +1413,9 @@ function constrainedLCS(
     end # consumer_job
 
     if debug
-        @info "Starting vortex-calculation"
+        @info "Starting vortex computation"
         consumer_job()
-        @info "Done with vortex-calculation"
+        @info "Done with vortex computation"
     else
         consumer_jobs = map(p -> remotecall(consumer_job, p), workers())
     end
@@ -1504,7 +1447,7 @@ function constrainedLCS(
     end
 
     #Get rid of vortices without barriers
-    vortexlist = filter(v -> !isempty(v.barriers), vortices)
+    vortexlist = filter!(v -> !isempty(v.barriers), vortices)
     verbose &&
     @info "Found $(sum(map(v -> length(v.barriers), vortexlist))) elliptic barriers in total."
     return vortexlist, critpts
@@ -1525,21 +1468,13 @@ function in_defined_squares(xs, cache)
     ny = length(yspan)
 
     for x in xs
-        xid = floor(
-            Int,
-            (nx - 1) * (x[1] - xspan[1]) /
-            (xspan[end] - xspan[1] + step(xspan)),
-        )
-        yid = floor(
-            Int,
-            (ny - 1) * (x[2] - yspan[1]) /
-            (yspan[end] - yspan[1] + step(xspan)),
-        )
+        xid = Int(fld((nx - 1) * (x[1] - xspan[1]), xspan[end] - xspan[1] + step(xspan)))::Int
+        yid = Int(fld((ny - 1) * (x[2] - yspan[1]), yspan[end] - yspan[1] + step(xspan)))::Int
 
         xid = xid == nx ? nx - 1 : xid
         yid = yid == ny ? ny - 1 : yid
 
-        ps = [cache.η[xid+di+1, yid+dj+1] for di in (0, 1), dj in (0, 1)]
+        ps = [cache.η[xid + di + 1, yid + dj + 1] for di in (0, 1), dj in (0, 1)]
 
         for i in 1:4, j in (i+1):4
             ps[i] ⋅ ps[j] < 0 && return false
@@ -1562,22 +1497,14 @@ function in_uniform_squares(xs, λ⁰, cache)
     ny = length(yspan)
 
     for x in xs
-        xid = floor(
-            Int,
-            (nx - 1) * (x[1] - xspan[1]) /
-            (xspan[end] - xspan[1] + step(xspan)),
-        )
-        yid = floor(
-            Int,
-            (ny - 1) * (x[2] - yspan[1]) /
-            (yspan[end] - yspan[1] + step(yspan)),
-        )
+        xid = Int(fld((nx - 1) * (x[1] - xspan[1]), xspan[end] - xspan[1] + step(xspan)))::Int
+        yid = Int(fld((ny - 1) * (x[2] - yspan[1]), yspan[end] - yspan[1] + step(yspan)))::Int
 
         xid = xid == nx ? nx - 1 : xid
         yid = yid == ny ? ny - 1 : yid
 
-        l1s = [cache.λ₁[xid+di+1, yid+dj+1] for di in (0, 1), dj in (0, 1)]
-        l2s = [cache.λ₂[xid+di+1, yid+dj+1] for di in (0, 1), dj in (0, 1)]
+        l1s = [cache.λ₁[xid + di + 1, yid + dj + 1] for di in (0, 1), dj in (0, 1)]
+        l2s = [cache.λ₂[xid + di + 1, yid + dj + 1] for di in (0, 1), dj in (0, 1)]
 
         for i in 1:4
             !(l1s[i] <= λ⁰ <= l2s[i]) && return false
@@ -1586,7 +1513,7 @@ function in_uniform_squares(xs, λ⁰, cache)
     return true
 end
 
-function contains_point(xs, point_to_check)
+function inpolygon(xs, point_to_check)
     points_to_center = (x - point_to_check for x in xs)
     angles = [atan(x[2], x[1]) for x in points_to_center]
     lx = length(xs)
@@ -1621,11 +1548,7 @@ function materialbarriersTensors(
             kwargs...,
         )
     end
-    return pmap(
-        Tfun,
-        P0;
-        batch_size = div(length(P0), Distributed.nprocs()^2),
-    )
+    return pmap(Tfun, P0; batch_size = div(length(P0), Distributed.nprocs()^2))
 end
 
 """
@@ -1637,18 +1560,8 @@ spanned by `xspan` and `yspan`, where the averaged weighted CG tensor is compute
 time instance contained in `tspan`. The argument `lcsp` must be of type
 [`LCSParameters`](@ref), and contains parameters used for the elliptic vortex detection.
 """
-function materialbarriers(
-    odefun,
-    xspan,
-    yspan,
-    tspan,
-    lcsp;
-    δ = 1e-6,
-    tolerance = 1e-6,
-    p = nothing,
-    on_torus = false,
-    kwargs...,
-)
+function materialbarriers(odefun, xspan, yspan, tspan, lcsp;
+        δ = 1e-6, tolerance = 1e-6, p = nothing, on_torus = false, kwargs...)
     T0 = materialbarriersTensors(
         odefun,
         xspan,
