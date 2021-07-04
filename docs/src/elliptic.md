@@ -156,5 +156,5 @@ flowgrow
 area
 center
 clockwise
-Base.extrema
+Base.extrema(::EllipticBarrier)
 ```
