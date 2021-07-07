@@ -110,16 +110,16 @@ end
     vortices, singularities = @inferred ellipticLCS(Taxis, p; outermost=true, verbose=false)
     vortex = vortices[1]
     flowvortex = flow(rot_double_gyre, vortex, tspan)
-    @test flowvortex isa Vector{<:EllipticVortex}
+    @test flowvortex isa Vector{EllipticVortex}
     @test length(flowvortex) == length(tspan)
     flowbarrier = flow(rot_double_gyre, vortex.barriers[1], tspan)
-    @test flowbarrier isa Vector{<:EllipticBarrier}
+    @test flowbarrier isa Vector{EllipticBarrier}
     @test length(flowbarrier) == length(tspan)
     fgvortex = flowgrow(rot_double_gyre, vortex, tspan, FlowGrowParams(maxdist=0.1, mindist=0.01))
-    @test fgvortex isa Vector{<:EllipticVortex}
+    @test fgvortex isa Vector{EllipticVortex}
     @test length(fgvortex) == length(tspan)
     fgbarrier = flowgrow(rot_double_gyre, vortex.barriers[1], tspan, FlowGrowParams())
-    @test fgbarrier isa Vector{<:EllipticBarrier}
+    @test fgbarrier isa Vector{EllipticBarrier}
     @test length(fgbarrier) == length(tspan)
     @test area(vortex) == area(vortex.barriers[end])
     @test sum(map(v -> length(v.barriers), vortices)) == 2
@@ -165,17 +165,17 @@ end
 @testset "elliptic utils" begin
     circle = SVector.([reverse(sincos(x)) for x in range(0, 2pi, length=1000)])
     @test area(circle) ≈ π rtol=1e-5
-    @test center(circle) ≈ zeros(2) atol=5eps()
+    @test centroid(circle) ≈ zeros(2) atol=5eps()
     dense = range(-1, 1, length=101)
     sparse = range(1, -1, length=11)
     square = SVector{2}.(vcat(vcat.(1, dense), vcat.(sparse, 1), vcat.(-1, sparse), vcat.(dense, -1)) .+ Ref(ones(2)))
     @test area(square) ≈ 4 rtol=5eps()
-    @test center(square) ≈ ones(2) atol=5eps()
+    @test centroid(square) ≈ ones(2) atol=5eps()
     barrier = EllipticBarrier(circle, SVector{2}(0.0, 0.0), 1.0, true)
     vortices = EllipticVortex(SVector{2}(0.0, 0.0), [barrier])
     LL, UR = extrema(barrier)
     @test area(vortices) == area(barrier) == area(circle)
-    @test center(vortices) == center(barrier) == center(circle)
+    @test centroid(vortices) == centroid(barrier) == centroid(circle)
     @test extrema(vortices) == extrema(barrier)
     @test LL ≈ -ones(2) rtol=1e-5
     @test UR ≈ ones(2) rtol=1e-6

@@ -154,7 +154,7 @@ to compute the area of [`EllipticBarrier`](@ref) and [`EllipticVortex`](@ref) ob
 FlowGrowParams
 flowgrow
 area
-center
+centroid
 clockwise
 Base.extrema(::EllipticBarrier)
 ```
