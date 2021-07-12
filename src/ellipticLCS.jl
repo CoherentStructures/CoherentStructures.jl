@@ -10,15 +10,15 @@ Container type for critical points of vector fields or singularities of line fie
 * `coords::SVector{2}`: coordinates of the singularity
 * `index::Rational`: index of the singularity
 """
-struct Singularity{T<:Real}
-    coords::SVector{2,T}
+struct Singularity
+    coords::SVector{2,Float64}
     index::Rational{Int}
 end
-function Singularity(coords::SVector{2}, index::Real)
-    return Singularity(coords, convert(Rational{Int}, index))
+function Singularity(coords::SVector{2,<:Real}, index::Real)
+    return Singularity(convert(SVector{2,Float64}, coords), convert(Rational{Int}, index))
 end
 function Singularity(coords::NTuple{2,Real}, index::Real)
-    return Singularity(SVector{2}(coords), index)
+    return Singularity(SVector{2,Float64}(coords), index)
 end
 
 """
@@ -27,7 +27,7 @@ end
 Extracts the coordinates of `singularities`, a vector of `Singularity`s. Returns
 a vector of `SVector`s.
 """
-function getcoords(singularities::AbstractArray{<:Singularity})
+function getcoords(singularities::AbstractArray{Singularity})
     return [s.coords for s in singularities]
 end
 
@@ -36,7 +36,7 @@ end
 
 Extracts the indices of `singularities`, a vector of `Singularity`s.
 """
-function getindices(singularities::AbstractArray{<:Singularity})
+function getindices(singularities::AbstractArray{Singularity})
     return [s.index for s in singularities]
 end
 """
@@ -73,9 +73,9 @@ This is a container for coherent vortex boundaries. An object `barrier` of type
 * `s`: a `Bool` value, which encodes the sign in the formula of the direction
   field ``\\eta_{\\lambda}^{\\pm}`` via the formula ``(-1)^s``.
 """
-struct EllipticBarrier{T<:Real}
-    curve::Vector{SVector{2,T}}
-    core::SVector{2,T}
+struct EllipticBarrier
+    curve::Vector{SVector{2,Float64}}
+    core::SVector{2,Float64}
     p::Float64
     s::Bool
 end
@@ -89,9 +89,9 @@ and a list `barriers` of all computed [`EllipticBarrier`](@ref)s.
 * `center`: location of the vortex center;
 * `barriers`: vector of `EllipticBarrier`s.
 """
-struct EllipticVortex{T<:Real}
-    center::SVector{2,T}
-    barriers::Vector{EllipticBarrier{T}}
+struct EllipticVortex
+    center::SVector{2,Float64}
+    barriers::Vector{EllipticBarrier}
 end
 
 abstract type Parameters end
@@ -315,7 +315,7 @@ function compute_singularities(v::AbstractMatrix{<:SVector{2}},
     xstephalf = step(xspan) / 2
     ystephalf = step(yspan) / 2
     T = typeof(xstephalf)
-    singularities = Singularity{T}[]
+    singularities = Singularity[]
     # go counter-clockwise around each grid cell and add angles
     # for cells with non-vanishing index, collect cell midpoints
     @inbounds for (j, y) in enumerate(yspan[1:end-1]), (i, x) in enumerate(xspan[1:end-1])
@@ -744,13 +744,7 @@ constructor `ηfield`, and an LCScache `cache`.
   or from the inside outwards (`false`);
 * `p::LCSParameters`: an object holding the parameters for the LCS computation; see [`LCSParameters`](@ref).
 """
-function compute_closed_orbits(
-    ps::AbstractVector{SVector{2,S1}},
-    ηfield,
-    cache;
-    rev::Bool = true,
-    p::LCSParameters = LCSParameters()
-) where {S1<:Real}
+function compute_closed_orbits(ps::AbstractVector{<:SVector{2}}, ηfield, cache; rev::Bool = true, p::LCSParameters = LCSParameters())
     if cache isa LCScache # tensor-based LCS computation
         l1itp = ITP.LinearInterpolation(cache.λ₁)
         l2itp = ITP.LinearInterpolation(cache.λ₂)
@@ -787,7 +781,7 @@ function compute_closed_orbits(
     # END OF VERSION 2
 
     # go along the Poincaré section and solve for λ⁰ such that orbits close up
-    vortices = EllipticBarrier{S1}[]
+    vortices = EllipticBarrier[]
     idxs = rev ? (length(ps):-1:2) : (2:length(ps))
     for i in idxs
         if cache isa LCScache && p.only_uniform
@@ -891,7 +885,7 @@ function ellipticLCS(
     verbose::Bool = true,
     unique_vortices = true,
     singularity_predicate = nothing,
-    suggested_centers = Singularity{S}[],
+    suggested_centers = Singularity[],
     kwargs...,
 ) where {S<:Real}
     # detect centers of elliptic (in the index sense) regions
@@ -1052,7 +1046,7 @@ function getvortices(
     return getvortices(AxisArray(T, xspan, yspan), vortexcenters, p; kwargs...)
 end
 function getvortices(
-    T::AxisArray{SymmetricTensor{2,2,S,3},2},
+    T::AxisArray{<:SymmetricTensor{2,2,S},2},
     vortexcenters::AbstractVector{<:Singularity},
     p::LCSParameters = LCSParameters();
     outermost::Bool = true,
@@ -1062,7 +1056,7 @@ function getvortices(
     xspan = T.axes[1]
 
     #This is where results go
-    vortices = EllipticVortex{S}[]
+    vortices = EllipticVortex[]
 
     #Type of restricted field is quite complex, therefore make a variable for it here
     Ttype = typeof(T)
@@ -1087,7 +1081,7 @@ function getvortices(
         () -> Channel{Tuple{S,S,S,LCSParameters,Bool,Ttype}}(jobs_queue_length),
     )
     results_rc = RemoteChannel(
-        () -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(
+        () -> Channel{Tuple{S,S,Vector{EllipticBarrier}}}(
             results_queue_length,
         ),
     )
@@ -1211,7 +1205,7 @@ function getvortices(
 end
 
 #TODO: Document this more etc...
-function makeVortexListUnique(vortices::Vector{<:EllipticVortex}, indexradius)
+function makeVortexListUnique(vortices::Vector{EllipticVortex}, indexradius)
     N = length(vortices)
     if N == 0
         return vortices
@@ -1267,12 +1261,12 @@ function constrainedLCS(
     verbose::Bool = true,
     debug = false,
     singularity_predicate = nothing,
-    suggested_centers = Singularity{S}[],
+    suggested_centers = Singularity[],
 ) where {S}
     # detect centers of elliptic (in the index sense) regions
     xspan = q.axes[1]
     # TODO: unfortunately, this type assertion is required for inferrability
-    critpts::Vector{Singularity{S}} = critical_point_detection(
+    critpts::Vector{Singularity} = critical_point_detection(
         q,
         p.indexradius;
         merge_heuristics=p.merge_heuristics,
@@ -1282,7 +1276,7 @@ function constrainedLCS(
     vortexcenters = critpts[getindices(critpts) .== 1]
     verbose && @info "Defined $(length(vortexcenters)) Poincaré sections..."
 
-    vortices = EllipticVortex{S}[]
+    vortices = EllipticVortex[]
 
     #Type of restricted field is quite complex, therefore make a variable for it here
     qType = AxisArrays.AxisArray{
@@ -1320,7 +1314,7 @@ function constrainedLCS(
         () -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(jobs_queue_length),
     )
     results_rc = RemoteChannel(
-        () -> Channel{Tuple{S,S,Vector{EllipticBarrier{S}}}}(results_queue_length),
+        () -> Channel{Tuple{S,S,Vector{EllipticBarrier}}}(results_queue_length),
     )
 
     #Producer job
@@ -1616,18 +1610,18 @@ function flow(odefun::ODE.ODEFunction, curve::Vector{<:SVector}, tspan; kwargs..
         [nc[t] for nc in newcurves]
     end
 end
-function flow(odefun::ODE.ODEFunction, barrier::EllipticBarrier{T}, tspan; kwargs...) where {T<:Real}
+function flow(odefun::ODE.ODEFunction, barrier::EllipticBarrier, tspan; kwargs...)
     newcurves = flow(odefun, barrier.curve, tspan; kwargs...)
     newcores = flow(odefun, barrier.core, tspan; kwargs...)
-    return EllipticBarrier{T}.(newcurves, newcores, barrier.p, barrier.s)
+    return EllipticBarrier.(newcurves, newcores, barrier.p, barrier.s)
 end
-function flow(odefun::ODE.ODEFunction, vortex::EllipticVortex{T}, tspan; kwargs...) where {T}
+function flow(odefun::ODE.ODEFunction, vortex::EllipticVortex, tspan; kwargs...)
     newcenters  = flow(odefun, vortex.center, tspan; kwargs...)
     newbarriers = [flow(odefun, barrier, tspan; kwargs...) for barrier in vortex.barriers]
     newbarriers2 = map(eachindex(tspan)) do t
         [barrier[t] for barrier in newbarriers]
     end
-    return EllipticVortex{T}.(newcenters, newbarriers2)
+    return EllipticVortex.(newcenters, newbarriers2)
 end
 
 function refine!(ccurve::Vector{T}, ncurve::Vector{T}, odefun, tspan, params; kwargs...) where {T<:SVector}
@@ -1685,15 +1679,15 @@ end
 function flowgrow(odefun, barrier::EllipticBarrier, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...)
     newcores  = flow(odefun, barrier.core, tspan; kwargs...)
     newcurves = flowgrow(odefun, barrier.curve, tspan, params; kwargs...)
-    return typeof(barrier).(newcurves, newcores, barrier.p, barrier.s)
+    return EllipticBarrier.(newcurves, newcores, barrier.p, barrier.s)
 end
-function flowgrow(odefun, vortex::EllipticVortex{T}, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...) where {T}
+function flowgrow(odefun, vortex::EllipticVortex, tspan, params::FlowGrowParams=FlowGrowParams(); kwargs...)
     newcenters  = flow(odefun, vortex.center, tspan; kwargs...)
     newbarriers = [flowgrow(odefun, barrier, tspan, params; kwargs...) for barrier in vortex.barriers]
     newbarriers2 = map(eachindex(tspan)) do t
         [nb[t] for nb in newbarriers]
     end
-    return typeof(vortex).(newcenters, newbarriers2)
+    return EllipticVortex.(newcenters, newbarriers2)
 end
 
 """
@@ -1719,13 +1713,13 @@ area(barrier::EllipticBarrier) = area(barrier.curve)
 area(vortex::EllipticVortex)   = area(last(vortex.barriers))
 
 """
-    center(polygon)
+    centroid(polygon)
 
 Compute the center (of mass) of `polygon`, which can be of type `Vector{SVector{2}}`,
 `EllipticBarrier` or `EllipticVortex`. In the latter case, the center of
 the outermost (i.e., the last `EllipticBarrier` in the `barriers` field) is computed.
 """
-function center(poly::Vector{SVector{2,T}}) where {T}
+function centroid(poly::Vector{SVector{2,T}}) where {T}
     result = float(zero(eltype(poly)))
     a = zero(T)
     @inbounds @simd for i in 1:length(poly) - 1
@@ -1741,8 +1735,8 @@ function center(poly::Vector{SVector{2,T}}) where {T}
     result /= (3a) # should be divided by 6*area
     return result
 end
-center(barrier::EllipticBarrier) = center(barrier.curve)
-center(vortex::EllipticVortex)   = center(last(vortex.barriers))
+centroid(barrier::EllipticBarrier) = centroid(barrier.curve)
+centroid(vortex::EllipticVortex)   = centroid(last(vortex.barriers))
 
 """
     Base.extrema(barrier) -> (LL, UR)

@@ -29,7 +29,7 @@ export
 	flowgrow,
 	FlowGrowParams,
 	area,
-	center,
+	centroid,
 	clockwise,
 
 	#diffusion_operators.jl
