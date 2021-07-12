@@ -123,7 +123,7 @@ end
     @test length(fgbarrier) == length(tspan)
     @test area(vortex) == area(vortex.barriers[end])
     @test sum(map(v -> length(v.barriers), vortices)) == 2
-    @test singularities isa Vector{Singularity{Float64}}
+    @test singularities isa Vector{Singularity}
     @test length(singularities) > 5
     vortices, _ = @inferred ellipticLCS(Taxis, p; outermost=false, verbose=false)
     @test sum(map(v -> length(v.barriers), vortices)) > 20
@@ -149,14 +149,14 @@ end
 
         vortices, singularities = @inferred constrainedLCS(q, p; verbose=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
-        @test singularities isa Vector{Singularity{Float64}}
+        @test singularities isa Vector{Singularity}
         @test vortices[1].center ≈ Z atol=max(step(xspan), step(yspan))
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
 
         vortices, singularities = @inferred constrainedLCS(q, p; outermost=false, verbose=false)
         @test sum(map(v -> length(v.barriers), vortices)) > 1
-        @test singularities isa Vector{Singularity{Float64}}
+        @test singularities isa Vector{Singularity}
         @test length(singularities) == 1
         @test singularities[1].coords ≈ Z atol=max(step(xspan), step(yspan))
     end
