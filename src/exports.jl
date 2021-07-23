@@ -157,4 +157,10 @@ export
 	linearized_flow_autodiff,
 	adaptiveTOCollocationLinearResponseMatrix,
 	nonadaptiveTOCollocationLinearResponseMatrix,
-	get_linear_response
+	get_linear_response,
+
+	#dynamicIsoperimetry.jl
+	dynamic_cheeger_value,
+	get_minimal_levelset,
+	get_levelset_evolution,
+	get_levelset
