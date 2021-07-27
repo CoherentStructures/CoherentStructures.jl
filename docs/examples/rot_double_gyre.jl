@@ -96,7 +96,7 @@ T(x,p) = flow(rot_double_gyre, x, [0.0, 1.0 + p],
     tolerance = 1e-5)[end];
 Adot = x -> linear_response_tensor(T, x, 0)
 L = assembleStiffnesMatrix(ctx, Adot)
-v_dot, λ_dot = get_linear_response(v[:,1],λ[i],M,K,L)
+v_dot, λ_dot = get_linear_response(v[:,2],λ[i],M,K,L)
 
 # Now `v_dot` is a linear approximation to the change in `v` when we increase or decrease the stoptime of the system. To illustrate this, let us compute the eigenvalues at a different time.
 
@@ -105,12 +105,12 @@ Aϵ  = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0 + ϵ], 1.e-10, tolera
 Kϵ = assembleStiffnessMatrix(ctx, Aϵ)
 λϵ, vϵ = eigs(-Kϵ, M, which=:SM);
 
-# We can now compare `vϵ[:,1]` to `v[:,1] - ϵ*v_dot`:
+# We can now compare `vϵ[:,2]` to `v[:,2] - ϵ*v_dot`:
 
-res = Plots.plot([plot_u(ctx, v[:,1], 100, 100, colorbar=:none, clim=(-3,3)),
+res = Plots.plot([plot_u(ctx, v[:,2], 100, 100, colorbar=:none, clim=(-3,3)),
                   plot_u(ctx, v_dot, 100, 100, colorbar=:none, clim=(-3,3)),
-                  plot_u(ctx, vϵ[:,1], 100, 100, colorbar=:none, clim=(-3,3)),
-                  plot_u(ctx, v[:,1] + ϵ*v_dot, 100, 100, colorbar=:none, clim=(-3,3))])
+                  plot_u(ctx, vϵ[:,2], 100, 100, colorbar=:none, clim=(-3,3)),
+                  plot_u(ctx, v[:,2] + ϵ*v_dot, 100, 100, colorbar=:none, clim=(-3,3))])
 
 DISPLAY_PLOT(res, rot_double_gyre_linear_response)
 
