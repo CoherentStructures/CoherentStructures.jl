@@ -61,6 +61,7 @@ pullback_tensors
 pullback_metric_tensor
 pullback_diffusion_tensor
 pullback_SDE_diffusion_tensor
+linear_response_tensor
 ```
 
 A second-order symmetric two-dimensional tensor (field) may be diagonalized

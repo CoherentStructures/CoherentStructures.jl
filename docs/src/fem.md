@@ -2,7 +2,7 @@
 
 These methods rely on the theory outlined by Froyland's
 [*Dynamical Laplacian*](http://arxiv.org/pdf/1411.7186v4.pdf)
-and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrasch & Keller.
+and the [*Geometric Heat Flow*](https://www.researchgate.net/publication/306291640_A_geometric_heat-flow_theory_of_Lagrangian_coherent_structures) of Karrasch & Keller. For the [*Linear Response*](https://arxiv.org/abs/1907.10852), the main source is Antown et al.
 
 The Laplace-like operators are best discretized by finite-element-based methods,
 see this [paper](https://arxiv.org/pdf/1705.03640.pdf) by Froyland & Junge.
@@ -188,6 +188,8 @@ CurrentModule = CoherentStructures
 assembleStiffnessMatrix
 assembleMassMatrix
 adaptiveTOCollocationStiffnessMatrix
+adaptiveTOCollocationLinearResponseMatrix
+nonadaptiveTOCollocationLinearResponseMatrix
 ```
 
 ### Constructing Grids
