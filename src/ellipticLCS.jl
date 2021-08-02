@@ -1271,23 +1271,6 @@ function constrainedLCS(
 
     vortices = EllipticVortex[]
 
-    #Type of restricted field is quite complex, therefore make a variable for it here
-    qType = AxisArrays.AxisArray{
-        SVector{2,S},
-        2,
-        Array{SVector{2,S},2},
-        Tuple{
-            AxisArrays.Axis{
-                :row,
-                StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}},
-            },
-            AxisArrays.Axis{
-                :col,
-                StepRangeLen{S,Base.TwicePrecision{S},Base.TwicePrecision{S}},
-            },
-        },
-    }
-
     # We make two remote channels. The master process pushes to jobs_rc in order
     # (vx, vy, vr, p, outermost, T_local):
     #     * vx::S,vy::S (coordinates of vortex center)
@@ -1304,7 +1287,7 @@ function constrainedLCS(
 
 
     jobs_rc = RemoteChannel(
-        () -> Channel{Tuple{S,S,S,LCSParameters,Bool,qType}}(jobs_queue_length),
+        () -> Channel{Tuple{S,S,S,LCSParameters,Bool,typeof(q)}}(jobs_queue_length),
     )
     results_rc = RemoteChannel(
         () -> Channel{Tuple{S,S,Vector{EllipticBarrier}}}(results_queue_length),
