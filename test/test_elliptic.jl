@@ -147,6 +147,7 @@ end
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), mhs, 60, 0.5, 1.5, 1e-4)
         @inferred critical_point_detection(q, p.indexradius; merge_heuristics=mhs)
 
+        constrainedLCS(q, p; verbose=false, debug=true)
         vortices, singularities = @inferred constrainedLCS(q, p; verbose=false)
         @test sum(map(v -> length(v.barriers), vortices)) == 1
         @test singularities isa Vector{Singularity}
