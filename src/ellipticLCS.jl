@@ -220,8 +220,6 @@ struct LCScache{Ts<:Real,Tv<:SVector{2,<:Real}}
     λ₁::AxisArray{Ts,2}
     λ₂::AxisArray{Ts,2}
     Δ::AxisArray{Ts,2}
-    α::AxisArray{Ts,2}
-    β::AxisArray{Ts,2}
     ξ₁::AxisArray{Tv,2}
     ξ₂::AxisArray{Tv,2}
     η::AxisArray{Tv,2}
@@ -717,16 +715,14 @@ end
 function orient(T::AxisArray{<:SymmetricTensor{2,2},2}, center::SVector{2})
     xspan, yspan = T.axes
     λ₁, λ₂, ξ₁, ξ₂, _, _ = tensor_invariants(T)
-    Δλ = AxisArray(λ₂ .- λ₁, T.axes)
+    Δλ = map(-, λ₂, λ₁)
     star = AxisArray(
         [SVector{2}(x, y) - center for x in xspan.val, y in yspan.val],
         T.axes,
     )
-    c1 = AxisArray(sign.(dot.((Ω,) .* star, ξ₁)), T.axes)
-    ξ₁ .*= c1
-    c2 = AxisArray(sign.(dot.(star, ξ₂)), T.axes)
-    ξ₂ .*= c2
-    return LCScache(λ₁, λ₂, Δλ, c1, c2, ξ₁, ξ₂, star)
+    ξ₁ .*= (sign∘skewdot).(star, ξ₁)
+    ξ₂ .*= (sign∘dot).(star, ξ₂)
+    return LCScache(λ₁, λ₂, Δλ, ξ₁, ξ₂, star)
 end
 function orient(T::AbstractMatrix{<:SymmetricTensor{2,2}}, xspan, yspan, center::SVector{2})
     return orient(AxisArray(T, xspan, yspan), center)
@@ -1005,12 +1001,9 @@ end
 
 # vector field constructor function
 function ηfield(λ::Float64, σ::Bool, c::LCScache)
-    @. c.α = min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0)
-    @. c.β = min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0)
-    @. c.η = c.α * c.ξ₁ + ((-1)^σ) * c.β * c.ξ₂
-
+    op = σ ? (-) : (+)
+    @. c.η = op(min(sqrt(max(c.λ₂ - λ, eps()) / c.Δ), 1.0) * c.ξ₁, min(sqrt(max(λ - c.λ₁, eps()) / c.Δ), 1.0) * c.ξ₂)
     itp = ITP.LinearInterpolation(c.η)
-
     function unit_length_itp(u, p, t)
         result = itp(u[1], u[2])
         normresult = sqrt(result[1]^2 + result[2]^2)
@@ -1377,9 +1370,8 @@ function constrainedLCS(
                 invnormsqq = map(x -> iszero(x) ? one(x) : inv(x), normsqq)
                 q1 = invnormsqq .* q_local
                 function constrainedLCSηfield(λ, s, cache)
-                    cache .=
-                        sqrt.(max.(normsqq .- (λ^2), 0)) .* q1 +
-                        ((-1)^s * λ) .* (Ω,) .* q1
+                    op = s ? (-) : (+)
+                    cache .= op.(sqrt.(max.(normsqq .- (λ^2), 0)) .* q1, λ .* Ref(Ω) .* q1)
                     itp = ITP.LinearInterpolation(cache)
                     return ODE.ODEFunction{false}(
                         (u, p, t) -> itp(u[1], u[2]),

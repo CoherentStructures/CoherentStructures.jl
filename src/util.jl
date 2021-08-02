@@ -1,5 +1,5 @@
-#(c) 2017 Nathanael Schilling & Daniel Karrasch
-#Various utility functions
+# (c) 2017-2021 Nathanael Schilling & Daniel Karrasch
+# Various utility functions
 
 const PEuclidean = Distances.PeriodicEuclidean
 
@@ -168,6 +168,8 @@ function ITP.CubicSplineInterpolation(A::AxisArray)
                         axisvalues(A)...)
 end
 
+skewdot(x::SVector{2}, y::SVector{2}) = @inbounds x[1]*y[2] - x[2]*y[1]
+
 # functions used by flowgrow
 function curvature(a, b, c)
     bma = b - a
@@ -334,5 +336,5 @@ function in_triangle(p, v1, v2, v3)
 
     has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0)
     has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0)
-    return !(has_neg && has_pos);
+    return !(has_neg && has_pos)
 end
