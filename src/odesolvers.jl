@@ -4,7 +4,7 @@
 ### LinearImplicitEuler:
 ################################################################################
 
-struct LinearImplicitEuler{CS,AD,F} <: ODE.OrdinaryDiffEqNewtonAlgorithm{CS,AD,Any}
+struct LinearImplicitEuler{CS,AD,F} <: ODE.OrdinaryDiffEqNewtonAlgorithm{CS,AD,Nothing}
     linsolve::F
 end
 LinearImplicitEuler(;
@@ -92,7 +92,7 @@ end
 ### LinearMEBDF2:
 ################################################################################
 
-struct LinearMEBDF2{CS,AD,F} <: ODE.OrdinaryDiffEqNewtonAlgorithm{CS,AD,Any}
+struct LinearMEBDF2{CS,AD,F} <: ODE.OrdinaryDiffEqNewtonAlgorithm{CS,AD,Nothing}
     linsolve::F
 end
 LinearMEBDF2(; chunk_size=0, autodiff=false, linsolve=ODE.DEFAULT_LINSOLVE) =
