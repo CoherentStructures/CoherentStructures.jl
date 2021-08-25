@@ -7,7 +7,7 @@ include("define_vector_fields.jl")
     M = assembleMassMatrix(ctx)
     U = FEM_heatflow(rot_double_gyre!, ctx, range(0., stop=1., length=11), 1e-3; factor=true)
     λ, V = diffusion_coordinates(U, 6)
-    @test first(λ) ≈ 1 rtol=1e-7
+    @test first(λ) ≈ 1 rtol=1e-6
 end
 
 @testset "DMheatflow" begin
