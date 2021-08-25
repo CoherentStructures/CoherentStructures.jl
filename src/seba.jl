@@ -1,49 +1,55 @@
-#(c) 2018 Nathanael Schilling
-# Implement SEBA (see https://web.maths.unsw.edu.au/~froyland/FRS18a.pdf)
+#(c) 2018-2021 Nathanael Schilling, maintained by Daniel Karrasch
 
 """
-    SEBA(V; [μ=0.99/sqrt(size(V,1)), tol=1e-14, maxiter=1000])
+    SEBA(V, R = diagm(0 => ones(size(Vin, 2))); [μ=0.99/sqrt(size(V,1)), tol=1e-14, maxiter=1000])
 
-Implements the SEBA algorithm (see https://web.maths.unsw.edu.au/~froyland/FRS18a.pdf).
+Computes a "sparse eigenbasis approximation" (SEBA) as proposed in [1].
 
+`V` is the matrix containing the eigenvectors as columns, `R` is an optional initial
+rotation matrix. For the role of the keyword arguments, see ref. [1].
+
+[1] Froyland, G. and Rock, Chr. P. and Sakellariou, K. [Sparse eigenbasis approximation:
+Multiple feature extraction across spatiotemporal scales with application to coherent set
+identification](https://doi.org/10.1016/j.cnsns.2019.04.012). _Communications in Nonlinear
+Science and Numerical Simulation_, 77:81-107, 2019. 
 """
-function SEBA(Vin; μ=0.99/sqrt(size(Vin, 1)), tol=1e-14, maxiter=5000)
-    n, nev = size(Vin)
+function SEBA(Vin, R = diagm(0 => ones(size(Vin, 2))); μ=0.99/sqrt(size(Vin, 1)), tol=1e-14, maxiter=5000)
     V = Matrix(qr(Vin).Q)
-    S = zeros(n, nev)
-    R = diagm(0 => ones(size(Vin, 2)))#TODO: Allow this as optional argument?
-    for i in 1:nev
-        if maximum(V[:,i]) - minimum(V[:,i]) < 1e-14
-            V[:,i] .+= (rand.() - 0.5) * 1e-12
+    for vi in eachcol(V)
+        mini, maxi = extrema(vi)
+        if maxi - mini < 1e-14
+            vi .+= (rand(size(Vin, 1)) .- 1//2) .* 1e-12
         end
     end
     numiter = 1
-    #R = zeros(size(R))
+    S = similar(Vin)
+    SV = similar(R)
+    Rnew = similar(R)
     while true
-        Z = V * permutedims(R)
-        for i in 1:nev
-            S[:,i] .= (sign.(Z[:,i]) .* max.(abs.(Z[:,i]) .- μ, 0))
-            colNorm = norm(S[:,i])
-            if colNorm != 0
-                S[:,i] ./= colNorm
+        mul!(S, V, transpose(R))
+        for si in eachcol(S)
+            si .= (sign.(si) .* max.(abs.(si) .- μ, 0))
+            colNorm = norm(si)
+            if !iszero(colNorm)
+                si ./= colNorm
             end
         end
-        svdres = svd(S'V)
-        Rnew = svdres.U * svdres.V'
+        mul!(SV, S', V)
+        svdres = svd!(SV)
+        mul!(Rnew, svdres.U, svdres.Vt)
         if opnorm(Rnew - R) < tol
-            R = Rnew
             break
         elseif numiter > maxiter
-            throw(AssertionError("numiter > $maxiter"))
+            throw(error("numiter > maxiter = $maxiter"))
         end
-        R .= Rnew
+        R, Rnew = Rnew, R
         numiter += 1
     end
 
-    for i in 1:nev
-        S[:,i] .*= sign.(sum(S[:,i]))
-        S[:,i] ./= maximum(S[:,i])
+    for si in eachcol(S)
+        si .*= sign(sum(si))
+        si ./= maximum(si)
     end
 
-    return S[:, sortperm([-minimum(S[:,i]) for i in 1:nev])]
+    return S[:, sortperm([-minimum(si) for si in eachcol(S)])]
 end
