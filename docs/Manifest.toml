@@ -34,9 +34,9 @@ version = "3.5.0+3"
 
 [[ArrayInterface]]
 deps = ["IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "cdb00a6fb50762255021e5571cf95df3e1797a51"
+git-tree-sha1 = "baf4ef9082070477046bd98306952292bfcb0af9"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "3.1.23"
+version = "3.1.25"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -100,7 +100,7 @@ version = "0.7.0"
 
 [[CoherentStructures]]
 deps = ["ArnoldiMethod", "AxisArrays", "ColorTypes", "DiffEqBase", "Distances", "Distributed", "Ferrite", "GeometricalPredicates", "Interpolations", "IterativeSolvers", "LinearAlgebra", "LinearMaps", "NearestNeighbors", "OrdinaryDiffEq", "ProgressMeter", "RecipesBase", "SharedArrays", "SparseArrays", "StaticArrays", "Statistics", "Tensors", "VoronoiDelaunay"]
-git-tree-sha1 = "6e510544d874a830e68b9512c637646dd8829d1b"
+git-tree-sha1 = "d73b19b6ded832c827e3ccb4f9e7540b7497f789"
 repo-rev = "master"
 repo-url = "https://github.com/CoherentStructures/CoherentStructures.jl.git"
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
@@ -919,9 +919,9 @@ version = "0.3.4"
 
 [[RecursiveArrayTools]]
 deps = ["ArrayInterface", "ChainRulesCore", "DocStringExtensions", "LinearAlgebra", "RecipesBase", "Requires", "StaticArrays", "Statistics", "ZygoteRules"]
-git-tree-sha1 = "82efc2429a2b2e72daf2322dbdf5fc60df6dc51f"
+git-tree-sha1 = "00bede2eb099dcc1ddc3f9ec02180c326b420ee2"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "2.17.1"
+version = "2.17.2"
 
 [[RecursiveFactorization]]
 deps = ["LinearAlgebra", "LoopVectorization", "Polyester", "StrideArraysCore", "TriangularSolve"]
@@ -930,9 +930,9 @@ uuid = "f2c3362d-daeb-58d1-803e-2bc74f2840b4"
 version = "0.2.2"
 
 [[Reexport]]
-git-tree-sha1 = "adcd36e8ba9665c88eb0bd156d4e2a19f9b0d889"
+git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
-version = "1.2.0"
+version = "1.2.2"
 
 [[Requires]]
 deps = ["UUIDs"]
@@ -1087,9 +1087,9 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
 [[SymEngine]]
 deps = ["Compat", "Libdl", "LinearAlgebra", "RecipesBase", "SpecialFunctions", "SymEngine_jll"]
-git-tree-sha1 = "7dd57364322d88609a704c7d2640636310c7f5ad"
+git-tree-sha1 = "c2d81981a69ea69713747c0ce9e0f95883d3ff9b"
 uuid = "123dc426-2d89-5057-bbad-38513e3affd8"
-version = "0.8.4"
+version = "0.8.5"
 
 [[SymEngine_jll]]
 deps = ["GMP_jll", "Libdl", "MPC_jll", "MPFR_jll", "Pkg"]
@@ -1170,9 +1170,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[VectorizationBase]]
 deps = ["ArrayInterface", "CPUSummary", "HostCPUFeatures", "Hwloc", "IfElse", "Libdl", "LinearAlgebra", "Static"]
-git-tree-sha1 = "0e940546f8ad51f53966c866db14ff9b58be24e0"
+git-tree-sha1 = "777a3ca87b8d28eaa42bc58b125ab6ba08fb417e"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
-version = "0.20.34"
+version = "0.20.37"
 
 [[VertexSafeGraphs]]
 deps = ["LightGraphs"]
