@@ -29,3 +29,7 @@ const AA = AxisArrays
         @test iszero(CoherentStructures.skewdot(x, x))
     end
 end
+
+@testset "SEBA" begin
+    @test SEBA(Matrix(1.0I, 5, 5)) == Matrix(1.0I, 5, 5)
+end
