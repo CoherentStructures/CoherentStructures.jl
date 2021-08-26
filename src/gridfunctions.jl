@@ -135,6 +135,7 @@ function cellToDHTable(ctx::AbstractGridContext{dim}) where {dim}
     end
     return res
 end
+
 #=
 """
     GridContext{1}(FEM.Line, [numnodes, LL, UR; ip,quadrature_order,ip])
@@ -144,12 +145,12 @@ The default for `ip` is P1-Lagrange elements, but piecewise-constant elements ca
 """
 =#
 function GridContext{1}(::Type{FEM.Line},
-                         numnodes::Tuple{Int}=(25,), LL::Tuple{<:Real}=(0.0,), UR::Tuple{<:Real}=(1.0,);
+                         numnodes::Tuple{Int}=(25,), LL=(0.0,), UR=(1.0,);
                          quadrature_order::Int=default_quadrature_order,
                          ip=FEM.Lagrange{1,FEM.RefCube,1}(), kwargs...)
     # The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.Line, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
-    loc = Regular1dGridLocator{FEM.Line}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
+    grid = FEM.generate_grid(FEM.Line, (numnodes[1]-1,), Vec{1}((LL[1],)), Vec{1}((UR[1],)))
+    loc = Regular1dGridLocator{FEM.Line}(numnodes[1], Vec{1}((LL[1],)), Vec{1}((UR[1],)))
 
     dh = FEM.DofHandler(grid)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
@@ -175,14 +176,14 @@ end
 =#
 function GridContext{1}(::Type{FEM.QuadraticLine},
                          numnodes::Tuple{Int}=(25,),
-                         LL::Tuple{<:Real}=(0.0,),
-                         UR::Tuple{<:Real}=(1.0,);
+                         LL=(0.0,),
+                         UR=(1.0,);
                          quadrature_order::Int=default_quadrature_order,
                          ip=FEM.Lagrange{1,FEM.RefCube,2}(), kwargs...
                          )
     # The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.QuadraticLine, (numnodes[1]-1,), Vec{1}(LL), Vec{1}(UR))
-    loc = Regular1dGridLocator{FEM.QuadraticLine}(numnodes[1], Vec{1}(LL), Vec{1}(UR))
+    grid = FEM.generate_grid(FEM.QuadraticLine, (numnodes[1]-1,), Vec{1}((LL[1],)), Vec{1}((UR[1],)))
+    loc = Regular1dGridLocator{FEM.QuadraticLine}(numnodes[1], Vec{1}((LL[1],)), Vec{1}((UR[1],)))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{1, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1) #The :T is just a generic name for the scalar field
@@ -272,7 +273,7 @@ const regular2dGridTypes = [
 Constructs a regular grid. `gridType` should be one from `regular2dGridTypes`.
 """
 function regular2dGrid(gridType::String, numnodes::NTuple{2,Int},
-        LL::NTuple{2,<:Real}=(0.0, 0.0), UR::NTuple{2,<:Real}=(1.0, 1.0); kwargs...)
+        LL=(0.0, 0.0), UR=(1.0, 1.0); kwargs...)
     if gridType == "regular PC triangular grid"
         return regularTriangularGrid(numnodes, LL, UR; PC=true, kwargs...)
     elseif gridType == "regular P1 triangular grid"
@@ -296,19 +297,17 @@ function regular2dGrid(gridType::String, numnodes::NTuple{2,Int},
     end
 end
 
-@deprecate regular2dGrid(gridType::String, numnodes::NTuple{2,Int}, LL::Vector{<:Real}, UR::Vector{<:Real}; kwargs...) regular2dGrid(gridType, numnodes, (LL...,), (UR...,); kwargs...)
-
-#= #TODO 1.0
+#=
 """
     GridContext{2}(FEM.Triangle, node_list; [on_torus=false,on_cylinder=false,LL,UR,quadrature_order=default_quadrature_order,ip])
 
-Create a P1-Lagrange grid based on Delaunay Triangulation.
+Create a P1-Lagrange grid based on Delaunay triangulation.
 If `on_torus==true`, triangulates on a periodic domain (in both directions)
-If `on_cylinder==true`, triangulates on a periodic domain in x-direction
-defined by `LL` (lower-left corner) and `UR` (upper-right corner).
-The parameter `ip` defines what kind of shape functions to use, the default is P1-Lagrange (can also be piecewise constant).
-i
-Uses `DelaunayVoronoi.jl` internally.
+If `on_cylinder==true`, triangulates on a periodic domain in x-direction defined by `LL`
+(lower-left corner) and `UR` (upper-right corner). The parameter `ip` defines what kind of
+shape functions to use, the default is P1-Lagrange (can also be piecewise constant).
+
+Uses `VoronoiDelaunay.jl` internally.
 """
 =#
 function GridContext{2}(
@@ -389,15 +388,12 @@ Create a delaunay grid in 2d from `npoints` random points on the box with lower
 left corner `LL` and upper right corner `UR`.
 Extra keyword arguments are passed to `irregularDelaunayGrid`.
 """
-function randomDelaunayGrid(npoints::Int, LL::NTuple{2,<:Real}=(0.0,0.0), UR::NTuple{2,<:Real}=(1.0,1.0);
+function randomDelaunayGrid(npoints::Int, LL=(0.0,0.0), UR=(1.0,1.0);
                             kwargs...)
     width = UR .- LL
     nodes_in = map(_ -> Vec{2}((rand()*width[1] + LL[1], rand()*width[2] + LL[2])), 1:npoints)
     return irregularDelaunayGrid(nodes_in; LL=LL, UR=UR, kwargs...)
 end
-
-# deprecation doesn't work somehow
-# @deprecate randomDelaunayGrid(npoints::Int; LL::AbstractVector{<:Real}=[0.0,0.0], UR::AbstractVector{<:Real}=[1.0,1.0], kwargs...) randomDelaunayGrid(npoints, (LL...,), (UR...,); kwargs...)
 
 """
     regularDelaunayGrid(numnodes=(25,25), LL=(0.0,0.0), UR=(1.0,1.0); [quadrature_order, on_torus=false, on_cylinder=false, nudge_epsilon=1e-5, PC=false])
@@ -412,8 +408,8 @@ If `PC==true`, returns a piecewise constant grid. Else returns a P1-Lagrange gri
 """
 function regularDelaunayGrid(
             numnodes::Tuple{Int,Int}=(25, 25),
-            LL::NTuple{2,<:Real}=(0.0, 0.0),
-            UR::NTuple{2,<:Real}=(1.0, 1.0);
+            LL=(0.0, 0.0),
+            UR=(1.0, 1.0);
             quadrature_order::Int=default_quadrature_order,
             on_torus::Bool=false,
             on_cylinder::Bool=false,
@@ -460,8 +456,7 @@ function regularDelaunayGrid(
     return result, bdata
 end
 
-
-#= TODO 1.0
+#=
 """
     GridContext{2}(FEM.QuadraticTriangle, node_list, quadrature_order=default_quadrature_order)
 
@@ -491,8 +486,8 @@ Create a regular P2 triangular grid with `numnodes` being the number of (non-int
 """
 function regularP2DelaunayGrid(
             numnodes::Tuple{Int,Int}=(25, 25),
-            LL::NTuple{2,<:Real}=(0.0, 0.0),
-            UR::NTuple{2,<:Real}=(1.0, 1.0);
+            LL=(0.0, 0.0),
+            UR=(1.0, 1.0);
             quadrature_order::Int=default_quadrature_order, kwargs...)
     X = range(LL[1], stop=UR[1], length=numnodes[1])
     Y = range(LL[2], stop=UR[2], length=numnodes[2])
@@ -507,42 +502,41 @@ end
 
 #=
 """
-    GridContext{2}(FEM.Triangle, numnodes, LL,UR; [quadrature_order])
+    GridContext{2}(FEM.Triangle, numnodes, LL, UR; [quadrature_order])
 
 Create a regular triangular grid. Does not use Delaunay triangulation internally.
 """
 =#
-
 function GridContext{2}(::Type{FEM.Triangle},
                          numnodes::Tuple{Int,Int}=(25, 25),
-                         LL::NTuple{2,<:Real}=(0.0, 0.0),
-                         UR::NTuple{2,<:Real}=(1.0, 1.0);
+                         LL=(0.0, 0.0),
+                         UR=(1.0, 1.0);
                          quadrature_order::Int=default_quadrature_order,
                          ip=FEM.Lagrange{2,FEM.RefTetrahedron,1}(),kwargs...
                          )
     # The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.Triangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{FEM.Triangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    grid = FEM.generate_grid(FEM.Triangle, (numnodes[1]-1, numnodes[2]-1), Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
+    loc = Regular2DGridLocator{FEM.Triangle}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
-    result = GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
-    result.spatialBounds = (LL, UR)
+    result = GridContext{2}(grid, ip, FEM.Lagrange{2,FEM.RefTetrahedron,1}(), dh, qr, loc; kwargs...)
+    result.spatialBounds = ((LL[1], LL[2]), (UR[1], UR[2]))
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular triangular grid"
     return result
 end
 
 """
-    regularTriangularGrid(numnodes, LL,UR;[quadrature_order, PC=false])
+    regularTriangularGrid(numnodes, LL, UR; [quadrature_order, PC=false])
 
 Create a regular triangular grid on a rectangle; does not use Delaunay triangulation internally.
 If
 """
 function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),
-                                LL::NTuple{2,<:Real}=(0.0,0.0),
-                                UR::NTuple{2,<:Real}=(1.0,1.0);
+                                LL=(0.0,0.0),
+                                UR=(1.0,1.0);
                                 quadrature_order::Int=default_quadrature_order,
                                 PC=false, kwargs...)
     if PC == false
@@ -550,15 +544,12 @@ function regularTriangularGrid(numnodes::Tuple{Int,Int}=(25,25),
     else
         ip = FEM.PiecewiseConstant{2,FEM.RefTetrahedron,1}()
     end
-    ctx = GridContext{2}(FEM.Triangle, numnodes, LL, UR;
-            quadrature_order=quadrature_order,ip=ip,kwargs...
-            )
+    ctx = GridContext{2}(FEM.Triangle, numnodes, (LL[1], LL[2]), (UR[1], UR[2]);
+            quadrature_order=quadrature_order, ip=ip, kwargs...)
     return ctx, BoundaryData()
 end
 
-@deprecate regularTriangularGrid(numnodes::Tuple{Int,Int}, LL::AbstractVector{<:Real}, UR::AbstractVector{<:Real}; kwargs...) regularTriangularGrid(numnodes, (LL...,), (UR...,); kwargs...)
-
-#= TODO 1.0
+#=
 """
     GridContext{2}(FEM.QuadraticTriangle, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
 
@@ -567,8 +558,8 @@ Constructor for regular P2 triangular grids. Does not use Delaunay triangulation
 =#
 function GridContext{2}(::Type{FEM.QuadraticTriangle},
                          numnodes::Tuple{Int,Int}=(25, 25),
-                         LL::NTuple{2,<:Real}=(0.0,0.0),
-                         UR::NTuple{2,<:Real}=(1.0,1.0);
+                         LL=(0.0,0.0),
+                         UR=(1.0,1.0);
                          quadrature_order::Int=default_quadrature_order,
                          ip=FEM.Lagrange{2,FEM.RefTetrahedron,2}(), kwargs...
                          )
@@ -576,13 +567,13 @@ function GridContext{2}(::Type{FEM.QuadraticTriangle},
         @warn "Using non-Lagrange interpolation with P2 elements may or may not work"
     end
     #The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{FEM.QuadraticTriangle}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    grid = FEM.generate_grid(FEM.QuadraticTriangle, (numnodes[1]-1,numnodes[2]-1), Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
+    loc = Regular2DGridLocator{FEM.QuadraticTriangle}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
+    push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
-    result =  GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
+    result =  GridContext{2}(grid, ip, FEM.Lagrange{2,FEM.RefTetrahedron,2}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
     result.numberOfPointsInEachDirection = [numnodes[1], numnodes[2]]
     result.gridType = "regular P2 triangular grid"
@@ -596,16 +587,14 @@ end
 Create a regular P2 triangular grid on a rectangle. Does not use Delaunay triangulation internally.
 """
 function regularP2TriangularGrid(numnodes::Tuple{Int,Int}=(25, 25),
-                                    LL::NTuple{2,<:Real}=(0.0,0.0),
-                                    UR::NTuple{2,<:Real}=(1.0,1.0);
+                                    LL=(0.0,0.0),
+                                    UR=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order, kwargs...)
     ctx = GridContext{2}(FEM.QuadraticTriangle, numnodes, LL, UR, quadrature_order=quadrature_order;kwargs...)
     return ctx, BoundaryData()
 end
 
-@deprecate regularP2TriangularGrid(numnodes::Tuple{Int,Int}, LL::AbstractVector{<:Real}, UR::AbstractVector{<:Real};
-                                    kwargs...) regularP2TriangularGrid(numnodes, (LL...,), (UR...,); kwargs...)
-#= TODO 1.0
+#=
 """
     GridContext{2}(FEM.Quadrilateral, numnodes=(25,25), LL=[0.0,0.0], UR=[1.0,1.0], quadrature_order=default_quadrature_order)
 
@@ -614,13 +603,13 @@ Constructor for regular P1 quadrilateral grids.
 =#
 function GridContext{2}(::Type{FEM.Quadrilateral},
                         numnodes::Tuple{Int,Int}=(25,25),
-                        LL::NTuple{2,<:Real}=(0.0,0.0),
-                        UR::NTuple{2,<:Real}=(1.0,1.0);
+                        LL=(0.0,0.0),
+                        UR=(1.0,1.0);
                         quadrature_order::Int=default_quadrature_order,
                         ip=FEM.Lagrange{2, FEM.RefCube, 1}(), kwargs...)
     #The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{FEM.Quadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    grid = FEM.generate_grid(FEM.Quadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
+    loc = Regular2DGridLocator{FEM.Quadrilateral}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -643,8 +632,8 @@ Create a regular P1 quadrilateral grid on a rectangle. If `PC==true`, use
 piecewise constant shape functions, otherwise use P1 Lagrange.
 """
 function regularQuadrilateralGrid(numnodes::Tuple{Int,Int}=(25, 25),
-                                    LL::NTuple{2,<:Real}=(0.0,0.0),
-                                    UR::NTuple{2,<:Real}=(1.0,1.0);
+                                    LL=(0.0,0.0),
+                                    UR=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order,
                                     PC=false, kwargs...)
     if !PC
@@ -660,8 +649,7 @@ function regularQuadrilateralGrid(numnodes::Tuple{Int,Int}=(25, 25),
      return ctx, BoundaryData()
 end
 
-
-#= TODO 1.0
+#=
 """
     GridContext{2}(FEM.QuadraticQuadrilateral, numnodes=(25,25), LL=[0.0,0.0],UR=[1.0,1.0],quadrature_order=default_quadrature_order)
 
@@ -670,16 +658,16 @@ Constructor for regular P2 quadrilateral grids.
 =#
 function GridContext{2}(::Type{FEM.QuadraticQuadrilateral},
                         numnodes::Tuple{Int,Int}=(25, 25),
-                        LL::NTuple{2,<:Real}=(0.0,0.0),
-                        UR::NTuple{2,<:Real}=(1.0,1.0);
+                        LL=(0.0,0.0),
+                        UR=(1.0,1.0);
                         quadrature_order::Int=default_quadrature_order,
                         ip=FEM.Lagrange{2, FEM.RefCube, 2}(), kwargs...)
     if !isa(ip, FEM.Lagrange)
         @warn "Non-Lagrange interpolation with P2 elements may or may not work"
     end
     #The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}(LL), Vec{2}(UR))
-    loc = Regular2DGridLocator{FEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Vec{2}(LL), Vec{2}(UR))
+    grid = FEM.generate_grid(FEM.QuadraticQuadrilateral, (numnodes[1]-1,numnodes[2]-1), Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
+    loc = Regular2DGridLocator{FEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -698,29 +686,29 @@ end
 Create a regular P2 quadrilateral grid on a rectangle.
 """
 function regularP2QuadrilateralGrid(numnodes::Tuple{Int,Int}=(25,25),
-                                    LL::NTuple{2,<:Real}=(0.0,0.0),
-                                    UR::NTuple{2,<:Real}=(1.0,1.0);
+                                    LL=(0.0,0.0),
+                                    UR=(1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order, kwargs...)
     ctx = GridContext{2}(FEM.QuadraticQuadrilateral, numnodes, LL, UR, quadrature_order=quadrature_order,kwargs...)
     return ctx, BoundaryData()
 end
 
-#=TODO 1.0
+#=
 """
-    GridContext{3}(FEM.Tetrahedron, numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)
+    GridContext{3}(FEM.Tetrahedron, numnodes=(10,10,10), LL=(0.0,0.0,0.0), UR=(1.0,1.0,1.0), quadrature_order=default_quadrature_order3D)
 
 Create a regular P1 Tetrahedral Grid in 3D.
 """
 =#
 function GridContext{3}(::Type{FEM.Tetrahedron},
                          numnodes::NTuple{3,Int}=(10,10,10),
-                         LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-                         UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+                         LL=(0.0,0.0,0.0),
+                         UR=(1.0,1.0,1.0);
                          quadrature_order::Int=default_quadrature_order3D,
                          ip=FEM.Lagrange{3, FEM.RefTetrahedron, 1}(), kwargs...)
     #The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
-    loc = Regular3DGridLocator{FEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
+    grid = FEM.generate_grid(FEM.Tetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}((LL[1], LL[2], LL[3])), Vec{3}((UR[1], UR[2], UR[3])))
+    loc = Regular3DGridLocator{FEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}((LL[1], LL[2], LL[3])), Vec{3}((UR[1], UR[2], UR[3])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{3, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -736,26 +724,25 @@ function GridContext{3}(::Type{FEM.Tetrahedron},
     return result
 end
 
-
-#=TODO 1.0
+#=
 """
-    GridContext{3}(FEM.QuadraticTetrahedron, numnodes=(10,10,10), LL=[0.0,0.0,0.0], UR=[1.0,1.0,1.0], quadrature_order=default_quadrature_order3D)
+    GridContext{3}(FEM.QuadraticTetrahedron, numnodes=(10,10,10), LL=(0.0,0.0,0.0), UR=(1.0,1.0,1.0), quadrature_order=default_quadrature_order3D)
 
 Create a regular P2 Tetrahedral Grid in 3D.
 """
 =#
 function GridContext{3}(::Type{FEM.QuadraticTetrahedron},
                          numnodes::NTuple{3,Int}=(10,10,10),
-                         LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-                         UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+                         LL=(0.0,0.0,0.0),
+                         UR=(1.0,1.0,1.0);
                          quadrature_order::Int=default_quadrature_order3D,
                          ip=FEM.Lagrange{3, FEM.RefTetrahedron, 2}(), kwargs...)
     if !isa(ip, FEM.Lagrange)
         @warn "Using non-Lagrange interpolation with P2 Elements may or may not work"
     end
     #The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}(LL), Vec{3}(UR))
-    loc = Regular3DGridLocator{FEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}(LL), Vec{3}(UR))
+    grid = FEM.generate_grid(FEM.QuadraticTetrahedron, (numnodes[1]-1, numnodes[2]-1, numnodes[3] -1), Vec{3}((LL[1], LL[2], LL[3])), Vec{3}((UR[1], UR[2], UR[3])))
+    loc = Regular3DGridLocator{FEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}((LL[1], LL[2], LL[3])), Vec{3}((UR[1], UR[2], UR[3])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{3, FEM.RefTetrahedron}(quadrature_order)
     push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
@@ -774,8 +761,8 @@ Create a regular P1 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay tr
 """
 function regularTetrahedralGrid(
         numnodes::NTuple{3,Int}=(10,10,10),
-        LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-        UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+        LL=(0.0,0.0,0.0),
+        UR=(1.0,1.0,1.0);
         quadrature_order::Int=default_quadrature_order3D, PC=false, kwargs...)
     if !PC
         ip = FEM.Lagrange{3,FEM.RefTetrahedron,1}()
@@ -795,8 +782,8 @@ end
 Create a regular P2 tetrahedral grid on a Cuboid in 3D. Does not use Delaunay triangulation internally.
 """
 function regularP2TetrahedralGrid(numnodes::NTuple{3,Int}=(10,10,10),
-                                    LL::NTuple{3,<:Real}=(0.0,0.0,0.0),
-                                    UR::NTuple{3,<:Real}=(1.0,1.0,1.0);
+                                    LL=(0.0,0.0,0.0),
+                                    UR=(1.0,1.0,1.0);
                                     quadrature_order::Int=default_quadrature_order3D,
                                     kwargs...)
     ctx = GridContext{3}(FEM.QuadraticTetrahedron,
@@ -807,40 +794,37 @@ end
 
 
 """
-    project_in_xin(ctx,x_in,project_in)
+    project_in_xin(ctx, x_in, project_in)
 
 Converts `x_in` to `Vec{dim}`, possibly taking pointwise maxima/minima to make
 sure it is within `ctx.spatialBounds` (if `project_in==true`).
 Helper function.
 """
-function project_in_xin(
-    ctx::GridContext{dim}, x_in::AbstractVector{T}, project_in
-    )::Vec{dim,T} where {dim,T}
-
+function project_in_xin(ctx::GridContext{dim}, x_in::AbstractVector{T}, project_in)::Vec{dim,T} where {dim,T}
     if !project_in
         if dim == 1
-            x = Vec{dim,T}((x_in[1],))
+            x = Vec{1,T}((x_in[1],))
         elseif dim == 2
-            x = Vec{dim,T}((x_in[1], x_in[2]))
+            x = Vec{2,T}((x_in[1], x_in[2]))
         elseif dim == 3
-            x = Vec{dim,T}((x_in[1], x_in[2], x_in[3]))
+            x = Vec{3,T}((x_in[1], x_in[2], x_in[3]))
         else
             error("dim = $dim not supported")
         end
     else
         if dim == 1
-            x = Vec{dim,T}(
+            x = Vec{1,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1])),
                 ))
         elseif dim == 2
             #TODO: replace this with a macro maybe
-            x = Vec{dim,T}(
+            x = Vec{2,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ))
         elseif dim == 3
             #TODO: replace this with a macro maybe
-            x = Vec{dim,T}(
+            x = Vec{3,T}(
                 (max(ctx.spatialBounds[1][1], min(ctx.spatialBounds[2][1], x_in[1]))
                 ,max(ctx.spatialBounds[1][2], min(ctx.spatialBounds[2][2], x_in[2]))
                 ,max(ctx.spatialBounds[1][3], min(ctx.spatialBounds[2][3], x_in[3]))
@@ -1152,7 +1136,7 @@ struct NumberedPoint2D <: VD.AbstractPoint2D
     NumberedPoint2D(p::Vec{2,Float64}) = new(p[1], p[2], 0)
 end
 GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
-GP.Point2D(p::NumberedPoint2D) = Point2D(p.x,p.y)
+GP.Point2D(p::NumberedPoint2D) = Point2D(p.x, p.y)
 GP.gety(p::NumberedPoint2D) = p.y
 GP.getx(p::NumberedPoint2D) = p.x
 
@@ -1245,7 +1229,7 @@ end
 """
 Function for creating a grid from scattered nodes.
 Calls VoronoiDelaunay for delaunay triangulation. Makes a periodic triangulation
-if `on_torus` is set to `true` similarly with `on_cylinder`.
+if `on_torus` is set to `true`; similarly with `on_cylinder`.
 """
 function FEM.generate_grid(::Type{FEM.Triangle},
      nodes_in::AbstractVector{Vec{2,Float64}};
@@ -1422,7 +1406,7 @@ function FEM.generate_grid(::Type{FEM.Triangle},
     for c in cells
         used_nodes[collect(c.nodes)] .= true
     end
-    if any(x -> x == false, used_nodes)
+    if !all(used_nodes)
         @warn "Some nodes added that might cause problems with FEM. Proceed at your own risk."
     end
 

@@ -66,11 +66,7 @@ RecipesBase.@recipe function f(
     dof_vals::Vector{Float64} = as.args[2]
     inverse_flow_map::Function = as.args[3]
     LL = as.args[4]
-    LL isa AbstractVector &&
-        @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     UR = as.args[5]
-    UR isa AbstractVector &&
-        @warn "Use tuples (round brackets) rather than vectors [square brackets] for domain corners"
     if ctx isa GridContext{2}
         nx = length(as.args) >= 6 ? as.args[6] : 100
         ny = length(as.args) >= 7 ? as.args[7] : 100
@@ -141,7 +137,7 @@ RecipesBase.@recipe function f(
         end
 
         seriestype --> :line
-        xlim --> (LL[1], UR[1])
+        xlims --> (LL[1], UR[1])
         x1, z
     end
 end
@@ -153,6 +149,7 @@ end
         z=nothing,
         postprocessor=nothing,
         bdata=nothing,
+        throw_errors=false,
         kwargs...)
 
 Plot a heatmap of a function in Eulerian coordinates, i.e., the pushforward of
@@ -343,7 +340,7 @@ function eulerian_videos(
 end
 
 """
-    eulerian_videos(ctx, us, inverse_flow_map_t, t0,tf, nx,ny,nt, LL,UR, num_videos=1;
+    eulerian_videos(ctx, us, inverse_flow_map_t, t0, tf, nx, ny, nt, LL,UR, num_videos=1;
         extra_kwargs_fun=nothing, ...)
 
 Create `num_videos::Int` videos in eulerian coordinates, i.e., where the time
@@ -484,16 +481,14 @@ RecipesBase.@recipe function f(
     toplot_1[shown_triangles], toplot_2[shown_triangles]
 end
 
-function plot_grid(ctx, as=[x.x for x in ctx.grid.nodes], shaded_triangles=[false for x in ctx.grid.cells];kwargs...)
+function plot_grid(ctx, as=[x.x for x in ctx.grid.nodes], shaded_triangles=[false for x in ctx.grid.cells]; kwargs...)
     fig = plot_grid_raw(ctx, as, shaded_triangles, fillcolor=ColorTypes.RGBA(1.0, 0.0, 0.0, 0.2);kwargs...)
     return plot_grid_raw!(fig, ctx, as, map(x -> !x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0, 0.0, 0.0, 0.0);kwargs...)
 end
-
-# seriestype --> :heatmap
-# fill --> true
-# xlim --> (LL[1], UR[1])
-# ylim --> (LL[2], UR[2])
-
+function plot_grid!(ctx, as=[x.x for x in ctx.grid.nodes], shaded_triangles=[false for x in ctx.grid.cells]; kwargs...)
+    fig = plot_grid_raw!(ctx, as, shaded_triangles, fillcolor=ColorTypes.RGBA(1.0,0.0,0.0,0.2); kwargs...)
+    return plot_grid_raw!(fig, ctx, as, map(x->!x, shaded_triangles), fillcolor=ColorTypes.RGBA(0.0,0.0,0.0,0.0); kwargs...)
+end
 
 RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(
@@ -627,6 +622,25 @@ function plot_vortices(
     end
     if include_singularities
         plot_singularities!(singularities; kwargs...)
+    end
+    return fig
+end
+function plot_vortices!(
+    fig,
+    vortices,
+    singularities,
+    LL,
+    UR;
+    logBg = true,
+    include_singularities = true,
+    showlabel = false,
+    kwargs...,
+)
+    for v in vortices, b in v.barriers
+        plot_barrier!(fig, b; showlabel = showlabel, kwargs...)
+    end
+    if include_singularities
+        plot_singularities!(fig, singularities; kwargs...)
     end
     return fig
 end
