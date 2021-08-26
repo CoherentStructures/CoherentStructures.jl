@@ -149,8 +149,8 @@ function GridContext{1}(::Type{FEM.Line},
                          quadrature_order::Int=default_quadrature_order,
                          ip=FEM.Lagrange{1,FEM.RefCube,1}(), kwargs...)
     # The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.Line, (numnodes[1]-1,), Vec{1}(LL[1]), Vec{1}(UR[1]))
-    loc = Regular1dGridLocator{FEM.Line}(numnodes[1], Vec{1}(LL[1]), Vec{1}(UR[1]))
+    grid = FEM.generate_grid(FEM.Line, (numnodes[1]-1,), Vec{1}((LL[1],)), Vec{1}((UR[1],)))
+    loc = Regular1dGridLocator{FEM.Line}(numnodes[1], Vec{1}((LL[1],)), Vec{1}((UR[1],)))
 
     dh = FEM.DofHandler(grid)
     push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
@@ -182,8 +182,8 @@ function GridContext{1}(::Type{FEM.QuadraticLine},
                          ip=FEM.Lagrange{1,FEM.RefCube,2}(), kwargs...
                          )
     # The -1 below is needed because Ferrite internally then goes on to increment it
-    grid = FEM.generate_grid(FEM.QuadraticLine, (numnodes[1]-1,), Vec{1}(LL[1]), Vec{1}(UR[1]))
-    loc = Regular1dGridLocator{FEM.QuadraticLine}(numnodes[1], Vec{1}(LL[1]), Vec{1}(UR[1]))
+    grid = FEM.generate_grid(FEM.QuadraticLine, (numnodes[1]-1,), Vec{1}((LL[1],)), Vec{1}((UR[1],)))
+    loc = Regular1dGridLocator{FEM.QuadraticLine}(numnodes[1], Vec{1}((LL[1],)), Vec{1}((UR[1],)))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{1, FEM.RefCube}(quadrature_order)
     push!(dh, :T, 1) #The :T is just a generic name for the scalar field
