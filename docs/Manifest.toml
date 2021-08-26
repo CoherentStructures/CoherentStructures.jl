@@ -100,11 +100,11 @@ version = "0.7.0"
 
 [[CoherentStructures]]
 deps = ["ArnoldiMethod", "AxisArrays", "ColorTypes", "DiffEqBase", "Distances", "Distributed", "Ferrite", "GeometricalPredicates", "Interpolations", "IterativeSolvers", "LinearAlgebra", "LinearMaps", "NearestNeighbors", "OrdinaryDiffEq", "ProgressMeter", "RecipesBase", "SharedArrays", "SparseArrays", "StaticArrays", "Statistics", "Tensors", "VoronoiDelaunay"]
-git-tree-sha1 = "d73b19b6ded832c827e3ccb4f9e7540b7497f789"
+git-tree-sha1 = "458314b08f18e814da0a0bd12b6ecb1d37688821"
 repo-rev = "master"
 repo-url = "https://github.com/CoherentStructures/CoherentStructures.jl.git"
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
-version = "0.4.3"
+version = "0.4.4"
 
 [[ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random"]
@@ -657,9 +657,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoopVectorization]]
 deps = ["ArrayInterface", "DocStringExtensions", "IfElse", "LinearAlgebra", "OffsetArrays", "Polyester", "Requires", "SLEEFPirates", "Static", "StrideArraysCore", "ThreadingUtilities", "UnPack", "VectorizationBase"]
-git-tree-sha1 = "9f23789217866ad9ecd053857ef202de5edcac4b"
+git-tree-sha1 = "dcaae6d7c8223946e2838ea97888e1db4ceb42eb"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.12.65"
+version = "0.12.66"
 
 [[MPC_jll]]
 deps = ["GMP_jll", "Libdl", "MPFR_jll", "Pkg"]
@@ -790,10 +790,10 @@ uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 version = "1.4.1"
 
 [[OrdinaryDiffEq]]
-deps = ["Adapt", "ArrayInterface", "DataStructures", "DiffEqBase", "DocStringExtensions", "ExponentialUtilities", "FastClosures", "FiniteDiff", "ForwardDiff", "LinearAlgebra", "Logging", "MacroTools", "MuladdMacro", "NLsolve", "Polyester", "RecursiveArrayTools", "Reexport", "SparseArrays", "SparseDiffTools", "StaticArrays", "UnPack"]
-git-tree-sha1 = "73d43522c1c756c739ef70a51941b0b028682994"
+deps = ["Adapt", "ArrayInterface", "DataStructures", "DiffEqBase", "DocStringExtensions", "ExponentialUtilities", "FastClosures", "FiniteDiff", "ForwardDiff", "LinearAlgebra", "Logging", "LoopVectorization", "MacroTools", "MuladdMacro", "NLsolve", "Polyester", "RecursiveArrayTools", "Reexport", "SparseArrays", "SparseDiffTools", "StaticArrays", "UnPack"]
+git-tree-sha1 = "2867051497b7daf05dd2839523732e137507dcc4"
 uuid = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
-version = "5.60.2"
+version = "5.63.3"
 
 [[PCRE_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
