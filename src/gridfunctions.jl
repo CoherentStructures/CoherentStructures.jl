@@ -370,9 +370,9 @@ function irregularDelaunayGrid(nodes_in::AbstractVector{Vec{2,Float64}};
     ctx = GridContext{2}(FEM.Triangle, nodes_in;
             on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR, ip=ip, kwargs...)
     if on_torus
-        bdata = BoundaryData(ctx, Dists.PeriodicEuclidean([UR .- LL...;]))
+        bdata = BoundaryData(ctx, PeriodicEuclidean([UR .- LL...;]))
     elseif on_cylinder
-        bdata = BoundaryData(ctx, Dists.PeriodicEuclidean([UR[1] - LL[1], Inf]))
+        bdata = BoundaryData(ctx, PeriodicEuclidean([UR[1] - LL[1], Inf]))
     else
         bdata = BoundaryData()
     end
@@ -449,7 +449,7 @@ function regularDelaunayGrid(
         result.gridType = "regular PC Delaunay grid"
     end
     if !PC
-        bdata = BoundaryData(result, Dists.PeriodicEuclidean([(UR .- LL)...]))
+        bdata = BoundaryData(result, PeriodicEuclidean([UR[1] - LL[1], UR[2] - LL[2]]))
     else
         bdata = BoundaryData()
     end
@@ -1126,24 +1126,24 @@ end
 
 
 #Helper type for keeping track of point numbers
-struct NumberedPoint2D <: VD.AbstractPoint2D
+struct NumberedPoint2D <: AbstractPoint2D
     x::Float64
     y::Float64
     id::Int64
     NumberedPoint2D(x::Float64,y::Float64,k::Int64) = new(x,y,k)
     NumberedPoint2D(x::Float64,y::Float64) = new(x, y, 0)
-    NumberedPoint2D(p::VD.Point2D) = new(p.x, p.y, 0)
+    NumberedPoint2D(p::Point2D) = new(p.x, p.y, 0)
     NumberedPoint2D(p::Vec{2,Float64}) = new(p[1], p[2], 0)
 end
-GP.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
-GP.Point2D(p::NumberedPoint2D) = Point2D(p.x, p.y)
-GP.gety(p::NumberedPoint2D) = p.y
-GP.getx(p::NumberedPoint2D) = p.x
+GeometricalPredicates.Point(x::Real, y::Real, k::Int64) = NumberedPoint2D(x, y, k)
+GeometricalPredicates.Point2D(p::NumberedPoint2D) = Point2D(p.x, p.y)
+GeometricalPredicates.getx(p::NumberedPoint2D) = p.x
+GeometricalPredicates.gety(p::NumberedPoint2D) = p.y
 
 #More or less equivalent to matlab's delaunay function, based on code from FEMDL.jl
 
 function delaunay2(x::Vector{<:Union{Vec{2,Float64},NTuple{2,Float64}}})
-    width = VD.max_coord - VD.min_coord
+    width = max_coord - min_coord
     @inbounds begin
         max_x = maximum(map(v->v[1], x))
         min_x = minimum(map(v->v[1], x))
@@ -1153,11 +1153,11 @@ function delaunay2(x::Vector{<:Union{Vec{2,Float64},NTuple{2,Float64}}})
     scale_x = 0.9*width/(max_x - min_x)
     scale_y = 0.9*width/(max_y - min_y)
     n = length(x)
-    a = [NumberedPoint2D(VD.min_coord+(x[i][1] - min_x)*scale_x, VD.min_coord+(x[i][2]-min_y)*scale_y, i) for i in 1:n]
+    a = [NumberedPoint2D(min_coord+(x[i][1] - min_x)*scale_x, min_coord+(x[i][2]-min_y)*scale_y, i) for i in 1:n]
     for i in 1:n
-        @assert !(GP.getx(a[i]) < VD.min_coord || GP.gety(a[i]) > VD.max_coord)
+        @assert !(getx(a[i]) < min_coord || gety(a[i]) > max_coord)
     end
-    tess = VD.DelaunayTessellation2D{NumberedPoint2D}(n)
+    tess = DelaunayTessellation2D{NumberedPoint2D}(n)
     push!(tess, a)
     m = 0
     for i in tess
@@ -1317,8 +1317,8 @@ function FEM.generate_grid(::Type{FEM.Triangle},
         (tri, triindex) = tri_iterator
         #It could be the the triangle in question is oriented the wrong way
         #We test this, and flip it if neccessary
-        J = Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri._b.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e1)
-        J += Tensors.otimes((nodes_to_triangulate[switched_nodes_table[tri._c.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e2)
+        J = otimes((nodes_to_triangulate[switched_nodes_table[tri._b.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e1)
+        J += otimes((nodes_to_triangulate[switched_nodes_table[tri._c.id]] - nodes_to_triangulate[switched_nodes_table[tri._a.id]]), e2)
         detJ = det(J)
         @assert detJ != 0
         if detJ > 0
@@ -1461,8 +1461,8 @@ function FEM.generate_grid(::Type{FEM.QuadraticTriangle}, nodes_in::Vector{Vec{2
             push!(nodes,center)
         end
 
-        J = Tensors.otimes((nodes_in[tri._b.id] - nodes_in[tri._a.id]) , e1)
-        J +=  Tensors.otimes((nodes_in[tri._c.id] - nodes_in[tri._a.id]) , e2)
+        J = otimes((nodes_in[tri._b.id] - nodes_in[tri._a.id]) , e1)
+        J +=  otimes((nodes_in[tri._c.id] - nodes_in[tri._a.id]) , e2)
         detJ = det(J)
 
         @assert det(J) != 0

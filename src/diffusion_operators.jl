@@ -72,7 +72,7 @@ function DM_heatflow(
     p0,
     sp_method::SparsificationMethod,
     kernel;
-    metric = Dists.Euclidean(),
+    metric = Euclidean(),
 )
     data = pmap(flow_fun, p0; batch_size = ceil(sqrt(length(p0))))
     sparse_diff_op_family(data, sp_method, kernel; metric = metric)
@@ -104,9 +104,9 @@ function sparse_diff_op_family(
     data::AbstractArray{<:AbstractVector{<:SVector}},
     sp_method::SparsificationMethod,
     kernel = gaussian(),
-    op_reduce = (P -> prod(reverse(LMs.LinearMap.(P))));
+    op_reduce = (P -> prod(reverse(LinearMap.(P))));
     α = 1,
-    metric = Dists.Euclidean(),
+    metric = Euclidean(),
     verbose::Bool = false,
 )
     N = length(data) # number of trajectories
@@ -114,7 +114,7 @@ function sparse_diff_op_family(
     q = axes(first(data), 1) # time axis
     all(d -> axes(d, 1) == q, data) || throw("inhomogeneous trajectory lengths")
     length(q) == 0 && throw("trajectories have length 0")
-    P = Distributed.pmap(q) do t
+    P = pmap(q) do t
         Pt = sparse_diff_op(getindex.(data, t), sp_method, kernel; α=α, metric=metric)
         verbose && println("time step $t/$q done")
         Pt
@@ -143,22 +143,22 @@ function sparse_diff_op(
     sp_method::SparsificationMethod,
     kernel = gaussian();
     α = 1.0,
-    metric = Dists.Euclidean(),
+    metric = Euclidean(),
 )
     P = spdist(data, sp_method, metric)
     N = LinearAlgebra.checksquare(P)
     if sp_method isa Neighborhood # P corresponds to the adjacency matrix
         if kernel != Base.one # otherwise no need to change entries
-            rows = rowvals(P)
-            vals = nonzeros(P)
+            rows = SparseArrays.rowvals(P)
+            vals = SparseArrays.nonzeros(P)
             for i in 1:N
-                for j in nzrange(P, i)
+                for j in SparseArrays.nzrange(P, i)
                     vals[j] = kernel(metric(data[rows[j]], data[i]))
                 end
             end
         end
     else # sp_method isa *KNN (P already contains the distances), need to apply kernel
-        vals = nonzeros(P)
+        vals = SparseArrays.nonzeros(P)
         vals .= kernel.(vals)
     end
     droptol!(P, eps(eltype(P)))
@@ -191,8 +191,8 @@ end
 
 @inline function lrmul!(A::SparseMatrixCSC, qₑ)
     nzv = SparseArrays.nzvalview(A)
-    rv = rowvals(A)
-    @inbounds for col in 1:size(A, 2), p in nzrange(A, col)
+    rv = SparseArrays.rowvals(A)
+    @inbounds for col in 1:size(A, 2), p in SparseArrays.nzrange(A, col)
         nzv[p] = qₑ[rv[p]] * nzv[p] * qₑ[col]
     end
     return A
@@ -200,23 +200,6 @@ end
 @inline function lrmul!(A::AbstractMatrix, qₑ)
     A .= qₑ .* A .* permutedims(qₑ)
     return A
-end
-
-# compat
-if VERSION < v"1.2.0"
-    function LinearAlgebra.ldiv!(D::Diagonal, A::SparseMatrixCSC)
-        # @assert !has_offset_axes(A)
-        if A.m != length(D.diag)
-            throw(DimensionMismatch("diagonal matrix is $(length(D.diag)) by $(length(D.diag)) but right hand side has $(A.m) rows"))
-        end
-        nonz = SparseArrays.nzvalview(A)
-        Arowval = rowvals(A)
-        d = D.diag
-        @inbounds for col in 1:size(A, 2), p in nzrange(A, col)
-            nonz[p] = d[Arowval[p]] \ nonz[p]
-        end
-        A
-    end
 end
 
 """
@@ -241,7 +224,7 @@ function unionadjacency(Ps)
         append!(J, Ji)
         append!(V, Vi)
     end
-    return sparse(I, J, V, size(first(Ps))..., max)
+    return SparseArrays.sparse(I, J, V, size(first(Ps))..., max)
 end
 
 # spectral clustering/diffusion map related functions
@@ -254,9 +237,9 @@ Compute the stationary distribution for a Markov transition operator.
 is given by a function.
 """
 function stationary_distribution(P)
-    decomp, history = ArnoldiMethod.partialschur(P; nev=1, tol=0.0)
+    decomp, history = partialschur(P; nev=1, tol=0.0)
     history.converged || error("computation of stationary distribution failed")
-    λs, X = ArnoldiMethod.partialeigen(decomp)
+    λs, X = partialeigen(decomp)
     # λs, X = Arpack.eigs(P; nev = 1, ncv = 50, maxiter = maxiter)
     Π = dropdims(real(X), dims = 2) # stationary distribution
     ext = extrema(Π)
@@ -267,10 +250,10 @@ function stationary_distribution(P)
     return Π
 end
 
-@inline function L_mul_Lt(L::LMs.LinearMap, Π)
+@inline function L_mul_Lt(L::LinearMap, Π)
     Πsqrt = Diagonal(sqrt.(Π))
     Πinv = Diagonal(inv.(Π))
-    return LMs.LinearMap(
+    return LinearMap(
         Πsqrt * L * Πinv * transpose(L) * Πsqrt;
         issymmetric = true,
         ishermitian = true,
@@ -279,8 +262,8 @@ end
 end
 @inline function L_mul_Lt(L::AbstractMatrix, Π)
     L .= sqrt.(Π) .* L .* permutedims(inv.(sqrt.(Π)))
-    LMap = LMs.LinearMap(L)
-    return LMs.LinearMap(
+    LMap = LinearMap(L)
+    return LinearMap(
         LMap * transpose(LMap);
         issymmetric = true,
         ishermitian = true,
@@ -303,9 +286,9 @@ function diffusion_coordinates(P, n_coords)
 
     # Compute relevant SVD info for P by computing eigendecomposition of P*P'
     L = L_mul_Lt(P, Π)
-    decomp, history = ArnoldiMethod.partialschur(L; nev=n_coords, tol=0.0)
+    decomp, history = partialschur(L; nev=n_coords, tol=0.0)
     history.converged || error("computation of stationary distribution failed")
-    λs, V = ArnoldiMethod.partialeigen(decomp)
+    λs, V = partialeigen(decomp)
 
     # λs, V = Arpack.eigs(
     #     L;
@@ -341,4 +324,4 @@ end
 Returns the symmetric pairwise diffusion distance matrix corresponding to points whose
 diffusion coordinates are given by `Ψ`.
 """
-diffusion_distance(Ψ) = Dists.pairwise(Dists.Euclidean(), Ψ)
+diffusion_distance(Ψ) = pairwise(Euclidean(), Ψ)

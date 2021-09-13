@@ -66,7 +66,7 @@ the result in the corresponding slice of `du`.
 This is so that a decoupled ODE system with several initial values can
 be solved without having to call the ODE solver multiple times.
 """
-function arraymap!(du, u, p, t, odefun::ODE.ODEFunction{true}, N::Int, dim::Int)
+function arraymap!(du, u, p, t, odefun::ODEFunction{true}, N::Int, dim::Int)
     @boundscheck eachindex(du, u) == Base.OneTo(N*dim) || throw(
         DimensionMismatch("vector arguments must have equal axes")
     )
@@ -154,8 +154,8 @@ end
 
 Returns a linear interpolant of the `AxisArray` `A` (without extrapolation).
 """
-function ITP.LinearInterpolation(A::AxisArray)
-    ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Linear())), axisvalues(A)...)
+function Interpolations.LinearInterpolation(A::AxisArray)
+    scale(interpolate(A.data, BSpline(Linear())), axisvalues(A)...)
 end
 
 """
@@ -163,8 +163,8 @@ end
 
 Returns a cubic spline interpolant of the `AxisArray` `A` (without extrapolation).
 """
-function ITP.CubicSplineInterpolation(A::AxisArray)
-    ITP.scale(ITP.interpolate(A.data, ITP.BSpline(ITP.Cubic(ITP.Natural(ITP.OnGrid())))),
+function Interpolations.CubicSplineInterpolation(A::AxisArray)
+    scale(interpolate(A.data, BSpline(Cubic(Natural(OnGrid())))),
                         axisvalues(A)...)
 end
 
@@ -242,8 +242,8 @@ end
 
 
 #Unit Vectors in R^2
-const e1 = Tensors.basevec(Vec{2}, 1)
-const e2 = Tensors.basevec(Vec{2}, 2)
+const e1 = basevec(Vec{2}, 1)
+const e2 = basevec(Vec{2}, 2)
 
 function rawInvCGTensor(args...; kwargs...)
     result = invCGTensor(args...; kwargs...)

@@ -3,7 +3,7 @@
 
 # interpolated vector field components
 """
-    interpolateVF(xspan, yspan, tspan, u, v, itp_type=ITP.BSpline(ITP.Cubic(ITP.Free())))) -> VI
+    interpolateVF(xspan, yspan, tspan, u, v, itp_type=BSpline(Cubic(Free())))) -> VI
 
 `xspan`, `yspan` and `tspan` span the space-time domain on which the
 velocity-components `u` and `v` are given. `u` corresponds to the ``x``- or
@@ -16,7 +16,7 @@ documentation for how to declare other interpolation types.
 julia> uv = interpolateVF(xs, ys, ts, u, v)
 
 julia> uv(x, y, t)
-2-element SArray{Tuple{2},Float64,1,2} with indices SOneTo(2):
+2-element SVector{2, Float64} with indices SOneTo(2):
  -44.23554926984537
   -4.964069022198859
 ```
@@ -26,10 +26,10 @@ function interpolateVF(X::AbstractRange{S1},
                        T::AbstractRange{S1},
                        U::AbstractArray{S2,3},
                        V::AbstractArray{S2,3},
-                       itp_type=ITP.BSpline(ITP.Cubic(ITP.Free(ITP.OnGrid())))
+                       itp_type=BSpline(Cubic(Free(OnGrid())))
                        ) where {S1 <: Real, S2 <: Real}
     UV = map(SVector{2,S2}, U, V)::Array{SVector{2,S2},3}
-    return ITP.scale(ITP.interpolate(UV, itp_type), X, Y, T)
+    return scale(interpolate(UV, itp_type), X, Y, T)
 end
 
 """
@@ -48,7 +48,7 @@ julia> f = u -> flow(interp_rhs, u, tspan; p=UI)
 julia> mCG_tensor = u -> CG_tensor(interp_rhs, u, tspan, δ; p=UI)
 ```
 """
-const interp_rhs = ODE.ODEFunction{false}((u, p, t) -> p(u[1], u[2], t))
+const interp_rhs = ODEFunction{false}((u, p, t) -> p(u[1], u[2], t))
 
 """
     interp_rhs!(du, u, p, t) -> Vector
@@ -66,7 +66,7 @@ julia> f = u -> flow(interp_rhs!, u, tspan; p=UI)
 julia> mCG_tensor = u -> CG_tensor(interp_rhs!, u, tspan, δ; p=UI)
 ```
 """
-const interp_rhs! = ODE.ODEFunction{true}((du, u, p, t) -> du .= p(u[1], u[2], t))
+const interp_rhs! = ODEFunction{true}((du, u, p, t) -> du .= p(u[1], u[2], t))
 
 # standard map
 const standard_a = 0.971635
@@ -102,7 +102,7 @@ function ABC_flow(u, p, t)
         C * sin(u[2]) + B * cos(u[1])
         )
 end
-const abcFlow = ODE.ODEFunction{false}(ABC_flow)
+const abcFlow = ODEFunction{false}(ABC_flow)
 
 # cylinder flow [Froyland, Lloyd, and Santitissadeekorn, 2010]
 function _cylinder_flow(u, p, t)
@@ -120,4 +120,4 @@ function _cylinder_flow(u, p, t)
         A(t) * cos(x - ν * t) * sin(y)
         )
 end
-const cylinder_flow = ODE.ODEFunction{false}(_cylinder_flow)
+const cylinder_flow = ODEFunction{false}(_cylinder_flow)

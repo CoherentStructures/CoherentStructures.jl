@@ -37,7 +37,7 @@ function nonAdaptiveTOCollocation(
     n_domain = ctx_domain.n
     result = spzeros(n_codomain,n_domain)
 
-    speye_n_domain = sparse(1.0*I,n_domain,n_domain)
+    speye_n_domain = SparseArrays.sparse(1.0*I,n_domain,n_domain)
 
     pointsInvImages = Vec{dim}[]
 
@@ -183,58 +183,52 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
             #the old grid
             new_density_nodevals = new_density_bcdofvals
             while length(new_density_nodevals) != new_ctx.n
-                push!(new_density_nodevals,0.0)
+                push!(new_density_nodevals, 0.0)
             end
 
-            new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
-                       for q in new_ctx.quadrature_points ]
+            new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx, new_density_nodevals, q)
+                for q in new_ctx.quadrature_points]
         end
-        I, J, V = findnz(assembleStiffnessMatrix(new_ctx,bdata=new_bdata))
+        I, J, V = findnz(assembleStiffnessMatrix(new_ctx, bdata=new_bdata))
         I .= translation_table[I]
         J .= translation_table[J]
         n = ctx.n - length(bdata.periodic_dofs_from)
-        push!(As,sparse(I,J,V,n,n))
+        push!(As, SparseArrays.sparse(I, J, V, n, n))
     end
     return mean(As)
 end
 
 
 #Reordering in the periodic case is slightly more tricky
-function bcdofNewToBcdofOld(
-        old_ctx::GridContext{dim},bdata::BoundaryData,
-        new_ctx::GridContext{dim},new_bdata::BoundaryData,K
-        ) where {dim}
+function bcdofNewToBcdofOld(old_ctx::GridContext{dim}, bdata::BoundaryData,
+                            new_ctx::GridContext{dim}, new_bdata::BoundaryData, K) where {dim}
+    I, J ,V = findnz(K)
 
-        I, J ,V = findnz(K)
-
-        #Here I,J are in pdof order for new_ctx
-
-        bcdof_to_node_new = bcdof_to_node(new_ctx,new_bdata)
-        node_to_bcdof_old = node_to_bcdof(old_ctx,bdata)
-        I .= node_to_bcdof_old[bcdof_to_node_new[I]]
-        J .= node_to_bcdof_old[bcdof_to_node_new[J]]
-
-        old_pdof_n = old_ctx.n - length(bdata.periodic_dofs_from)
-
-        return sparse(I,J,V,old_pdof_n,old_pdof_n)
+    # Here I,J are in pdof order for new_ctx
+    bcdof_to_node_new = bcdof_to_node(new_ctx, new_bdata)
+    node_to_bcdof_old = node_to_bcdof(old_ctx, bdata)
+    I .= node_to_bcdof_old[bcdof_to_node_new[I]]
+    J .= node_to_bcdof_old[bcdof_to_node_new[J]]
+    old_pdof_n = old_ctx.n - length(bdata.periodic_dofs_from)
+    return SparseArrays.sparse(I, J, V, old_pdof_n, old_pdof_n)
 end
 
-function node_to_bcdof(ctx::GridContext{dim},bdata::BoundaryData) where {dim}
-        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
-        bdata_table = BCTable(ctx,bdata)
-        return bdata_table[ctx.node_to_dof]
+function node_to_bcdof(ctx::GridContext{dim}, bdata::BoundaryData) where {dim}
+    n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+    bdata_table = BCTable(ctx, bdata)
+    return bdata_table[ctx.node_to_dof]
 end
 
 function bcdof_to_node(ctx::GridContext{dim},bdata::BoundaryData) where {dim}
-        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
-        bdata_table = BCTable(ctx,bdata)
-        result = zeros(Int,n_nodes)
-        for i in 1:ctx.n
-            if result[bdata_table[ctx.node_to_dof[i]]] == 0
-                result[bdata_table[ctx.node_to_dof[i]]] = i
-            end
+    n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+    bdata_table = BCTable(ctx,bdata)
+    result = zeros(Int,n_nodes)
+    for i in 1:ctx.n
+        if iszero(result[bdata_table[ctx.node_to_dof[i]]])
+            result[bdata_table[ctx.node_to_dof[i]]] = i
         end
-        return result
+    end
+    return result
 end
 
 
@@ -319,7 +313,7 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
             throw(AssertionError("Invalid projection_method"))
         end
         if volume_preserving
-            L = sparse(I, npoints, npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
+            L = SparseArrays.sparse(I, npoints, npoints)[node_to_bcdof(ctx, bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             result = ALPHA_bc*L
         else
             volume_change_pdof = volume_change[bcdof_to_node(ctx,bdata)]
@@ -328,7 +322,7 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
             volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
             volume_change = volume_change_pdof[node_to_bcdof(ctx,bdata)]
 
-            L = sparse(1.0*I,npoints,npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
+            L = SparseArrays.sparse(1.0*I,npoints,npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             for j in 1:(size(L)[2])
                 L[:,j] *= volume_change_pdof[j]
             end
@@ -437,7 +431,7 @@ function L2GalerkinTOFromInverse(
         end
     end
 
-    DL2 = sparse(DL2I, DL2J, DL2V, ctx_codomain.n, ctx_domain.n)
+    DL2 = SparseArrays.sparse(DL2I, DL2J, DL2V, ctx_codomain.n, ctx_domain.n)
     return applyBCS(ctx_codomain, DL2, bdata_codomain;
                     ctx_col=ctx_domain, bdata_col=bdata_domain, add_vals=true)
 end

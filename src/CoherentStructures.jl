@@ -2,42 +2,40 @@ module CoherentStructures
 
 # use standard libraries
 using LinearAlgebra
-using ProgressMeter
+import ProgressMeter
 using SparseArrays
+using SparseArrays: nzvalview, dropzeros!
 using Distributed
 using SharedArrays: SharedArray
 using Statistics: mean
 
 # import data type packages
-import StaticArrays
-using StaticArrays: SVector, @SVector, SArray, SMatrix, @SMatrix
-import Tensors
-using Tensors: Vec, Tensor, SymmetricTensor
-import AxisArrays
+using StaticArrays: SVector, @SVector, SMatrix, @SMatrix
+using Tensors: Vec, Tensor, SymmetricTensor, basevec, dott, tdot, otimes, symmetric
 using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
-import DiffEqBase
-import OrdinaryDiffEq
-const ODE = OrdinaryDiffEq
-import Distances
-const Dists = Distances
-import NearestNeighbors
-const NN = NearestNeighbors
-import Interpolations
-const ITP = Interpolations
+using DiffEqBase: DiffEqBase, initialize!, isconstant, update_coefficients!, @..
+using OrdinaryDiffEq: OrdinaryDiffEq, ODEProblem, ODEFunction, ContinuousCallback,
+    terminate!, solve, Tsit5, BS5, OrdinaryDiffEqNewtonAlgorithm, DEFAULT_LINSOLVE,
+    alg_order, OrdinaryDiffEqMutableCache, alg_cache, @muladd, perform_step!, @unpack,
+    unwrap_alg, is_mass_matrix_alg
+
+using Distances: Distances, PreMetric, SemiMetric, Metric, Euclidean, PeriodicEuclidean,
+    pairwise, pairwise!, colwise, colwise!, result_type
+
+using NearestNeighbors: BallTree, KDTree, inrange, knn, MinkowskiMetric
+
+using Interpolations: Interpolations, LinearInterpolation, CubicSplineInterpolation,
+    interpolate, scale, BSpline, Linear, Cubic, Natural, OnGrid, Free
 
 # import linear algebra related packages
-import LinearMaps
-const LMs = LinearMaps
-import IterativeSolvers
-import ArnoldiMethod
+using LinearMaps: LinearMap
+using IterativeSolvers: cg
+using ArnoldiMethod: partialschur, partialeigen
 
 # import geometry related packages
-import GeometricalPredicates
-const GP = GeometricalPredicates
-import VoronoiDelaunay
-const VD = VoronoiDelaunay
-
+using GeometricalPredicates: GeometricalPredicates, Point, AbstractPoint2D, Point2D, getx, gety
+using VoronoiDelaunay: DelaunayTessellation2D, findindex, isexternal, max_coord, min_coord
 
 # Ferrite
 import Ferrite

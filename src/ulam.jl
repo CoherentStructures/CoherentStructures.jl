@@ -23,5 +23,5 @@ function ulam(ctx::GridContext{2}, f, nx, ny)
             Js[idx] = ctx.cell_to_dof[m2]
         end
     end
-    return sparse(Is, Js, val, n, n)
+    return SparseArrays.sparse(Is, Js, val, n, n)
 end

@@ -51,10 +51,10 @@ function implicitEulerStepFamily(ctx::GridContext, sol, tspan, κ, δ; factor=tr
             end
         else
             matmul = let A=K
-                (u, v) -> copyto!(u, IterativeSolvers.cg(A, v))
+                (u, v) -> copyto!(u, cg(A, v))
             end
         end
-        LMs.LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
+        LinearMap(matmul, matmul, n, n; issymmetric=true, ishermitian=true, isposdef=true) * M
     end
     return prod(reverse(P))
 end
@@ -89,12 +89,12 @@ function advect_serialized_quadpoints(ctx::GridContext, tspan, odefun!, p=nothin
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
     p2 = Dict("ctx" => ctx, "p" => p)
 
-    prob = ODE.ODEProblem{true}(
+    prob = ODEProblem{true}(
         (du, u, p, t) -> large_rhs(odefun!, du, u, p, t),
         u0,
         (tspan[1], tspan[end]),
         p2)
-    return ODE.solve(prob, solver, abstol=tolerance, reltol=tolerance)
+    return solve(prob, solver, abstol=tolerance, reltol=tolerance)
 end
 
 
@@ -107,7 +107,7 @@ function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=BoundaryData())
         Df = Tensor{2,2}(
             (p[(8*(index-1) + 1):(8*(index-1) + 4)] -
                     p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ) )
-        return Tensors.dott(inv(Df))
+        return dott(inv(Df))
     end
     return assembleStiffnessMatrix(ctx, Afun, p, bdata=bdata)
 end
@@ -162,7 +162,7 @@ function extendedRHSStiff!(A, u, p, t)
             (u[(4*(i-1) +1):(4*i)] - u[(4*n_quadpoints +1 +4*(i-1)):(4*n_quadpoints+4*i)])/2δ
             )
     end
-    invDiffTensors = Tensors.dott.(inv.(DF))
+    invDiffTensors = dott.(inv.(DF))
     ctx = p["ctx"]
     κ = p["κ"]
     K = assembleStiffnessMatrix(ctx, PCDiffTensors, invDiffTensors)

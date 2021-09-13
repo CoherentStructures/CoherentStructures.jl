@@ -270,23 +270,23 @@ function applyBCS(ctx_row::GridContext{dim}, K, bdata_row;
         new_m -= 1
     end
 
-    if issparse(K)
-        vals = nonzeros(K)
-        rows = rowvals(K)
+    if SparseArrays.issparse(K)
+        vals = SparseArrays.nonzeros(K)
+        rows = SparseArrays.rowvals(K)
 
         #Make an empty sparse matrix
         I = Int[]
         sizehint!(I, length(rows))
         J = Int[]
         sizehint!(J, length(rows))
-        vals = nonzeros(K)
+        vals = SparseArrays.nonzeros(K)
         V = Float64[]
         sizehint!(V, length(rows))
         for j = 1:m
             if correspondsTo_col[j] == 0
                 continue
             end
-            for i in nzrange(K,j)
+            for i in SparseArrays.nzrange(K,j)
                 row = rows[i]
                 if correspondsTo_row[row] == 0
                     continue
@@ -305,9 +305,9 @@ function applyBCS(ctx_row::GridContext{dim}, K, bdata_row;
             end
         end
         if add_vals
-            Kres = sparse(I, J, V, new_n, new_m)
+            Kres = SparseArrays.sparse(I, J, V, new_n, new_m)
         else
-            Kres = sparse(I, J, V, new_n, new_m, (x,y) -> x)
+            Kres = SparseArrays.sparse(I, J, V, new_n, new_m, (x,y) -> x)
         end
         return Kres
     else
@@ -360,10 +360,10 @@ function identifyPoints(ctx::GridContext{dim}, predicate::Distances.Metric) wher
     end
     TOL = 1e-12 #TODO: set this somewhere globally
 
-    S = NN.BallTree(l, predicate)
+    S = BallTree(l, predicate)
 
     for index in 1:ctx.n
-        res = NN.inrange(S, getDofCoordinates(ctx, index), TOL, true)
+        res = inrange(S, getDofCoordinates(ctx, index), TOL, true)
         if res[1] != index
             push!(identify_from, index)
             push!(identify_to, res[1])
