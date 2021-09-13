@@ -2,6 +2,7 @@ module CoherentStructures
 
 # use standard libraries
 using LinearAlgebra
+using LinearAlgebra: checksquare
 import ProgressMeter
 using SparseArrays
 using SparseArrays: nzvalview, dropzeros!

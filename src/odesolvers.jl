@@ -192,7 +192,7 @@ end
             cache.step = false
         end
 
-        if f.mass_matrix == LinearAlgebra.I
+        if f.mass_matrix == I
             ##### STEP 1:
             cache.linsolve(vec(z₁), cache.W, vec(uprev), false)
             ##### STEP 2:

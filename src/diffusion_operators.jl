@@ -146,19 +146,19 @@ function sparse_diff_op(
     metric = Euclidean(),
 )
     P = spdist(data, sp_method, metric)
-    N = LinearAlgebra.checksquare(P)
+    N = checksquare(P)
     if sp_method isa Neighborhood # P corresponds to the adjacency matrix
         if kernel != Base.one # otherwise no need to change entries
-            rows = SparseArrays.rowvals(P)
-            vals = SparseArrays.nonzeros(P)
+            rows = rowvals(P)
+            vals = nonzeros(P)
             for i in 1:N
-                for j in SparseArrays.nzrange(P, i)
+                for j in nzrange(P, i)
                     vals[j] = kernel(metric(data[rows[j]], data[i]))
                 end
             end
         end
     else # sp_method isa *KNN (P already contains the distances), need to apply kernel
-        vals = SparseArrays.nonzeros(P)
+        vals = nonzeros(P)
         vals .= kernel.(vals)
     end
     droptol!(P, eps(eltype(P)))
@@ -190,9 +190,9 @@ i.e., return ``a_{ij}:=a_{ij}/q_i^{\\alpha}/q_j^{\\alpha}``, where
 end
 
 @inline function lrmul!(A::SparseMatrixCSC, qₑ)
-    nzv = SparseArrays.nzvalview(A)
-    rv = SparseArrays.rowvals(A)
-    @inbounds for col in 1:size(A, 2), p in SparseArrays.nzrange(A, col)
+    nzv = nzvalview(A)
+    rv = rowvals(A)
+    @inbounds for col in 1:size(A, 2), p in nzrange(A, col)
         nzv[p] = qₑ[rv[p]] * nzv[p] * qₑ[col]
     end
     return A
@@ -224,7 +224,7 @@ function unionadjacency(Ps)
         append!(J, Ji)
         append!(V, Vi)
     end
-    return SparseArrays.sparse(I, J, V, size(first(Ps))..., max)
+    return sparse(I, J, V, size(first(Ps))..., max)
 end
 
 # spectral clustering/diffusion map related functions
@@ -279,7 +279,7 @@ Compute the (time-coupled) diffusion coordinate matrix `Ψ` and the coordinate w
 diffusion  coordinates to be computed.
 """
 function diffusion_coordinates(P, n_coords)
-    N = LinearAlgebra.checksquare(P)
+    N = checksquare(P)
     n_coords <= N ||
     throw(error("number of requested coordinates, $n_coords, too large, only $N samples available"))
     Π = stationary_distribution(transpose(P))

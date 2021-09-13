@@ -270,23 +270,23 @@ function applyBCS(ctx_row::GridContext{dim}, K, bdata_row;
         new_m -= 1
     end
 
-    if SparseArrays.issparse(K)
-        vals = SparseArrays.nonzeros(K)
-        rows = SparseArrays.rowvals(K)
+    if issparse(K)
+        vals = nonzeros(K)
+        rows = rowvals(K)
 
         #Make an empty sparse matrix
         I = Int[]
         sizehint!(I, length(rows))
         J = Int[]
         sizehint!(J, length(rows))
-        vals = SparseArrays.nonzeros(K)
+        vals = nonzeros(K)
         V = Float64[]
         sizehint!(V, length(rows))
         for j = 1:m
             if correspondsTo_col[j] == 0
                 continue
             end
-            for i in SparseArrays.nzrange(K,j)
+            for i in nzrange(K,j)
                 row = rows[i]
                 if correspondsTo_row[row] == 0
                     continue
@@ -305,9 +305,9 @@ function applyBCS(ctx_row::GridContext{dim}, K, bdata_row;
             end
         end
         if add_vals
-            Kres = SparseArrays.sparse(I, J, V, new_n, new_m)
+            Kres = sparse(I, J, V, new_n, new_m)
         else
-            Kres = SparseArrays.sparse(I, J, V, new_n, new_m, (x,y) -> x)
+            Kres = sparse(I, J, V, new_n, new_m, (x,y) -> x)
         end
         return Kres
     else

@@ -58,7 +58,7 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         A = assembleStiffnessMatrix(ctx)
 
         function update_coeffs!(A, u, p, t)
-            vals = SparseArrays.nzvalview(A)
+            vals = nzvalview(A)
             vals .= CoherentStructures.stiffnessMatrixTimeT(ctx, sol, t, δ).nzval
             vals .*= ϵ
             A

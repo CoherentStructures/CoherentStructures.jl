@@ -37,7 +37,7 @@ function nonAdaptiveTOCollocation(
     n_domain = ctx_domain.n
     result = spzeros(n_codomain,n_domain)
 
-    speye_n_domain = SparseArrays.sparse(1.0*I,n_domain,n_domain)
+    speye_n_domain = sparse(1.0*I,n_domain,n_domain)
 
     pointsInvImages = Vec{dim}[]
 
@@ -193,7 +193,7 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
         I .= translation_table[I]
         J .= translation_table[J]
         n = ctx.n - length(bdata.periodic_dofs_from)
-        push!(As, SparseArrays.sparse(I, J, V, n, n))
+        push!(As, sparse(I, J, V, n, n))
     end
     return mean(As)
 end
@@ -210,7 +210,7 @@ function bcdofNewToBcdofOld(old_ctx::GridContext{dim}, bdata::BoundaryData,
     I .= node_to_bcdof_old[bcdof_to_node_new[I]]
     J .= node_to_bcdof_old[bcdof_to_node_new[J]]
     old_pdof_n = old_ctx.n - length(bdata.periodic_dofs_from)
-    return SparseArrays.sparse(I, J, V, old_pdof_n, old_pdof_n)
+    return sparse(I, J, V, old_pdof_n, old_pdof_n)
 end
 
 function node_to_bcdof(ctx::GridContext{dim}, bdata::BoundaryData) where {dim}
@@ -313,7 +313,7 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
             throw(AssertionError("Invalid projection_method"))
         end
         if volume_preserving
-            L = SparseArrays.sparse(I, npoints, npoints)[node_to_bcdof(ctx, bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
+            L = sparse(I, npoints, npoints)[node_to_bcdof(ctx, bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             result = ALPHA_bc*L
         else
             volume_change_pdof = volume_change[bcdof_to_node(ctx,bdata)]
@@ -322,7 +322,7 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
             volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
             volume_change = volume_change_pdof[node_to_bcdof(ctx,bdata)]
 
-            L = SparseArrays.sparse(1.0*I,npoints,npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
+            L = sparse(1.0*I,npoints,npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             for j in 1:(size(L)[2])
                 L[:,j] *= volume_change_pdof[j]
             end
@@ -431,7 +431,7 @@ function L2GalerkinTOFromInverse(
         end
     end
 
-    DL2 = SparseArrays.sparse(DL2I, DL2J, DL2V, ctx_codomain.n, ctx_domain.n)
+    DL2 = sparse(DL2I, DL2J, DL2V, ctx_codomain.n, ctx_domain.n)
     return applyBCS(ctx_codomain, DL2, bdata_codomain;
                     ctx_col=ctx_domain, bdata_col=bdata_domain, add_vals=true)
 end

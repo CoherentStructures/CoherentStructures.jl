@@ -277,7 +277,7 @@ function spdist(data, sp_method::Neighborhood, metric::PreMetric = Euclidean())
     Js = vcat(idxs...)
     Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
     Vs = fill(1.0, length(Is))
-    return SparseArrays.sparse(Is, Js, Vs, N, N, *)
+    return sparse(Is, Js, Vs, N, N, *)
 end
 function spdist(data, sp_method::Union{KNN,MutualKNN}, metric::PreMetric = Euclidean())
     N = length(data) # number of states
@@ -290,8 +290,8 @@ function spdist(data, sp_method::Union{KNN,MutualKNN}, metric::PreMetric = Eucli
     Js = vcat(idxs...)
     Is = vcat([fill(i, length(idxs[i])) for i in eachindex(idxs)]...)
     Ds = vcat(dists...)
-    D = SparseArrays.sparse(Is, Js, Ds, N, N)
-    SparseArrays.dropzeros!(D)
+    D = sparse(Is, Js, Ds, N, N)
+    dropzeros!(D)
     if sp_method isa KNN
         return max.(D, permutedims(D))
     else # sp_method isa MutualKNN
@@ -325,7 +325,7 @@ function spdist(data, sp_method::Neighborhood, metric::STmetric)
     Is = vcat(I1, getindex.(IJV, 1)...)
     Js = vcat(J1, getindex.(IJV, 2)...)
     Vs = vcat(V1, getindex.(IJV, 3)...)
-    return SparseArrays.sparse(Is, Js, Vs, N, N)
+    return sparse(Is, Js, Vs, N, N)
 end
 function spdist(data, sp_method::Union{KNN,MutualKNN}, metric::STmetric)
     data = vec(data)
@@ -343,7 +343,7 @@ function spdist(data, sp_method::Union{KNN,MutualKNN}, metric::STmetric)
         Js[(i-1)*(k+1)+1:i*(k+1)] = index
         Ds[(i-1)*(k+1)+1:i*(k+1)] = ds[index]
     end
-    D = SparseArrays.sparse(Is, Js, Ds, N, N)
+    D = sparse(Is, Js, Ds, N, N)
     # dropzeros!(D)
     if sp_method isa KNN
         return max.(D, permutedims(D))
