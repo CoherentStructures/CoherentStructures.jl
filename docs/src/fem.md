@@ -162,7 +162,8 @@ u[20] = 2.0; u[38] = 3.0; u[56] = 4.0
 plot_u(ctx, u, 200, 200, bdata=bdata, colorbar=:none)
 ```
 
-To apply boundary conditions to a stiffness/mass matrix, use the `applyBCS` function. Note that `assembleStiffnessMatrix` and `assembleMassMatrix` take a `bdata` argument that does this internally.
+To apply boundary conditions to a stiffness/mass matrix, use the `applyBCS` function. Note
+that both `assemble` functions take a `bdata` argument that does this internally.
 
 ## Plotting and Videos
 
@@ -172,8 +173,9 @@ The simplest way to plot is using the [`plot_u`](@ref) function. Plots and video
 
 ## Parallelisation
 
-Many of the plotting functions support parallelism internally.
-Tensor fields can be constructed in parallel, and then passed to [`assembleStiffnessMatrix`](@ref). For an example that does this, see
+Many of the plotting functions support parallelism internally. Tensor fields can be
+constructed in parallel, and then passed to [`assemble(Stiffness(), _)`](@ref). For an
+example that does this, see
 TODO: Add this example
 
 ## FEM-API
@@ -185,8 +187,7 @@ CurrentModule = CoherentStructures
 ### Stiffness and Mass Matrices
 
 ```@docs
-assembleStiffnessMatrix
-assembleMassMatrix
+assemble
 adaptiveTOCollocationStiffnessMatrix
 ```
 

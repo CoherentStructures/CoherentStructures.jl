@@ -54,8 +54,8 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         ctx, _ = regularTriangularGrid((N, N))
         circleFun = x -> (sqrt((x[1] - 0.5)^2 + (x[2] - 0.5)^2) < 0.1) ? 1.0 : 0.0
         sol = CoherentStructures.advect_serialized_quadpoints(ctx, (0.0, 1.1), rot_double_gyre!, nothing, δ)
-        M = assembleMassMatrix(ctx)
-        A = assembleStiffnessMatrix(ctx)
+        M = assemble(Mass(), ctx)
+        A = assemble(Stiffness(), ctx)
 
         function update_coeffs!(A, u, p, t)
             vals = SparseArrays.nzvalview(A)

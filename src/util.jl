@@ -1,8 +1,6 @@
 # (c) 2017-2021 Nathanael Schilling & Daniel Karrasch
 # Various utility functions
 
-const PEuclidean = Distances.PeriodicEuclidean
-
 @enum BisectionStatus::Int zero_found=0 maxiters_exceeded=1 nans_between=2 no_real_root=3
 
 # bisection is used in closed orbit detection in ellipticLCS.jl
@@ -315,16 +313,16 @@ goodmod(a, b) = Base.mod(a, b)
 # end
 
 #TODO: Document this
-function unzip(A::Array{T}) where {T}
-    res = map(x -> x[], T.parameters)
-    res_len = length(res)
-    for t in A
-        for i in 1:res_len
-            push!(res[i], t[i])
-        end
-    end
-    res
-end
+# function unzip(A::Array{T}) where {T}
+#     res = map(x -> x[], T.parameters)
+#     res_len = length(res)
+#     for t in A
+#         for i in 1:res_len
+#             push!(res[i], t[i])
+#         end
+#     end
+#     res
+# end
 
 _getside(a, b, c) = sign((a[1] - c[1])*(b[2] - c[2]) - (b[1] - c[1])*(a[2] - c[2]))
 

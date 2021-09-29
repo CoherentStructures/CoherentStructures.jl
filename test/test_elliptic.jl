@@ -8,8 +8,8 @@ const CS = CoherentStructures
     @test sing.coords.data == coords
     @test sing.index == 1
     @test sing == Singularity(SVector{2}(coords), 1//1)
-    @test getcoords([sing])[1].data == coords
-    @test getindices([sing])[1] == 1
+    @test CS.getcoords([sing])[1].data == coords
+    @test CS.getindices([sing])[1] == 1
 end
 
 @testset "circle distances" begin
@@ -26,24 +26,24 @@ end
         for v in (AxisArray(SVector{2}.(x, y'), x, y),
                 AxisArray(SVector{2}.(-x, -y'), x, y),
                 AxisArray(SVector{2}.(-y', x), x, y))
-            S = @inferred compute_singularities(v)
+            S = @inferred CS.compute_singularities(v)
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == 1
             for mh in ((), (Combine20(),), (Combine20Aggressive(),), (Combine31(),))
-                S = @inferred critical_point_detection(v, 0.1; merge_heuristics=mh)
+                S = @inferred CS.critical_point_detection(v, 0.1; merge_heuristics=mh)
                 @test length(S) == 1
                 @test iszero(S[1].coords)
                 @test S[1].index == 1
             end
         end
         v = AxisArray(SVector{2}.(x, -y'), x, y)
-        S = @inferred compute_singularities(v)
+        S = @inferred CS.compute_singularities(v)
         @test length(S) == 1
         @test iszero(S[1].coords)
         @test S[1].index == -1
         for mh in ((), (Combine20(),), (Combine20Aggressive(),), (Combine31(),))
-            S = @inferred critical_point_detection(v, 0.1; merge_heuristics=mh)
+            S = @inferred CS.critical_point_detection(v, 0.1; merge_heuristics=mh)
             @test length(S) == 1
             @test iszero(S[1].coords)
             @test S[1].index == -1
@@ -70,24 +70,24 @@ T = @inferred map(mCG_tensor, P)
 Taxis = AxisArray(T, xspan, yspan)
 
 @testset "combine singularities" begin
-    @inferred singularity_detection(T, xspan, yspan, 0.1; merge_heuristics=())
+    @inferred CS.singularity_detection(T, xspan, yspan, 0.1; merge_heuristics=())
     ξ = map(t -> convert(SVector{2}, eigvecs(t)[:,1]), T)
-    singularities = @inferred compute_singularities(ξ, xspan, yspan, P1Dist())
+    singularities = @inferred CS.compute_singularities(ξ, xspan, yspan, P1Dist())
     new_singularities = @inferred CS.Combine(3*step(xspan))(singularities)
     for mh in (Combine20(), Combine20Aggressive(), Combine31())
         @inferred mh(new_singularities)
     end
     r₁ , r₂ = 2*rand(2)
-    @test sum(getindices(CS.Combine(r₁)(singularities))) ==
-        sum(getindices(CS.Combine(r₂)(singularities))) ==
-        sum(getindices(CS.Combine(2)(singularities)))
+    @test sum(CS.getindices(CS.Combine(r₁)(singularities))) ==
+        sum(CS.getindices(CS.Combine(r₂)(singularities))) ==
+        sum(CS.getindices(CS.Combine(2)(singularities)))
 end
 
 @testset "closed orbit detection" begin
     Ω = SMatrix{2,2}(0, 1, -1, 0)
     vf(λ) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> (Ω - (1.0 - λ) * I) * u)
     seed = SVector{2}(rand(), 0)
-    ret, info = @inferred compute_returning_orbit(vf(1.0), seed)
+    ret, info = @inferred CS.compute_returning_orbit(vf(1.0), seed)
     @test info === :Terminated
     @test ret[1] ≈ seed
     d = @inferred CS.Poincaré_return_distance(vf(1.0), seed)
@@ -110,16 +110,16 @@ end
     vortices, singularities = @inferred ellipticLCS(Taxis, p; outermost=true, verbose=false)
     vortex = vortices[1]
     flowvortex = flow(rot_double_gyre, vortex, tspan)
-    @test flowvortex isa Vector{EllipticVortex}
+    @test flowvortex isa Vector{CS.EllipticVortex}
     @test length(flowvortex) == length(tspan)
     flowbarrier = flow(rot_double_gyre, vortex.barriers[1], tspan)
-    @test flowbarrier isa Vector{EllipticBarrier}
+    @test flowbarrier isa Vector{CS.EllipticBarrier}
     @test length(flowbarrier) == length(tspan)
     fgvortex = flowgrow(rot_double_gyre, vortex, tspan, FlowGrowParams(maxdist=0.1, mindist=0.01))
-    @test fgvortex isa Vector{EllipticVortex}
+    @test fgvortex isa Vector{CS.EllipticVortex}
     @test length(fgvortex) == length(tspan)
     fgbarrier = flowgrow(rot_double_gyre, vortex.barriers[1], tspan, FlowGrowParams())
-    @test fgbarrier isa Vector{EllipticBarrier}
+    @test fgbarrier isa Vector{CS.EllipticBarrier}
     @test length(fgbarrier) == length(tspan)
     @test area(vortex) == area(vortex.barriers[end])
     @test sum(map(v -> length(v.barriers), vortices)) == 2
@@ -145,7 +145,7 @@ end
             mhs = ()
         end
         p = @inferred LCSParameters(1.0, 3*max(step(xspan), step(yspan)), mhs, 60, 0.5, 1.5, 1e-4)
-        @inferred critical_point_detection(q, p.indexradius; merge_heuristics=mhs)
+        @inferred CS.critical_point_detection(q, p.indexradius; merge_heuristics=mhs)
 
         constrainedLCS(q, p; verbose=false, debug=true)
         vortices, singularities = @inferred constrainedLCS(q, p; verbose=false)
@@ -172,8 +172,8 @@ end
     square = SVector{2}.(vcat(vcat.(1, dense), vcat.(sparse, 1), vcat.(-1, sparse), vcat.(dense, -1)) .+ Ref(ones(2)))
     @test area(square) ≈ 4 rtol=5eps()
     @test centroid(square) ≈ ones(2) atol=5eps()
-    barrier = EllipticBarrier(circle, SVector{2}(0.0, 0.0), 1.0, true)
-    vortices = EllipticVortex(SVector{2}(0.0, 0.0), [barrier])
+    barrier = CS.EllipticBarrier(circle, SVector{2}(0.0, 0.0), 1.0, true)
+    vortices = CS.EllipticVortex(SVector{2}(0.0, 0.0), [barrier])
     LL, UR = extrema(barrier)
     @test area(vortices) == area(barrier) == area(circle)
     @test centroid(vortices) == centroid(barrier) == centroid(circle)
@@ -183,7 +183,7 @@ end
     @test !clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
     @test clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0) ==
         clockwise(vortices, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
-    barrier = EllipticBarrier(square, SVector{2}(1.0, 1.0), 1.0, true)
+    barrier = CS.EllipticBarrier(square, SVector{2}(1.0, 1.0), 1.0, true)
     LL, UR = extrema(barrier)
     @test LL ≈ zeros(2)
     @test UR ≈ 2ones(2)

@@ -1,4 +1,4 @@
-using CoherentStructures, Test, Tensors, Arpack, Random
+using CoherentStructures, Test, Tensors, Arpack, Random, Distances
 
 @testset "1d grid piecewise_linear" begin
     ctx, _ = @inferred regular1dP1Grid(3)
@@ -79,8 +79,8 @@ end
     # TODO: include (regular1dPCGrid, 1e-1),
     for grid in (regular1dP1Grid, regular1dP2Grid)
         ctx, _ = @inferred grid(200)
-        M = @inferred assembleMassMatrix(ctx)
-        K = @inferred assembleStiffnessMatrix(ctx)
+        M = @inferred assemble(Mass(), ctx)
+        K = @inferred assemble(Stiffness(), ctx)
         λ, v = eigs(-K, M, which = :SM, nev = 6)
         @test λ[1] ≈ 0 atol = √eps()
         @test λ[2:end] ≈ λᵢ[2:end] rtol = 1e-3
@@ -92,8 +92,8 @@ end
     # TODO: include (regular1dPCGrid, 1e-1),
     for (grid, tol) in ((regular1dP1Grid, 1e-3), (regular1dP2Grid, 1e-7))
         ctx, _ = @inferred grid(200)
-        M = @inferred assembleMassMatrix(ctx; bdata = getHomDBCS(ctx))
-        K = @inferred assembleStiffnessMatrix(ctx; bdata = getHomDBCS(ctx))
+        M = @inferred assemble(Mass(), ctx; bdata = getHomDBCS(ctx))
+        K = @inferred assemble(Stiffness(), ctx; bdata = getHomDBCS(ctx))
         λ, v = eigs(-K, M, which = :SM, nev = 6)
         @test λ ≈ λᵢ rtol = 1e-3
     end
@@ -102,7 +102,7 @@ end
 @testset "1d non-adaptive TO" begin
     for grid in (regular1dP1Grid, regular1dP2Grid)
         ctx, _ = grid(200)
-        bdata = BoundaryData(ctx, PEuclidean([1.0]))
+        bdata = BoundaryData(ctx, PeriodicEuclidean([1.0]))
         finv = x -> Base.mod.(x .- √2, 1.0)
         ALPHAS, _ = nonAdaptiveTOCollocation(
             ctx,
@@ -141,8 +141,8 @@ end
     #ctx, _ = regularP2TriangularGrid((50,50),LL,UR)
     #bdata = BoundaryData(ctx, PeriodicEuclidean([2π,2π]))
 
-    M = assembleMassMatrix(ctx, bdata = bdata)
-    S = assembleStiffnessMatrix(ctx, bdata = bdata)
+    M = assemble(Mass(), ctx, bdata = bdata)
+    S = assemble(Stiffness(), ctx, bdata = bdata)
     T = adaptiveTOCollocationStiffnessMatrix(
         ctx,
         standardMap;

@@ -50,11 +50,11 @@ function nonAdaptiveTOCollocation(
 
     #Calculate the integral of shape function in the domain (dof order)
     shape_function_weights_domain_original = undoBCS(ctx_domain,
-            vec(sum(assembleMassMatrix(ctx_domain, bdata=bdata_domain), dims=1)),
+            vec(sum(assemble(Mass(), ctx_domain, bdata=bdata_domain), dims=1)),
             bdata_domain)
     #Calculate the integral of shape functions in the codomain (dof order)
     #Do not include boundary conditions here, as we end up summing over this later
-    shape_function_weights_codomain = vec(sum(assembleMassMatrix(ctx_codomain),dims=1))
+    shape_function_weights_codomain = vec(sum(assemble(Mass(), ctx_codomain), dims=1))
 
     #This variable will hold approximate pullback (in the measure sense)
     #of shape_function_weights_codomain to domain via finv
@@ -189,7 +189,7 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
             new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx, new_density_nodevals, q)
                 for q in new_ctx.quadrature_points]
         end
-        I, J, V = findnz(assembleStiffnessMatrix(new_ctx, bdata=new_bdata))
+        I, J, V = findnz(assemble(Stiffness(), new_ctx, bdata=new_bdata))
         I .= translation_table[I]
         J .= translation_table[J]
         n = ctx.n - length(bdata.periodic_dofs_from)
@@ -268,8 +268,8 @@ function adaptiveTOFutureGrid(ctx::GridContext{dim}, flow_map;
     #Do volume corrections
     #All values are in node order for new_ctx, which is the same as bcdof order for ctx2
     n_nodes = length(new_nodes_in_bcdof_order)
-    vols_new = sum(assembleMassMatrix(new_ctx, bdata=new_bdata), dims=1)[1, node_to_bcdof(new_ctx, new_bdata)[1:n_nodes]]
-    vols_old = sum(assembleMassMatrix(ctx, bdata=bdata), dims=1)[1, 1:n_nodes]
+    vols_new = sum(assemble(Mass(), new_ctx, bdata=new_bdata), dims=1)[1, node_to_bcdof(new_ctx, new_bdata)[1:n_nodes]]
+    vols_old = sum(assemble(Mass(), ctx, bdata=bdata), dims=1)[1, 1:n_nodes]
 
     return new_ctx, new_bdata, vols_new ./ vols_old
 end
@@ -317,8 +317,8 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
             result = ALPHA_bc*L
         else
             volume_change_pdof = volume_change[bcdof_to_node(ctx,bdata)]
-            K = assembleStiffnessMatrix(ctx,bdata=bdata)
-            M = assembleMassMatrix(ctx,bdata=bdata)
+            K = assemble(Stiffness(), ctx, bdata = bdata)
+            M = assemble(Mass(), ctx, bdata = bdata)
             volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
             volume_change = volume_change_pdof[node_to_bcdof(ctx,bdata)]
 

@@ -1,11 +1,14 @@
 # Strongly inspired by an example provided on Ferrite's github page, modified and
 # extended by Nathanael Schilling
 
+struct Stiffness end
+struct Mass end
+
 #Works in n=2 and n=3
-tensorIdentity(x::Vec{dim}, _, p) where {dim} = one(SymmetricTensor{2,dim,Float64,3(dim-1)})
+tensorIdentity(x::Vec{dim,T}, _, p) where {dim,T} = one(SymmetricTensor{2,dim,T})
 
 """
-    assembleStiffnessMatrix(ctx, A, p=nothing; bdata=BoundaryData())
+    assemble(Stiffness(), ctx, A=Id, p=nothing; bdata=BoundaryData())
 
 Assemble the stiffness-matrix for a symmetric bilinear form
 ```math
@@ -13,28 +16,30 @@ a(u,v) = \\int \\nabla u(x)\\cdot A(x)\\nabla v(x)f(x) dx.
 ```
 The integral is approximated using numerical quadrature. `A` is a function that returns a
 `SymmetricTensor{2,dim}` object and must have one of the following signatures:
-   * `A(x::Vector{Float64})`;
-   * `A(x::Vec{dim})`;
-   * `A(x::Vec{dim}, index::Int, p)`. Here, `x` is equal to `ctx.quadrature_points[index]`,
-     and `p` is the one passed to `assembleStiffnessMatrix`.
+
+* `A(x::Vector{Float64})`;
+* `A(x::Vec{dim})`;
+* `A(x::Vec{dim}, index::Int, p)`. Here, `x` is equal to `ctx.quadrature_points[index]`,
+  and `p` is some parameter, think of some precomputed object that is indexed via `index`.
 
 The ordering of the result is in dof order, except that boundary conditions from `bdata` are
 applied. The default is natural (homogeneous Neumann) boundary conditions.
 """
-function assembleStiffnessMatrix(ctx::GridContext, A=tensorIdentity, p=nothing; bdata=BoundaryData())
+function assemble(::Stiffness, ctx::GridContext; A=tensorIdentity, p=nothing, bdata=BoundaryData())
     if A === tensorIdentity
-        return _assembleStiffnessMatrix(ctx, A, p, bdata=bdata)
+        return _assembleStiffnessMatrix(ctx, A, p, bdata = bdata)
     elseif !isempty(methods(A, (Vec,)))
         return _assembleStiffnessMatrix(ctx, (qp, i, p) -> A(qp), p, bdata=bdata)
     elseif !isempty(methods(A, (Vec, Int, Any)))
         return _assembleStiffnessMatrix(ctx, (qp, i, p) -> A(qp, i, p), p, bdata=bdata)
     elseif !isempty(methods(A, (Vector{Float64},)))
-        return _assembleStiffnessMatrix(ctx, (qp, i, p) -> A(Vector{Float64}(qp)), p, bdata=bdata)
+        return _assembleStiffnessMatrix(ctx, (qp, i, p) -> A(convert(Vector{Float64}, qp)), p, bdata=bdata)
     end
-    error("Function parameter A does not accept types supported by assembleStiffnessMatrix")
+    error("function argument `A` does not admit any of the accepted signatures")
 end
+@deprecate assembleStiffnessMatrix(ctx::GridContext, A=tensorIdentity, p=nothing; bdata=BoundaryData()) assemble(Stiffness(), ctx; A=A, p=p, bdata=bdata)
 
-function _assembleStiffnessMatrix(ctx::GridContext, A, p; bdata=BoundaryData())
+function _assembleStiffnessMatrix(ctx, A, p; bdata=BoundaryData())
     cv = FEM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh = ctx.dh
     K = FEM.create_sparsity_pattern(dh)
@@ -70,7 +75,7 @@ end
 
 
 """
-    assembleMassMatrix(ctx; bdata=BoundaryData(), lumped=false)
+    assemble(Mass(), ctx; bdata=BoundaryData(), lumped=false)
 
 Assemble the mass matrix
 ```math
@@ -86,10 +91,10 @@ Returns a lumped mass matrix if `lumped=true`.
 # Example
 ```
 ctx.mass_weights = map(f, ctx.quadrature_points)
-M = assembleMassMatrix(ctx)
+M = assemble(Mass(), ctx)
 ```
 """
-function assembleMassMatrix(ctx::GridContext; bdata=BoundaryData(), lumped=false)
+function assemble(::Mass, ctx::GridContext; bdata=BoundaryData(), lumped=false)
     cv = FEM.CellScalarValues(ctx.qr, ctx.ip, ctx.ip_geom)
     dh = ctx.dh
     M = FEM.create_sparsity_pattern(dh)
@@ -123,12 +128,12 @@ function assembleMassMatrix(ctx::GridContext; bdata=BoundaryData(), lumped=false
     M = applyBCS(ctx, M, bdata)
     return lumped ? spdiagm(0 => dropdims(reduce(+, M; dims=1); dims=1)) : M
 end
+@deprecate assembleMassMatrix(ctx::GridContext; bdata=BoundaryData(), lumped=false) assemble(Mass(), ctx; bdata=bdata, lumped=lumped)
 
 """
-    getQuadPointsPoints(ctx)
+    getQuadPoints(ctx)
 
-Compute the coordinates of all quadrature points on a grid.
-Helper function.
+Compute the coordinates of all quadrature points on a grid. Helper function.
 """
 function getQuadPoints(ctx::GridContext{dim}) where {dim}
     cv = FEM.CellScalarValues(ctx.qr, ctx.ip_geom)

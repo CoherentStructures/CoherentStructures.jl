@@ -33,7 +33,7 @@ function FEM_heatflow(odefun!, ctx::GridContext, tspan, κ::Real, p=nothing, bda
 end
 
 function implicitEulerStepFamily(ctx::GridContext, sol, tspan, κ, δ; factor=true, bdata=BoundaryData())
-    M = assembleMassMatrix(ctx, bdata=bdata)
+    M = assemble(Mass(), ctx, bdata = bdata)
     nnzM = nonzeros(M)
     n = size(M, 1)
     scale = -step(tspan) * κ
@@ -66,10 +66,10 @@ Single step with implicit Euler method.
 """
 function ADimplicitEulerStep(ctx::GridContext, u::AbstractVector, edt::Real; Afun=nothing, q=nothing, M=nothing, K=nothing)
     if M === nothing
-        M = assembleMassMatrix(ctx)
+        M = assemble(Mass(), ctx)
     end
     if K === nothing
-        K = assembleStiffnessMatrix(ctx, Afun, q)
+        K = assemble(Stiffness(), ctx, A = Afun, p = q)
     end
     return (M - edt * K) \ (M * u)
 end
@@ -100,7 +100,7 @@ end
 
 function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=BoundaryData())
     if t < 0
-        return assembleStiffnessMatrix(ctx, bdata=bdata)
+        return assemble(Stiffness(), ctx, bdata = bdata)
     end
     p = sol(t)
     function Afun(x, index, p)
@@ -109,7 +109,7 @@ function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=BoundaryData())
                     p[ (8*(index-1)+5):(8*(index-1) + 8)])/(2δ) )
         return dott(inv(Df))
     end
-    return assembleStiffnessMatrix(ctx, Afun, p, bdata=bdata)
+    return assemble(Stiffness(), ctx, A = Afun, p = p, bdata = bdata)
 end
 
 @inline function large_rhs(odefun!, du, u, p, t)
@@ -165,9 +165,9 @@ function extendedRHSStiff!(A, u, p, t)
     invDiffTensors = dott.(inv.(DF))
     ctx = p["ctx"]
     κ = p["κ"]
-    K = assembleStiffnessMatrix(ctx, PCDiffTensors, invDiffTensors)
+    K = assemble(Stiffness(), ctx, A = PCDiffTensors, p = invDiffTensors)
     Is, Js, Vs = findnz(K)
-    M = assembleMassMatrix(ctx, lumped=true)
+    M = assemble(Mass(), ctx, lumped=true)
     for index in eachindex(Is, Js, Vs)
         i = Is[index]
         j = Js[index]
