@@ -68,7 +68,7 @@ struct DelaunayCellLocator <: PointLocator
     scale_y::Float64
     minx::Float64
     miny::Float64
-    tess::VD.DelaunayTessellation2D{NumberedPoint2D}
+    tess::DelaunayTessellation2D{NumberedPoint2D}
     extended_points::Vector{Vec{2,Float64}}
     point_number_table::Vector{Int}
     cell_number_table::Vector{Int}
@@ -76,18 +76,18 @@ end
 
 function locatePoint(loc::DelaunayCellLocator, grid::FEM.Grid, x::Vec{2,Float64})
     #TODO: can this work for x that are not Float64?
-    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x, VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
-    if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
+    point_inbounds = NumberedPoint2D(min_coord+(x[1]-loc.minx)*loc.scale_x, min_coord+(x[2]-loc.miny)*loc.scale_y)
+    if min(point_inbounds.x, point_inbounds.y) < min_coord || max(point_inbounds.x,point_inbounds.y) > max_coord
         throw(DomainError("point(s) outside of domain"))
     end
-    t_index = VD.findindex(loc.tess, point_inbounds)
+    t_index = findindex(loc.tess, point_inbounds)
     t = loc.tess._trigs[t_index]
-    if VD.isexternal(t)
+    if isexternal(t)
         throw(DomainError("triangle outside of domain"))
     end
     v1::Vec{2} = loc.extended_points[t._b.id] - loc.extended_points[t._a.id]
     v2::Vec{2} = loc.extended_points[t._c.id] - loc.extended_points[t._a.id]
-    J::Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
+    J::Tensor{2,2,Float64,4} = otimes(v1 , e1)  + otimes(v2 , e2)
     #J = [v1[1] v2[1]; v1[2] v2[2]]
     #TODO: rewrite this so that we actually find the cell in question and get the ids
     #From there (instead of from the tesselation). Then get rid of the permutation that
@@ -102,7 +102,7 @@ struct P2DelaunayCellLocator <: PointLocator
     scale_y::Float64
     minx::Float64
     miny::Float64
-    tess::VD.DelaunayTessellation2D{NumberedPoint2D}
+    tess::DelaunayTessellation2D{NumberedPoint2D}
     internal_triangles::Vector{Int}
     inv_internal_triangles::Vector{Int}
     point_number_table::Vector{Int}
@@ -124,18 +124,18 @@ end
 
 function locatePoint(loc::P2DelaunayCellLocator, grid::FEM.Grid, x::Vec{2,Float64})
     #TODO: can this work for x that are not Float64?
-    point_inbounds = NumberedPoint2D(VD.min_coord+(x[1]-loc.minx)*loc.scale_x,VD.min_coord+(x[2]-loc.miny)*loc.scale_y)
-    if min(point_inbounds.x, point_inbounds.y) < VD.min_coord || max(point_inbounds.x,point_inbounds.y) > VD.max_coord
+    point_inbounds = NumberedPoint2D(min_coord+(x[1]-loc.minx)*loc.scale_x,min_coord+(x[2]-loc.miny)*loc.scale_y)
+    if min(point_inbounds.x, point_inbounds.y) < min_coord || max(point_inbounds.x,point_inbounds.y) > max_coord
         throw(DomainError("point(s) outside of domain"))
     end
-    t = VD.findindex(loc.tess, point_inbounds)
-    if VD.isexternal(loc.tess._trigs[t])
+    t = findindex(loc.tess, point_inbounds)
+    if isexternal(loc.tess._trigs[t])
         throw(DomainError("triangle outside of domain"))
     end
     qTriangle = grid.cells[loc.inv_internal_triangles[t]]
     v1::Vec{2} = grid.nodes[qTriangle.nodes[2]].x - grid.nodes[qTriangle.nodes[1]].x
     v2::Vec{2} = grid.nodes[qTriangle.nodes[3]].x - grid.nodes[qTriangle.nodes[1]].x
-    J::Tensor{2,2,Float64,4} = Tensors.otimes(v1 , e1)  + Tensors.otimes(v2 , e2)
+    J::Tensor{2,2,Float64,4} = otimes(v1 , e1)  + otimes(v2 , e2)
     #TODO: Think about whether doing it like this (with the permutation) is sensible
     return (inv(J) ⋅ (x - grid.nodes[qTriangle.nodes[1]].x)), loc.point_number_table[[permute!(collect(qTriangle.nodes),[2,3,1,5,6,4])]],1
 end

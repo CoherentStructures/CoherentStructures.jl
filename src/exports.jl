@@ -7,18 +7,18 @@ export
 
 	#ellipticLCS.jl
 	Singularity,
-	getcoords,
-	getindices,
-	EllipticBarrier,
-	EllipticVortex,
+	# getcoords,
+	# getindices,
+	# EllipticBarrier,
+	# EllipticVortex,
 	LCSParameters,
 	S1Dist,
 	P1Dist,
-	compute_singularities,
-	singularity_detection,
-	critical_point_detection,
-	compute_returning_orbit,
-	compute_closed_orbits,
+	# compute_singularities,
+	# singularity_detection,
+	# critical_point_detection,
+	# compute_returning_orbit,
+	# compute_closed_orbits,
 	getvortices,
 	ellipticLCS,
 	constrainedLCS,
@@ -41,21 +41,22 @@ export
 	DM_heatflow,
 	sparse_diff_op_family,
 	sparse_diff_op,
-	kde_normalize!,
+	# kde_normalize!,
 	row_normalize!,
 	unionadjacency,
-	stationary_distribution,
+	# stationary_distribution,
 	diffusion_coordinates,
 	diffusion_distance,
 
 	#dynamicmetrics
 	STmetric,
 	stmetric,
-	spdist,
+	# spdist,
 
 	#FEMassembly.jl
-	assembleStiffnessMatrix,
-	assembleMassMatrix,
+	assemble,
+	Stiffness,
+	Mass,
 
 	#gridfunctions.jl
 	regular1dGridTypes,
@@ -128,12 +129,10 @@ export
 	adaptiveTOCollocation,
 
 	#util.jl
-    PEuclidean,
 	tensor_invariants,
 	dof2node,
 	kmeansresult2LCS,
 	getH,
-	unzip,
 
 	#velocityfields.jl
 	interpolateVF,

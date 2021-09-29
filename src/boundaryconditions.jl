@@ -360,10 +360,10 @@ function identifyPoints(ctx::GridContext{dim}, predicate::Distances.Metric) wher
     end
     TOL = 1e-12 #TODO: set this somewhere globally
 
-    S = NN.BallTree(l, predicate)
+    S = BallTree(l, predicate)
 
     for index in 1:ctx.n
-        res = NN.inrange(S, getDofCoordinates(ctx, index), TOL, true)
+        res = inrange(S, getDofCoordinates(ctx, index), TOL, true)
         if res[1] != index
             push!(identify_from, index)
             push!(identify_to, res[1])

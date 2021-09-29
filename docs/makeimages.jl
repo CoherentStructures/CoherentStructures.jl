@@ -48,7 +48,7 @@ ctx = regularTriangularGrid((100,100), [0.0,0.0],[2π,2π])
 pred  = (x,y) -> ((x[1] - y[1]) % 2π) < 1e-9 && ((x[2] - y[2]) % 2π) < 1e-9
 bdata = BoundaryData(ctx,pred)
 
-id2 = one(Tensors.Tensor{2,2}) # 2D identity tensor
+id2 = one(Tensor{2,2}) # 2D identity tensor
 cgfun = x -> 0.5*(id2 +  dott(inv(DstandardMap(x))))
 
 K = assembleStiffnessMatrix(ctx,cgfun,bdata=bdata)

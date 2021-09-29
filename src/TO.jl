@@ -50,11 +50,11 @@ function nonAdaptiveTOCollocation(
 
     #Calculate the integral of shape function in the domain (dof order)
     shape_function_weights_domain_original = undoBCS(ctx_domain,
-            vec(sum(assembleMassMatrix(ctx_domain, bdata=bdata_domain), dims=1)),
+            vec(sum(assemble(Mass(), ctx_domain, bdata=bdata_domain), dims=1)),
             bdata_domain)
     #Calculate the integral of shape functions in the codomain (dof order)
     #Do not include boundary conditions here, as we end up summing over this later
-    shape_function_weights_codomain = vec(sum(assembleMassMatrix(ctx_codomain),dims=1))
+    shape_function_weights_codomain = vec(sum(assemble(Mass(), ctx_codomain), dims=1))
 
     #This variable will hold approximate pullback (in the measure sense)
     #of shape_function_weights_codomain to domain via finv
@@ -102,23 +102,28 @@ function nonAdaptiveTOCollocation(
 end
 
 """
-    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus,on_cylinder, LL, UR, bdata, volume_preserving=true,flow_map_mode=0] )
+    adaptiveTOCollocationStiffnessMatrix(ctx, flow_maps, times=nothing; [quadrature_order, on_torus,on_cylinder, LL, UR, bdata, volume_preserving=true, flow_map_mode=0] )
 
-Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)`` where
-``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay triangulation on images of grid points from ctx
-and ``T_n`` is the Transfer-operator for ``x \\mapsto flow_maps(x,times)[n]`` and ``a_1`` is the weak form of the Laplacian on the codomain. Moreover,
-``N`` in the equation above is equal to `length(times)` and ``t_n`` ranges over the elements of `times`.
+Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)``
+where ``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay
+triangulation on images of grid points from `ctx` and ``T_n`` is the transfer operator for
+``x \\mapsto flow_maps(x, times)[n]`` and ``a_1`` is the weak form of the Laplacian on the
+codomain. Moreover, ``N`` in the equation above is equal to `length(times)` and ``t_n``
+ranges over the elements of `times`.
 
-If `times==nothing`, take ``N=1`` above and use the map ``x \\mapsto flow_maps(x)` instead of the version with `t_n`.
+If `times==nothing`, take ``N=1`` above and use the map ``x \\mapsto flow_maps(x)`` instead
+of the version with `t_n`.
 
-If `on_torus` is true, the Delaunay Triangulation is done on the torus.
-If `on_cylinder` is true, then triangulation is done on cylinder (periodic) x. In both of these cases we require `bdata` for boundary information
-on the original domain as well as `LL` and `UR` as lower-left and upper-right corners of the image.
+If `on_torus` is true, the Delaunay triangulation is done on the torus.
+If `on_cylinder` is true, then triangulation is done on an x-periodic cylinder. In both of
+these cases we require `bdata` for boundary information on the original domain as well as
+`LL` and `UR` as lower-left and upper-right corners of the image.
 
 If `volume_preserving == false`, add a volume_correction term to ``a_1`` (See paper by Froyland & Junge).
 
-If `flow_map_mode==0`, apply flow map to nodal basis function coordinates.
-If `flow_map_mode==1`, apply flow map to nodal basis function index number (allows for precomputed trajectories).
+If `flow_map_mode=0`, apply flow map to nodal basis function coordinates.
+If `flow_map_mode=1`, apply flow map to nodal basis function index number (allows for
+precomputed trajectories).
 """
 function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, times=nothing;
                                         quadrature_order=default_quadrature_order,
@@ -183,58 +188,52 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
             #the old grid
             new_density_nodevals = new_density_bcdofvals
             while length(new_density_nodevals) != new_ctx.n
-                push!(new_density_nodevals,0.0)
+                push!(new_density_nodevals, 0.0)
             end
 
-            new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx,new_density_nodevals,q)
-                       for q in new_ctx.quadrature_points ]
+            new_ctx.mass_weights = [evaluate_function_from_node_or_cellvals(new_ctx, new_density_nodevals, q)
+                for q in new_ctx.quadrature_points]
         end
-        I, J, V = findnz(assembleStiffnessMatrix(new_ctx,bdata=new_bdata))
+        I, J, V = findnz(assemble(Stiffness(), new_ctx, bdata=new_bdata))
         I .= translation_table[I]
         J .= translation_table[J]
         n = ctx.n - length(bdata.periodic_dofs_from)
-        push!(As,sparse(I,J,V,n,n))
+        push!(As, sparse(I, J, V, n, n))
     end
     return mean(As)
 end
 
 
 #Reordering in the periodic case is slightly more tricky
-function bcdofNewToBcdofOld(
-        old_ctx::GridContext{dim},bdata::BoundaryData,
-        new_ctx::GridContext{dim},new_bdata::BoundaryData,K
-        ) where {dim}
+function bcdofNewToBcdofOld(old_ctx::GridContext{dim}, bdata::BoundaryData,
+                            new_ctx::GridContext{dim}, new_bdata::BoundaryData, K) where {dim}
+    I, J ,V = findnz(K)
 
-        I, J ,V = findnz(K)
-
-        #Here I,J are in pdof order for new_ctx
-
-        bcdof_to_node_new = bcdof_to_node(new_ctx,new_bdata)
-        node_to_bcdof_old = node_to_bcdof(old_ctx,bdata)
-        I .= node_to_bcdof_old[bcdof_to_node_new[I]]
-        J .= node_to_bcdof_old[bcdof_to_node_new[J]]
-
-        old_pdof_n = old_ctx.n - length(bdata.periodic_dofs_from)
-
-        return sparse(I,J,V,old_pdof_n,old_pdof_n)
+    # Here I,J are in pdof order for new_ctx
+    bcdof_to_node_new = bcdof_to_node(new_ctx, new_bdata)
+    node_to_bcdof_old = node_to_bcdof(old_ctx, bdata)
+    I .= node_to_bcdof_old[bcdof_to_node_new[I]]
+    J .= node_to_bcdof_old[bcdof_to_node_new[J]]
+    old_pdof_n = old_ctx.n - length(bdata.periodic_dofs_from)
+    return sparse(I, J, V, old_pdof_n, old_pdof_n)
 end
 
-function node_to_bcdof(ctx::GridContext{dim},bdata::BoundaryData) where {dim}
-        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
-        bdata_table = BCTable(ctx,bdata)
-        return bdata_table[ctx.node_to_dof]
+function node_to_bcdof(ctx::GridContext{dim}, bdata::BoundaryData) where {dim}
+    n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+    bdata_table = BCTable(ctx, bdata)
+    return bdata_table[ctx.node_to_dof]
 end
 
 function bcdof_to_node(ctx::GridContext{dim},bdata::BoundaryData) where {dim}
-        n_nodes = ctx.n - length(bdata.periodic_dofs_from)
-        bdata_table = BCTable(ctx,bdata)
-        result = zeros(Int,n_nodes)
-        for i in 1:ctx.n
-            if result[bdata_table[ctx.node_to_dof[i]]] == 0
-                result[bdata_table[ctx.node_to_dof[i]]] = i
-            end
+    n_nodes = ctx.n - length(bdata.periodic_dofs_from)
+    bdata_table = BCTable(ctx,bdata)
+    result = zeros(Int,n_nodes)
+    for i in 1:ctx.n
+        if iszero(result[bdata_table[ctx.node_to_dof[i]]])
+            result[bdata_table[ctx.node_to_dof[i]]] = i
         end
-        return result
+    end
+    return result
 end
 
 
@@ -274,8 +273,8 @@ function adaptiveTOFutureGrid(ctx::GridContext{dim}, flow_map;
     #Do volume corrections
     #All values are in node order for new_ctx, which is the same as bcdof order for ctx2
     n_nodes = length(new_nodes_in_bcdof_order)
-    vols_new = sum(assembleMassMatrix(new_ctx, bdata=new_bdata), dims=1)[1, node_to_bcdof(new_ctx, new_bdata)[1:n_nodes]]
-    vols_old = sum(assembleMassMatrix(ctx, bdata=bdata), dims=1)[1, 1:n_nodes]
+    vols_new = sum(assemble(Mass(), new_ctx, bdata=new_bdata), dims=1)[1, node_to_bcdof(new_ctx, new_bdata)[1:n_nodes]]
+    vols_old = sum(assemble(Mass(), ctx, bdata=bdata), dims=1)[1, 1:n_nodes]
 
     return new_ctx, new_bdata, vols_new ./ vols_old
 end
@@ -319,12 +318,12 @@ function adaptiveTOCollocation(ctx::GridContext{dim}, flow_map;
             throw(AssertionError("Invalid projection_method"))
         end
         if volume_preserving
-            L = sparse(I, npoints, npoints)[node_to_bcdof(ctx,bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
+            L = sparse(I, npoints, npoints)[node_to_bcdof(ctx, bdata)[bcdof_to_node(ctx_new,bdata_new)],:]
             result = ALPHA_bc*L
         else
             volume_change_pdof = volume_change[bcdof_to_node(ctx,bdata)]
-            K = assembleStiffnessMatrix(ctx,bdata=bdata)
-            M = assembleMassMatrix(ctx,bdata=bdata)
+            K = assemble(Stiffness(), ctx, bdata = bdata)
+            M = assemble(Mass(), ctx, bdata = bdata)
             volume_change_pdof = (M - 1e-2K)\(M*volume_change_pdof)
             volume_change = volume_change_pdof[node_to_bcdof(ctx,bdata)]
 

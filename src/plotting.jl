@@ -195,7 +195,7 @@ function compute_euler_to_lagrange_points_raw(
         x1, x2 = xi
         euler_to_lagrange_points_raw =
             SharedArray{Float64}(length(x2), length(x1), 2)
-        @sync @distributed for i in eachindex(x1)
+            @sync @distributed for i in eachindex(x1)
             for j in eachindex(x2)
                 point = SVector{2}(x1[i], x2[j])
                 try
@@ -494,7 +494,7 @@ RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(
     as::Plot_FTLE;
     tolerance=1e-4,
-    solver=ODE.BS5(),
+    solver=BS5(),
     # existing_plot=nothing, TODO 1.0
     flip_y=false,
     check_inbounds=always_true,
