@@ -102,23 +102,28 @@ function nonAdaptiveTOCollocation(
 end
 
 """
-    adaptiveTOCollocationStiffnessMatrix(ctx,flow_maps,times=nothing; [quadrature_order, on_torus,on_cylinder, LL, UR, bdata, volume_preserving=true,flow_map_mode=0] )
+    adaptiveTOCollocationStiffnessMatrix(ctx, flow_maps, times=nothing; [quadrature_order, on_torus,on_cylinder, LL, UR, bdata, volume_preserving=true, flow_map_mode=0] )
 
-Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)`` where
-``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay triangulation on images of grid points from ctx
-and ``T_n`` is the Transfer-operator for ``x \\mapsto flow_maps(x,times)[n]`` and ``a_1`` is the weak form of the Laplacian on the codomain. Moreover,
-``N`` in the equation above is equal to `length(times)` and ``t_n`` ranges over the elements of `times`.
+Calculate the matrix-representation of the bilinear form ``a(u,v) = 1/N \\sum_n^N a_1(I_hT_nu,I_hT_nv)``
+where ``I_h`` is pointwise interpolation of the grid obtained by doing Delaunay
+triangulation on images of grid points from `ctx` and ``T_n`` is the transfer operator for
+``x \\mapsto flow_maps(x, times)[n]`` and ``a_1`` is the weak form of the Laplacian on the
+codomain. Moreover, ``N`` in the equation above is equal to `length(times)` and ``t_n``
+ranges over the elements of `times`.
 
-If `times==nothing`, take ``N=1`` above and use the map ``x \\mapsto flow_maps(x)` instead of the version with `t_n`.
+If `times==nothing`, take ``N=1`` above and use the map ``x \\mapsto flow_maps(x)`` instead
+of the version with `t_n`.
 
-If `on_torus` is true, the Delaunay Triangulation is done on the torus.
-If `on_cylinder` is true, then triangulation is done on cylinder (periodic) x. In both of these cases we require `bdata` for boundary information
-on the original domain as well as `LL` and `UR` as lower-left and upper-right corners of the image.
+If `on_torus` is true, the Delaunay triangulation is done on the torus.
+If `on_cylinder` is true, then triangulation is done on an x-periodic cylinder. In both of
+these cases we require `bdata` for boundary information on the original domain as well as
+`LL` and `UR` as lower-left and upper-right corners of the image.
 
 If `volume_preserving == false`, add a volume_correction term to ``a_1`` (See paper by Froyland & Junge).
 
-If `flow_map_mode==0`, apply flow map to nodal basis function coordinates.
-If `flow_map_mode==1`, apply flow map to nodal basis function index number (allows for precomputed trajectories).
+If `flow_map_mode=0`, apply flow map to nodal basis function coordinates.
+If `flow_map_mode=1`, apply flow map to nodal basis function index number (allows for
+precomputed trajectories).
 """
 function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, times=nothing;
                                         quadrature_order=default_quadrature_order,
