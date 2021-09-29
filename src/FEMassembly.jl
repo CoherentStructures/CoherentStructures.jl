@@ -8,7 +8,7 @@ struct Mass end
 tensorIdentity(x::Vec{dim,T}, _, p) where {dim,T} = one(SymmetricTensor{2,dim,T})
 
 """
-    assemble(Stiffness(), ctx, A=Id, p=nothing; bdata=BoundaryData())
+    assemble(Stiffness(), ctx; A=Id, p=nothing, bdata=BoundaryData())
 
 Assemble the stiffness-matrix for a symmetric bilinear form
 ```math
