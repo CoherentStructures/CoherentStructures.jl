@@ -12,7 +12,7 @@ using Statistics: mean
 
 # import data type packages
 using StaticArrays: SVector, @SVector, SMatrix, @SMatrix
-using Tensors: Vec, Tensor, SymmetricTensor, basevec, dott, tdot, otimes, symmetric
+using Tensors: Vec, Tensor, SymmetricTensor, basevec, dott, tdot, otimes, unsafe_symmetric
 using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 using DiffEqBase: DiffEqBase, initialize!, isconstant, update_coefficients!, @..
