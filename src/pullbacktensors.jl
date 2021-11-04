@@ -2,6 +2,7 @@
 
 const default_tolerance = 1e-3
 const default_solver = Tsit5()
+@inline idtensorfun(_) = one(SymmetricTensor{2,2})
 
 # TODO: exploit throughout
 struct Trajectory{dim,ts,T,N}
@@ -328,7 +329,7 @@ see its documentation for the meaning of `δ`.
    * `D`: diffusion tensor function, metric tensor is computed via inversion
    * `kwargs` are passed to `linearized_flow`
 """
-function pullback_tensors(odefun, u, tspan, δ; D::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+function pullback_tensors(odefun, u, tspan, δ; D::F=idtensorfun, kwargs...) where {F}
     DT = pullback_diffusion_tensor(odefun, u, tspan, δ; D = D, kwargs...)
     return inv.(DT), DT
 end
@@ -347,9 +348,9 @@ right Cauchy-Green strain tensor. Linearized flow maps are computed with
    * `G`: metric tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_metric_tensor(odefun, u, tspan, δ; G::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+function pullback_metric_tensor(odefun, u, tspan, δ; G::F=idtensorfun, kwargs...) where {F}
     pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    return [symmetric(transpose(DF[i]) ⋅ G(pos[i]) ⋅ DF[i]) for i in eachindex(pos, DF)]
+    return [unsafe_symmetric(transpose(di) ⋅ G(pi) ⋅ di) for (pi, di) in zip(pos, DF)]
 end
 
 """
@@ -366,10 +367,9 @@ documentation for the meaning of `δ`.
    * `D`: diffusion tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_diffusion_tensor(odefun, u, tspan, δ; D::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+function pullback_diffusion_tensor(odefun, u, tspan, δ; D::F=idtensorfun, kwargs...) where {F}
     pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    DFinv = inv.(DF)
-    return [symmetric(DFinv[i] ⋅ D(pos[i]) ⋅ transpose(DFinv[i])) for i in eachindex(pos, DF)]
+    return [unsafe_symmetric(di ⋅ D(pi) ⋅ transpose(di)) for (pi, di) in zip(pos, inv.(DF))]
 end
 
 """
@@ -386,10 +386,9 @@ documentation for the meaning of `δ`.
    * `B`: SDE tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+function pullback_SDE_diffusion_tensor(odefun, u, tspan, δ; B::F=idtensorfun, kwargs...) where {F}
     pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    DFinv = inv.(DF)
-    return [inv(DF[i]) ⋅ B(pos[i]) for i in eachindex(pos, DF)]
+    return [inv(di) ⋅ B(pi) for  (pi, di) in zip(pos, DF)]
 end
 
 """
@@ -408,10 +407,10 @@ documentation for the meaning of `δ`.
    * `D`: diffusion tensor function
    * `kwargs...` are passed through to `linearized_flow`
 """
-function av_weighted_CG_tensor(odefun, u, tspan, δ; D::F=(_ -> one(SymmetricTensor{2,2})), kwargs...) where {F}
+function av_weighted_CG_tensor(odefun, u, tspan, δ; D::F=idtensorfun, kwargs...) where {F}
     pos, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
     return mean(
-        (det(D(pos[i]))*symmetric(transpose(DF[i])⋅inv(D(pos[i]))⋅DF[i]) for i in eachindex(pos, DF))
+        (det(D(pi))*unsafe_symmetric(transpose(di)⋅inv(D(pi))⋅di) for (pi, di) in zip(pos, DF))
     )
 end
 
@@ -419,32 +418,30 @@ met2deg(u) = diagm(SymmetricTensor{2,2}, (1 / cos(deg2rad(u[2])), 1))
 
 deg2met(u) = diagm(SymmetricTensor{2,2}, (cos(deg2rad(u[2])), 1))
 
-function pullback_tensors_geo(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
+function pullback_tensors_geo(odefun, u, tspan, δ; D::F=idtensorfun, kwargs...) where {F}
     G = inv(D)
     met2deg_init = met2deg(u)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    PBmet = [deg2met(xi) ⋅ DFi ⋅ met2deg_init for (xi, DFi) in DF]
-    PBdiff = [inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in DF]
-    return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet],
-    [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
+    p, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    PBmet = (deg2met(xi) ⋅ DFi ⋅ met2deg_init for (xi, DFi) in zip(p, DF))
+    PBdiff = (inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in zip(p, DF))
+    return [unsafe_symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PBmet],
+    [unsafe_symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PBdiff]
 end
 
-function pullback_metric_tensor_geo(odefun, u, tspan, δ; G::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
+function pullback_metric_tensor_geo(odefun, u, tspan, δ; G::F=idtensorfun, kwargs...) where {F}
     met2deg_init = met2deg(u)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    PB = [deg2met(xi) ⋅ DFi ⋅ met2deg_init for (xi, DFi) in DF]
-    return [symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
+    p, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    PB = (deg2met(xi) ⋅ DFi ⋅ met2deg_init for (xi, DFi) in zip(p, DF))
+    return [unsafe_symmetric(transpose(pb) ⋅ G ⋅ pb) for pb in PB]
 end
 
-function pullback_diffusion_tensor_geo(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    PB = [inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in DF]
-    return [symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
+function pullback_diffusion_tensor_geo(odefun, u, tspan, δ; D::F=idtensorfun, kwargs...) where {F}
+    p, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    PB = (inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in zip(p, DF))
+    return [unsafe_symmetric(pb ⋅ D ⋅ transpose(pb)) for pb in PB]
 end
 
-# TODO: this is probably broken, the diffusion tensor is not used!
-function pullback_SDE_diffusion_tensor_geo(odefun, u, tspan, δ; D::SymmetricTensor{2}=one(SymmetricTensor{2,2}), kwargs...)
-    DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
-    B = [inv(deg2met(xi) ⋅ DFi) for (xi, DFi) in DF]
-    return B
+function pullback_SDE_diffusion_tensor_geo(odefun, u, tspan, δ; D::F=idtensorfun, kwargs...) where {F}
+    p, DF = linearized_flow(odefun, u, tspan, δ; kwargs...)
+    return [inv(deg2met(xi) ⋅ DFi ⋅ B(pi)) for (xi, DFi) in zip(p, DF)]
 end
