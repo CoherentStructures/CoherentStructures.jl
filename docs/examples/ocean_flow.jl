@@ -80,7 +80,7 @@ DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 using Interpolations, Tensors, StaticArrays
 
-const V = scale(interpolate(SVector{2}.(us[:,:,1], vs[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), lon, lat)
+const V = scale(interpolate(SVector{2}.(us[:,:,1], vs[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), xs, ys)
 
 rate_of_strain_tensor(xin) = let V=V
     x, y = xin
