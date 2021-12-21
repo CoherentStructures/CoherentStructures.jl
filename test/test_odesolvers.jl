@@ -51,19 +51,21 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
         # rot_double_gyre
         include("define_vector_fields.jl")
         N = 25
-        δ = 1e-8
-        ϵ = 1e-2
-        ctx, _ = regularTriangularGrid((N, N))
+        const δ = 1e-8
+        const ϵ = 1e-2
+        const ctx, _ = regularTriangularGrid((N, N))
         circleFun = x -> (sqrt((x[1] - 0.5)^2 + (x[2] - 0.5)^2) < 0.1) ? 1.0 : 0.0
-        sol = CoherentStructures.advect_serialized_quadpoints(ctx, (0.0, 1.1), rot_double_gyre!, nothing, δ)
+        const sol = CoherentStructures.advect_serialized_quadpoints(ctx, (0.0, 1.1), rot_double_gyre!, nothing, δ)
         M = assemble(Mass(), ctx)
         A = assemble(Stiffness(), ctx)
 
-        update_coeffs!(A, u, p, t) = let ϵ=ϵ, δ=δ, sol=sol, ctx=ctx
-            vals = nonzeros(A)
-            vals .= nonzeros(CoherentStructures.stiffnessMatrixTimeT(ctx, sol, t, δ))
-            rmul!(vals, ϵ)
-            return A
+        function update_coeffs!(A, u, p, t)
+            let ϵ=ϵ, δ=δ, sol=sol, ctx=ctx
+                vals = nonzeros(A)
+                vals .= nonzeros(CoherentStructures.stiffnessMatrixTimeT(ctx, sol, t, δ))
+                rmul!(vals, ϵ)
+                return A
+            end
         end
 
         f = DiffEqArrayOperator(A; update_func=update_coeffs!)
