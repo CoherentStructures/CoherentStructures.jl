@@ -117,14 +117,14 @@ nprocs() == 1 && addprocs()
 # `Lon`, `Lat`, `Time`, `UT`, `VT`.
 
 using JLD2
-JLD2.@load("docs/examples/Ocean_geostrophic_velocity.jld2")
-const VI = interpolateVF(Lon, Lat, Time, UT, VT)
+lon, lat, time, us, vs = load("docs/examples/Ocean_geostrophic_velocity.jld2", "Lon", "Lat", "Time", "UT", "VT")
+const VI = interpolateVF(lon, lat, time, us, vs)
 
 # Since we want to use parallel computing, we set up the integration LCSParameters
 # on all workers, i.e., `@everywhere`.
 
 q = 91
-t_initial = minimum(Time)
+t_initial = minimum(time)
 t_final = t_initial + 90
 const ts = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0

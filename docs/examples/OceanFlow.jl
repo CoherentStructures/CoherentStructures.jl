@@ -4,14 +4,14 @@ using Distributed, BenchmarkTools, Test, JLD2
 nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures
-JLD2.@load "docs/examples/Ocean_geostrophic_velocity.jld2" Lon Lat Time UT VT
+lon, lat, time, us, vs = load(OCEAN_FLOW_FILE, "Lon", "Lat", "Time", "UT", "VT")
 
-t_initial = minimum(Time)
+t_initial = minimum(time)
 t_final = t_initial + 90
 
 LL = (-4.0, -34.0)
 UR = (6.0, -28.0)
-const p = interpolateVF(Lon, Lat, Time, UT, VT)
+const p = interpolateVF(lon, lat, time, us, vs)
 ctx, _ = regularP2TriangularGrid((100, 60), LL, UR, quadrature_order=2)
 
 # ctx.mass_weights = [cos(deg2rad(x[2])) for x in ctx.quadrature_points]

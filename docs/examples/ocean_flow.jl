@@ -36,13 +36,13 @@ nprocs() == 1 && addprocs()
 # `Lon`, `Lat`, `Time`, `UT`, `VT`.
 
 using JLD2
-JLD2.@load(OCEAN_FLOW_FILE)
-const uv = interpolateVF(Lon, Lat, Time, UT, VT)
+lon, lat, time, us, vs = load(OCEAN_FLOW_FILE, "Lon", "Lat", "Time", "UT", "VT")
+const uv = interpolateVF(lon, lat, time, us, vs)
 
 # Now, we set up the computational problem.
 
 q = 91
-t_initial = minimum(Time)
+t_initial = minimum(time)
 t_final = t_initial + 90
 const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
@@ -122,13 +122,13 @@ DISPLAY_PLOT(fig, ocean_flow_oecs)
 using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
-JLD2.@load(OCEAN_FLOW_FILE)
+lon, lat, time, us, vs = load(OCEAN_FLOW_FILE, "Lon", "Lat", "Time", "UT", "VT")
 
-const UV = interpolateVF(Lon, Lat, Time, UT, VT)
+const UV = interpolateVF(lon, lat, time, us, vs)
 
 # Next, we define a flow function from it.
 
-t_initial = minimum(Time)
+t_initial = minimum(time)
 t_final = t_initial + 90
 const times = [t_initial, t_final]
 flow_map(u0) = flow(interp_rhs, u0, times; p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
