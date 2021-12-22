@@ -32,17 +32,16 @@ nprocs() == 1 && addprocs()
 
 @everywhere using CoherentStructures, OrdinaryDiffEq
 
-# Next, we load and interpolate the velocity data sets. Loading the data sets defines
-# `Lon`, `Lat`, `Time`, `UT`, `VT`.
+# Next, we load and interpolate the velocity data sets.
 
 using JLD2
-JLD2.@load(OCEAN_FLOW_FILE)
-const uv = interpolateVF(Lon, Lat, Time, UT, VT)
+xs, ys, ts, us, vs = load(OCEAN_FLOW_FILE, "Lon", "Lat", "Time", "UT", "VT")
+const uv = interpolateVF(xs, ys, ts, us, vs)
 
 # Now, we set up the computational problem.
 
 q = 91
-t_initial = minimum(Time)
+t_initial = minimum(ts)
 t_final = t_initial + 90
 const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
@@ -81,7 +80,7 @@ DISPLAY_PLOT(fig, ocean_flow_geodesic_vortices)
 
 using Interpolations, Tensors, StaticArrays
 
-const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+const V = scale(interpolate(SVector{2}.(us[:,:,1], vs[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), xs, ys)
 
 rate_of_strain_tensor(xin) = let V=V
     x, y = xin
@@ -122,13 +121,13 @@ DISPLAY_PLOT(fig, ocean_flow_oecs)
 using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
-JLD2.@load(OCEAN_FLOW_FILE)
+xs, ys, ts, us, vs = load(OCEAN_FLOW_FILE, "Lon", "Lat", "Time", "UT", "VT")
 
-const UV = interpolateVF(Lon, Lat, Time, UT, VT)
+const UV = interpolateVF(xs, ys, ts, us, vs)
 
 # Next, we define a flow function from it.
 
-t_initial = minimum(Time)
+t_initial = minimum(ts)
 t_final = t_initial + 90
 const times = [t_initial, t_final]
 flow_map(u0) = flow(interp_rhs, u0, times; p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]
