@@ -208,9 +208,9 @@ version = "0.4.0"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "ChainRulesCore", "DEDataArrays", "DataStructures", "Distributions", "DocStringExtensions", "FastBroadcast", "ForwardDiff", "FunctionWrappers", "IterativeSolvers", "LabelledArrays", "LinearAlgebra", "Logging", "MuladdMacro", "NonlinearSolve", "Parameters", "PreallocationTools", "Printf", "RecursiveArrayTools", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "Setfield", "SparseArrays", "StaticArrays", "Statistics", "SuiteSparse", "ZygoteRules"]
-git-tree-sha1 = "c261e8baeb752483af83812aab628c7c087ef3d7"
+git-tree-sha1 = "4a42bcd269bb3953f6f391bc2dab55ae82e5212d"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "6.77.2"
+version = "6.78.0"
 
 [[deps.DiffResults]]
 deps = ["StaticArrays"]
@@ -390,9 +390,9 @@ version = "0.62.1"
 
 [[deps.GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Pkg", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "fd75fa3a2080109a2c0ec9864a6e14c60cca3866"
+git-tree-sha1 = "f97acd98255568c3c9b416c5a3cf246c1315771b"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.62.0+0"
+version = "0.63.0+0"
 
 [[deps.GeometricalPredicates]]
 git-tree-sha1 = "527d55e28ff359029d8f72d77c0bdcaf28793079"
@@ -697,9 +697,9 @@ version = "3.5.1"
 
 [[deps.LinearSolve]]
 deps = ["ArrayInterface", "DocStringExtensions", "IterativeSolvers", "KLU", "Krylov", "KrylovKit", "LinearAlgebra", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "Setfield", "SparseArrays", "SuiteSparse", "UnPack"]
-git-tree-sha1 = "40f2999b259bf03001b911481c14b07ad2c3355f"
+git-tree-sha1 = "14ffb29522c84f3d4c345265447ee02a718fc6db"
 uuid = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-version = "1.1.1"
+version = "1.1.2"
 
 [[deps.Literate]]
 deps = ["Base64", "IOCapture", "JSON", "REPL"]
@@ -990,9 +990,9 @@ version = "0.4.1"
 
 [[deps.RecursiveArrayTools]]
 deps = ["ArrayInterface", "ChainRulesCore", "DocStringExtensions", "FillArrays", "LinearAlgebra", "RecipesBase", "Requires", "StaticArrays", "Statistics", "ZygoteRules"]
-git-tree-sha1 = "c944fa4adbb47be43376359811c0a14757bdc8a8"
+git-tree-sha1 = "39aa6d41a8166be535d8b40562f89387131dc4ff"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "2.20.0"
+version = "2.21.0"
 
 [[deps.RecursiveFactorization]]
 deps = ["LinearAlgebra", "LoopVectorization", "Polyester", "StrideArraysCore", "TriangularSolve"]
@@ -1267,9 +1267,9 @@ version = "0.1.2"
 
 [[deps.VectorizationBase]]
 deps = ["ArrayInterface", "CPUSummary", "HostCPUFeatures", "Hwloc", "IfElse", "LayoutPointers", "Libdl", "LinearAlgebra", "SIMDTypes", "Static"]
-git-tree-sha1 = "17e5847bb36730d90801170ecd0ce4041a3dde86"
+git-tree-sha1 = "6e261bff5c9f2537776165dea3067df9de4440cf"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
-version = "0.21.22"
+version = "0.21.23"
 
 [[deps.VertexSafeGraphs]]
 deps = ["Graphs"]
