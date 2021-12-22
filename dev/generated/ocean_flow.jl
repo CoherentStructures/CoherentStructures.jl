@@ -4,11 +4,11 @@ nprocs() == 1 && addprocs()
 @everywhere using CoherentStructures, OrdinaryDiffEq
 
 using JLD2
-JLD2.@load("Ocean_geostrophic_velocity.jld2")
-const uv = interpolateVF(Lon, Lat, Time, UT, VT)
+xs, ys, ts, us, vs = load("Ocean_geostrophic_velocity.jld2", "Lon", "Lat", "Time", "UT", "VT")
+const uv = interpolateVF(xs, ys, ts, us, vs)
 
 q = 91
-t_initial = minimum(Time)
+t_initial = minimum(ts)
 t_final = t_initial + 90
 const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
@@ -35,7 +35,7 @@ Plots.plot(fig)
 
 using Interpolations, Tensors, StaticArrays
 
-const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+const V = scale(interpolate(SVector{2}.(us[:,:,1], vs[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), xs, ys)
 
 rate_of_strain_tensor(xin) = let V=V
     x, y = xin
@@ -62,11 +62,11 @@ Plots.plot(fig)
 using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
-JLD2.@load("Ocean_geostrophic_velocity.jld2")
+xs, ys, ts, us, vs = load("Ocean_geostrophic_velocity.jld2", "Lon", "Lat", "Time", "UT", "VT")
 
-const UV = interpolateVF(Lon, Lat, Time, UT, VT)
+const UV = interpolateVF(xs, ys, ts, us, vs)
 
-t_initial = minimum(Time)
+t_initial = minimum(ts)
 t_final = t_initial + 90
 const times = [t_initial, t_final]
 flow_map(u0) = flow(interp_rhs, u0, times; p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]

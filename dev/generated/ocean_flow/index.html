@@ -5,10 +5,10 @@ Your browser does not support the video tag.
 </video><h2 id="Geodesic-vortices"><a class="docs-heading-anchor" href="#Geodesic-vortices">Geodesic vortices</a><a id="Geodesic-vortices-1"></a><a class="docs-heading-anchor-permalink" href="#Geodesic-vortices" title="Permalink"></a></h2><p>Here, we demonstrate how to detect material barriers to diffusive transport.</p><pre><code class="language-julia hljs">using Distributed
 nprocs() == 1 &amp;&amp; addprocs()
 
-@everywhere using CoherentStructures, OrdinaryDiffEq</code></pre><p>Next, we load and interpolate the velocity data sets. Loading the data sets defines <code>Lon</code>, <code>Lat</code>, <code>Time</code>, <code>UT</code>, <code>VT</code>.</p><pre><code class="language-julia hljs">using JLD2
-JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
-const uv = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Now, we set up the computational problem.</p><pre><code class="language-julia hljs">q = 91
-t_initial = minimum(Time)
+@everywhere using CoherentStructures, OrdinaryDiffEq</code></pre><p>Next, we load and interpolate the velocity data sets.</p><pre><code class="language-julia hljs">using JLD2
+xs, ys, ts, us, vs = load(&quot;Ocean_geostrophic_velocity.jld2&quot;, &quot;Lon&quot;, &quot;Lat&quot;, &quot;Time&quot;, &quot;UT&quot;, &quot;VT&quot;)
+const uv = interpolateVF(xs, ys, ts, us, vs)</code></pre><p>Now, we set up the computational problem.</p><pre><code class="language-julia hljs">q = 91
+t_initial = minimum(ts)
 t_final = t_initial + 90
 const tspan = range(t_initial, stop=t_final, length=q)
 xmin, xmax, ymin, ymax = -4.0, 7.5, -37.0, -28.0
@@ -26,7 +26,7 @@ trace = tensor_invariants(C̅)[5]
 fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
     bg=trace, xspan=xspan, yspan=yspan, title=&quot;DBS field and transport barriers&quot;, showlabel=true)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_geodesic_vortices.png" alt/></p><h2 id="Objective-Eulerian-coherent-structures-(OECS)"><a class="docs-heading-anchor" href="#Objective-Eulerian-coherent-structures-(OECS)">Objective Eulerian coherent structures (OECS)</a><a id="Objective-Eulerian-coherent-structures-(OECS)-1"></a><a class="docs-heading-anchor-permalink" href="#Objective-Eulerian-coherent-structures-(OECS)" title="Permalink"></a></h2><p>With only minor modifications, we are also able to compute OECSs. We start by loading some packages and define the rate-of-strain tensor function.</p><pre><code class="language-julia hljs">using Interpolations, Tensors, StaticArrays
 
-const V = scale(interpolate(SVector{2}.(UT[:,:,1], VT[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), Lon, Lat)
+const V = scale(interpolate(SVector{2}.(us[:,:,1], vs[:,:,1]), BSpline(Quadratic(Free(OnGrid())))), xs, ys)
 
 rate_of_strain_tensor(xin) = let V=V
     x, y = xin
@@ -44,9 +44,9 @@ fig = plot_vortices(vortices, singularities, (xmin, ymin), (xmax, ymax);
     bg=λ₁, xspan=xspan, yspan=yspan, logBg=false, title=&quot;Minor rate-of-strain field and OECSs&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_oecs.png" alt/></p><h2 id="FEM-based-methods"><a class="docs-heading-anchor" href="#FEM-based-methods">FEM-based methods</a><a id="FEM-based-methods-1"></a><a class="docs-heading-anchor-permalink" href="#FEM-based-methods" title="Permalink"></a></h2><p>Here we showcase how the adaptive TO method can be used to calculate coherent sets.</p><p>First we setup the problem.</p><pre><code class="language-julia hljs">using CoherentStructures
 import JLD2, OrdinaryDiffEq, Plots
 
-JLD2.@load(&quot;Ocean_geostrophic_velocity.jld2&quot;)
+xs, ys, ts, us, vs = load(&quot;Ocean_geostrophic_velocity.jld2&quot;, &quot;Lon&quot;, &quot;Lat&quot;, &quot;Time&quot;, &quot;UT&quot;, &quot;VT&quot;)
 
-const UV = interpolateVF(Lon, Lat, Time, UT, VT)</code></pre><p>Next, we define a flow function from it.</p><pre><code class="language-julia hljs">t_initial = minimum(Time)
+const UV = interpolateVF(xs, ys, ts, us, vs)</code></pre><p>Next, we define a flow function from it.</p><pre><code class="language-julia hljs">t_initial = minimum(ts)
 t_final = t_initial + 90
 const times = [t_initial, t_final]
 flow_map(u0) = flow(interp_rhs, u0, times; p=UV, tolerance=1e-5, solver=OrdinaryDiffEq.BS5())[end]</code></pre><p>Next, we set up the domain. We want to use zero Dirichlet boundary conditions here.</p><pre><code class="language-julia hljs">LL = (-4.0, -34.0)
@@ -77,4 +77,4 @@ res = iterated_kmeans(20, permutedims(v_upsampled[:,1:(n_partition-1)]), n_parti
 u = kmeansresult2LCS(res)
 u_combined = sum([u[:,i] * i for i in 1:n_partition])
 fig = plot_u(ctx2, u_combined, 200, 200;
-    color=:viridis, colorbar=:none, title=&quot;$n_partition-partition of Ocean Flow&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_fem.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bickley/">« Bickley jet</a><a class="docs-footer-nextpage" href="../trajectories/">Working with trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Thursday 4 November 2021 09:23">Thursday 4 November 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    color=:viridis, colorbar=:none, title=&quot;$n_partition-partition of Ocean Flow&quot;)</code></pre><p><img src="https://raw.githubusercontent.com/natschil/misc/master/autogen/ocean_flow_fem.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bickley/">« Bickley jet</a><a class="docs-footer-nextpage" href="../trajectories/">Working with trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Wednesday 22 December 2021 20:24">Wednesday 22 December 2021</span>. Using Julia version 1.7.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
