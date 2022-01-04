@@ -36,7 +36,7 @@ yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, permutedims(yspan))
 const δ = 1.e-6
 
-const D = SymmetricTensor{2,2}([2., 0., 1/2])
+@inline D(_) = SymmetricTensor{2,2}((2., 0., 0.5))
 
 mCG_tensor = u -> av_weighted_CG_tensor(bickley, u, tspan, δ;
     D=D, tolerance=1e-6, solver=Tsit5())
