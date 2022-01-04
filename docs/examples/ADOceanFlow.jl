@@ -1,5 +1,4 @@
 using CoherentStructures
-using Tensors
 using Plots # For @animate
 
 

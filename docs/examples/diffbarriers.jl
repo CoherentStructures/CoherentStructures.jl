@@ -67,9 +67,9 @@ yspan = range(ymin, stop=ymax, length=ny)
 P = tuple.(xspan, permutedims(yspan))
 const δ = 1.e-6
 
-# In our work, we used an anisotropic diffusion tensor.
+# In our work, we used an anisotropic (constant-valued) diffusion tensor (function).
 
-const D = SymmetricTensor{2,2}([2., 0., 1/2])
+@inline D(_) = SymmetricTensor{2,2}((2., 0., 0.5))
 
 # Now, we compute the diffusion-weighted averaged Cauchy-Green tensor, set a
 # parameter (and others by default) for the geodesic vortex computation, and
