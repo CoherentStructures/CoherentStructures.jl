@@ -1,5 +1,6 @@
 using CoherentStructures, Test
 using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
+# using LinearSolve
 
 @testset "odesolvers" begin
     dts = 0.5 .^(12:-1:7)
@@ -39,12 +40,12 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
         # solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
         # solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # solve(prob, ImplicitEuler(linsolve=UMFPACKFactorization()), dt=0.1)
+        # solve(prob, MEBDF2(linsolve=UMFPACKFactorization()), dt=0.1)
         # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1);
-        # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)));
+        # @time solve(prob, ImplicitEuler(linsolve=UMFPACKFactorization()));
         # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1);
-        # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1);
+        # @time solve(prob, MEBDF2(linsolve=UMFPACKFactorization()), dt=0.1);
     end
 
     @testset "ADE in rotating double gyre" begin
@@ -75,13 +76,13 @@ using OrdinaryDiffEq, DiffEqDevTools, SparseArrays, LinearAlgebra
 
         sol1 = solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.01)
         sol2 = solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.01)
-        # solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # solve(prob, ImplicitEuler(linsolve=UMFPACKFactorization()), dt=0.01)
+        # solve(prob, MEBDF2(linsolve=UMFPACKFactorization()), dt=0.01)
 
-        # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, ImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
-        # @time solve(prob, MEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.1)
+        # @time solve(prob, LinearImplicitEuler(linsolve=LinSolveFactorize(lu)), dt=0.01);
+        # @time solve(prob, ImplicitEuler(linsolve=UMFPACKFactorization()), dt=0.01);
+        # @time solve(prob, LinearMEBDF2(linsolve=LinSolveFactorize(lu)), dt=0.01);
+        # @time solve(prob, MEBDF2(linsolve=UMFPACKFactorization()), dt=0.01);
 
         @test sol1.retcode === :Success
         @test sol2.retcode === :Success

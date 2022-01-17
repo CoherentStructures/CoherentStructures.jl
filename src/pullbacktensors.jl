@@ -18,7 +18,7 @@ the time interval `tspan`, evaluated at each element of `tspan`.
 
 ## Keyword arguments
    * `p`: parameter that is passed to `odefun`, e.g., in [`interp_rhs`](@ref);
-   * `solver=OrdinaryDiffEq.BS5()`: ODE solver;
+   * `solver=OrdinaryDiffEq.Tsit5()`: ODE solver;
    * `tolerance=1e-3`: relative and absolute tolerance for ODE integration;
    * `force_dtmin=false`: force the ODE solver to step forward with `dtmin`, even
      if the adaptive scheme would reject the step.
