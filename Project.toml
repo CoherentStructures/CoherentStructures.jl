@@ -1,6 +1,6 @@
 name = "CoherentStructures"
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
-version = "0.4.8"
+version = "0.4.9"
 
 [deps]
 ArnoldiMethod = "ec485272-7323-5ecc-a04f-4719b315124d"
@@ -38,7 +38,7 @@ Interpolations = "0.11, 0.12, 0.13"
 IterativeSolvers = "0.7, 0.8, 0.9"
 LinearMaps = "2, 3"
 NearestNeighbors = "0.4.4"
-OrdinaryDiffEq = "6"
+OrdinaryDiffEq = "6.2"
 ProgressMeter = "1"
 RecipesBase = "0.7, 0.8, 1"
 StaticArrays = "1.1"
