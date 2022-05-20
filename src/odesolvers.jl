@@ -11,7 +11,7 @@ LinearImplicitEuler(;
     chunk_size = 0,
     autodiff = false,
     standardtag = Val(true),
-    linsolve = DEFAULT_LINSOLVE,
+    linsolve = nothing,
     concrete_jac = nothing
 ) = LinearImplicitEuler{chunk_size,autodiff,typeof(linsolve)}(linsolve)
 OrdinaryDiffEq.alg_order(::LinearImplicitEuler) = 1
@@ -97,7 +97,7 @@ end
 struct LinearMEBDF2{CS,AD,F} <: OrdinaryDiffEqNewtonAlgorithm{CS,AD,Nothing,Val{true},Nothing}
     linsolve::F
 end
-LinearMEBDF2(; chunk_size=0, autodiff=false, standardtag = Val(true), linsolve=DEFAULT_LINSOLVE, concrete_jac=nothing) =
+LinearMEBDF2(; chunk_size=0, autodiff=false, standardtag = Val(true), linsolve=nothing, concrete_jac=nothing) =
     LinearMEBDF2{chunk_size,autodiff,typeof(linsolve)}(linsolve)
 OrdinaryDiffEq.alg_order(::LinearMEBDF2) = 2
 OrdinaryDiffEq.is_mass_matrix_alg(::LinearMEBDF2) = true
