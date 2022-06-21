@@ -17,7 +17,7 @@ using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 using DiffEqBase: DiffEqBase, initialize!, isconstant, update_coefficients!, @..
 using OrdinaryDiffEq: OrdinaryDiffEq, ODEProblem, ODEFunction, ContinuousCallback,
-    terminate!, solve, Tsit5, BS5, OrdinaryDiffEqNewtonAlgorithm, DEFAULT_LINSOLVE,
+    terminate!, solve, Tsit5, BS5, OrdinaryDiffEqNewtonAlgorithm,
     alg_order, OrdinaryDiffEqMutableCache, alg_cache, @muladd, perform_step!, @unpack,
     unwrap_alg, is_mass_matrix_alg, _unwrap_val
 
