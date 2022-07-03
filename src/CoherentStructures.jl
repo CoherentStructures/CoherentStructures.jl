@@ -11,15 +11,15 @@ using SharedArrays: SharedArray
 using Statistics: mean
 
 # import data type packages
-using StaticArrays: SVector, @SVector, SMatrix, @SMatrix
+using StaticArrays: SVector, SMatrix
 using Tensors: Vec, Tensor, SymmetricTensor, basevec, dott, tdot, otimes, unsafe_symmetric
 using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
-using DiffEqBase: DiffEqBase, initialize!, isconstant, update_coefficients!, @..
-using OrdinaryDiffEq: OrdinaryDiffEq, ODEProblem, ODEFunction, ContinuousCallback,
-    terminate!, solve, Tsit5, BS5, OrdinaryDiffEqNewtonAlgorithm, DEFAULT_LINSOLVE,
-    alg_order, OrdinaryDiffEqMutableCache, alg_cache, @muladd, perform_step!, @unpack,
-    unwrap_alg, is_mass_matrix_alg, _unwrap_val
+# using DiffEqBase: DiffEqBase, initialize!, isconstant, update_coefficients!, @..
+using OrdinaryDiffEq: ODEProblem, ODEFunction, ContinuousCallback, terminate!, solve, Tsit5
+# using OrdinaryDiffEq: OrdinaryDiffEqNewtonAlgorithm, DEFAULT_LINSOLVE,
+#     alg_order, OrdinaryDiffEqMutableCache, alg_cache, @muladd, perform_step!, @unpack,
+#     unwrap_alg, is_mass_matrix_alg, _unwrap_val
 
 using Distances: Distances, PreMetric, SemiMetric, Metric, Euclidean, PeriodicEuclidean,
     pairwise, pairwise!, colwise, colwise!, result_type
@@ -101,7 +101,7 @@ include("FEMassembly.jl")
 include("advection_diffusion.jl")
 
 # odesolvers
-include("odesolvers.jl")
+# include("odesolvers.jl")
 
 # transfer operator-based methods
 include("TO.jl")
