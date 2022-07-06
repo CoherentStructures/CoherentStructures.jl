@@ -31,6 +31,7 @@ export
 	area,
 	centroid,
 	clockwise,
+	isinside,
 
 	#diffusion_operators.jl
 	gaussian,

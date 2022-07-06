@@ -147,8 +147,8 @@ compute_closed_orbits
 First of all, [`Singularity`](@ref), [`EllipticBarrier`](@ref) and [`EllipticVortex`](@ref)
 objects can be passed as initial conditions to the [`flow`](@ref) function, which returns
 a (time-resolved) vector of corresponding objects. Moreover, we have advection with
-adaptive point insertion (known in oceanography as "Dritschel advection") and an function
-to compute the area of [`EllipticBarrier`](@ref) and [`EllipticVortex`](@ref) objects.
+adaptive point insertion (known in oceanography as "Dritschel advection") and some more
+convenience functions.
 
 ```@docs
 FlowGrowParams
@@ -157,4 +157,5 @@ area
 centroid
 clockwise
 Base.extrema(::EllipticBarrier)
+isinside
 ```

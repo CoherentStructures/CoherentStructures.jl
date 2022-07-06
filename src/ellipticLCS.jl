@@ -1755,3 +1755,39 @@ function clockwise(barrier::EllipticBarrier, velo::ODEFunction{false}, t0; p=not
 end
 clockwise(vortex::EllipticVortex, velo, t0; p=nothing) =
     clockwise(last(vortex.barriers), velo, t0; p=p)
+
+"""
+    isinside(p, polygon)
+
+Determine whether the point `p` (or [`Singularity`](@ref)) lies inside `polygon`, which can
+be of type `Vector{SVector{2}}`, `EllipticBarrier` or `EllipticVortex`. In the latter case,
+the outermost (i.e., the last `EllipticBarrier` in the `barriers` field) is used.
+"""
+isinside(p::SVector{2}, poly::Vector{<:SVector{2}}) = !iszero(winding_number(p, poly))
+isinside(p::SVector{2}, barrier::EllipticBarrier) = isinside(p, barrier.curve)
+isinside(p::SVector{2}, vortex::EllipticVortex) = isinside(p, last(vortex.barriers))
+isinside(s::Singularity, curve) = isinside(s.coords, curve)
+
+function quadrant(p::SVector{2})
+    if p[1] > 0
+        p[2] >= 0 && return 1
+        return 4
+    else
+        p[2] >= 0 && return 2
+        return 3
+    end
+end
+function winding_number(q::SVector{2}, poly::Vector{<:SVector{2}})
+    qprev = qfirst = quadrant(poly[1] - q)
+    qnext = quadrant(poly[2] - q)
+    Δq = qnext - qprev
+    @inbounds for i in 3:length(poly)
+        qnext = quadrant(poly[i] - q)
+        qdiff = qnext - qprev
+        Δq += qdiff == 3 ? -1 : qdiff == -3 ? 1 : qdiff
+        qprev = qnext
+    end
+    qdiff = qfirst - qnext
+    Δq += qdiff == 3 ? -1 : qdiff == -3 ? 1 : qdiff
+    return Δq ÷ 4
+end
