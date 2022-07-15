@@ -184,6 +184,7 @@ end
     @test clockwise(barrier, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0) ==
         clockwise(vortex, ODEFunction((u, p, t) -> SVector{2}(-u[2], u[1])), 0)
     @test isinside(SVector(1-eps(),0), vortex)
+    @test isinside(Singularity(vortex.center, 1), vortex)
     @test !isinside(SVector(1+eps(),0), vortex)
     barrier = CS.EllipticBarrier(square, SVector{2}(1.0, 1.0), 1.0, true)
     LL, UR = extrema(barrier)
