@@ -173,7 +173,7 @@ makedocs(
             "Material diffusion barriers" => "generated/diffbarriers.md"
             "Diffusion barriers in turbulence" => "generated/turbulence.md"
             "Life cycles of Loop Current rings" => "generated/lifecycle.md"
-			"Multiscale modeling of bone" => "generated/bone_modeling.md"
+            "Multiscale modeling of bone" => "generated/bone_modeling.md"
         ]
         "Basics" => "basics.md"
         "Methods" => [
