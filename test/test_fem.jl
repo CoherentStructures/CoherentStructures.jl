@@ -154,5 +154,5 @@ end
     D = 0.5 * (S + T)
 
     λ, = get_smallest_eigenpairs(D, M, 3)
-    @test abs(λ[1]) < eps()
+    @test all(<(sqrt(eps())), λ)
 end
