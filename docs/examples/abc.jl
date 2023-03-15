@@ -1,5 +1,4 @@
 using CoherentStructures
-using Arpack
 using Plots
 
 
@@ -12,7 +11,7 @@ bdata = BoundaryData(abcctx, bdata_predicate)
 cgfun = x-> mean_diff_tensor(abcFlow, x, [0.0,1.0], 1.e-10, p=(√3,√2,1), tolerance=1.e-3)
 @time M = assembleMassMatrix(abcctx, bdata=bdata);
 @time K = assembleStiffnessMatrix(abcctx, cgfun, bdata=bdata)
-@time λ, V = eigs(K, M, which=:SM, nev=10) #This takes really long!
+@time λ, V = CoherentStructures.get_smallest_eigenpairs(K, M, 10) #This takes really long!
 
 plot_real_spectrum(λ)
 

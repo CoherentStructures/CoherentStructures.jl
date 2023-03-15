@@ -196,9 +196,7 @@ ctx, _ = irregularDelaunayGrid(particles)
 
 S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], ts; flow_map_mode=1)
 M = assembleMassMatrix(ctx)
-
-using Arpack
-λ, V = eigs(S, M; which=:SM, nev=6)
+λ, V = CoherentStructures.get_smallest_eigenpairs(S, M, 6)
 
 # We can plot the computed spectrum.
 

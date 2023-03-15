@@ -1,6 +1,6 @@
 name = "CoherentStructures"
 uuid = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
-version = "0.4.11"
+version = "0.4.12"
 
 [deps]
 ArnoldiMethod = "ec485272-7323-5ecc-a04f-4719b315124d"
@@ -19,6 +19,7 @@ NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
@@ -34,24 +35,24 @@ DiffEqBase = "6"
 Distances = "0.9, 0.10"
 Ferrite = "0.3"
 GeometricalPredicates = "0.3, 0.4"
-Interpolations = "0.11, 0.12, 0.13"
+Interpolations = "0.11, 0.12, 0.13, 0.14"
 IterativeSolvers = "0.7, 0.8, 0.9"
-LinearMaps = "2, 3"
+LinearMaps = "3.10"
 NearestNeighbors = "0.4.4"
 OrdinaryDiffEq = "6.2"
 ProgressMeter = "1"
 RecipesBase = "0.7, 0.8, 1"
+SciMLBase = "1.63"
 StaticArrays = "1.1"
 Tensors = "1.8"
 VoronoiDelaunay = "0.4"
 julia = "1.6"
 
 [extras]
-Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Arpack", "BenchmarkTools", "DiffEqDevTools", "Random", "Test"]
+test = ["BenchmarkTools", "DiffEqDevTools", "Random", "Test"]

@@ -4,7 +4,7 @@
 
 # meta function
 """
-    FEM_heatflow(velocity!, ctx, tspan, κ, p=nothing, bdata=BoundaryData();
+    FEM_heatflow(velocity!, ctx, tspan, κ, p=SciMLBase.NullParameters(), bdata=BoundaryData();
         factor=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
 Compute the heat flow operator for the time-dependent heat equation, which
@@ -25,7 +25,7 @@ employing a spatial FEM discretization and temporal implicit-Euler time stepping
    * `solver`, `tolerance`: are passed to `advect_serialized_quadpoints`.
 """
 # TODO: Restrict tspan to be of Range/linspace type
-function FEM_heatflow(odefun!, ctx::GridContext, tspan, κ::Real, p=nothing, bdata=BoundaryData();
+function FEM_heatflow(odefun!, ctx::GridContext, tspan, κ::Real, p=SciMLBase.NullParameters(), bdata=BoundaryData();
                         factor::Bool=true, δ=1e-6, solver=default_solver, tolerance=default_tolerance)
 
     sol = advect_serialized_quadpoints(ctx, tspan, odefun!, p, δ; solver=solver, tolerance=tolerance)
@@ -76,24 +76,22 @@ end
 
 
 """
-    advect_serialized_quadpoints(ctx, tspan, odefun!, p=nothing, δ=1e-9;
+    advect_serialized_quadpoints(ctx, tspan, odefun!, p=SciMLBase.NullParameters(), δ=1e-9;
             solver=default_solver, tolerance=default_tolerance)
 
 Advect all quadrature points + finite difference stencils of size `δ`,
 from `tspan[1]` to `tspan[end]` with ODE rhs given by `odefun!`, whose parameters
 are contained in `p`. Returns an ODE solution object.
 """
-function advect_serialized_quadpoints(ctx::GridContext, tspan, odefun!, p=nothing, δ=1e-9;
+function advect_serialized_quadpoints(ctx::GridContext, tspan, odefun!, p=SciMLBase.NullParameters(), δ=1e-9;
                     solver=default_solver, tolerance=default_tolerance)
 
     u0 = setup_fd_quadpoints_serialized(ctx, δ)
-    p2 = Dict("ctx" => ctx, "p" => p)
-
     prob = ODEProblem{true}(
         (du, u, p, t) -> large_rhs(odefun!, du, u, p, t),
         u0,
         (tspan[1], tspan[end]),
-        p2)
+        (ctx, p))
     return solve(prob, solver, abstol=tolerance, reltol=tolerance)
 end
 
@@ -113,8 +111,8 @@ function stiffnessMatrixTimeT(ctx, sol, t, δ=1e-9; bdata=BoundaryData())
 end
 
 @inline function large_rhs(odefun!, du, u, p, t)
-    n_quadpoints = length(p["ctx"].quadrature_points)
-    @views arraymap!(du, u, p["p"], t, odefun!, 4n_quadpoints, 2)
+    n_quadpoints = length(p[1].quadrature_points)
+    @views arraymap!(du, u, p[2], t, odefun!, 4n_quadpoints, 2)
 end
 
 """

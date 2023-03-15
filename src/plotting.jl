@@ -494,7 +494,7 @@ RecipesBase.@userplot Plot_FTLE
 RecipesBase.@recipe function f(
     as::Plot_FTLE;
     tolerance=1e-4,
-    solver=BS5(),
+    solver=Tsit5(),
     # existing_plot=nothing, TODO 1.0
     flip_y=false,
     check_inbounds=always_true,
@@ -569,7 +569,7 @@ end
 
 """
     plot_ftle(odefun, p, tspan, LL, UR, nx, ny;
-        δ=1e-9, tolerance=1e-4, solver=OrdinaryDiffEq.BS5(),
+        δ=1e-9, tolerance=1e-4, solver=OrdinaryDiffEq.Tsit5(),
         existing_plot=nothing, flip_y=false, check_inbounds=always_true, pass_on_errors=false)
 
 Make a heatmap of a FTLE field using finite differences. If `existing_plot` is

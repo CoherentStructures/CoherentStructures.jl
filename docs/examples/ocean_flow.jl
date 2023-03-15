@@ -170,9 +170,7 @@ S = applyBCS(ctx, 0.5(S0 + S1), bdata);
 
 # We can now solve the eigenproblem.
 
-using Arpack
-
-λ, v = eigs(S, M, which=:SM, nev=6);
+λ, v = CoherentStructures.get_smallest_eigenpairs(S, M, nev=6);
 
 # We upsample the eigenfunctions and then cluster.
 

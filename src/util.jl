@@ -195,6 +195,29 @@ function cubicinterp(x1, x2, x3, x4)
     return x2 + p*d32 + eta*n
 end
 
+struct ShiftAndInvert{TA,TB,TT}
+    A_fact::TA
+    B::TB
+    temp::TT
+end
+
+function (M::ShiftAndInvert)(x)
+    mul!(M.temp, M.B, x)
+    # ldiv!(y, M.A_fact, M.temp) # CHOLMOD doesn't have an ldiv!
+    return M.A_fact \ M.temp
+end
+
+function construct_linear_map(A,B)
+    a = ShiftAndInvert(factorize(A), B, Vector{eltype(A)}(undef, size(A, 1)))
+    FunctionMap{eltype(A),false}(a, size(A, 1))
+end
+
+function get_smallest_eigenpairs(A, B, nev)
+    decomp,  = partialschur(construct_linear_map(A, B), nev=nev)
+    λs_inv, X = partialeigen(decomp)
+    return reverse(1 ./ λs_inv), reverse(X, dims=2)
+end
+
 """
     dof2node(ctx,u)
 

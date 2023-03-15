@@ -1,5 +1,5 @@
 using Test, CoherentStructures
-using StaticArrays, OrdinaryDiffEq, LinearAlgebra, AxisArrays
+using StaticArrays, OrdinaryDiffEq, LinearAlgebra, AxisArrays, SciMLBase
 const CS = CoherentStructures
 
 @testset "singularities" begin
@@ -88,7 +88,7 @@ end
     vf(λ) = OrdinaryDiffEq.ODEFunction{false}((u, p, t) -> (Ω - (1.0 - λ) * I) * u)
     seed = SVector{2}(rand(), 0)
     ret, info = @inferred CS.compute_returning_orbit(vf(1.0), seed)
-    @test info === :Terminated
+    @test info === SciMLBase.ReturnCode.Terminated
     @test ret[1] ≈ seed
     d = @inferred CS.Poincaré_return_distance(vf(1.0), seed)
     @test d ≈ 0 atol = 1e-5
