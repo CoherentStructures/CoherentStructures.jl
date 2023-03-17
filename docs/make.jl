@@ -138,6 +138,9 @@ Literate.script(joinpath(@__DIR__, "..", "docs/examples/turbulence.jl"), OUTPUT;
 
 Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/lifecycle.jl"), OUTPUT;
     documenter=false, preprocess=preprocess_markdown)
+	
+Literate.markdown(joinpath(@__DIR__, "..", "docs/examples/bone_modeling.jl"), OUTPUT;
+    documenter=false, preprocess=preprocess_markdown)
 
 # replace links (if any)
 # travis_tag = get(ENV, "TRAVIS_TAG", "")
@@ -170,6 +173,7 @@ makedocs(
             "Material diffusion barriers" => "generated/diffbarriers.md"
             "Diffusion barriers in turbulence" => "generated/turbulence.md"
             "Life cycles of Loop Current rings" => "generated/lifecycle.md"
+            "Multiscale modeling of bone" => "generated/bone_modeling.md"
         ]
         "Basics" => "basics.md"
         "Methods" => [
