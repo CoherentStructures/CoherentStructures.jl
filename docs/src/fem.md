@@ -292,5 +292,5 @@ plot_ftle
 
 ```julia
 const default_quadrature_order=5
-const default_solver = OrdinaryDiffEq.BS5()
+const default_solver = OrdinaryDiffEq.Tsit5()
 ```

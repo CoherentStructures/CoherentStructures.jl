@@ -153,7 +153,7 @@ function GridContext{1}(::Type{FEM.Line},
     loc = Regular1dGridLocator{FEM.Line}(numnodes[1], Vec{1}((LL[1],)), Vec{1}((UR[1],)))
 
     dh = FEM.DofHandler(grid)
-    push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
 
     qr = FEM.QuadratureRule{1, FEM.RefCube}(quadrature_order)
@@ -186,7 +186,7 @@ function GridContext{1}(::Type{FEM.QuadraticLine},
     loc = Regular1dGridLocator{FEM.QuadraticLine}(numnodes[1], Vec{1}((LL[1],)), Vec{1}((UR[1],)))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{1, FEM.RefCube}(quadrature_order)
-    push!(dh, :T, 1) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result = GridContext{1}(grid, ip, FEM.Lagrange{1,FEM.RefCube,2}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
@@ -327,7 +327,7 @@ function GridContext{2}(
                     on_torus=on_torus, on_cylinder=on_cylinder, LL=LL, UR=UR)
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result =  GridContext{2}(grid, ip, FEM.Lagrange{2,FEM.RefTetrahedron,1}(), dh, qr, loc; kwargs...)
     if ip isa FEM.Lagrange
@@ -472,7 +472,7 @@ function GridContext{2}(
     grid, loc = FEM.generate_grid(FEM.QuadraticTriangle, node_list)
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result = GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
     result.gridType = "irregular P2 Delaunay grid"
@@ -519,7 +519,7 @@ function GridContext{2}(::Type{FEM.Triangle},
     loc = Regular2DGridLocator{FEM.Triangle}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result = GridContext{2}(grid, ip, FEM.Lagrange{2,FEM.RefTetrahedron,1}(), dh, qr, loc; kwargs...)
     result.spatialBounds = ((LL[1], LL[2]), (UR[1], UR[2]))
@@ -571,7 +571,7 @@ function GridContext{2}(::Type{FEM.QuadraticTriangle},
     loc = Regular2DGridLocator{FEM.QuadraticTriangle}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1, ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result =  GridContext{2}(grid, ip, FEM.Lagrange{2,FEM.RefTetrahedron,2}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
@@ -612,7 +612,7 @@ function GridContext{2}(::Type{FEM.Quadrilateral},
     loc = Regular2DGridLocator{FEM.Quadrilateral}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefCube}(quadrature_order)
-    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result =  GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefCube,1}(), dh, qr, loc; kwargs...)
     result.spatialBounds = (LL, UR)
@@ -670,7 +670,7 @@ function GridContext{2}(::Type{FEM.QuadraticQuadrilateral},
     loc = Regular2DGridLocator{FEM.QuadraticQuadrilateral}(numnodes[1], numnodes[2], Vec{2}((LL[1], LL[2])), Vec{2}((UR[1], UR[2])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{2, FEM.RefCube}(quadrature_order)
-    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result =  GridContext{2}(grid, ip,FEM.Lagrange{2,FEM.RefCube,2}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
@@ -711,7 +711,7 @@ function GridContext{3}(::Type{FEM.Tetrahedron},
     loc = Regular3DGridLocator{FEM.Tetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}((LL[1], LL[2], LL[3])), Vec{3}((UR[1], UR[2], UR[3])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{3, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result =  GridContext{3}(grid, ip,FEM.Lagrange{3,FEM.RefTetrahedron,1}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)
@@ -745,7 +745,7 @@ function GridContext{3}(::Type{FEM.QuadraticTetrahedron},
     loc = Regular3DGridLocator{FEM.QuadraticTetrahedron}(numnodes[1], numnodes[2], numnodes[3], Vec{3}((LL[1], LL[2], LL[3])), Vec{3}((UR[1], UR[2], UR[3])))
     dh = FEM.DofHandler(grid)
     qr = FEM.QuadratureRule{3, FEM.RefTetrahedron}(quadrature_order)
-    push!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
+    FEM.add!(dh, :T, 1,ip) #The :T is just a generic name for the scalar field
     FEM.close!(dh)
     result =  GridContext{3}(grid, ip,FEM.Lagrange{3,FEM.RefTetrahedron,2}(), dh, qr, loc;kwargs...)
     result.spatialBounds = (LL, UR)

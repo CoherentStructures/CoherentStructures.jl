@@ -1,5 +1,4 @@
 [deps]
-Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 CoherentStructures = "0c1513b4-3a13-56f1-9cd2-8312eaec88c4"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -18,14 +17,15 @@ StreamMacros = "1418a599-1564-4a75-98e9-b890cf8b552f"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 
 [compat]
-Arpack = "0.4"
 Clustering = "0.13, 0.14"
 Distances = "0.10"
 Documenter = "0.24, 0.25, 0.26, 0.27"
-Interpolations = "0.13"
+Interpolations = "0.13, 0.14"
 JLD2 = "0.1.11, 0.2, 0.3, 0.4"
 Literate = "2.2.1"
 OrdinaryDiffEq = "6.2"
 Plots = "0.29, 1"
 StaticArrays = "1.1"
+StreamMacros = "0.2"
 Tensors = "1.8"
+julia = "1.6"

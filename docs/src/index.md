@@ -8,8 +8,8 @@
 It has been developed in [Oliver Junge](https://www-m3.ma.tum.de/Allgemeines/OliverJunge)'s research group at TUM, Germany, by (in alphabetical order)
 
 * Alvaro de Diego ([@adediego](https://github.com/adediego))
-* [Oliver Junge](https://www-m3.ma.tum.de/Allgemeines/OliverJunge) ([@gaioguy](https://github.com/gaioguy))
-* [Daniel Karrasch](https://www-m3.ma.tum.de/Allgemeines/DanielKarrasch) ([@dkarrasch](https://github.com/dkarrasch))
+* [Oliver Junge](https://www.math.cit.tum.de/math/personen/professuren/junge-oliver/) ([@gaioguy](https://github.com/gaioguy))
+* Daniel Karrasch ([@dkarrasch](https://github.com/dkarrasch))
 * Nathanael Schilling ([@natschil](https://github.com/natschil))
 
 Contributions from colleagues in the field are most welcome via raising issues or, even better, via pull requests.

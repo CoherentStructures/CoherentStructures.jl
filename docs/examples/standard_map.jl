@@ -45,7 +45,7 @@ DISPLAY_PLOT(fig, standard_map_orbits)
 
 # Approximating the Dynamic Laplacian by FEM methods is straightforward:
 
-using Arpack, CoherentStructures, Distances, Tensors
+using CoherentStructures, Distances, Tensors
 
 Df(x) = Tensor{2,2}((1.0+a*cos(x[1]), a*cos(x[1]), 1.0, 1.0))
 
@@ -60,7 +60,7 @@ cg(x) = 0.5*(I + dott(inv(Df2(x))))         # avg. inv. Cauchy-Green tensor
 
 K = assembleStiffnessMatrix(ctx, cg, bdata=bd)
 M = assembleMassMatrix(ctx, bdata=bd)
-λ, v = eigs(K, M, which=:SM)
+λ, v = CoherentStructures.get_smallest_eigenpairs(K, M, 6)
 
 using Printf
 title = [ @sprintf("\\lambda = %.3f", λ[i]) for i = 1:4 ]

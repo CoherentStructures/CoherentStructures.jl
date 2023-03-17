@@ -41,14 +41,14 @@ end
 #
 # The following code demonstrates how to use these methods.
 
-using CoherentStructures, Arpack
+using CoherentStructures
 LL, UR = (0.0, 0.0), (1.0, 1.0)
 ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 
 A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
 K = assembleStiffnessMatrix(ctx, A)
 M = assembleMassMatrix(ctx)
-λ, v = eigs(-K, M, which=:SM);
+λ, v = CoherentStructures.get_smallest_eigenpairs(-K, M, 6);
 
 # This velocity field is given by the `rot_double_gyre` function. The third
 # argument to `mean_diff_tensor` is a vector of time instances at which we evaluate

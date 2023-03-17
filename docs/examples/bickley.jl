@@ -84,12 +84,11 @@ bdata = BoundaryData(ctx, predicate, []);
 
 # Using a FEM-based method to compute coherent structures:
 
-using Arpack
 cgfun = x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81), 1.e-8; tolerance=1e-5)
 
 K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
 M = assembleMassMatrix(ctx, bdata=bdata)
-λ, v = eigs(K, M, which=:SM, nev= 10)
+λ, v = CoherentStructures.get_smallest_eigenpairs(K, M, 10)
 
 import Plots
 fig_spectrum = plot_real_spectrum(λ)

@@ -689,7 +689,7 @@ function compute_returning_orbit(vf::ODEFunction, seed, save = false, maxiters =
         return (sol.u, sol.retcode)
     catch e
         if e isa BoundsError
-            return ([typeof(seed)(NaN, NaN)], :BoundsError)
+            return ([typeof(seed)(NaN, NaN)], ReturnCode.Failure)
         end
         rethrow(e)
     end
@@ -705,7 +705,7 @@ function Poincaré_return_distance(vf, seed, save = false; tolerance_ode = 1e-8,
         max_orbit_length,
     )
     # check if result due to callback
-    if retcode === :Terminated
+    if retcode === ReturnCode.Terminated
         return sol[end][1] - seed[1]
     else
         return eltype(seed)(NaN)
@@ -826,7 +826,7 @@ function compute_closed_orbits(ps::AbstractVector{<:SVector{2}}, ηfield, cache;
                 p.tolerance_ode,
                 p.max_orbit_length,
             )
-            if retcode === :Terminated
+            if retcode === ReturnCode.Terminated
                 closed = norm(orbit[1] - orbit[end]) <= p.rdist
                 if cache isa LCScache
                     in_well_defined_squares =
@@ -1500,7 +1500,7 @@ function materialbarriersTensors(
     lcsp;
     δ = 1e-6,
     tolerance = 1e-6,
-    p = nothing,
+    p = SciMLBase.NullParameters(),
     kwargs...,
 )
     P0 = AxisArray(SVector{2}.(xspan, yspan'), xspan, yspan)
@@ -1520,7 +1520,7 @@ end
 
 """
     materialbarriers(odefun, xspan, yspan, tspan, lcsp;
-        on_torus=false, δ=1e-6, tolerance=1e-6, p=nothing, kwargs...)
+        on_torus=false, δ=1e-6, tolerance=1e-6, p=SciMLBase.NullParameters(), kwargs...)
 
 Calculate material barriers to diffusive and stochastic transport on the material domain
 spanned by `xspan` and `yspan`, where the averaged weighted CG tensor is computed at the
@@ -1528,7 +1528,7 @@ time instance contained in `tspan`. The argument `lcsp` must be of type
 [`LCSParameters`](@ref), and contains parameters used for the elliptic vortex detection.
 """
 function materialbarriers(odefun, xspan, yspan, tspan, lcsp;
-        δ = 1e-6, tolerance = 1e-6, p = nothing, on_torus = false, kwargs...)
+        δ = 1e-6, tolerance = 1e-6, p = SciMLBase.NullParameters(), on_torus = false, kwargs...)
     T0 = materialbarriersTensors(
         odefun,
         xspan,

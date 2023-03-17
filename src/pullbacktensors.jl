@@ -41,7 +41,7 @@ end
     odefun::ODEFunction,
     u0::T,
     tspan;
-    p = nothing,
+    p = SciMLBase.NullParameters(),
     solver = default_solver,
     tolerance = default_tolerance,
     #ctx_for_boundscheck=nothing,
@@ -106,7 +106,7 @@ function linearized_flow(
     δ;
     tolerance=default_tolerance,
     solver=default_solver,
-    p=nothing,
+    p=SciMLBase.NullParameters(),
 )::Tuple{Vector{T},Vector{<:Tensor{2,2}}} where {iip,T<:SVector{2}}
     @inbounds if iip
         if δ != 0 # use finite differencing
@@ -167,7 +167,7 @@ function linearized_flow(
     δ;
     tolerance=default_tolerance,
     solver=default_solver,
-    p=nothing,
+    p=SciMLBase.NullParameters(),
 )::Tuple{Vector{T},Vector{<:Tensor{2,3}}} where {iip,T<:SVector{3}}
     @inbounds if iip
         if δ != 0 # use finite differencing

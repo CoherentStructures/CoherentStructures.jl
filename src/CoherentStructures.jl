@@ -16,6 +16,7 @@ using Tensors: Vec, Tensor, SymmetricTensor, basevec, dott, tdot, otimes, unsafe
 using AxisArrays: AxisArray, ClosedInterval, axisvalues
 
 # using DiffEqBase: DiffEqBase, initialize!, isconstant, update_coefficients!, @..
+using SciMLBase
 using OrdinaryDiffEq: ODEProblem, ODEFunction, ContinuousCallback, terminate!, solve, Tsit5
 # using OrdinaryDiffEq: OrdinaryDiffEqNewtonAlgorithm, DEFAULT_LINSOLVE,
 #     alg_order, OrdinaryDiffEqMutableCache, alg_cache, @muladd, perform_step!, @unpack,
@@ -30,7 +31,7 @@ using Interpolations: Interpolations, LinearInterpolation, CubicSplineInterpolat
     interpolate, scale, BSpline, Linear, Cubic, Natural, OnGrid, Free
 
 # import linear algebra related packages
-using LinearMaps: LinearMap
+using LinearMaps: LinearMap, FunctionMap
 using IterativeSolvers: cg
 using ArnoldiMethod: partialschur, partialeigen
 

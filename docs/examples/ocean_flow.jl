@@ -35,7 +35,7 @@ nprocs() == 1 && addprocs()
 # Next, we load and interpolate the velocity data sets.
 
 using JLD2
-xs, ys, ts, us, vs = load(OCEAN_FLOW_FILE, "Lon", "Lat", "Time", "UT", "VT")
+xs, ys, ts, us, vs = load("docs/examples/Ocean_geostrophic_velocity.jld2", "Lon", "Lat", "Time", "UT", "VT")
 const uv = interpolateVF(xs, ys, ts, us, vs)
 
 # Now, we set up the computational problem.
@@ -170,9 +170,7 @@ S = applyBCS(ctx, 0.5(S0 + S1), bdata);
 
 # We can now solve the eigenproblem.
 
-using Arpack
-
-λ, v = eigs(S, M, which=:SM, nev=6);
+λ, v = CoherentStructures.get_smallest_eigenpairs(S, M, 6);
 
 # We upsample the eigenfunctions and then cluster.
 
