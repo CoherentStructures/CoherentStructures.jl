@@ -48,12 +48,11 @@ ctx, _ = regularP2TriangularGrid((50, 15), LL, UR, quadrature_order=2)
 predicate = (p1, p2) -> peuclidean(p1, p2, [6.371π, Inf]) < 1e-10
 bdata = BoundaryData(ctx, predicate, []);
 
-using Arpack
 cgfun = x -> mean_diff_tensor(bickley, x, range(0.0, stop=40*3600*24, length=81), 1.e-8; tolerance=1e-5)
 
 K = assembleStiffnessMatrix(ctx, cgfun, bdata=bdata)
 M = assembleMassMatrix(ctx, bdata=bdata)
-λ, v = eigs(K, M, which=:SM, nev= 10)
+λ, v = CoherentStructures.get_smallest_eigenpairs(K, M, 10)
 
 import Plots
 fig_spectrum = plot_real_spectrum(λ)

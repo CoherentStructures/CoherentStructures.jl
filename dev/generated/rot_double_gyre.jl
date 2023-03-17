@@ -10,14 +10,14 @@ const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     Ψ_rot_dgyre = (1-st) * Ψ_P + st * Ψ_F
 end
 
-using CoherentStructures, Arpack
+using CoherentStructures
 LL, UR = (0.0, 0.0), (1.0, 1.0)
 ctx, _ = regularTriangularGrid((50, 50), LL, UR)
 
 A = x -> mean_diff_tensor(rot_double_gyre, x, [0.0, 1.0], 1.e-10, tolerance= 1.e-4)
 K = assembleStiffnessMatrix(ctx, A)
 M = assembleMassMatrix(ctx)
-λ, v = eigs(-K, M, which=:SM);
+λ, v = CoherentStructures.get_smallest_eigenpairs(-K, M, 6);
 
 import Plots
 res = [plot_u(ctx, v[:,i], 100, 100, colorbar=:none, clim=(-3,3)) for i in 1:6];

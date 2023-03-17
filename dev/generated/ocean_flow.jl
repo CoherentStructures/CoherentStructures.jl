@@ -4,7 +4,7 @@ nprocs() == 1 && addprocs()
 @everywhere using CoherentStructures, OrdinaryDiffEq
 
 using JLD2
-xs, ys, ts, us, vs = load("Ocean_geostrophic_velocity.jld2", "Lon", "Lat", "Time", "UT", "VT")
+xs, ys, ts, us, vs = load("docs/examples/Ocean_geostrophic_velocity.jld2", "Lon", "Lat", "Time", "UT", "VT")
 const uv = interpolateVF(xs, ys, ts, us, vs)
 
 q = 91
@@ -82,9 +82,7 @@ S1 = adaptiveTOCollocationStiffnessMatrix(ctx, flow_map)
 
 S = applyBCS(ctx, 0.5(S0 + S1), bdata);
 
-using Arpack
-
-λ, v = eigs(S, M, which=:SM, nev=6);
+λ, v = CoherentStructures.get_smallest_eigenpairs(S, M, 6);
 
 using Clustering
 
