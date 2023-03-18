@@ -107,7 +107,7 @@ field = permutedims(reshape(Ψ[:, 3], m, n))
 fig = Plots.heatmap(x, y, field, aspect_ratio=1, color=:viridis)
 Plots.plot(fig)
 
-using StreamMacros, CoherentStructures
+using StreamMacros, CoherentStructures, Random, Plots, Clustering
 const rot_double_gyre = @velo_from_stream Ψ_rot_dgyre begin
     st          = heaviside(t)*heaviside(1-t)*t^2*(3-2*t) + heaviside(t-1)
     heaviside(x)= 0.5*(sign(x) + 1)
@@ -118,6 +118,7 @@ end
 
 n = 500
 ts = range(0, stop=1.0, length=20)
+Random.seed!(1234)
 xs, ys = rand(n), rand(n)
 particles = zip(xs, ys)
 trajectories = [flow(rot_double_gyre, p, ts) for p in particles]
@@ -128,11 +129,9 @@ S = adaptiveTOCollocationStiffnessMatrix(ctx, (i, ts) -> trajectories[i], ts; fl
 M = assembleMassMatrix(ctx)
 λ, V = CoherentStructures.get_smallest_eigenpairs(S, M, 6)
 
-using Plots
 fig = plot_real_spectrum(λ, label="")
 Plots.plot(fig)
 
-using Clustering
 function iterated_kmeans(iterations, args...)
     best = kmeans(args...)
     for i in 1:(iterations - 1)
