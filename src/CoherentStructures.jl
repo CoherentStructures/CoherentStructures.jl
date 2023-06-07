@@ -46,6 +46,8 @@ const FEM = Ferrite
 #Other miscallaneous packages
 using RecipesBase
 import ColorTypes
+using ForwardDiff
+using Contour
 
 # contains a list of exported functions
 include("exports.jl")
@@ -112,5 +114,11 @@ include("ulam.jl")
 
 # plotting functionality
 include("plotting.jl")
+
+# linear response related methods
+include("linearResponse.jl")
+
+# functions for dynamic isoperimetry
+include("dynamicIsoperimetry.jl")
 
 end

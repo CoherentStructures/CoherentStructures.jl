@@ -175,6 +175,7 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
         new_ctx,new_bdata,new_density_bcdofvals = adaptiveTOFutureGrid(ctx, flow_map_t;
                                                     on_torus=on_torus,
                                                     on_cylinder=on_cylinder,
+                                                    quadrature_order=quadrature_order,
                                                     LL_future=LL_future,
                                                     UR_future=UR_future,
                                                     bdata=bdata,

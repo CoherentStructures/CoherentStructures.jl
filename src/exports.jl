@@ -150,4 +150,17 @@ export
 
 	#odesolvers.jl
 	LinearImplicitEuler,
-	LinearMEBDF2
+	LinearMEBDF2,
+
+	#linearResponse.jl
+	linear_response_tensor,
+	linearized_flow_autodiff,
+	adaptiveTOCollocationLinearResponseMatrix,
+	nonadaptiveTOCollocationLinearResponseMatrix,
+	get_linear_response,
+
+	#dynamicIsoperimetry.jl
+	dynamic_cheeger_value,
+	get_minimal_levelset,
+	get_levelset_evolution,
+	get_levelset
