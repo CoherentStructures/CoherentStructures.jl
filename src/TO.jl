@@ -145,13 +145,10 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
     else
         N = length(times)
     end
-    num_real_points = ctx.n
-    if on_torus || on_cylinder
-        num_real_points = ctx.n - length(bdata.periodic_dofs_from)
-    end
-    flow_map_images = zeros(Vec{2}, (N,num_real_points))
+
+    flow_map_images = zeros(Vec{2}, (N,ctx.n))
     if times === nothing
-        for i in 1:num_real_points
+        for i in 1:ctx.n
             if flow_map_mode == 0
                 flow_map_images[1,i] = Vec{2}(flow_maps(ctx.grid.nodes[i].x))
             else
@@ -159,7 +156,7 @@ function adaptiveTOCollocationStiffnessMatrix(ctx::GridContext{2}, flow_maps, ti
             end
         end
     else
-        for i in 1:num_real_points
+        for i in 1:ctx.n
             if flow_map_mode == 0
                 flow_map_images[:,i] = Vec{2}.(flow_maps(ctx.grid.nodes[i].x, times))
             else
