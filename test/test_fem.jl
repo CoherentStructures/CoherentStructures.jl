@@ -155,4 +155,15 @@ end
 
     λ, = get_smallest_eigenpairs(D, M, 3)
     @test all(<(sqrt(eps())), λ)
+
+    LL, UR = (0., 0.), (1., 1.)
+    gs = 10
+    ctx, _ = regularTriangularGrid((gs, gs), LL, UR);
+    predicate = (p1, p2) -> peuclidean(p1, p2, [1.0,Inf]) < 2e-10
+    bdata = BoundaryData(ctx, predicate, [])
+
+    @test !isnothing(
+        adaptiveTOCollocationStiffnessMatrix(
+            ctx, identity; on_cylinder=true, bdata)
+       )
 end
